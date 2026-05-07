@@ -24,6 +24,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContingentsRouteImport } from './routes/contingents'
 import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 
@@ -102,6 +103,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffIndexRoute = StaffIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StaffRoute,
+} as any)
 const StaffIdRoute = StaffIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/trous': typeof TrousRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
+  '/staff/': typeof StaffIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -144,12 +151,12 @@ export interface FileRoutesByTo {
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
   '/reglages': typeof ReglagesRoute
-  '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
+  '/staff': typeof StaffIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -170,6 +177,7 @@ export interface FileRoutesById {
   '/trous': typeof TrousRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
+  '/staff/': typeof StaffIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,6 +199,7 @@ export interface FileRouteTypes {
     | '/trous'
     | '/planning/generate'
     | '/staff/$id'
+    | '/staff/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -204,12 +213,12 @@ export interface FileRouteTypes {
     | '/planning'
     | '/pointage'
     | '/reglages'
-    | '/staff'
     | '/staff-app'
     | '/studios'
     | '/trous'
     | '/planning/generate'
     | '/staff/$id'
+    | '/staff'
   id:
     | '__root__'
     | '/'
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/trous'
     | '/planning/generate'
     | '/staff/$id'
+    | '/staff/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -356,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff/': {
+      id: '/staff/'
+      path: '/'
+      fullPath: '/staff/'
+      preLoaderRoute: typeof StaffIndexRouteImport
+      parentRoute: typeof StaffRoute
+    }
     '/staff/$id': {
       id: '/staff/$id'
       path: '/$id'
@@ -387,10 +404,12 @@ const PlanningRouteWithChildren = PlanningRoute._addFileChildren(
 
 interface StaffRouteChildren {
   StaffIdRoute: typeof StaffIdRoute
+  StaffIndexRoute: typeof StaffIndexRoute
 }
 
 const StaffRouteChildren: StaffRouteChildren = {
   StaffIdRoute: StaffIdRoute,
+  StaffIndexRoute: StaffIndexRoute,
 }
 
 const StaffRouteWithChildren = StaffRoute._addFileChildren(StaffRouteChildren)
