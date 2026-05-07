@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo, useCallback, useRef } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
@@ -276,13 +276,14 @@ function ShiftDetailModal({ shift, employee, onClose }: { shift: PlanningShift; 
 
         {/* Footer */}
         <div className="flex gap-2 px-5 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
-          <a
-            href={`/staff/${shift.employeeId}`}
+          <Link
+            to="/staff/$id"
+            params={{ id: shift.employeeId }}
             className="flex-1 rounded-md px-3 py-2 text-center transition-colors"
-            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
+            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", textDecoration: "none", color: "var(--foreground)" }}
           >
             Voir le profil
-          </a>
+          </Link>
           <button
             className="flex-1 rounded-md px-3 py-2 transition-colors"
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
