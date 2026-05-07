@@ -165,14 +165,14 @@ export function AppSidebar() {
             fontWeight: 500,
           }}
         >
-          DV
+          SA
         </div>
         <div>
           <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>
-            Dave
+            Sacha
           </div>
           <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-            Super admin
+            Administrateur
           </div>
         </div>
       </div>
