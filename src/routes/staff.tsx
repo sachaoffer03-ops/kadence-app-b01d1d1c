@@ -159,6 +159,7 @@ function EmployeeRow({ employee: e }: { employee: Employee }) {
     <tr
       className="transition-colors"
       style={{ borderBottom: "0.5px solid var(--border)", cursor: "pointer" }}
+      onClick={() => window.location.href = `/staff/${e.id}`}
       onMouseEnter={(ev) => { (ev.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
       onMouseLeave={(ev) => { (ev.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
     >

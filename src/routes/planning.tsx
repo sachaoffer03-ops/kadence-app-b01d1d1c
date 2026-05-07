@@ -90,6 +90,13 @@ function PlanningPage() {
             Aujourd'hui
           </button>
         </div>
+        <a
+          href="/planning/generate"
+          className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
+          style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
+        >
+          Générer le planning
+        </a>
       </div>
 
       {/* Filters */}
