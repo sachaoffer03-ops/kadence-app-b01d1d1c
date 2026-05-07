@@ -1,146 +1,189 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, X, Clock, ChevronRight } from "lucide-react";
-import { modificationRequests, roleColors, getUrgencyColor, reasonIcons, employees, type ModificationRequest } from "@/lib/mock-data";
+import { Check, X, Clock, AlertCircle, ChevronDown } from "lucide-react";
+import { modificationRequests, roleColors, employees, type ModificationRequest } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/demandes")({
   component: DemandesPage,
   head: () => ({ meta: [{ title: "Demandes de modification — Shifty" }] }),
 });
 
+const urgencyStyles: Record<string, { bg: string; text: string; label: string }> = {
+  critique: { bg: "var(--danger-bg)", text: "var(--danger-text)", label: "Critique" },
+  urgent: { bg: "var(--warning-bg)", text: "var(--warning-text)", label: "Urgent" },
+  normal: { bg: "var(--muted)", text: "var(--muted-foreground)", label: "Normal" },
+};
+
 function DemandesPage() {
   const [requests, setRequests] = useState(modificationRequests);
-  const pending = requests.filter(r => r.status === 'en-attente');
-  const handled = requests.filter(r => r.status !== 'en-attente');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const handleAction = (id: string, action: 'acceptée' | 'refusée') => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: action } : r));
+  const pending = requests
+    .filter((r) => r.status === "en-attente")
+    .sort((a, b) => {
+      const order = { critique: 0, urgent: 1, normal: 2 };
+      return order[a.urgency] - order[b.urgency];
+    });
+  const handled = requests.filter((r) => r.status !== "en-attente");
+
+  const handleAction = (id: string, action: "acceptée" | "refusée") => {
+    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: action } : r)));
+    setExpandedId(null);
   };
 
   return (
-    <div className="p-6" style={{ maxWidth: 1200 }}>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Demandes de modification</h1>
-          <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-            {pending.length} demande{pending.length > 1 ? 's' : ''} en attente · triées par urgence
-          </p>
-        </div>
+    <div className="p-6" style={{ maxWidth: 1000 }}>
+      <div className="mb-5">
+        <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Demandes de modification</h1>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+          {pending.length} demande{pending.length > 1 ? "s" : ""} en attente
+        </p>
       </div>
 
-      {/* Pending */}
-      <div className="flex flex-col gap-3 mb-8">
-        {pending.sort((a, b) => {
-          const order = { critique: 0, urgent: 1, normal: 2 };
-          return order[a.urgency] - order[b.urgency];
-        }).map(req => (
-          <RequestCard key={req.id} request={req} onAccept={() => handleAction(req.id, 'acceptée')} onRefuse={() => handleAction(req.id, 'refusée')} />
-        ))}
-        {pending.length === 0 && (
-          <div className="rounded-xl border p-8 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-            <div style={{ fontSize: 14, fontWeight: 500, color: "var(--success-text)" }}>Aucune demande en attente</div>
-            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>Toutes les demandes ont été traitées.</div>
+      {/* Pending requests */}
+      {pending.length === 0 ? (
+        <div className="rounded-xl border p-10 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--success-text)" }}>Aucune demande en attente</div>
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>Toutes les demandes ont été traitées.</div>
+        </div>
+      ) : (
+        <div className="rounded-xl border overflow-hidden mb-8" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+          {/* Header */}
+          <div className="grid px-5 py-2.5" style={{ gridTemplateColumns: "1fr 120px 100px 140px 120px", borderBottom: "0.5px solid var(--border)" }}>
+            {["Employé", "Shift", "Motif", "Urgence", ""].map((h) => (
+              <div key={h} style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)" }}>{h}</div>
+            ))}
           </div>
-        )}
-      </div>
+
+          {/* Rows */}
+          {pending.map((req) => {
+            const isExpanded = expandedId === req.id;
+            const emp = employees.find((e) => e.id === req.employeeId);
+            const urg = urgencyStyles[req.urgency];
+            const roleColor = roleColors[req.role];
+
+            return (
+              <div key={req.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
+                {/* Main row */}
+                <div
+                  className="grid px-5 py-3 items-center transition-colors"
+                  style={{ gridTemplateColumns: "1fr 120px 100px 140px 120px", cursor: "pointer" }}
+                  onClick={() => setExpandedId(isExpanded ? null : req.id)}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+                >
+                  {/* Employee */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: 30, height: 30, backgroundColor: roleColor.bg, color: roleColor.text, fontSize: 10, fontWeight: 500 }}>
+                      {req.employeeName.split(" ").map((n) => n[0]).join("")}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{req.employeeName}</div>
+                      <div className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                        <span className="rounded-full" style={{ width: 5, height: 5, backgroundColor: roleColor.dot }} />
+                        {req.role} · {req.studio.replace("Skult ", "")}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Shift */}
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 500 }}>{req.shiftDate.split(" ").slice(0, 2).join(" ")}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{req.shiftTime}</div>
+                  </div>
+
+                  {/* Reason */}
+                  <div style={{ fontSize: 12 }}>{req.reasonLabel}</div>
+
+                  {/* Urgency */}
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: urg.bg, color: urg.text }}>
+                      {urg.label}
+                    </span>
+                  </div>
+
+                  {/* Expand */}
+                  <div className="flex items-center justify-end gap-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                    <Clock size={11} /> {req.submittedAt}
+                    <ChevronDown size={14} style={{ marginLeft: 4, transform: isExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
+                  </div>
+                </div>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div className="px-5 pb-4" style={{ backgroundColor: "var(--muted)" }}>
+                    <div className="rounded-lg p-4" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}>
+                      {/* Comment */}
+                      <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 12 }}>
+                        "{req.comment}"
+                      </div>
+
+                      {/* Context row */}
+                      <div className="flex items-center gap-6 mb-4" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                        <span>Score : <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{emp?.score}/10</span></span>
+                        <span>Contrat : <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{emp?.contract}</span></span>
+                        <span>Remplaçants : <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{req.replacementCount} disponibles</span></span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleAction(req.id, "acceptée"); }}
+                          className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
+                          style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.9"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                        >
+                          <Check size={14} /> Accepter
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleAction(req.id, "refusée"); }}
+                          className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
+                          style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+                        >
+                          <X size={14} /> Refuser
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Handled */}
       {handled.length > 0 && (
         <>
-          <h2 style={{ fontSize: 13, fontWeight: 500, color: "var(--muted-foreground)", marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted-foreground)", marginBottom: 10 }}>
             Traitées récemment
-          </h2>
-          <div className="flex flex-col gap-2">
-            {handled.map(req => (
-              <div key={req.id} className="rounded-lg border px-5 py-3 flex items-center gap-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", opacity: 0.7 }}>
-                <span style={{ fontSize: 18 }}>{reasonIcons[req.reason]}</span>
+          </div>
+          <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+            {handled.map((req, i) => (
+              <div
+                key={req.id}
+                className="flex items-center gap-4 px-5 py-3"
+                style={{ borderBottom: i < handled.length - 1 ? "0.5px solid var(--border)" : "none", opacity: 0.6 }}
+              >
                 <div className="flex-1">
                   <span style={{ fontSize: 13, fontWeight: 500 }}>{req.employeeName}</span>
                   <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}> · {req.shiftDate} · {req.shiftTime}</span>
                 </div>
-                <span className="rounded-full px-2.5 py-1" style={{
-                  fontSize: 11, fontWeight: 500,
-                  backgroundColor: req.status === 'acceptée' ? "var(--success-bg)" : "var(--danger-bg)",
-                  color: req.status === 'acceptée' ? "var(--success-text)" : "var(--danger-text)",
+                <span className="rounded-full px-2 py-0.5" style={{
+                  fontSize: 10, fontWeight: 500,
+                  backgroundColor: req.status === "acceptée" ? "var(--success-bg)" : "var(--danger-bg)",
+                  color: req.status === "acceptée" ? "var(--success-text)" : "var(--danger-text)",
                 }}>
-                  {req.status === 'acceptée' ? 'Acceptée' : 'Refusée'}
+                  {req.status === "acceptée" ? "Acceptée" : "Refusée"}
                 </span>
               </div>
             ))}
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-function RequestCard({ request: req, onAccept, onRefuse }: { request: ModificationRequest; onAccept: () => void; onRefuse: () => void }) {
-  const urgencyColor = getUrgencyColor(req.urgency);
-  const roleColor = roleColors[req.role];
-  const emp = employees.find(e => e.id === req.employeeId);
-
-  return (
-    <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-      <div className="flex items-start gap-4">
-        {/* Reason icon */}
-        <div className="rounded-lg flex items-center justify-center shrink-0" style={{ width: 44, height: 44, backgroundColor: "var(--muted)", fontSize: 22 }}>
-          {reasonIcons[req.reason]}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span style={{ fontSize: 14, fontWeight: 500 }}>{req.employeeName}</span>
-            <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: roleColor.bg, color: roleColor.text }}>
-              {req.role}
-            </span>
-            <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: urgencyColor.bg, color: urgencyColor.text }}>
-              {urgencyColor.label}
-            </span>
-          </div>
-
-          {/* Shift info */}
-          <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 8 }}>
-            {req.shiftDate} · {req.shiftTime} · {req.studio}
-          </div>
-
-          {/* Reason */}
-          <div className="rounded-lg px-3 py-2.5 mb-3" style={{ backgroundColor: "var(--muted)" }}>
-            <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", marginBottom: 2 }}>
-              Motif : {req.reasonLabel}
-            </div>
-            <div style={{ fontSize: 12, color: "var(--foreground)", lineHeight: 1.5 }}>
-              {req.comment}
-            </div>
-          </div>
-
-          {/* Employee context */}
-          <div className="flex items-center gap-4" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-            <span>Score : <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{emp?.score}/10</span></span>
-            <span>Contrat : <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{emp?.contract}</span></span>
-            <span>Remplaçants potentiels : <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{req.replacementCount}</span></span>
-            <span className="flex items-center gap-1"><Clock size={10} /> {req.submittedAt}</span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col gap-2 shrink-0">
-          <button
-            onClick={onAccept}
-            className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
-            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}
-          >
-            <Check size={14} /> Accepter
-          </button>
-          <button
-            onClick={onRefuse}
-            className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
-            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--danger-bg)", color: "var(--danger-text)" }}
-          >
-            <X size={14} /> Refuser
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
