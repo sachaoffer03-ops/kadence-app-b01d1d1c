@@ -20,7 +20,7 @@ function FeedbacksPage() {
   const avgSelf = (feedbackEntries.reduce((s, f) => s + f.selfRating, 0) / feedbackEntries.length).toFixed(1);
 
   return (
-    <div className="p-6" style={{ maxWidth: 1000 }}>
+    <div className="p-6">
       <div className="mb-5">
         <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Feedbacks post-shift</h1>
         <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>

@@ -40,7 +40,7 @@ function StudiosPage() {
   const totalDaily = needs.reduce((sum, s) => sum + Object.values(s.needs).reduce((a, b) => a + b, 0), 0);
 
   return (
-    <div className="p-6" style={{ maxWidth: 1200 }}>
+    <div className="p-6">
       {/* Studio tabs */}
       <div className="flex items-center gap-1 mb-5" style={{ borderBottom: "0.5px solid var(--border)" }}>
         {studioTabs.map((tab, i) => (

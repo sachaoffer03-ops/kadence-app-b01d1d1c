@@ -15,7 +15,7 @@ function ContingentsPage() {
   const totalMax = students.length * 650;
 
   return (
-    <div className="p-6" style={{ maxWidth: 1200 }}>
+    <div className="p-6">
       <div className="mb-5">
         <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Contingents étudiants</h1>
         <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>

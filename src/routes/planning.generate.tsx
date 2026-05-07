@@ -104,7 +104,7 @@ function GeneratePlanningPage() {
 
   // Done state
   return (
-    <div className="p-6" style={{ maxWidth: 1000 }}>
+    <div className="p-6">
       <div className="text-center mb-8">
         <div className="rounded-full mx-auto flex items-center justify-center mb-4" style={{ width: 56, height: 56, backgroundColor: "var(--success-bg)" }}>
           <Check size={28} style={{ color: "var(--success-text)" }} />
