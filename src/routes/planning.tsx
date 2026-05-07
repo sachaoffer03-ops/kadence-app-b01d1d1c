@@ -506,7 +506,7 @@ function PlanningPage() {
   const dayViewLabel = dayViewDate ? `${dayNamesFull[dayViewDate.getDay()]} ${dayViewDate.getDate()} ${monthNames[dayViewDate.getMonth()]}` : "";
 
   return (
-    <div className="p-6" style={{ maxWidth: 1200 }}>
+    <div className="p-6" style={{}}>
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">

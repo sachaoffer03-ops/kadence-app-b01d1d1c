@@ -13,7 +13,7 @@ function ChecklistsPage() {
   const template = checklistTemplates.find(c => c.id === selected);
 
   return (
-    <div className="p-6" style={{ maxWidth: 1200 }}>
+    <div className="p-6" style={{}}>
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Checklists de fin de shift</h1>

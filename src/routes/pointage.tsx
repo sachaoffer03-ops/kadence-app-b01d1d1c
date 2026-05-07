@@ -15,7 +15,7 @@ function PointagePage() {
   const upcoming = pointageEntries.filter(e => e.status === 'à-venir').length;
 
   return (
-    <div className="p-6" style={{ maxWidth: 1200 }}>
+    <div className="p-6" style={{}}>
       <div className="mb-5">
         <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Pointage</h1>
         <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Suivi en temps réel des arrivées et départs.</p>

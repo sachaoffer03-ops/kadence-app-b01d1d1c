@@ -48,7 +48,7 @@ function EmployeeDetailPage() {
   ];
 
   return (
-    <div className="p-6" style={{ maxWidth: 1200 }}>
+    <div className="p-6" style={{}}>
       <Link to="/staff" className="flex items-center gap-1 mb-4 transition-colors" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
         <ArrowLeft size={14} /> Retour au staff
       </Link>
