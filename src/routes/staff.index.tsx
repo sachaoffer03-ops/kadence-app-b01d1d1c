@@ -3,7 +3,7 @@ import { employees, roleColors, getQuotaStatus, getInitials, type Employee, type
 import { Search, X, ArrowLeft, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX } from "lucide-react";
 import { useState } from "react";
 
-export const Route = createFileRoute("/staff")({
+export const Route = createFileRoute("/staff/")({
   component: StaffPage,
   head: () => ({
     meta: [{ title: "Staff — Shifty" }],
