@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrousRouteImport } from './routes/trous'
 import { Route as StudiosRouteImport } from './routes/studios'
 import { Route as StaffAppRouteImport } from './routes/staff-app'
-import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ReglagesRouteImport } from './routes/reglages'
 import { Route as PointageRouteImport } from './routes/pointage'
 import { Route as PlanningRouteImport } from './routes/planning'
@@ -24,6 +23,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContingentsRouteImport } from './routes/contingents'
 import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 
@@ -40,11 +40,6 @@ const StudiosRoute = StudiosRouteImport.update({
 const StaffAppRoute = StaffAppRouteImport.update({
   id: '/staff-app',
   path: '/staff-app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StaffRoute = StaffRouteImport.update({
-  id: '/staff',
-  path: '/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReglagesRoute = ReglagesRouteImport.update({
@@ -102,10 +97,15 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffIndexRoute = StaffIndexRouteImport.update({
+  id: '/staff/',
+  path: '/staff/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StaffIdRoute = StaffIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => StaffRoute,
+  id: '/staff/$id',
+  path: '/staff/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PlanningGenerateRoute = PlanningGenerateRouteImport.update({
   id: '/generate',
@@ -125,12 +125,12 @@ export interface FileRoutesByFullPath {
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
   '/reglages': typeof ReglagesRoute
-  '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
+  '/staff/': typeof StaffIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -144,12 +144,12 @@ export interface FileRoutesByTo {
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
   '/reglages': typeof ReglagesRoute
-  '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
+  '/staff': typeof StaffIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -164,12 +164,12 @@ export interface FileRoutesById {
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
   '/reglages': typeof ReglagesRoute
-  '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
+  '/staff/': typeof StaffIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -185,12 +185,12 @@ export interface FileRouteTypes {
     | '/planning'
     | '/pointage'
     | '/reglages'
-    | '/staff'
     | '/staff-app'
     | '/studios'
     | '/trous'
     | '/planning/generate'
     | '/staff/$id'
+    | '/staff/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -204,12 +204,12 @@ export interface FileRouteTypes {
     | '/planning'
     | '/pointage'
     | '/reglages'
-    | '/staff'
     | '/staff-app'
     | '/studios'
     | '/trous'
     | '/planning/generate'
     | '/staff/$id'
+    | '/staff'
   id:
     | '__root__'
     | '/'
@@ -223,12 +223,12 @@ export interface FileRouteTypes {
     | '/planning'
     | '/pointage'
     | '/reglages'
-    | '/staff'
     | '/staff-app'
     | '/studios'
     | '/trous'
     | '/planning/generate'
     | '/staff/$id'
+    | '/staff/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -243,10 +243,11 @@ export interface RootRouteChildren {
   PlanningRoute: typeof PlanningRouteWithChildren
   PointageRoute: typeof PointageRoute
   ReglagesRoute: typeof ReglagesRoute
-  StaffRoute: typeof StaffRouteWithChildren
   StaffAppRoute: typeof StaffAppRoute
   StudiosRoute: typeof StudiosRoute
   TrousRoute: typeof TrousRoute
+  StaffIdRoute: typeof StaffIdRoute
+  StaffIndexRoute: typeof StaffIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -270,13 +271,6 @@ declare module '@tanstack/react-router' {
       path: '/staff-app'
       fullPath: '/staff-app'
       preLoaderRoute: typeof StaffAppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/staff': {
-      id: '/staff'
-      path: '/staff'
-      fullPath: '/staff'
-      preLoaderRoute: typeof StaffRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reglages': {
@@ -356,12 +350,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff/': {
+      id: '/staff/'
+      path: '/staff'
+      fullPath: '/staff/'
+      preLoaderRoute: typeof StaffIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/staff/$id': {
       id: '/staff/$id'
-      path: '/$id'
+      path: '/staff/$id'
       fullPath: '/staff/$id'
       preLoaderRoute: typeof StaffIdRouteImport
-      parentRoute: typeof StaffRoute
+      parentRoute: typeof rootRouteImport
     }
     '/planning/generate': {
       id: '/planning/generate'
@@ -385,16 +386,6 @@ const PlanningRouteWithChildren = PlanningRoute._addFileChildren(
   PlanningRouteChildren,
 )
 
-interface StaffRouteChildren {
-  StaffIdRoute: typeof StaffIdRoute
-}
-
-const StaffRouteChildren: StaffRouteChildren = {
-  StaffIdRoute: StaffIdRoute,
-}
-
-const StaffRouteWithChildren = StaffRoute._addFileChildren(StaffRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChecklistsRoute: ChecklistsRoute,
@@ -407,11 +398,22 @@ const rootRouteChildren: RootRouteChildren = {
   PlanningRoute: PlanningRouteWithChildren,
   PointageRoute: PointageRoute,
   ReglagesRoute: ReglagesRoute,
-  StaffRoute: StaffRouteWithChildren,
   StaffAppRoute: StaffAppRoute,
   StudiosRoute: StudiosRoute,
   TrousRoute: TrousRoute,
+  StaffIdRoute: StaffIdRoute,
+  StaffIndexRoute: StaffIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

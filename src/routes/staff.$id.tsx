@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { employees, roleColors, getQuotaStatus, getInitials, type Employee } from "@/lib/mock-data";
 import { ArrowLeft, Mail, Phone, MapPin, Calendar, Star, Clock, Edit, FileText, Download, UserX } from "lucide-react";
 
-export const Route = createFileRoute("/staff_/$id")({
+export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
   head: () => ({ meta: [{ title: "Profil employé — Shifty" }] }),
 });
