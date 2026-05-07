@@ -9,8 +9,92 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrousRouteImport } from './routes/trous'
+import { Route as StudiosRouteImport } from './routes/studios'
+import { Route as StaffAppRouteImport } from './routes/staff-app'
+import { Route as StaffRouteImport } from './routes/staff'
+import { Route as ReglagesRouteImport } from './routes/reglages'
+import { Route as PointageRouteImport } from './routes/pointage'
+import { Route as PlanningRouteImport } from './routes/planning'
+import { Route as FormationRouteImport } from './routes/formation'
+import { Route as FeedbacksRouteImport } from './routes/feedbacks'
+import { Route as DimonaRouteImport } from './routes/dimona'
+import { Route as DemandesRouteImport } from './routes/demandes'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContingentsRouteImport } from './routes/contingents'
+import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TrousRoute = TrousRouteImport.update({
+  id: '/trous',
+  path: '/trous',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudiosRoute = StudiosRouteImport.update({
+  id: '/studios',
+  path: '/studios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffAppRoute = StaffAppRouteImport.update({
+  id: '/staff-app',
+  path: '/staff-app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReglagesRoute = ReglagesRouteImport.update({
+  id: '/reglages',
+  path: '/reglages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PointageRoute = PointageRouteImport.update({
+  id: '/pointage',
+  path: '/pointage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningRoute = PlanningRouteImport.update({
+  id: '/planning',
+  path: '/planning',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FormationRoute = FormationRouteImport.update({
+  id: '/formation',
+  path: '/formation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbacksRoute = FeedbacksRouteImport.update({
+  id: '/feedbacks',
+  path: '/feedbacks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DimonaRoute = DimonaRouteImport.update({
+  id: '/dimona',
+  path: '/dimona',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemandesRoute = DemandesRouteImport.update({
+  id: '/demandes',
+  path: '/demandes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContingentsRoute = ContingentsRouteImport.update({
+  id: '/contingents',
+  path: '/contingents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChecklistsRoute = ChecklistsRouteImport.update({
+  id: '/checklists',
+  path: '/checklists',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +103,228 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/checklists': typeof ChecklistsRoute
+  '/contingents': typeof ContingentsRoute
+  '/dashboard': typeof DashboardRoute
+  '/demandes': typeof DemandesRoute
+  '/dimona': typeof DimonaRoute
+  '/feedbacks': typeof FeedbacksRoute
+  '/formation': typeof FormationRoute
+  '/planning': typeof PlanningRoute
+  '/pointage': typeof PointageRoute
+  '/reglages': typeof ReglagesRoute
+  '/staff': typeof StaffRoute
+  '/staff-app': typeof StaffAppRoute
+  '/studios': typeof StudiosRoute
+  '/trous': typeof TrousRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/checklists': typeof ChecklistsRoute
+  '/contingents': typeof ContingentsRoute
+  '/dashboard': typeof DashboardRoute
+  '/demandes': typeof DemandesRoute
+  '/dimona': typeof DimonaRoute
+  '/feedbacks': typeof FeedbacksRoute
+  '/formation': typeof FormationRoute
+  '/planning': typeof PlanningRoute
+  '/pointage': typeof PointageRoute
+  '/reglages': typeof ReglagesRoute
+  '/staff': typeof StaffRoute
+  '/staff-app': typeof StaffAppRoute
+  '/studios': typeof StudiosRoute
+  '/trous': typeof TrousRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/checklists': typeof ChecklistsRoute
+  '/contingents': typeof ContingentsRoute
+  '/dashboard': typeof DashboardRoute
+  '/demandes': typeof DemandesRoute
+  '/dimona': typeof DimonaRoute
+  '/feedbacks': typeof FeedbacksRoute
+  '/formation': typeof FormationRoute
+  '/planning': typeof PlanningRoute
+  '/pointage': typeof PointageRoute
+  '/reglages': typeof ReglagesRoute
+  '/staff': typeof StaffRoute
+  '/staff-app': typeof StaffAppRoute
+  '/studios': typeof StudiosRoute
+  '/trous': typeof TrousRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/checklists'
+    | '/contingents'
+    | '/dashboard'
+    | '/demandes'
+    | '/dimona'
+    | '/feedbacks'
+    | '/formation'
+    | '/planning'
+    | '/pointage'
+    | '/reglages'
+    | '/staff'
+    | '/staff-app'
+    | '/studios'
+    | '/trous'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/checklists'
+    | '/contingents'
+    | '/dashboard'
+    | '/demandes'
+    | '/dimona'
+    | '/feedbacks'
+    | '/formation'
+    | '/planning'
+    | '/pointage'
+    | '/reglages'
+    | '/staff'
+    | '/staff-app'
+    | '/studios'
+    | '/trous'
+  id:
+    | '__root__'
+    | '/'
+    | '/checklists'
+    | '/contingents'
+    | '/dashboard'
+    | '/demandes'
+    | '/dimona'
+    | '/feedbacks'
+    | '/formation'
+    | '/planning'
+    | '/pointage'
+    | '/reglages'
+    | '/staff'
+    | '/staff-app'
+    | '/studios'
+    | '/trous'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChecklistsRoute: typeof ChecklistsRoute
+  ContingentsRoute: typeof ContingentsRoute
+  DashboardRoute: typeof DashboardRoute
+  DemandesRoute: typeof DemandesRoute
+  DimonaRoute: typeof DimonaRoute
+  FeedbacksRoute: typeof FeedbacksRoute
+  FormationRoute: typeof FormationRoute
+  PlanningRoute: typeof PlanningRoute
+  PointageRoute: typeof PointageRoute
+  ReglagesRoute: typeof ReglagesRoute
+  StaffRoute: typeof StaffRoute
+  StaffAppRoute: typeof StaffAppRoute
+  StudiosRoute: typeof StudiosRoute
+  TrousRoute: typeof TrousRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trous': {
+      id: '/trous'
+      path: '/trous'
+      fullPath: '/trous'
+      preLoaderRoute: typeof TrousRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studios': {
+      id: '/studios'
+      path: '/studios'
+      fullPath: '/studios'
+      preLoaderRoute: typeof StudiosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff-app': {
+      id: '/staff-app'
+      path: '/staff-app'
+      fullPath: '/staff-app'
+      preLoaderRoute: typeof StaffAppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reglages': {
+      id: '/reglages'
+      path: '/reglages'
+      fullPath: '/reglages'
+      preLoaderRoute: typeof ReglagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pointage': {
+      id: '/pointage'
+      path: '/pointage'
+      fullPath: '/pointage'
+      preLoaderRoute: typeof PointageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning': {
+      id: '/planning'
+      path: '/planning'
+      fullPath: '/planning'
+      preLoaderRoute: typeof PlanningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/formation': {
+      id: '/formation'
+      path: '/formation'
+      fullPath: '/formation'
+      preLoaderRoute: typeof FormationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedbacks': {
+      id: '/feedbacks'
+      path: '/feedbacks'
+      fullPath: '/feedbacks'
+      preLoaderRoute: typeof FeedbacksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dimona': {
+      id: '/dimona'
+      path: '/dimona'
+      fullPath: '/dimona'
+      preLoaderRoute: typeof DimonaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demandes': {
+      id: '/demandes'
+      path: '/demandes'
+      fullPath: '/demandes'
+      preLoaderRoute: typeof DemandesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contingents': {
+      id: '/contingents'
+      path: '/contingents'
+      fullPath: '/contingents'
+      preLoaderRoute: typeof ContingentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checklists': {
+      id: '/checklists'
+      path: '/checklists'
+      fullPath: '/checklists'
+      preLoaderRoute: typeof ChecklistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +337,21 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChecklistsRoute: ChecklistsRoute,
+  ContingentsRoute: ContingentsRoute,
+  DashboardRoute: DashboardRoute,
+  DemandesRoute: DemandesRoute,
+  DimonaRoute: DimonaRoute,
+  FeedbacksRoute: FeedbacksRoute,
+  FormationRoute: FormationRoute,
+  PlanningRoute: PlanningRoute,
+  PointageRoute: PointageRoute,
+  ReglagesRoute: ReglagesRoute,
+  StaffRoute: StaffRoute,
+  StaffAppRoute: StaffAppRoute,
+  StudiosRoute: StudiosRoute,
+  TrousRoute: TrousRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
