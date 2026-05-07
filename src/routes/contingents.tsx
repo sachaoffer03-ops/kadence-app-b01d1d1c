@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createFileRoute } from "@tantml/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import StubPage from "@/components/StubPage";
 
 export const Route = createFileRoute("/contingents")({
