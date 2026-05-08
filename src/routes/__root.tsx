@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -8,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { AppSidebar } from "@/components/AppSidebar";
+import { AppSidebar, MobileSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
 
 import appCss from "../styles.css?url";
@@ -110,6 +111,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isStaffApp = currentPath.startsWith("/staff-app");
 
@@ -125,8 +127,9 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
         <AppSidebar />
-        <div className="flex-1 flex flex-col" style={{ marginLeft: 220 }}>
-          <TopBar />
+        <MobileSidebar open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+        <div className="flex-1 flex flex-col md:ml-[220px]">
+          <TopBar onMenuToggle={() => setMobileMenuOpen(prev => !prev)} />
           <main className="flex-1 overflow-y-auto">
             <Outlet />
           </main>

@@ -1,5 +1,5 @@
-import { useRouterState, Link } from "@tanstack/react-router";
-import { Bell, Search, Plus } from "lucide-react";
+import { useRouterState } from "@tanstack/react-router";
+import { Bell, Search, Plus, Menu } from "lucide-react";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -17,7 +17,7 @@ const pageTitles: Record<string, string> = {
   "/reglages": "Réglages",
 };
 
-export function TopBar() {
+export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const currentPath = useRouterState({
     select: (s) => s.location.pathname,
   });
@@ -26,27 +26,36 @@ export function TopBar() {
 
   return (
     <header
-      className="flex items-center justify-between border-b px-6"
+      className="flex items-center justify-between border-b px-4 md:px-6"
       style={{
         height: 52,
         borderColor: "var(--border)",
         backgroundColor: "var(--background)",
       }}
     >
-      {/* Left: breadcrumb */}
+      {/* Left: hamburger (mobile) + breadcrumb */}
       <div className="flex items-center gap-2">
-        <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            className="flex items-center justify-center rounded-md md:hidden"
+            style={{ width: 32, height: 32 }}
+          >
+            <Menu size={20} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
+          </button>
+        )}
+        <span className="hidden md:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
           Shifty
         </span>
-        <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>/</span>
+        <span className="hidden md:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>/</span>
         <span style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>
           {pageTitle}
         </span>
       </div>
 
-      {/* Center: search */}
+      {/* Center: search (hidden on mobile) */}
       <div
-        className="flex items-center gap-2 rounded-md border px-3"
+        className="hidden md:flex items-center gap-2 rounded-md border px-3"
         style={{
           width: 220,
           height: 32,
@@ -61,7 +70,13 @@ export function TopBar() {
       </div>
 
       {/* Right: actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <button
+          className="flex items-center justify-center rounded-md md:hidden"
+          style={{ width: 32, height: 32 }}
+        >
+          <Search size={18} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
+        </button>
         <button
           className="relative flex items-center justify-center rounded-md transition-colors"
           style={{ width: 32, height: 32 }}
@@ -79,7 +94,7 @@ export function TopBar() {
           />
         </button>
         <button
-          className="flex items-center gap-1.5 rounded-md px-3 transition-colors"
+          className="hidden md:flex items-center gap-1.5 rounded-md px-3 transition-colors"
           style={{
             height: 32,
             fontSize: 12,
@@ -90,6 +105,17 @@ export function TopBar() {
         >
           <Plus size={14} />
           Nouveau shift
+        </button>
+        <button
+          className="flex md:hidden items-center justify-center rounded-md"
+          style={{
+            width: 32,
+            height: 32,
+            backgroundColor: "var(--foreground)",
+            color: "var(--card)",
+          }}
+        >
+          <Plus size={16} />
         </button>
       </div>
     </header>

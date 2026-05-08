@@ -11,7 +11,7 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardPage() {
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Hero */}
       <div
         className="rounded-xl p-6"
@@ -55,7 +55,7 @@ function DashboardPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-4 gap-4 mt-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-5">
         <KpiCard label="Cette semaine" value="68" unit="shifts" change="↑ 12% vs sem. dern." changeColor="var(--success-text)" />
         <KpiCard label="Heures prestées" value="476" unit="h" change="Cible mois : 1 840h" changeColor="var(--muted-foreground)" />
         <KpiCard label="Score staff moyen" value="8.6" unit="/10" change="+0.2 ce mois" changeColor="var(--success-text)" />
@@ -63,9 +63,9 @@ function DashboardPage() {
       </div>
 
       {/* Two columns */}
-      <div className="grid grid-cols-5 gap-5 mt-5">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mt-5">
         {/* Left: activity */}
-        <div className="col-span-3">
+        <div className="md:col-span-3">
           <div
             className="rounded-xl border p-5"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
@@ -82,7 +82,7 @@ function DashboardPage() {
         </div>
 
         {/* Right: action panels */}
-        <div className="col-span-2 flex flex-col gap-5">
+        <div className="md:col-span-2 flex flex-col gap-5">
           {/* Actions en attente */}
           <div
             className="rounded-xl p-5"

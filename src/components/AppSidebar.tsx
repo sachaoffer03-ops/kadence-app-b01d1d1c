@@ -13,6 +13,7 @@ import {
   BarChart3,
   Building2,
   Settings,
+  X,
 } from "lucide-react";
 
 interface NavItem {
@@ -64,28 +65,15 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function AppSidebar() {
-  const currentPath = useRouterState({
-    select: (s) => s.location.pathname,
-  });
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const currentPath = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <aside
-      className="fixed left-0 top-0 bottom-0 flex flex-col border-r"
-      style={{
-        width: 220,
-        backgroundColor: "var(--sidebar-bg)",
-        borderColor: "var(--border)",
-      }}
-    >
+    <>
       {/* Logo */}
       <div className="px-5 pt-5 pb-4">
-        <div style={{ fontSize: 18, fontWeight: 500, color: "var(--foreground)" }}>
-          Shifty
-        </div>
-        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 1 }}>
-          Skult Studios
-        </div>
+        <div style={{ fontSize: 18, fontWeight: 500, color: "var(--foreground)" }}>Shifty</div>
+        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 1 }}>Skult Studios</div>
       </div>
 
       {/* Nav */}
@@ -105,11 +93,12 @@ export function AppSidebar() {
               {section.title}
             </div>
             {section.items.map((item) => {
-              const isActive = currentPath === item.to;
+              const isActive = currentPath === item.to || currentPath.startsWith(item.to + "/");
               return (
                 <Link
                   key={item.to}
                   to={item.to}
+                  onClick={onNavigate}
                   className="flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors"
                   style={{
                     fontSize: 13,
@@ -129,14 +118,8 @@ export function AppSidebar() {
                         minWidth: 18,
                         height: 18,
                         padding: "0 5px",
-                        backgroundColor:
-                          item.badgeType === "danger"
-                            ? "var(--danger-bg)"
-                            : "var(--muted)",
-                        color:
-                          item.badgeType === "danger"
-                            ? "var(--danger-text)"
-                            : "var(--muted-foreground)",
+                        backgroundColor: item.badgeType === "danger" ? "var(--danger-bg)" : "var(--muted)",
+                        color: item.badgeType === "danger" ? "var(--danger-text)" : "var(--muted-foreground)",
                       }}
                     >
                       {item.badge}
@@ -150,10 +133,7 @@ export function AppSidebar() {
       </nav>
 
       {/* User */}
-      <div
-        className="px-4 py-3 border-t flex items-center gap-2.5"
-        style={{ borderColor: "var(--border)" }}
-      >
+      <div className="px-4 py-3 border-t flex items-center gap-2.5" style={{ borderColor: "var(--border)" }}>
         <div
           className="flex items-center justify-center rounded-full"
           style={{
@@ -168,14 +148,62 @@ export function AppSidebar() {
           SA
         </div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>
-            Sacha
-          </div>
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-            Administrateur
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>Sacha</div>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Administrateur</div>
         </div>
       </div>
+    </>
+  );
+}
+
+/* Desktop sidebar */
+export function AppSidebar() {
+  return (
+    <aside
+      className="fixed left-0 top-0 bottom-0 flex-col border-r hidden md:flex"
+      style={{
+        width: 220,
+        backgroundColor: "var(--sidebar-bg)",
+        borderColor: "var(--border)",
+      }}
+    >
+      <SidebarContent />
     </aside>
+  );
+}
+
+/* Mobile drawer sidebar */
+export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <>
+      {/* Overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={onClose}
+          style={{ backdropFilter: "blur(2px)" }}
+        />
+      )}
+      {/* Drawer */}
+      <aside
+        className="fixed left-0 top-0 bottom-0 z-50 flex flex-col border-r md:hidden transition-transform duration-250 ease-out"
+        style={{
+          width: 260,
+          backgroundColor: "var(--sidebar-bg)",
+          borderColor: "var(--border)",
+          transform: open ? "translateX(0)" : "translateX(-100%)",
+        }}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-3 rounded-md p-1.5"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          <X size={18} />
+        </button>
+        <SidebarContent onNavigate={onClose} />
+      </aside>
+    </>
   );
 }
