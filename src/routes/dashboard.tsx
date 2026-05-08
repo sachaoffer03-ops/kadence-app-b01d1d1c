@@ -63,9 +63,9 @@ function DashboardPage() {
       </div>
 
       {/* Two columns */}
-      <div className="grid grid-cols-5 gap-5 mt-5">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mt-5">
         {/* Left: activity */}
-        <div className="col-span-3">
+        <div className="md:col-span-3">
           <div
             className="rounded-xl border p-5"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
