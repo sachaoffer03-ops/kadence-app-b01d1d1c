@@ -1,17 +1,34 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AlertTriangle, Send, UserPlus, Sparkles, ChevronDown, ChevronUp, Check, Search, ExternalLink } from "lucide-react";
-import { holeShifts, employees, roleColors, getUrgencyColor, type HoleShift, type Role } from "@/lib/mock-data";
+import { holeShifts, employees, roleColors, getUrgencyColor, type HoleShift, type Role, type Studio } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/trous")({
   component: TrousPage,
   head: () => ({ meta: [{ title: "Trous à combler — Shifty" }] }),
 });
 
+const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
+const allStudios: Studio[] = ["Skult Rhodes", "Skult Châtelain"];
+type UrgencyFilter = "tous" | "critique" | "urgent" | "normal";
+
 function TrousPage() {
+  const [studioFilter, setStudioFilter] = useState<Studio | "tous">("tous");
+  const [roleFilter, setRoleFilter] = useState<Role | "tous">("tous");
+  const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>("tous");
   const [expandedHole, setExpandedHole] = useState<string | null>(holeShifts[0]?.id || null);
-  const critique = holeShifts.filter((h) => h.urgency === "critique").length;
-  const urgent = holeShifts.filter((h) => h.urgency === "urgent").length;
+
+  const filtered = useMemo(() => {
+    return holeShifts.filter((h) => {
+      if (studioFilter !== "tous" && h.studio !== studioFilter) return false;
+      if (roleFilter !== "tous" && h.role !== roleFilter) return false;
+      if (urgencyFilter !== "tous" && h.urgency !== urgencyFilter) return false;
+      return true;
+    });
+  }, [studioFilter, roleFilter, urgencyFilter]);
+
+  const critique = filtered.filter((h) => h.urgency === "critique").length;
+  const urgent = filtered.filter((h) => h.urgency === "urgent").length;
 
   return (
     <div className="p-6">
@@ -19,7 +36,12 @@ function TrousPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle size={18} style={{ color: "var(--danger-text)" }} />
-            <h1 style={{ fontSize: 18, fontWeight: 500 }}>{holeShifts.length} trous à combler</h1>
+            <h1 style={{ fontSize: 18, fontWeight: 500 }}>
+              {filtered.length} trou{filtered.length > 1 ? "s" : ""} à combler
+              {filtered.length !== holeShifts.length && (
+                <span style={{ fontSize: 13, color: "var(--muted-foreground)", fontWeight: 400 }}> sur {holeShifts.length}</span>
+              )}
+            </h1>
           </div>
           <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
             Sélectionnez un trou et assignez directement un employé.
@@ -39,16 +61,92 @@ function TrousPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        {holeShifts.map((hole) => (
-          <HoleCard
-            key={hole.id}
-            hole={hole}
-            expanded={expandedHole === hole.id}
-            onToggle={() => setExpandedHole(expandedHole === hole.id ? null : hole.id)}
-          />
-        ))}
+      {/* Filters */}
+      <div className="flex flex-col gap-2 mb-4">
+        <FilterRow
+          label="Centre"
+          options={[{ value: "tous", label: "Tous" }, ...allStudios.map((s) => ({ value: s, label: s.replace("Skult ", "") }))]}
+          value={studioFilter}
+          onChange={(v) => setStudioFilter(v as Studio | "tous")}
+        />
+        <FilterRow
+          label="Rôle"
+          options={[{ value: "tous", label: "Tous" }, ...allRoles.map((r) => ({ value: r, label: r }))]}
+          value={roleFilter}
+          onChange={(v) => setRoleFilter(v as Role | "tous")}
+          dotColor={(v) => (v !== "tous" ? roleColors[v as Role].dot : undefined)}
+        />
+        <FilterRow
+          label="Urgence"
+          options={[
+            { value: "tous", label: "Toutes" },
+            { value: "critique", label: "Critique" },
+            { value: "urgent", label: "Urgent" },
+            { value: "normal", label: "Normal" },
+          ]}
+          value={urgencyFilter}
+          onChange={(v) => setUrgencyFilter(v as UrgencyFilter)}
+        />
       </div>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border px-6 py-10 text-center" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Aucun trou avec ces filtres</div>
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Essayez d'élargir les critères.</div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {filtered.map((hole) => (
+            <HoleCard
+              key={hole.id}
+              hole={hole}
+              expanded={expandedHole === hole.id}
+              onToggle={() => setExpandedHole(expandedHole === hole.id ? null : hole.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FilterRow({
+  label,
+  options,
+  value,
+  onChange,
+  dotColor,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  dotColor?: (v: string) => string | undefined;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500, width: 60 }}>{label}</span>
+      {options.map((opt) => {
+        const active = value === opt.value;
+        const dot = dotColor?.(opt.value);
+        return (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className="rounded-full px-2.5 py-1 flex items-center gap-1.5 transition-colors"
+            style={{
+              fontSize: 11,
+              fontWeight: active ? 500 : 400,
+              backgroundColor: active ? "var(--foreground)" : "transparent",
+              color: active ? "var(--card)" : "var(--muted-foreground)",
+              border: active ? "none" : "0.5px solid var(--border)",
+            }}
+          >
+            {dot && <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: dot }} />}
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
