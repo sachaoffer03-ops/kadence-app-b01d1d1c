@@ -681,7 +681,9 @@ function PlanningPage() {
           {holes.length > 0 && (
             <>
               <span style={{ color: "var(--muted-foreground)" }}>·</span>
-              <span style={{ color: "var(--coral-dark)", fontWeight: 500 }}>{holes.length} trous à combler</span>
+              <Link to="/trous" style={{ color: "var(--coral-dark)", fontWeight: 500, textDecoration: "underline" }}>
+                {holes.length} trous à combler
+              </Link>
             </>
           )}
         </div>
