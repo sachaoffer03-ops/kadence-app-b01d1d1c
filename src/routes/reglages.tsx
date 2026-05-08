@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sparkles, Shield, Bell, Users, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Info } from "lucide-react";
+import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/reglages")({
   component: ReglagesPage,
@@ -9,9 +9,6 @@ export const Route = createFileRoute("/reglages")({
 
 const tabs = [
   { id: 'ai', label: 'Algorithme IA', icon: Sparkles },
-  { id: 'branding', label: 'Branding', icon: Shield },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'team', label: 'Équipe admin', icon: Users },
   { id: 'integrations', label: 'Intégrations', icon: Puzzle },
   { id: 'billing', label: 'Facturation', icon: CreditCard },
   { id: 'logs', label: 'Logs', icon: ScrollText },
@@ -112,29 +109,6 @@ function AISettings() {
           <RuleToggle label="Repos minimum 11h" description="11h de repos entre deux shifts (législation belge)" locked enabled />
           <RuleToggle label="Maximum 38h/semaine (CDI)" description="Limite légale pour les contrats à durée indéterminée" enabled />
           <RuleToggle label="Préférences strictes" description="Ne jamais assigner en dehors des préférences déclarées" />
-        </div>
-      </div>
-
-      {/* Monthly cycle */}
-      <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Cycle mensuel</div>
-        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16 }}>Calendrier automatique de la génération du planning</div>
-
-        <div className="flex items-center gap-2">
-          {[
-            { date: '20', label: 'Ouverture dispos', color: 'var(--info-bg)' },
-            { date: '25', label: 'Clôture dispos', color: 'var(--warning-bg)' },
-            { date: '26-27', label: 'Génération IA', color: 'var(--coral-light)' },
-            { date: '28', label: 'Publication', color: 'var(--success-bg)' },
-          ].map((step, i) => (
-            <div key={step.date} className="flex items-center gap-2 flex-1">
-              <div className="rounded-lg px-4 py-3 flex-1 text-center" style={{ backgroundColor: step.color }}>
-                <div style={{ fontSize: 18, fontWeight: 500 }}>{step.date}</div>
-                <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>{step.label}</div>
-              </div>
-              {i < 3 && <div style={{ width: 24, height: 1, backgroundColor: "var(--border)" }} />}
-            </div>
-          ))}
         </div>
       </div>
     </div>
