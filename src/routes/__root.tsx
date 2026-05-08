@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { AppSidebar } from "@/components/AppSidebar";
+import { AppSidebar, MobileSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
 
 import appCss from "../styles.css?url";
