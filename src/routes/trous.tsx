@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AlertTriangle, Send, UserPlus, Sparkles, ChevronDown, ChevronUp, Check, Search, ExternalLink } from "lucide-react";
-import { holeShifts, employees, roleColors, getUrgencyColor, type HoleShift, type Role, type Studio } from "@/lib/mock-data";
+import { holeShifts, employees, roleColors, type HoleShift, type Role, type Studio } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/trous")({
   component: TrousPage,
@@ -10,25 +10,18 @@ export const Route = createFileRoute("/trous")({
 
 const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
 const allStudios: Studio[] = ["Skult Rhodes", "Skult Châtelain"];
-type UrgencyFilter = "tous" | "critique" | "urgent" | "normal";
-
 function TrousPage() {
   const [studioFilter, setStudioFilter] = useState<Studio | "tous">("tous");
   const [roleFilter, setRoleFilter] = useState<Role | "tous">("tous");
-  const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>("tous");
   const [expandedHole, setExpandedHole] = useState<string | null>(holeShifts[0]?.id || null);
 
   const filtered = useMemo(() => {
     return holeShifts.filter((h) => {
       if (studioFilter !== "tous" && h.studio !== studioFilter) return false;
       if (roleFilter !== "tous" && h.role !== roleFilter) return false;
-      if (urgencyFilter !== "tous" && h.urgency !== urgencyFilter) return false;
       return true;
     });
-  }, [studioFilter, roleFilter, urgencyFilter]);
-
-  const critique = filtered.filter((h) => h.urgency === "critique").length;
-  const urgent = filtered.filter((h) => h.urgency === "urgent").length;
+  }, [studioFilter, roleFilter]);
 
   return (
     <div className="p-6">
@@ -47,18 +40,6 @@ function TrousPage() {
             Sélectionnez un trou et assignez directement un employé.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {critique > 0 && (
-            <span className="rounded-full px-2.5 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--danger-bg)", color: "var(--danger-text)" }}>
-              {critique} critique{critique > 1 ? "s" : ""}
-            </span>
-          )}
-          {urgent > 0 && (
-            <span className="rounded-full px-2.5 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
-              {urgent} urgent{urgent > 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Filters */}
@@ -75,17 +56,6 @@ function TrousPage() {
           value={roleFilter}
           onChange={(v) => setRoleFilter(v as Role | "tous")}
           dotColor={(v) => (v !== "tous" ? roleColors[v as Role].dot : undefined)}
-        />
-        <FilterRow
-          label="Urgence"
-          options={[
-            { value: "tous", label: "Toutes" },
-            { value: "critique", label: "Critique" },
-            { value: "urgent", label: "Urgent" },
-            { value: "normal", label: "Normal" },
-          ]}
-          value={urgencyFilter}
-          onChange={(v) => setUrgencyFilter(v as UrgencyFilter)}
         />
       </div>
 
@@ -152,7 +122,6 @@ function FilterRow({
 }
 
 function HoleCard({ hole, expanded, onToggle }: { hole: HoleShift; expanded: boolean; onToggle: () => void }) {
-  const urgencyColor = getUrgencyColor(hole.urgency);
   const roleColor = roleColors[hole.role];
 
   return (
@@ -163,7 +132,7 @@ function HoleCard({ hole, expanded, onToggle }: { hole: HoleShift; expanded: boo
       <button onClick={onToggle} className="w-full flex items-center gap-4 px-5 py-4 text-left">
         <span className="rounded-full shrink-0" style={{ width: 10, height: 10, backgroundColor: roleColor.dot }} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <span style={{ fontSize: 14, fontWeight: 500 }}>{hole.role}</span>
             <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
             <span style={{ fontSize: 13 }}>{hole.dateLabel}</span>
@@ -172,9 +141,6 @@ function HoleCard({ hole, expanded, onToggle }: { hole: HoleShift; expanded: boo
             <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
             <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{hole.studio}</span>
           </div>
-          <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, backgroundColor: urgencyColor.bg, color: urgencyColor.text, fontWeight: 500 }}>
-            {urgencyColor.label}
-          </span>
         </div>
         {expanded ? <ChevronUp size={16} style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown size={16} style={{ color: "var(--muted-foreground)" }} />}
       </button>
