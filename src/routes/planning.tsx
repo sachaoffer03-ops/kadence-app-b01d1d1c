@@ -560,7 +560,7 @@ function PlanningPage() {
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         {/* Day headers */}
         <div className="grid" style={{ gridTemplateColumns: "140px repeat(7, 1fr)", borderBottom: "0.5px solid var(--border)" }}>
-          <div className="px-4 py-3" style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>Poste</div>
+          <div className="px-4 py-3" style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>Horaire</div>
           {weekDays.map((d, i) => {
             const isSelected = selectedDayIdx === i;
             const isToday = i === todayIdx;
@@ -590,21 +590,20 @@ function PlanningPage() {
           })}
         </div>
 
-        {/* Role rows */}
-        {roles.map((role) => {
-          const rc = roleColors[role];
+        {/* Time slot rows */}
+        {timeSlotDefs.map((slot, slotIdx) => {
           return (
             <div
-              key={role}
+              key={slot.label}
               className="grid"
               style={{ gridTemplateColumns: "140px repeat(7, 1fr)", borderBottom: "0.5px solid var(--border)", minHeight: 110 }}
             >
-              <div className="px-4 py-3 flex items-center gap-2" style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--muted)" }}>
-                <span className="rounded-full" style={{ width: 8, height: 8, backgroundColor: rc.dot }} />
-                {role}
+              <div className="px-4 py-3 flex flex-col justify-center" style={{ backgroundColor: "var(--muted)" }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{fmtTime(slot.start)}–{fmtTime(slot.end)}</div>
+                <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>5 heures</div>
               </div>
               {weekDays.map((_, dayIdx) => {
-                const cellShifts = studioShifts.filter((s) => s.day === dayIdx && s.role === role);
+                const cellShifts = studioShifts.filter((s) => s.day === dayIdx && s.slot === slotIdx);
                 const isSelected = selectedDayIdx === dayIdx;
                 return (
                   <div
@@ -615,8 +614,9 @@ function PlanningPage() {
                       backgroundColor: isSelected ? "rgba(15,15,15,0.03)" : "transparent",
                     }}
                   >
-                    {cellShifts.map((shift) =>
-                      shift.hole ? (
+                    {cellShifts.map((shift) => {
+                      const rc = roleColors[shift.role];
+                      return shift.hole ? (
                         <button
                           key={shift.id}
                           onClick={() => setHoleShift(shift)}
@@ -629,9 +629,9 @@ function PlanningPage() {
                             cursor: "pointer",
                           }}
                         >
-                          <div style={{ fontWeight: 500 }}>+ Libre</div>
-                          <div style={{ fontSize: 10, opacity: 0.85, marginTop: 1 }}>
-                            {fmtTime(shift.startHour)}–{fmtTime(shift.endHour)}
+                          <div className="flex items-center gap-1" style={{ fontWeight: 500 }}>
+                            <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: rc.dot }} />
+                            + Libre · {shift.role}
                           </div>
                         </button>
                       ) : (
@@ -654,12 +654,13 @@ function PlanningPage() {
                             </span>
                             <StatusDot confirmation={shift.confirmation} pointage={shift.pointage} delayMinutes={shift.delayMinutes} />
                           </div>
-                          <div style={{ fontSize: 10, opacity: 0.85, marginTop: 1 }}>
-                            {fmtTime(shift.startHour)}–{fmtTime(shift.endHour)}
+                          <div className="flex items-center gap-1" style={{ fontSize: 10, opacity: 0.85, marginTop: 1 }}>
+                            <span className="rounded-full" style={{ width: 5, height: 5, backgroundColor: rc.dot }} />
+                            {shift.role}
                           </div>
                         </button>
-                      )
-                    )}
+                      );
+                    })}
                   </div>
                 );
               })}
