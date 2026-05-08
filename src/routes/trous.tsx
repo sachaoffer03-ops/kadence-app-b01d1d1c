@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { AlertTriangle, Send, UserPlus, Users, Sparkles, Clock, ChevronDown, ChevronUp, Check, X } from "lucide-react";
-import { holeShifts, roleColors, getUrgencyColor, type HoleShift } from "@/lib/mock-data";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Send, UserPlus, Sparkles, ChevronDown, ChevronUp, Check, Search, ExternalLink } from "lucide-react";
+import { holeShifts, employees, roleColors, getUrgencyColor, type HoleShift, type Role } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/trous")({
   component: TrousPage,
@@ -10,38 +10,35 @@ export const Route = createFileRoute("/trous")({
 
 function TrousPage() {
   const [expandedHole, setExpandedHole] = useState<string | null>(holeShifts[0]?.id || null);
-
-  const critique = holeShifts.filter(h => h.urgency === 'critique').length;
-  const urgent = holeShifts.filter(h => h.urgency === 'urgent').length;
+  const critique = holeShifts.filter((h) => h.urgency === "critique").length;
+  const urgent = holeShifts.filter((h) => h.urgency === "urgent").length;
 
   return (
     <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle size={18} style={{ color: "var(--danger-text)" }} />
             <h1 style={{ fontSize: 18, fontWeight: 500 }}>{holeShifts.length} trous à combler</h1>
           </div>
           <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-            Shifts non couverts pour les prochains jours. Proposez, assignez ou lancez un appel collectif.
+            Sélectionnez un trou et assignez directement un employé.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {critique > 0 && (
             <span className="rounded-full px-2.5 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--danger-bg)", color: "var(--danger-text)" }}>
-              {critique} critique{critique > 1 ? 's' : ''}
+              {critique} critique{critique > 1 ? "s" : ""}
             </span>
           )}
           {urgent > 0 && (
             <span className="rounded-full px-2.5 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
-              {urgent} urgent{urgent > 1 ? 's' : ''}
+              {urgent} urgent{urgent > 1 ? "s" : ""}
             </span>
           )}
         </div>
       </div>
 
-      {/* Holes list */}
       <div className="flex flex-col gap-3">
         {holeShifts.map((hole) => (
           <HoleCard
@@ -59,130 +56,253 @@ function TrousPage() {
 function HoleCard({ hole, expanded, onToggle }: { hole: HoleShift; expanded: boolean; onToggle: () => void }) {
   const urgencyColor = getUrgencyColor(hole.urgency);
   const roleColor = roleColors[hole.role];
-  const [actionState, setActionState] = useState<Record<string, string>>({});
 
   return (
     <div
       className="rounded-xl border overflow-hidden transition-all"
       style={{ backgroundColor: "var(--card)", borderColor: expanded ? "var(--coral)" : "var(--border)", borderWidth: expanded ? 1.5 : 1 }}
     >
-      {/* Header row */}
       <button onClick={onToggle} className="w-full flex items-center gap-4 px-5 py-4 text-left">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          {/* Role dot + urgency */}
-          <div className="flex flex-col items-center gap-1">
-            <span className="rounded-full" style={{ width: 10, height: 10, backgroundColor: roleColor.dot }} />
+        <span className="rounded-full shrink-0" style={{ width: 10, height: 10, backgroundColor: roleColor.dot }} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span style={{ fontSize: 14, fontWeight: 500 }}>{hole.role}</span>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
+            <span style={{ fontSize: 13 }}>{hole.dateLabel}</span>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
+            <span style={{ fontSize: 13 }}>{hole.time}</span>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{hole.studio}</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span style={{ fontSize: 14, fontWeight: 500 }}>{hole.role}</span>
-              <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, backgroundColor: urgencyColor.bg, color: urgencyColor.text, fontWeight: 500 }}>
-                {urgencyColor.label}
-              </span>
-            </div>
-            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-              {hole.dateLabel} · {hole.time} · {hole.studio}
-            </div>
-          </div>
+          <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, backgroundColor: urgencyColor.bg, color: urgencyColor.text, fontWeight: 500 }}>
+            {urgencyColor.label}
+          </span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Raison</div>
-            <div style={{ fontSize: 12, fontWeight: 500 }}>{hole.reason}</div>
-          </div>
-          <div className="text-right">
-            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Éligibles</div>
-            <div style={{ fontSize: 12, fontWeight: 500 }}>{hole.eligibleCount}</div>
-          </div>
-          {expanded ? <ChevronUp size={16} style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown size={16} style={{ color: "var(--muted-foreground)" }} />}
-        </div>
+        {expanded ? <ChevronUp size={16} style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown size={16} style={{ color: "var(--muted-foreground)" }} />}
       </button>
 
-      {/* Expanded content */}
-      {expanded && (
-        <div className="px-5 pb-5" style={{ borderTop: "0.5px solid var(--border)" }}>
-          {/* Quick actions */}
-          <div className="flex items-center gap-2 pt-4 pb-3">
-            <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Actions rapides
-            </span>
-            <button
-              className="rounded-md px-3 py-1.5 flex items-center gap-1.5 transition-colors"
-              style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
-            >
-              <Users size={13} />
-              Appel collectif
-            </button>
-          </div>
-
-          {/* Eligible employees */}
-          <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-            <div className="px-4 py-2" style={{ backgroundColor: "var(--muted)", borderBottom: "0.5px solid var(--border)" }}>
-              <div className="flex items-center gap-2">
-                <Sparkles size={12} style={{ color: "var(--coral)" }} />
-                <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)" }}>
-                  Employés éligibles · triés par recommandation IA
-                </span>
-              </div>
-            </div>
-            {hole.eligible.map((emp, i) => (
-              <div
-                key={emp.employeeId}
-                className="flex items-center gap-3 px-4 py-3"
-                style={{ borderBottom: i < hole.eligible.length - 1 ? "0.5px solid var(--border)" : "none", opacity: emp.available ? 1 : 0.5 }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>{emp.name}</span>
-                    {emp.aiRecommended && (
-                      <span className="rounded-full px-1.5 py-0.5 flex items-center gap-1" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
-                        <Sparkles size={8} /> IA
-                      </span>
-                    )}
-                    {!emp.available && (
-                      <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
-                        Non dispo
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-                    Score {emp.score}/10{emp.hoursLeft != null ? ` · ${emp.hoursLeft}h restantes` : ''}
-                  </div>
-                </div>
-                {actionState[emp.employeeId] ? (
-                  <span className="rounded-full px-2.5 py-1 flex items-center gap-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>
-                    <Check size={12} /> {actionState[emp.employeeId]}
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <ActionButton label="Proposer" icon={<Send size={11} />} onClick={() => setActionState(s => ({ ...s, [emp.employeeId]: 'Proposé' }))} />
-                    <ActionButton label="Assigner" icon={<UserPlus size={11} />} variant="dark" onClick={() => setActionState(s => ({ ...s, [emp.employeeId]: 'Assigné' }))} />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {expanded && <HoleAssign hole={hole} />}
     </div>
   );
 }
 
-function ActionButton({ label, icon, variant, onClick }: { label: string; icon: React.ReactNode; variant?: 'dark'; onClick: () => void }) {
+function HoleAssign({ hole }: { hole: HoleShift }) {
+  const [query, setQuery] = useState("");
+  const [actionState, setActionState] = useState<Record<string, string>>({});
+  const recommendedIds = useMemo(() => new Set(hole.eligible.filter((e) => e.aiRecommended).map((e) => e.employeeId)), [hole]);
+  const eligibleMap = useMemo(() => Object.fromEntries(hole.eligible.map((e) => [e.employeeId, e])), [hole]);
+
+  const recommended = hole.eligible.filter((e) => e.aiRecommended);
+
+  const filteredEmployees = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return employees
+      .filter((e) => !recommendedIds.has(e.id))
+      .filter((e) => {
+        if (!q) return true;
+        const full = `${e.firstName} ${e.lastName}`.toLowerCase();
+        return full.includes(q) || e.roles.some((r) => r.toLowerCase().includes(q));
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [query, recommendedIds]);
+
+  const setStatus = (id: string, label: string) => setActionState((s) => ({ ...s, [id]: label }));
+
   return (
-    <button
-      onClick={onClick}
-      className="rounded-md px-2.5 py-1.5 flex items-center gap-1 transition-colors"
-      style={{
-        fontSize: 11,
-        fontWeight: 500,
-        backgroundColor: variant === 'dark' ? "var(--foreground)" : "transparent",
-        color: variant === 'dark' ? "var(--card)" : "var(--foreground)",
-        border: variant === 'dark' ? "none" : "0.5px solid var(--border)",
-      }}
+    <div className="px-5 pb-5" style={{ borderTop: "0.5px solid var(--border)" }}>
+      {/* Recommandations */}
+      {recommended.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles size={12} style={{ color: "var(--coral)" }} />
+            <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Recommandés par l'IA
+            </span>
+          </div>
+          <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+            {recommended.map((emp, i) => {
+              const full = employees.find((e) => e.id === emp.employeeId);
+              return (
+                <EmployeeRow
+                  key={emp.employeeId}
+                  id={emp.employeeId}
+                  name={emp.name}
+                  roles={full?.roles ?? []}
+                  score={emp.score}
+                  hoursLeft={emp.hoursLeft}
+                  contract={full?.contract}
+                  studio={full?.studio}
+                  available={emp.available}
+                  recommended
+                  isLast={i === recommended.length - 1}
+                  status={actionState[emp.employeeId]}
+                  onPropose={() => setStatus(emp.employeeId, "Proposé")}
+                  onAssign={() => setStatus(emp.employeeId, "Assigné")}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tous les employés */}
+      <div className="mt-5">
+        <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
+          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Tous les employés ({filteredEmployees.length})
+          </span>
+          <div className="flex items-center gap-2 rounded-md px-2.5 py-1.5" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+            <Search size={13} style={{ color: "var(--muted-foreground)" }} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher un employé ou un rôle…"
+              style={{ fontSize: 12, background: "transparent", outline: "none", border: "none", width: 240 }}
+            />
+          </div>
+        </div>
+        <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+          {filteredEmployees.length === 0 ? (
+            <div className="px-4 py-6 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+              Aucun employé trouvé.
+            </div>
+          ) : (
+            filteredEmployees.map((e, i) => {
+              const eligible = eligibleMap[e.id];
+              return (
+                <EmployeeRow
+                  key={e.id}
+                  id={e.id}
+                  name={`${e.firstName} ${e.lastName}`}
+                  roles={e.roles}
+                  primaryRole={hole.role}
+                  score={e.score}
+                  hoursLeft={eligible?.hoursLeft}
+                  contract={e.contract}
+                  studio={e.studio}
+                  available={eligible ? eligible.available : true}
+                  isLast={i === filteredEmployees.length - 1}
+                  status={actionState[e.id]}
+                  onPropose={() => setStatus(e.id, "Proposé")}
+                  onAssign={() => setStatus(e.id, "Assigné")}
+                />
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmployeeRow({
+  id,
+  name,
+  roles,
+  primaryRole,
+  score,
+  hoursLeft,
+  contract,
+  studio,
+  available,
+  recommended,
+  isLast,
+  status,
+  onPropose,
+  onAssign,
+}: {
+  id: string;
+  name: string;
+  roles: Role[];
+  primaryRole?: Role;
+  score: number;
+  hoursLeft?: number;
+  contract?: string;
+  studio?: string;
+  available: boolean;
+  recommended?: boolean;
+  isLast: boolean;
+  status?: string;
+  onPropose: () => void;
+  onAssign: () => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-3"
+      style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
     >
-      {icon}
-      {label}
-    </button>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            to="/staff/$id"
+            params={{ id }}
+            className="hover:underline flex items-center gap-1"
+            style={{ fontSize: 13, fontWeight: 500 }}
+          >
+            {name}
+            <ExternalLink size={11} style={{ color: "var(--muted-foreground)" }} />
+          </Link>
+          {roles.map((r) => {
+            const c = roleColors[r];
+            const match = primaryRole && r === primaryRole;
+            return (
+              <span
+                key={r}
+                className="rounded-full px-1.5 py-0.5"
+                style={{
+                  fontSize: 9,
+                  fontWeight: 500,
+                  backgroundColor: c.bg,
+                  color: c.text,
+                  outline: match ? `1px solid ${c.dot}` : "none",
+                }}
+              >
+                {r}
+              </span>
+            );
+          })}
+          {recommended && (
+            <span className="rounded-full px-1.5 py-0.5 flex items-center gap-1" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
+              <Sparkles size={8} /> IA
+            </span>
+          )}
+          {!available && (
+            <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
+              Non dispo
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+          Score {score.toFixed(1)}/10
+          {contract ? ` · ${contract}` : ""}
+          {hoursLeft != null ? ` · ${hoursLeft}h restantes` : ""}
+          {studio ? ` · ${studio}` : ""}
+        </div>
+      </div>
+      {status ? (
+        <span className="rounded-full px-2.5 py-1 flex items-center gap-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>
+          <Check size={12} /> {status}
+        </span>
+      ) : (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={onPropose}
+            className="rounded-md px-2.5 py-1.5 flex items-center gap-1 transition-colors"
+            style={{ fontSize: 11, fontWeight: 500, backgroundColor: "transparent", color: "var(--foreground)", border: "0.5px solid var(--border)" }}
+          >
+            <Send size={11} />
+            Proposer
+          </button>
+          <button
+            onClick={onAssign}
+            className="rounded-md px-2.5 py-1.5 flex items-center gap-1 transition-colors"
+            style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
+          >
+            <UserPlus size={11} />
+            Assigner
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
