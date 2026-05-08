@@ -12,7 +12,7 @@ const pageTitles: Record<string, string> = {
   "/feedbacks": "Feedbacks",
   "/formation": "Formation",
   "/dimona": "Dimona",
-  "/contingents": "Contingents",
+  "/contingents": "Quotas étudiants",
   "/studios": "Studios & postes",
   "/reglages": "Réglages",
 };

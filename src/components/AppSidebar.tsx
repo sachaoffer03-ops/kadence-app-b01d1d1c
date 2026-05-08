@@ -53,7 +53,7 @@ const navSections: NavSection[] = [
     title: "Conformité",
     items: [
       { label: "Dimona", to: "/dimona", icon: FileText, badge: 2, badgeType: "danger" },
-      { label: "Contingents", to: "/contingents", icon: BarChart3 },
+      { label: "Quotas étudiants", to: "/contingents", icon: BarChart3 },
     ],
   },
   {

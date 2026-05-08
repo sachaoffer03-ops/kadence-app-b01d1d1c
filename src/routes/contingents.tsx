@@ -4,7 +4,7 @@ import { AlertTriangle, Info } from "lucide-react";
 
 export const Route = createFileRoute("/contingents")({
   component: ContingentsPage,
-  head: () => ({ meta: [{ title: "Contingents — Shifty" }] }),
+  head: () => ({ meta: [{ title: "Quotas étudiants — Shifty" }] }),
 });
 
 function ContingentsPage() {
@@ -17,7 +17,7 @@ function ContingentsPage() {
   return (
     <div className="p-6">
       <div className="mb-5">
-        <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Contingents étudiants</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Quotas étudiants</h1>
         <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
           Suivi du plafond légal de 650h par étudiant jobiste.
         </p>
