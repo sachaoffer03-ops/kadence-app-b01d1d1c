@@ -560,7 +560,7 @@ function PlanningPage() {
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         {/* Day headers */}
         <div className="grid" style={{ gridTemplateColumns: "140px repeat(7, 1fr)", borderBottom: "0.5px solid var(--border)" }}>
-          <div className="px-4 py-3" style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>Poste</div>
+          <div className="px-4 py-3" style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>Horaire</div>
           {weekDays.map((d, i) => {
             const isSelected = selectedDayIdx === i;
             const isToday = i === todayIdx;
