@@ -11,11 +11,10 @@ import {
   Users,
   Camera,
   Sparkles,
-  CalendarOff,
-  PartyPopper,
   SlidersHorizontal,
   Pencil,
   Trash2,
+  X,
   Check,
 } from "lucide-react";
 import {
@@ -43,7 +42,7 @@ const subTabs = [
 const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
 
 /* ------------------------------------------------------------------ */
-/* Mock data — informations & horaires                                 */
+/* Mock data                                                            */
 /* ------------------------------------------------------------------ */
 
 interface StudioInfo {
@@ -59,8 +58,8 @@ interface StudioInfo {
   notes: string;
 }
 
-const studioInfos: StudioInfo[] = [
-  {
+const initialInfos: Record<Studio, StudioInfo> = {
+  "Skult Rhodes": {
     name: "Skult Rhodes",
     address: "Avenue de Rhodes 12",
     postalCity: "1180 Uccle, Bruxelles",
@@ -73,7 +72,7 @@ const studioInfos: StudioInfo[] = [
     notes:
       "Studio principal — espace lumineux avec terrasse arrière. Cuisine équipée four à pain. Brunchs servis jusqu'à 15h le weekend.",
   },
-  {
+  "Skult Châtelain": {
     name: "Skult Châtelain",
     address: "Place du Châtelain 8",
     postalCity: "1050 Ixelles, Bruxelles",
@@ -86,7 +85,7 @@ const studioInfos: StudioInfo[] = [
     notes:
       "Quartier vivant — forte affluence le mercredi (marché) et en soirée. Petite cuisine, carte simplifiée. Service jazz live le samedi soir.",
   },
-];
+};
 
 interface DayHours {
   day: string;
@@ -95,37 +94,72 @@ interface DayHours {
   closed: boolean;
 }
 
-const defaultHoursRhodes: DayHours[] = [
-  { day: "Lundi", open: "07h00", close: "18h00", closed: false },
-  { day: "Mardi", open: "07h00", close: "18h00", closed: false },
-  { day: "Mercredi", open: "07h00", close: "18h00", closed: false },
-  { day: "Jeudi", open: "07h00", close: "18h00", closed: false },
-  { day: "Vendredi", open: "07h00", close: "23h00", closed: false },
-  { day: "Samedi", open: "08h00", close: "23h00", closed: false },
-  { day: "Dimanche", open: "08h00", close: "17h00", closed: false },
-];
+const initialWeek: Record<Studio, DayHours[]> = {
+  "Skult Rhodes": [
+    { day: "Lundi", open: "07h00", close: "18h00", closed: false },
+    { day: "Mardi", open: "07h00", close: "18h00", closed: false },
+    { day: "Mercredi", open: "07h00", close: "18h00", closed: false },
+    { day: "Jeudi", open: "07h00", close: "18h00", closed: false },
+    { day: "Vendredi", open: "07h00", close: "23h00", closed: false },
+    { day: "Samedi", open: "08h00", close: "23h00", closed: false },
+    { day: "Dimanche", open: "08h00", close: "17h00", closed: false },
+  ],
+  "Skult Châtelain": [
+    { day: "Lundi", open: "08h00", close: "18h00", closed: true },
+    { day: "Mardi", open: "08h00", close: "18h00", closed: false },
+    { day: "Mercredi", open: "08h00", close: "22h00", closed: false },
+    { day: "Jeudi", open: "08h00", close: "18h00", closed: false },
+    { day: "Vendredi", open: "08h00", close: "23h00", closed: false },
+    { day: "Samedi", open: "09h00", close: "23h00", closed: false },
+    { day: "Dimanche", open: "09h00", close: "16h00", closed: false },
+  ],
+};
 
-const defaultHoursChatelain: DayHours[] = [
-  { day: "Lundi", open: "08h00", close: "18h00", closed: true },
-  { day: "Mardi", open: "08h00", close: "18h00", closed: false },
-  { day: "Mercredi", open: "08h00", close: "22h00", closed: false },
-  { day: "Jeudi", open: "08h00", close: "18h00", closed: false },
-  { day: "Vendredi", open: "08h00", close: "23h00", closed: false },
-  { day: "Samedi", open: "09h00", close: "23h00", closed: false },
-  { day: "Dimanche", open: "09h00", close: "16h00", closed: false },
-];
+interface RoleSchedule {
+  open: string;
+  close: string;
+}
+
+const initialRoleHours: Record<Studio, Partial<Record<Role, RoleSchedule>>> = {
+  "Skult Rhodes": {
+    Barista: { open: "07h00", close: "18h00" },
+    Accueil: { open: "08h00", close: "18h00" },
+    Host: { open: "11h00", close: "23h00" },
+    Cuisine: { open: "08h00", close: "16h00" },
+  },
+  "Skult Châtelain": {
+    Barista: { open: "08h00", close: "23h00" },
+    Accueil: { open: "08h00", close: "22h00" },
+    Host: { open: "17h00", close: "23h00" },
+    Cuisine: { open: "09h00", close: "16h00" },
+  },
+};
+
+const initialActive: Record<Studio, Role[]> = {
+  "Skult Rhodes": ["Barista", "Accueil", "Host", "Cuisine"],
+  "Skult Châtelain": ["Barista", "Accueil", "Host", "Cuisine"],
+};
 
 interface ShiftNeeds {
+  id: string;
   label: string;
-  time: string;
+  start: string;
+  end: string;
   needs: Record<Role, number>;
 }
 
-const defaultNeeds: ShiftNeeds[] = [
-  { label: "Matin", time: "07h — 12h", needs: { Barista: 2, Accueil: 1, Host: 0, Cuisine: 1 } },
-  { label: "Midi", time: "12h — 17h", needs: { Barista: 2, Accueil: 1, Host: 1, Cuisine: 1 } },
-  { label: "Soir", time: "17h — 23h", needs: { Barista: 2, Accueil: 1, Host: 1, Cuisine: 1 } },
-];
+const initialNeeds: Record<Studio, ShiftNeeds[]> = {
+  "Skult Rhodes": [
+    { id: "s1", label: "Matin", start: "07h00", end: "12h00", needs: { Barista: 2, Accueil: 1, Host: 0, Cuisine: 1 } },
+    { id: "s2", label: "Midi", start: "12h00", end: "17h00", needs: { Barista: 2, Accueil: 1, Host: 1, Cuisine: 1 } },
+    { id: "s3", label: "Soir", start: "17h00", end: "23h00", needs: { Barista: 2, Accueil: 1, Host: 1, Cuisine: 1 } },
+  ],
+  "Skult Châtelain": [
+    { id: "s1", label: "Matin", start: "08h00", end: "13h00", needs: { Barista: 1, Accueil: 1, Host: 0, Cuisine: 1 } },
+    { id: "s2", label: "Après-midi", start: "13h00", end: "18h00", needs: { Barista: 2, Accueil: 1, Host: 0, Cuisine: 1 } },
+    { id: "s3", label: "Soir", start: "18h00", end: "23h00", needs: { Barista: 2, Accueil: 1, Host: 1, Cuisine: 1 } },
+  ],
+};
 
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
@@ -135,11 +169,16 @@ function StudiosPage() {
   const [activeStudio, setActiveStudio] = useState(0);
   const [activeSubTab, setActiveSubTab] = useState(0);
 
-  const currentStudio = studioInfos[activeStudio];
+  const [infos, setInfos] = useState(initialInfos);
+  const [activeRoles, setActiveRoles] = useState(initialActive);
+  const [week, setWeek] = useState(initialWeek);
+  const [roleHours, setRoleHours] = useState(initialRoleHours);
+  const [needs, setNeeds] = useState(initialNeeds);
+
+  const studio = (studioTabs[activeStudio] as Studio);
 
   return (
     <div className="p-6">
-      {/* Studio tabs */}
       <div
         className="flex items-center gap-1 mb-5"
         style={{ borderBottom: "0.5px solid var(--border)" }}
@@ -168,7 +207,6 @@ function StudiosPage() {
         ))}
       </div>
 
-      {/* Sub-tabs */}
       <div className="flex items-center gap-1 mb-6 flex-wrap">
         {subTabs.map((tab, i) => (
           <button
@@ -187,28 +225,78 @@ function StudiosPage() {
         ))}
       </div>
 
-      {activeSubTab === 0 && <InformationsTab info={currentStudio} />}
-      {activeSubTab === 1 && (
-        <HorairesTab
-          initial={activeStudio === 0 ? defaultHoursRhodes : defaultHoursChatelain}
-          studioName={currentStudio.name}
+      {activeSubTab === 0 && (
+        <InformationsTab
+          info={infos[studio]}
+          onChange={(patch) =>
+            setInfos((p) => ({ ...p, [studio]: { ...p[studio], ...patch } }))
+          }
+          activeRoles={activeRoles[studio]}
+          onToggleRole={(role) =>
+            setActiveRoles((p) => ({
+              ...p,
+              [studio]: p[studio].includes(role)
+                ? p[studio].filter((r) => r !== role)
+                : [...p[studio], role],
+            }))
+          }
         />
       )}
-      {activeSubTab === 2 && <BesoinsTab studioName={currentStudio.name} />}
-      {activeSubTab === 3 && <ExceptionsTab studio={currentStudio.name} />}
-      {activeSubTab === 4 && <ChecklistsTab studio={currentStudio.name} />}
+      {activeSubTab === 1 && (
+        <HorairesTab
+          studio={studio}
+          week={week[studio]}
+          setWeek={(next) => setWeek((p) => ({ ...p, [studio]: next }))}
+          activeRoles={activeRoles[studio]}
+          roleHours={roleHours[studio]}
+          setRoleHours={(role, sched) =>
+            setRoleHours((p) => ({ ...p, [studio]: { ...p[studio], [role]: sched } }))
+          }
+        />
+      )}
+      {activeSubTab === 2 && (
+        <BesoinsTab
+          studio={studio}
+          activeRoles={activeRoles[studio]}
+          shifts={needs[studio]}
+          setShifts={(next) => setNeeds((p) => ({ ...p, [studio]: next }))}
+        />
+      )}
+      {activeSubTab === 3 && <ExceptionsTab studio={studio} />}
+      {activeSubTab === 4 && <ChecklistsTab studio={studio} />}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Tab — Informations                                                  */
+/* Informations                                                        */
 /* ------------------------------------------------------------------ */
 
-function InformationsTab({ info }: { info: StudioInfo }) {
+const editableFields: { key: keyof StudioInfo; label: string; icon: React.ElementType }[] = [
+  { key: "address", label: "Adresse", icon: MapPin },
+  { key: "postalCity", label: "Code postal & ville", icon: MapPin },
+  { key: "manager", label: "Responsable", icon: User },
+  { key: "phone", label: "Téléphone", icon: Phone },
+  { key: "email", label: "Email", icon: Mail },
+  { key: "capacity", label: "Capacité", icon: Users },
+  { key: "surface", label: "Surface", icon: SlidersHorizontal },
+];
+
+function InformationsTab({
+  info,
+  onChange,
+  activeRoles,
+  onToggleRole,
+}: {
+  info: StudioInfo;
+  onChange: (patch: Partial<StudioInfo>) => void;
+  activeRoles: Role[];
+  onToggleRole: (r: Role) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+
   return (
     <div className="grid grid-cols-3 gap-4">
-      {/* Card principal */}
       <div
         className="col-span-2 rounded-xl border p-5"
         style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
@@ -221,25 +309,36 @@ function InformationsTab({ info }: { info: StudioInfo }) {
             </div>
           </div>
           <button
+            onClick={() => setEditing((e) => !e)}
             className="rounded-md flex items-center gap-1.5 px-3 py-1.5"
             style={{
               fontSize: 12,
               fontWeight: 500,
               border: "0.5px solid var(--border)",
+              backgroundColor: editing ? "var(--foreground)" : "transparent",
+              color: editing ? "var(--card)" : "var(--foreground)",
             }}
           >
-            <Pencil size={12} />
-            Modifier
+            {editing ? <Check size={12} /> : <Pencil size={12} />}
+            {editing ? "Terminer" : "Modifier"}
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-          <InfoRow icon={MapPin} label="Adresse" value={`${info.address}\n${info.postalCity}`} />
-          <InfoRow icon={User} label="Responsable" value={info.manager} />
-          <InfoRow icon={Phone} label="Téléphone" value={info.phone} />
-          <InfoRow icon={Mail} label="Email" value={info.email} />
-          <InfoRow icon={Users} label="Capacité" value={`${info.capacity} couverts`} />
-          <InfoRow icon={SlidersHorizontal} label="Surface" value={info.surface} />
+          {editableFields.map((f) => (
+            <EditableRow
+              key={f.key}
+              icon={f.icon}
+              label={f.label}
+              value={String(info[f.key])}
+              editing={editing}
+              onChange={(v) =>
+                onChange({
+                  [f.key]: f.key === "capacity" ? Number(v) || 0 : v,
+                } as Partial<StudioInfo>)
+              }
+            />
+          ))}
         </div>
 
         <div className="mt-5 pt-4" style={{ borderTop: "0.5px solid var(--border)" }}>
@@ -255,11 +354,27 @@ function InformationsTab({ info }: { info: StudioInfo }) {
           >
             Notes internes
           </div>
-          <div style={{ fontSize: 13, lineHeight: 1.6 }}>{info.notes}</div>
+          {editing ? (
+            <textarea
+              value={info.notes}
+              onChange={(e) => onChange({ notes: e.target.value })}
+              rows={3}
+              className="w-full rounded-md px-2.5 py-2"
+              style={{
+                fontSize: 13,
+                lineHeight: 1.6,
+                border: "0.5px solid var(--border)",
+                backgroundColor: "var(--card)",
+                resize: "vertical",
+              }}
+            />
+          ) : (
+            <div style={{ fontSize: 13, lineHeight: 1.6 }}>{info.notes}</div>
+          )}
         </div>
       </div>
 
-      {/* Side card — postes actifs */}
+      {/* Postes actifs */}
       <div
         className="rounded-xl border p-5"
         style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
@@ -269,7 +384,7 @@ function InformationsTab({ info }: { info: StudioInfo }) {
           Rôles disponibles dans ce studio
         </div>
         <div className="flex flex-col gap-2">
-          {allRoles.map((role) => (
+          {activeRoles.map((role) => (
             <div
               key={role}
               className="flex items-center justify-between rounded-lg px-3 py-2"
@@ -282,23 +397,75 @@ function InformationsTab({ info }: { info: StudioInfo }) {
                 />
                 <span style={{ fontSize: 13 }}>{role}</span>
               </div>
-              <Check size={14} style={{ color: "var(--muted-foreground)" }} />
+              <button
+                onClick={() => onToggleRole(role)}
+                className="rounded-md p-1"
+                style={{ color: "var(--muted-foreground)" }}
+                title="Retirer ce poste"
+              >
+                <X size={13} />
+              </button>
             </div>
           ))}
         </div>
+
+        {allRoles.filter((r) => !activeRoles.includes(r)).length > 0 && (
+          <div className="mt-3 pt-3" style={{ borderTop: "0.5px solid var(--border)" }}>
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 500,
+                color: "var(--muted-foreground)",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                marginBottom: 6,
+              }}
+            >
+              Ajouter un poste
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {allRoles
+                .filter((r) => !activeRoles.includes(r))
+                .map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => onToggleRole(r)}
+                    className="rounded-full px-2.5 py-1 flex items-center gap-1.5"
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 500,
+                      border: "0.5px solid var(--border)",
+                      color: "var(--foreground)",
+                    }}
+                  >
+                    <Plus size={10} />
+                    <span
+                      className="rounded-full"
+                      style={{ width: 6, height: 6, backgroundColor: roleColors[r].dot }}
+                    />
+                    {r}
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function InfoRow({
+function EditableRow({
   icon: Icon,
   label,
   value,
+  editing,
+  onChange,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
+  editing: boolean;
+  onChange: (v: string) => void;
 }) {
   return (
     <div className="flex items-start gap-2.5">
@@ -316,31 +483,56 @@ function InfoRow({
         >
           {label}
         </div>
-        <div style={{ fontSize: 13, whiteSpace: "pre-line" }}>{value}</div>
+        {editing ? (
+          <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full rounded-md px-2 py-1"
+            style={{
+              fontSize: 13,
+              border: "0.5px solid var(--border)",
+              backgroundColor: "var(--card)",
+            }}
+          />
+        ) : (
+          <div style={{ fontSize: 13 }}>{value}</div>
+        )}
       </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Tab — Horaires d'ouverture                                          */
+/* Horaires d'ouverture + horaires par poste                           */
 /* ------------------------------------------------------------------ */
 
-function HorairesTab({ initial, studioName }: { initial: DayHours[]; studioName: Studio }) {
-  const [hours, setHours] = useState<DayHours[]>(initial);
-
+function HorairesTab({
+  studio,
+  week,
+  setWeek,
+  activeRoles,
+  roleHours,
+  setRoleHours,
+}: {
+  studio: Studio;
+  week: DayHours[];
+  setWeek: (next: DayHours[]) => void;
+  activeRoles: Role[];
+  roleHours: Partial<Record<Role, RoleSchedule>>;
+  setRoleHours: (role: Role, sched: RoleSchedule) => void;
+}) {
   const update = (idx: number, patch: Partial<DayHours>) => {
-    setHours((prev) => prev.map((h, i) => (i === idx ? { ...h, ...patch } : h)));
+    setWeek(week.map((h, i) => (i === idx ? { ...h, ...patch } : h)));
   };
 
   const totalHours = useMemo(() => {
-    return hours.reduce((sum, h) => {
+    return week.reduce((sum, h) => {
       if (h.closed) return sum;
       const [oh, om] = h.open.replace("h", ":").split(":").map(Number);
       const [ch, cm] = h.close.replace("h", ":").split(":").map(Number);
       return sum + (ch + cm / 60 - (oh + om / 60));
     }, 0);
-  }, [hours]);
+  }, [week]);
 
   return (
     <>
@@ -355,7 +547,7 @@ function HorairesTab({ initial, studioName }: { initial: DayHours[]; studioName:
           <div>
             <div style={{ fontSize: 14, fontWeight: 500 }}>Semaine type</div>
             <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-              Horaires d'ouverture par défaut — peuvent être ajustés via Exceptions
+              Horaires d'ouverture par défaut du studio
             </div>
           </div>
           <div
@@ -372,13 +564,13 @@ function HorairesTab({ initial, studioName }: { initial: DayHours[]; studioName:
         </div>
 
         <div>
-          {hours.map((h, idx) => (
+          {week.map((h, idx) => (
             <div
               key={h.day}
               className="px-5 py-3 grid items-center gap-4"
               style={{
                 gridTemplateColumns: "120px 1fr 1fr 90px",
-                borderBottom: idx < hours.length - 1 ? "0.5px solid var(--border)" : "none",
+                borderBottom: idx < week.length - 1 ? "0.5px solid var(--border)" : "none",
                 opacity: h.closed ? 0.5 : 1,
               }}
             >
@@ -397,7 +589,7 @@ function HorairesTab({ initial, studioName }: { initial: DayHours[]; studioName:
               />
               <button
                 onClick={() => update(idx, { closed: !h.closed })}
-                className="rounded-full px-2.5 py-1 transition-colors"
+                className="rounded-full px-2.5 py-1"
                 style={{
                   fontSize: 11,
                   fontWeight: 500,
@@ -412,16 +604,74 @@ function HorairesTab({ initial, studioName }: { initial: DayHours[]; studioName:
         </div>
       </div>
 
+      {/* Horaires par poste */}
+      <div
+        className="rounded-xl border overflow-hidden mb-5"
+        style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+      >
+        <div className="px-5 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>Horaires par poste</div>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+            Plage horaire générale pendant laquelle chaque poste est actif
+          </div>
+        </div>
+        <div>
+          {activeRoles.map((role, idx) => {
+            const sched = roleHours[role] ?? { open: "09h00", close: "18h00" };
+            return (
+              <div
+                key={role}
+                className="px-5 py-3 grid items-center gap-4"
+                style={{
+                  gridTemplateColumns: "120px 1fr 1fr 1fr",
+                  borderBottom:
+                    idx < activeRoles.length - 1 ? "0.5px solid var(--border)" : "none",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="rounded-full"
+                    style={{ width: 8, height: 8, backgroundColor: roleColors[role].dot }}
+                  />
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>{role}</span>
+                </div>
+                <TimeInput
+                  value={sched.open}
+                  disabled={false}
+                  onChange={(v) => setRoleHours(role, { ...sched, open: v })}
+                  label="Début"
+                />
+                <TimeInput
+                  value={sched.close}
+                  disabled={false}
+                  onChange={(v) => setRoleHours(role, { ...sched, close: v })}
+                  label="Fin"
+                />
+                <div />
+              </div>
+            );
+          })}
+          {activeRoles.length === 0 && (
+            <div
+              className="px-5 py-6 text-center"
+              style={{ fontSize: 12, color: "var(--muted-foreground)" }}
+            >
+              Aucun poste actif. Ajoutez-en dans l'onglet Informations.
+            </div>
+          )}
+        </div>
+      </div>
+
       <div
         className="rounded-xl px-5 py-4 flex items-start gap-3"
         style={{ backgroundColor: "var(--info-bg)" }}
       >
         <Info size={16} style={{ color: "var(--info-text)", marginTop: 1, flexShrink: 0 }} />
         <div style={{ fontSize: 12, color: "var(--info-text)", lineHeight: 1.6 }}>
-          <span style={{ fontWeight: 500 }}>{studioName}</span> ouvre{" "}
-          <span style={{ fontWeight: 500 }}>{totalHours.toFixed(0)} heures par semaine</span>. Ces
-          plages servent de base pour générer les shifts. Les jours fériés et événements
-          spéciaux se gèrent dans l'onglet Exceptions.
+          <span style={{ fontWeight: 500 }}>{studio}</span> ouvre{" "}
+          <span style={{ fontWeight: 500 }}>{totalHours.toFixed(0)} heures par semaine</span>. Les
+          plages par poste définissent les bornes globales — les shifts précis se règlent dans
+          Besoins en staff.
         </div>
       </div>
     </>
@@ -472,43 +722,127 @@ function TimeInput({
 }
 
 /* ------------------------------------------------------------------ */
-/* Tab — Besoins en staff                                              */
+/* Besoins en staff — shifts modifiables                               */
 /* ------------------------------------------------------------------ */
 
-function BesoinsTab({ studioName }: { studioName: Studio }) {
-  const [needs, setNeeds] = useState<ShiftNeeds[]>(defaultNeeds);
+function BesoinsTab({
+  studio,
+  activeRoles,
+  shifts,
+  setShifts,
+}: {
+  studio: Studio;
+  activeRoles: Role[];
+  shifts: ShiftNeeds[];
+  setShifts: (next: ShiftNeeds[]) => void;
+}) {
+  const updateShift = (id: string, patch: Partial<ShiftNeeds>) => {
+    setShifts(shifts.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  };
 
-  const updateNeed = (shiftIdx: number, role: Role, delta: number) => {
-    setNeeds((prev) =>
-      prev.map((s, i) => {
-        if (i !== shiftIdx) return s;
-        return { ...s, needs: { ...s.needs, [role]: Math.max(0, s.needs[role] + delta) } };
-      }),
+  const updateNeed = (id: string, role: Role, delta: number) => {
+    setShifts(
+      shifts.map((s) =>
+        s.id === id
+          ? { ...s, needs: { ...s.needs, [role]: Math.max(0, (s.needs[role] ?? 0) + delta) } }
+          : s,
+      ),
     );
   };
 
-  const totalDaily = needs.reduce(
-    (sum, s) => sum + Object.values(s.needs).reduce((a, b) => a + b, 0),
+  const addShift = () => {
+    const id = `s${Date.now()}`;
+    setShifts([
+      ...shifts,
+      {
+        id,
+        label: "Nouveau shift",
+        start: "09h00",
+        end: "17h00",
+        needs: { Barista: 0, Accueil: 0, Host: 0, Cuisine: 0 },
+      },
+    ]);
+  };
+
+  const removeShift = (id: string) => setShifts(shifts.filter((s) => s.id !== id));
+
+  const totalDaily = shifts.reduce(
+    (sum, s) => sum + activeRoles.reduce((a, r) => a + (s.needs[r] ?? 0), 0),
     0,
   );
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-4 mb-5">
-        {needs.map((shift, shiftIdx) => (
+      <div className="flex items-center justify-between mb-4">
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          {shifts.length} créneau{shifts.length > 1 ? "x" : ""} · {totalDaily} personnes / jour
+        </div>
+        <button
+          onClick={addShift}
+          className="rounded-md flex items-center gap-1.5 px-3 py-1.5"
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            backgroundColor: "var(--foreground)",
+            color: "var(--card)",
+          }}
+        >
+          <Plus size={12} />
+          Ajouter un shift
+        </button>
+      </div>
+
+      <div
+        className="grid gap-4 mb-5"
+        style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(shifts.length, 1), 3)}, minmax(0, 1fr))` }}
+      >
+        {shifts.map((shift) => (
           <div
-            key={shift.label}
+            key={shift.id}
             className="rounded-xl border p-5"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
           >
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{shift.label}</div>
-                <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{shift.time}</div>
-              </div>
+            <div className="flex items-start justify-between mb-3">
+              <input
+                value={shift.label}
+                onChange={(e) => updateShift(shift.id, { label: e.target.value })}
+                className="rounded-md px-2 py-1 -ml-2"
+                style={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  border: "0.5px solid transparent",
+                  backgroundColor: "transparent",
+                  width: "100%",
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "transparent")}
+              />
+              <button
+                onClick={() => removeShift(shift.id)}
+                className="rounded-md p-1 shrink-0"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                <Trash2 size={12} />
+              </button>
             </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <TimeInput
+                label="Début"
+                disabled={false}
+                value={shift.start}
+                onChange={(v) => updateShift(shift.id, { start: v })}
+              />
+              <TimeInput
+                label="Fin"
+                disabled={false}
+                value={shift.end}
+                onChange={(v) => updateShift(shift.id, { end: v })}
+              />
+            </div>
+
             <div className="flex flex-col gap-3">
-              {(Object.keys(shift.needs) as Role[]).map((role) => (
+              {activeRoles.map((role) => (
                 <div key={role} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span
@@ -519,7 +853,7 @@ function BesoinsTab({ studioName }: { studioName: Studio }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => updateNeed(shiftIdx, role, -1)}
+                      onClick={() => updateNeed(shift.id, role, -1)}
                       className="rounded-md flex items-center justify-center"
                       style={{ width: 24, height: 24, border: "0.5px solid var(--border)" }}
                     >
@@ -533,10 +867,10 @@ function BesoinsTab({ studioName }: { studioName: Studio }) {
                         textAlign: "center",
                       }}
                     >
-                      {shift.needs[role]}
+                      {shift.needs[role] ?? 0}
                     </span>
                     <button
-                      onClick={() => updateNeed(shiftIdx, role, 1)}
+                      onClick={() => updateNeed(shift.id, role, 1)}
                       className="rounded-md flex items-center justify-center"
                       style={{ width: 24, height: 24, border: "0.5px solid var(--border)" }}
                     >
@@ -546,6 +880,7 @@ function BesoinsTab({ studioName }: { studioName: Studio }) {
                 </div>
               ))}
             </div>
+
             <div
               className="mt-4 pt-3"
               style={{
@@ -556,7 +891,7 @@ function BesoinsTab({ studioName }: { studioName: Studio }) {
             >
               Total :{" "}
               <span style={{ fontWeight: 500, color: "var(--foreground)" }}>
-                {Object.values(shift.needs).reduce((a, b) => a + b, 0)} personnes
+                {activeRoles.reduce((a, r) => a + (shift.needs[r] ?? 0), 0)} personnes
               </span>
             </div>
           </div>
@@ -569,10 +904,9 @@ function BesoinsTab({ studioName }: { studioName: Studio }) {
       >
         <Info size={16} style={{ color: "var(--info-text)", marginTop: 1, flexShrink: 0 }} />
         <div style={{ fontSize: 12, color: "var(--info-text)", lineHeight: 1.6 }}>
-          <span style={{ fontWeight: 500 }}>{studioName}</span> a besoin de{" "}
-          <span style={{ fontWeight: 500 }}>{totalDaily} personnes par jour</span> réparties sur
-          3 créneaux. Le planning sera généré automatiquement en fonction de ces besoins et des
-          disponibilités du staff.
+          <span style={{ fontWeight: 500 }}>{studio}</span> a besoin de{" "}
+          <span style={{ fontWeight: 500 }}>{totalDaily} personnes par jour</span> sur{" "}
+          {shifts.length} créneau{shifts.length > 1 ? "x" : ""}.
         </div>
       </div>
     </>
@@ -580,7 +914,7 @@ function BesoinsTab({ studioName }: { studioName: Studio }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Tab — Exceptions                                                    */
+/* Exceptions — version sobre                                          */
 /* ------------------------------------------------------------------ */
 
 function ExceptionsTab({ studio }: { studio: Studio }) {
@@ -593,7 +927,12 @@ function ExceptionsTab({ studio }: { studio: Studio }) {
           <div style={{ fontSize: 14, fontWeight: 500 }}>
             Exceptions à venir
             <span
-              style={{ fontSize: 12, color: "var(--muted-foreground)", marginLeft: 8, fontWeight: 400 }}
+              style={{
+                fontSize: 12,
+                color: "var(--muted-foreground)",
+                marginLeft: 8,
+                fontWeight: 400,
+              }}
             >
               {items.length} programmée{items.length > 1 ? "s" : ""}
             </span>
@@ -612,7 +951,7 @@ function ExceptionsTab({ studio }: { studio: Studio }) {
           }}
         >
           <Plus size={12} />
-          Ajouter une exception
+          Ajouter
         </button>
       </div>
 
@@ -622,110 +961,91 @@ function ExceptionsTab({ studio }: { studio: Studio }) {
           style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
         >
           <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-            Aucune exception programmée pour ce studio.
+            Aucune exception programmée.
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {items.map((ex) => (
-            <ExceptionCard key={ex.id} ex={ex} />
-          ))}
+        <div
+          className="rounded-xl border overflow-hidden"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          {items.map((ex, idx) => {
+            const typeLabel =
+              ex.type === "fermeture"
+                ? "Fermeture"
+                : ex.type === "événement"
+                  ? "Événement"
+                  : "Ajustement";
+            return (
+              <div
+                key={ex.id}
+                className="px-5 py-4 flex items-start gap-4"
+                style={{
+                  borderBottom: idx < items.length - 1 ? "0.5px solid var(--border)" : "none",
+                }}
+              >
+                <div className="shrink-0" style={{ width: 110 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{ex.dateLabel}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+                    {typeLabel}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{ex.title}</div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--muted-foreground)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {ex.description}
+                  </div>
+                  {(ex.impact.length > 0 || ex.hoursAdjust) && (
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      {ex.hoursAdjust && (
+                        <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                          {ex.hoursAdjust}
+                        </span>
+                      )}
+                      {ex.impact.map((i, k) => (
+                        <span
+                          key={k}
+                          style={{ fontSize: 11, color: "var(--muted-foreground)" }}
+                        >
+                          {i.role} {i.delta > 0 ? `+${i.delta}` : i.delta}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    className="rounded-md p-1.5"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    <Pencil size={12} />
+                  </button>
+                  <button
+                    className="rounded-md p-1.5"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </>
   );
 }
 
-function ExceptionCard({ ex }: { ex: (typeof studioExceptions)[number] }) {
-  const meta =
-    ex.type === "fermeture"
-      ? { Icon: CalendarOff, bg: "var(--danger-bg)", color: "var(--danger-text)", label: "Fermeture" }
-      : ex.type === "événement"
-        ? {
-            Icon: PartyPopper,
-            bg: "var(--coral-light)",
-            color: "var(--coral-dark)",
-            label: "Événement",
-          }
-        : {
-            Icon: SlidersHorizontal,
-            bg: "var(--warning-bg)",
-            color: "var(--warning-text)",
-            label: "Ajustement",
-          };
-
-  return (
-    <div
-      className="rounded-xl border p-4 flex items-start gap-4"
-      style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
-    >
-      <div
-        className="rounded-lg flex items-center justify-center shrink-0"
-        style={{ width: 36, height: 36, backgroundColor: meta.bg }}
-      >
-        <meta.Icon size={16} style={{ color: meta.color }} />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span
-            className="rounded-full px-2 py-0.5"
-            style={{ fontSize: 10, fontWeight: 500, backgroundColor: meta.bg, color: meta.color }}
-          >
-            {meta.label}
-          </span>
-          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{ex.dateLabel}</span>
-          {ex.hoursAdjust && (
-            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-              · {ex.hoursAdjust}
-            </span>
-          )}
-        </div>
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 3 }}>{ex.title}</div>
-        <div style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
-          {ex.description}
-        </div>
-        {ex.impact.length > 0 && (
-          <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Impact :</span>
-            {ex.impact.map((i, k) => (
-              <span
-                key={k}
-                className="rounded-full px-2 py-0.5 flex items-center gap-1"
-                style={{
-                  fontSize: 11,
-                  fontWeight: 500,
-                  backgroundColor: roleColors[i.role].bg,
-                  color: roleColors[i.role].text,
-                }}
-              >
-                {i.role} {i.delta > 0 ? `+${i.delta}` : i.delta}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-1">
-        <button
-          className="rounded-md p-1.5"
-          style={{ color: "var(--muted-foreground)", border: "0.5px solid var(--border)" }}
-        >
-          <Pencil size={12} />
-        </button>
-        <button
-          className="rounded-md p-1.5"
-          style={{ color: "var(--danger-text)", border: "0.5px solid var(--border)" }}
-        >
-          <Trash2 size={12} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ */
-/* Tab — Checklists                                                    */
+/* Checklists                                                          */
 /* ------------------------------------------------------------------ */
 
 function ChecklistsTab({ studio }: { studio: Studio }) {
@@ -782,19 +1102,13 @@ function ChecklistsTab({ studio }: { studio: Studio }) {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CompletionPill rate={c.completionRate} />
-                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                    {open ? "Masquer" : "Voir"}
-                  </span>
-                </div>
+                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                  {open ? "Masquer" : "Voir"}
+                </span>
               </button>
 
               {open && (
-                <div
-                  className="px-5 py-4"
-                  style={{ borderTop: "0.5px solid var(--border)" }}
-                >
+                <div className="px-5 py-4" style={{ borderTop: "0.5px solid var(--border)" }}>
                   <div className="flex flex-col gap-2 mb-4">
                     {c.items.map((it) => (
                       <div
@@ -804,7 +1118,7 @@ function ChecklistsTab({ studio }: { studio: Studio }) {
                       >
                         <div className="flex items-center gap-2.5">
                           <div
-                            className="rounded flex items-center justify-center"
+                            className="rounded"
                             style={{
                               width: 14,
                               height: 14,
@@ -828,27 +1142,7 @@ function ChecklistsTab({ studio }: { studio: Studio }) {
                     ))}
                   </div>
 
-                  {c.frequentlySkipped.length > 0 && (
-                    <div
-                      className="rounded-lg px-3 py-2.5 flex items-start gap-2"
-                      style={{ backgroundColor: "var(--warning-bg)" }}
-                    >
-                      <Info
-                        size={13}
-                        style={{
-                          color: "var(--warning-text)",
-                          marginTop: 1,
-                          flexShrink: 0,
-                        }}
-                      />
-                      <div style={{ fontSize: 11, color: "var(--warning-text)", lineHeight: 1.5 }}>
-                        <span style={{ fontWeight: 500 }}>Souvent oubliées :</span>{" "}
-                        {c.frequentlySkipped.join(" · ")}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <button
                       className="rounded-md flex items-center gap-1.5 px-3 py-1.5"
                       style={{
@@ -881,11 +1175,8 @@ function ChecklistsTab({ studio }: { studio: Studio }) {
 
       {missingRoles.length > 0 && (
         <div
-          className="rounded-xl border-dashed p-4"
-          style={{
-            border: "1px dashed var(--border)",
-            backgroundColor: "transparent",
-          }}
+          className="rounded-xl p-4"
+          style={{ border: "1px dashed var(--border)", backgroundColor: "transparent" }}
         >
           <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 8 }}>
             Pas encore de modèle pour :
@@ -898,11 +1189,15 @@ function ChecklistsTab({ studio }: { studio: Studio }) {
                 style={{
                   fontSize: 11,
                   fontWeight: 500,
-                  backgroundColor: roleColors[r].bg,
-                  color: roleColors[r].text,
+                  border: "0.5px solid var(--border)",
                 }}
               >
-                <Plus size={10} /> {r}
+                <Plus size={10} />
+                <span
+                  className="rounded-full"
+                  style={{ width: 6, height: 6, backgroundColor: roleColors[r].dot }}
+                />
+                {r}
               </button>
             ))}
           </div>
@@ -926,21 +1221,6 @@ function Tag({ icon: Icon, label }: { icon: React.ElementType; label: string }) 
     >
       <Icon size={9} />
       {label}
-    </span>
-  );
-}
-
-function CompletionPill({ rate }: { rate: number }) {
-  const color =
-    rate >= 90 ? "var(--success-text)" : rate >= 75 ? "var(--warning-text)" : "var(--danger-text)";
-  const bg =
-    rate >= 90 ? "var(--success-bg)" : rate >= 75 ? "var(--warning-bg)" : "var(--danger-bg)";
-  return (
-    <span
-      className="rounded-full px-2 py-0.5"
-      style={{ fontSize: 10, fontWeight: 500, backgroundColor: bg, color }}
-    >
-      {rate}%
     </span>
   );
 }
