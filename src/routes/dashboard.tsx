@@ -11,7 +11,7 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardPage() {
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Hero */}
       <div
         className="rounded-xl p-6"
