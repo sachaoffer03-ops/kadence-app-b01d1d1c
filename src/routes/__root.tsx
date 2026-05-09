@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { AppSidebar, MobileSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
+import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 
@@ -127,6 +128,7 @@ function RootComponent() {
     return (
       <QueryClientProvider client={queryClient}>
         <Outlet />
+        <Toaster position="top-center" />
       </QueryClientProvider>
     );
   }
@@ -142,6 +144,7 @@ function RootComponent() {
             <Outlet />
           </main>
         </div>
+        <Toaster position="top-right" />
       </div>
     </QueryClientProvider>
   );
