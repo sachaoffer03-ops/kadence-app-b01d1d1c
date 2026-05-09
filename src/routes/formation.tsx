@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { GraduationCap, Play, ChevronRight, Users, Clock, ChevronDown, ChevronUp, Bell } from "lucide-react";
+import { GraduationCap, Play, ChevronDown, ChevronUp, Bell, Check, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { trainingPaths, roleColors, employees, type TrainingPath } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/formation")({
@@ -9,47 +10,73 @@ export const Route = createFileRoute("/formation")({
 });
 
 function FormationPage() {
-  const [expandedPath, setExpandedPath] = useState<string | null>(null);
-  const commonPaths = trainingPaths.filter(p => p.type === 'commun');
-  const rolePaths = trainingPaths.filter(p => p.type === 'role');
+  const [expandedPath, setExpandedPath] = useState<string | null>(trainingPaths[0]?.id || null);
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+
+  const commonPaths = trainingPaths.filter((p) => p.type === "commun");
+  const rolePaths = trainingPaths.filter((p) => p.type === "role");
+  const totalVideos = trainingPaths.reduce((s, p) => s + p.videoCount, 0);
+  const lateCount = 4;
+
+  const toggleVideo = (id: string, title: string) => {
+    setCompleted((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        toast.info(`"${title}" marquée non vue`);
+      } else {
+        next.add(id);
+        toast.success(`"${title}" marquée comme vue`);
+      }
+      return next;
+    });
+  };
+  const sendReminder = () => toast.success(`Rappel envoyé à ${lateCount} employés en retard sur la formation`);
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Formation</h1>
           <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-            {trainingPaths.reduce((s, p) => s + p.videoCount, 0)} vidéos · {trainingPaths.length} parcours · Suivi de progression
+            {totalVideos} vidéos · {trainingPaths.length} parcours · {completed.size} vidéos vues
           </p>
         </div>
-        <button className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors" style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
-          <Bell size={13} /> Envoyer un rappel
+        <button onClick={sendReminder} className="rounded-md px-4 py-2 flex items-center gap-1.5"
+          style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+          <Bell size={13} /> Envoyer un rappel ({lateCount})
         </button>
       </div>
 
-      {/* Global KPIs */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <MiniKpi label="Complétion moyenne" value={`${Math.round(trainingPaths.reduce((s, p) => s + p.avgCompletion, 0) / trainingPaths.length)}%`} />
         <MiniKpi label="Staff formé (commun)" value={`${Math.round(employees.length * 0.78)}`} sub={`/ ${employees.length}`} />
-        <MiniKpi label="Vidéos totales" value={trainingPaths.reduce((s, p) => s + p.videoCount, 0).toString()} />
-        <MiniKpi label="En retard" value="4" color="var(--warning-text)" sub="employés" />
+        <MiniKpi label="Vidéos totales" value={totalVideos.toString()} />
+        <MiniKpi label="En retard" value={lateCount.toString()} color="var(--warning-text)" sub="employés" />
       </div>
 
-      {/* Common path */}
       <SectionLabel label="Parcours commun" sub="Obligatoire pour tout le staff" />
       <div className="flex flex-col gap-3 mb-6">
-        {commonPaths.map(path => (
-          <PathCard key={path.id} path={path} expanded={expandedPath === path.id} onToggle={() => setExpandedPath(expandedPath === path.id ? null : path.id)} />
+        {commonPaths.map((path) => (
+          <PathCard key={path.id} path={path} expanded={expandedPath === path.id}
+            onToggle={() => setExpandedPath(expandedPath === path.id ? null : path.id)}
+            completed={completed} onToggleVideo={toggleVideo} />
         ))}
       </div>
 
-      {/* Role paths */}
       <SectionLabel label="Parcours par rôle" sub="Recommandé selon les postes attribués" />
-      <div className="grid grid-cols-2 gap-3">
-        {rolePaths.map(path => (
-          <PathCard key={path.id} path={path} expanded={expandedPath === path.id} onToggle={() => setExpandedPath(expandedPath === path.id ? null : path.id)} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {rolePaths.map((path) => (
+          <PathCard key={path.id} path={path} expanded={expandedPath === path.id}
+            onToggle={() => setExpandedPath(expandedPath === path.id ? null : path.id)}
+            completed={completed} onToggleVideo={toggleVideo} />
         ))}
       </div>
+
+      <button onClick={() => toast.info("Création de parcours bientôt disponible")} className="rounded-md px-3 py-2 flex items-center gap-1.5 mt-5"
+        style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+        <Plus size={13} /> Créer un nouveau parcours
+      </button>
     </div>
   );
 }
@@ -63,32 +90,25 @@ function SectionLabel({ label, sub }: { label: string; sub: string }) {
   );
 }
 
-function PathCard({ path, expanded, onToggle }: { path: TrainingPath; expanded: boolean; onToggle: () => void }) {
+function PathCard({ path, expanded, onToggle, completed, onToggleVideo }:
+  { path: TrainingPath; expanded: boolean; onToggle: () => void; completed: Set<string>; onToggleVideo: (id: string, title: string) => void }) {
   const roleColor = path.role ? roleColors[path.role] : null;
   const completionColor = path.avgCompletion >= 75 ? "var(--success-text)" : path.avgCompletion >= 50 ? "var(--warning-text)" : "var(--danger-text)";
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
       <button onClick={onToggle} className="w-full flex items-center gap-4 px-5 py-4 text-left">
-        <div className="rounded-lg flex items-center justify-center shrink-0" style={{
-          width: 40, height: 40,
-          backgroundColor: roleColor?.bg || "var(--coral-light)",
-          color: roleColor?.text || "var(--coral-dark)",
-        }}>
+        <div className="rounded-lg flex items-center justify-center shrink-0" style={{ width: 40, height: 40, backgroundColor: roleColor?.bg || "var(--coral-light)", color: roleColor?.text || "var(--coral-dark)" }}>
           <GraduationCap size={18} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span style={{ fontSize: 14, fontWeight: 500 }}>{path.title}</span>
             {path.role && (
-              <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: roleColor?.bg, color: roleColor?.text }}>
-                {path.role}
-              </span>
+              <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: roleColor?.bg, color: roleColor?.text }}>{path.role}</span>
             )}
-            {path.type === 'commun' && (
-              <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
-                Obligatoire
-              </span>
+            {path.type === "commun" && (
+              <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>Obligatoire</span>
             )}
           </div>
           <div className="flex items-center gap-3 mt-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
@@ -119,16 +139,20 @@ function PathCard({ path, expanded, onToggle }: { path: TrainingPath; expanded: 
                 </div>
               </div>
               <div className="flex flex-col gap-1 ml-4">
-                {mod.videos.map(video => (
-                  <div key={video.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors" style={{ cursor: "pointer" }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
-                  >
-                    <Play size={12} style={{ color: "var(--coral)" }} />
-                    <span style={{ fontSize: 12 }}>{video.title}</span>
-                    <span style={{ fontSize: 10, color: "var(--muted-foreground)", marginLeft: "auto" }}>{video.duration}</span>
-                  </div>
-                ))}
+                {mod.videos.map((video) => {
+                  const isDone = completed.has(video.id);
+                  return (
+                    <button key={video.id} onClick={() => onToggleVideo(video.id, video.title)}
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors text-left"
+                      style={{ backgroundColor: isDone ? "var(--success-bg)" : "transparent" }}
+                      onMouseEnter={(e) => { if (!isDone) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
+                      onMouseLeave={(e) => { if (!isDone) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}>
+                      {isDone ? <Check size={12} style={{ color: "var(--success-text)" }} /> : <Play size={12} style={{ color: "var(--coral)" }} />}
+                      <span style={{ fontSize: 12, textDecoration: isDone ? "line-through" : "none", color: isDone ? "var(--success-text)" : "var(--foreground)" }}>{video.title}</span>
+                      <span style={{ fontSize: 10, color: "var(--muted-foreground)", marginLeft: "auto" }}>{video.duration}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
