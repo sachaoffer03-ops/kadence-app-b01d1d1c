@@ -513,7 +513,54 @@ function InformationsTab({
                 ))}
             </div>
           </div>
+          </div>
         )}
+
+        <div className="mt-3 pt-3" style={{ borderTop: "0.5px solid var(--border)" }}>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 500,
+              color: "var(--muted-foreground)",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: 6,
+            }}
+          >
+            Créer un nouveau poste
+          </div>
+          <div className="flex items-center gap-1.5">
+            <input
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitNewRole();
+              }}
+              placeholder="Ex. Pâtissier"
+              className="flex-1 rounded-md px-2 py-1.5"
+              style={{
+                fontSize: 12,
+                border: "0.5px solid var(--border)",
+                backgroundColor: "var(--card)",
+              }}
+            />
+            <button
+              onClick={submitNewRole}
+              disabled={!newRole.trim()}
+              className="rounded-md px-2.5 py-1.5 flex items-center gap-1"
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                backgroundColor: "var(--foreground)",
+                color: "var(--card)",
+                opacity: newRole.trim() ? 1 : 0.4,
+              }}
+            >
+              <Plus size={11} />
+              Créer
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
