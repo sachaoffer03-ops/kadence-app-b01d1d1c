@@ -438,6 +438,40 @@ function InformationsTab({
               </button>
             </div>
           ))}
+          {customRoles.map((role) => (
+            <div
+              key={role}
+              className="flex items-center justify-between rounded-lg px-3 py-2"
+              style={{ backgroundColor: "var(--muted)" }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="rounded-full"
+                  style={{ width: 8, height: 8, backgroundColor: "var(--muted-foreground)" }}
+                />
+                <span style={{ fontSize: 13 }}>{role}</span>
+                <span
+                  className="rounded-full px-1.5 py-0.5"
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 500,
+                    color: "var(--muted-foreground)",
+                    border: "0.5px solid var(--border)",
+                  }}
+                >
+                  Personnalisé
+                </span>
+              </div>
+              <button
+                onClick={() => onRemoveCustomRole(role)}
+                className="rounded-md p-1"
+                style={{ color: "var(--muted-foreground)" }}
+                title="Supprimer ce poste"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
         </div>
 
         {allRoles.filter((r) => !activeRoles.includes(r)).length > 0 && (
