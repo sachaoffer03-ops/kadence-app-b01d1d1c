@@ -204,8 +204,8 @@ function HoleAssign({ hole }: { hole: HoleShift }) {
                   recommended
                   isLast={i === recommended.length - 1}
                   status={actionState[emp.employeeId]}
-                  onPropose={() => setStatus(emp.employeeId, "Proposé")}
-                  onAssign={() => setStatus(emp.employeeId, "Assigné")}
+                  onPropose={() => setStatus(emp.employeeId, "Proposé", emp.name)}
+                  onAssign={() => setStatus(emp.employeeId, "Assigné", emp.name)}
                 />
               );
             })}
@@ -251,8 +251,8 @@ function HoleAssign({ hole }: { hole: HoleShift }) {
                   available={eligible ? eligible.available : true}
                   isLast={i === filteredEmployees.length - 1}
                   status={actionState[e.id]}
-                  onPropose={() => setStatus(e.id, "Proposé")}
-                  onAssign={() => setStatus(e.id, "Assigné")}
+                  onPropose={() => setStatus(e.id, "Proposé", `${e.firstName} ${e.lastName}`)}
+                  onAssign={() => setStatus(e.id, "Assigné", `${e.firstName} ${e.lastName}`)}
                 />
               );
             })
