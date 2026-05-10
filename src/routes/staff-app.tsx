@@ -95,6 +95,7 @@ function AccueilTab({ profile, studios, onNavigate }: { profile: ProfileRow | nu
   const { user } = useAuth();
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [weekStats, setWeekStats] = useState({ hours: 0, count: 0 });
+  const [endShift, setEndShift] = useState<ShiftRow | null>(null);
 
   useEffect(() => {
     if (!user) return;
