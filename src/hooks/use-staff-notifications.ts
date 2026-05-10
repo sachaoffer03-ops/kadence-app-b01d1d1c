@@ -97,7 +97,7 @@ export function useStaffNotifications(userId: string | undefined) {
     if (!userId) return;
     load();
 
-    const ch = supabase.channel(`staff-notif-${userId}`)
+    const ch = supabase.channel(`staff-notif-${userId}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, load)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "modification_requests", filter: `user_id=eq.${userId}` }, load)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${userId}` }, load)
