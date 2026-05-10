@@ -96,6 +96,10 @@ function AccueilTab({ profile, studios, onNavigate }: { profile: ProfileRow | nu
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [weekStats, setWeekStats] = useState({ hours: 0, count: 0 });
   const [endShift, setEndShift] = useState<ShiftRow | null>(null);
+  const [signalOpen, setSignalOpen] = useState(false);
+  const [reqOpen, setReqOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [myReqOpen, setMyReqOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
