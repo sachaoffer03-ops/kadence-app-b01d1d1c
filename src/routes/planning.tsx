@@ -723,15 +723,15 @@ function PlanningPage() {
             <div
               key={slot.label}
               className="grid"
-              style={{ gridTemplateColumns: "140px repeat(7, 1fr)", borderBottom: "0.5px solid var(--border)", minHeight: 110 }}
+              style={{ gridTemplateColumns: gridCols, borderBottom: "0.5px solid var(--border)", minHeight: 110 }}
             >
               <div className="px-4 py-3 flex flex-col justify-center" style={{ backgroundColor: "var(--muted)" }}>
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{fmtTime(slot.start)}–{fmtTime(slot.end)}</div>
                 <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>5 heures</div>
               </div>
-              {weekDays.map((_, dayIdx) => {
+              {visibleDayIndices.map((dayIdx) => {
                 const cellShifts = studioShifts.filter((s) => s.day === dayIdx && s.slot === slotIdx);
-                const isSelected = selectedDayIdx === dayIdx;
+                const isSelected = viewMode === "jour" ? true : selectedDayIdx === dayIdx;
                 return (
                   <div
                     key={dayIdx}
