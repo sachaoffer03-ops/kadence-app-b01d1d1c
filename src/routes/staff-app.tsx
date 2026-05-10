@@ -472,7 +472,6 @@ function ProfilTab({ profile, businessRoles, studios, onNavigate }: { profile: P
         {[
           { label: "Mes formations", icon: GraduationCap, action: () => onNavigate("formation") },
           { label: "Mes documents", icon: Inbox, action: () => setDocsOpen(true) },
-          { label: "Notifications", icon: AlertCircle, action: () => setNotifOpen(true) },
           { label: "Conversation admin", icon: MessageCircle, action: () => onNavigate("chat") },
         ].map((item, i, arr) => (
           <button key={i} onClick={item.action} className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
