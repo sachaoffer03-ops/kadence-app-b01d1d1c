@@ -452,19 +452,6 @@ function EmployeeSlideOver({ employee: emp, onClose }: { employee: Employee; onC
             <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 8 }}>Actions</div>
             <div className="flex flex-col gap-1.5">
               {[
-                { icon: <Edit size={13} />, label: "Modifier les rôles" },
-                { icon: <Star size={13} />, label: "Ajuster le score" },
-                { icon: <FileText size={13} />, label: "Voir la formation" },
-                { icon: <Download size={13} />, label: "Exporter les données" },
-              ].map((a) => (
-                <button key={a.label} className="flex items-center gap-2 rounded-md px-3 py-2 text-left transition-colors w-full" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
-                >
-                  {a.icon} {a.label}
-                </button>
-              ))}
-              {[
                 { icon: <Edit size={13} />, label: "Modifier les rôles", onClick: () => goToDetail("roles") },
                 { icon: <Star size={13} />, label: "Ajuster le score", onClick: () => goToDetail("score") },
                 { icon: <FileText size={13} />, label: "Voir la formation", onClick: () => { onClose(); navigate({ to: "/formation" }); } },
