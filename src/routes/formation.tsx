@@ -272,6 +272,7 @@ function SectionLabel({ label, sub }: { label: string; sub: string }) {
 
 function PathCard({
   path, expanded, editing, onToggle, onToggleEdit, onUpdate, onDelete, completed, onToggleVideo,
+  uploading, onUpload, onPlayVideo,
 }: {
   path: TrainingPath;
   expanded: boolean;
@@ -282,6 +283,9 @@ function PathCard({
   onDelete: () => void;
   completed: Set<string>;
   onToggleVideo: (id: string, title: string) => void;
+  uploading: string | null;
+  onUpload: (modId: string) => void;
+  onPlayVideo: (url: string | undefined, title: string) => void;
 }) {
   const roleColor = path.role ? roleColors[path.role] : null;
   const completionColor = path.avgCompletion >= 75 ? "var(--success-text)" : path.avgCompletion >= 50 ? "var(--warning-text)" : "var(--danger-text)";
