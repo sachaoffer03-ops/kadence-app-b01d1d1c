@@ -33,17 +33,23 @@ function StudiosPage() {
   const load = async () => {
     const { data } = await supabase.from("studios").select("*").order("name");
     setStudios((data || []) as Studio[]);
-    const { data: profiles } = await supabase
-      .from("profiles").select("studio_id, business_role").not("studio_id", "is", null);
+    const [{ data: profiles }, { data: ubr }] = await Promise.all([
+      supabase.from("profiles").select("id, studio_id").not("studio_id", "is", null),
+      supabase.from("user_business_roles").select("user_id, role"),
+    ]);
     const c: Record<string, number> = {};
     const r: RoleCount = {};
+    const studioByUser: Record<string, string> = {};
     (profiles || []).forEach((p) => {
       if (!p.studio_id) return;
+      studioByUser[p.id] = p.studio_id;
       c[p.studio_id] = (c[p.studio_id] || 0) + 1;
-      if (p.business_role) {
-        r[p.studio_id] = r[p.studio_id] || {};
-        r[p.studio_id][p.business_role] = (r[p.studio_id][p.business_role] || 0) + 1;
-      }
+    });
+    (ubr || []).forEach((x) => {
+      const sid = studioByUser[x.user_id];
+      if (!sid) return;
+      r[sid] = r[sid] || {};
+      r[sid][x.role] = (r[sid][x.role] || 0) + 1;
     });
     setCounts(c); setByRole(r);
     setLoading(false);
