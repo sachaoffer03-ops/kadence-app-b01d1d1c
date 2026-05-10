@@ -184,10 +184,22 @@ function AccueilTab({ profile, studios, onNavigate }: { profile: ProfileRow | nu
         );
       })}
 
-      <div className="grid grid-cols-2 gap-3 mt-5">
-        <QuickLink icon={<CalendarCheck size={18} />} label="Mes disponibilités" sub="Configurer" onClick={() => onNavigate('dispos')} />
-        <QuickLink icon={<GraduationCap size={18} />} label="Formation" sub="Bientôt disponible" onClick={() => toast("Formation à venir")} />
+      <div style={{ fontSize: 13, fontWeight: 500, marginTop: 20, marginBottom: 8 }}>Actions rapides</div>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <QuickLink icon={<AlertCircle size={18} />} label="Signaler" sub="Stock, matériel, hygiène" onClick={() => setSignalOpen(true)} />
+        <QuickLink icon={<Replace size={18} />} label="Demande" sub="Échange, annulation…" onClick={() => setReqOpen(true)} />
+        <QuickLink icon={<Inbox size={18} />} label="Mes demandes" sub="Suivi des réponses" onClick={() => setMyReqOpen(true)} />
+        <QuickLink icon={<GraduationCap size={18} />} label="Formations" sub="À voir / valider" onClick={() => setFormOpen(true)} />
       </div>
+
+      <EndShiftSheet
+        open={!!endShift} onClose={() => setEndShift(null)}
+        shift={endShift} userId={user!.id}
+      />
+      <SignalementSheet open={signalOpen} onClose={() => setSignalOpen(false)} userId={user!.id} studioId={profile?.studio_id ?? null} />
+      <RequestModificationSheet open={reqOpen} onClose={() => setReqOpen(false)} userId={user!.id} shiftId={shifts[0]?.id ?? null} />
+      <FormationsSheet open={formOpen} onClose={() => setFormOpen(false)} userId={user!.id} />
+      <MyRequestsSheet open={myReqOpen} onClose={() => setMyReqOpen(false)} userId={user!.id} />
     </div>
   );
 }
