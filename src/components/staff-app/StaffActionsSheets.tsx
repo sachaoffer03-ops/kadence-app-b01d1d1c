@@ -98,7 +98,7 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
         .select("id,shift_date,start_time,end_time,business_role")
         .eq("user_id", userId)
         .gte("shift_date", today)
-        .order("shift_date").order("start_time").limit(20);
+        .order("shift_date").order("start_time");
       setShifts((data as ShiftOption[]) || []);
     })();
   }, [open, userId, shiftId]);
