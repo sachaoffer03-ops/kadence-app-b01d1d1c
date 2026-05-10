@@ -131,7 +131,7 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
   const selected = shifts.find(s => s.id === selectedShift) || null;
 
   return (
-    <Sheet open={open} onClose={onClose} title="Demande de modification">
+    <Sheet open={open} onClose={onClose} title="Modifier un shift">
       <FormField label="Quel shift ?" hint={shifts.length === 0 ? undefined : "Choisis le shift concerné par ta demande."}>
         {shifts.length === 0 ? (
           <div className="rounded-md px-3 py-3" style={{ fontSize: 12, backgroundColor: "var(--muted)", color: "var(--muted-foreground)", lineHeight: 1.5 }}>
