@@ -21,10 +21,10 @@ interface StudioRow { id: string; name: string; }
 function ChecklistsPage() {
   const [studios, setStudios] = useState<StudioRow[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [activeStudio, setActiveStudio] = useState<string>("");
   const [selected, setSelected] = useState<string>("");
   const [newItem, setNewItem] = useState("");
   const [creatingTpl, setCreatingTpl] = useState(false);
-  const [tplStudio, setTplStudio] = useState<string>("");
   const [tplRole, setTplRole] = useState<Role>("Barista");
 
   useEffect(() => {
@@ -36,8 +36,9 @@ function ChecklistsPage() {
       setStudios(sts || []);
       const tpls = (tps || []).map(t => ({ ...t, items: (t.items as unknown as Item[]) || [] })) as Template[];
       setTemplates(tpls);
-      if (tpls.length && !selected) setSelected(tpls[0].id);
-      if (sts && sts.length && !tplStudio) setTplStudio(sts[0].id);
+      if (sts && sts.length) {
+        setActiveStudio(prev => prev || sts[0].id);
+      }
     };
     load();
     const channel = supabase.channel("checklists-admin")
@@ -45,6 +46,20 @@ function ChecklistsPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Templates filtrés sur le studio actif
+  const studioTemplates = useMemo(
+    () => templates.filter(t => t.studio_id === activeStudio),
+    [templates, activeStudio]
+  );
+
+  // Auto-sélection du premier template du studio actif
+  useEffect(() => {
+    if (studioTemplates.length === 0) { setSelected(""); return; }
+    if (!studioTemplates.some(t => t.id === selected)) {
+      setSelected(studioTemplates[0].id);
+    }
+  }, [studioTemplates, selected]);
 
   const studioName = (id: string | null) => studios.find(s => s.id === id)?.name || "Tous studios";
   const template = templates.find(t => t.id === selected) || null;
@@ -78,12 +93,12 @@ function ChecklistsPage() {
   };
 
   const createTemplate = async () => {
-    if (templates.some(t => t.studio_id === tplStudio && t.business_role === tplRole)) {
+    if (templates.some(t => t.studio_id === activeStudio && t.business_role === tplRole)) {
       toast.error("Ce template existe déjà");
       return;
     }
     const { data, error } = await supabase.from("checklist_templates")
-      .insert({ studio_id: tplStudio, business_role: tplRole, items: [] })
+      .insert({ studio_id: activeStudio, business_role: tplRole, items: [] })
       .select().single();
     if (error || !data) { toast.error("Erreur"); return; }
     setSelected(data.id); setCreatingTpl(false);
@@ -97,6 +112,8 @@ function ChecklistsPage() {
     toast.success("Template supprimé");
   };
 
+  const activeStudioName = studios.find(s => s.id === activeStudio)?.name || "";
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
@@ -104,20 +121,40 @@ function ChecklistsPage() {
           <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Checklists de fin de shift</h1>
           <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Items vérifiés par les employés en fin de shift.</p>
         </div>
-        <button onClick={() => setCreatingTpl(true)} className="rounded-md px-3 py-1.5 flex items-center gap-1.5"
-          style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+        <button onClick={() => setCreatingTpl(true)} disabled={!activeStudio} className="rounded-md px-3 py-1.5 flex items-center gap-1.5"
+          style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)", opacity: activeStudio ? 1 : 0.4 }}>
           <Plus size={13} /> Nouveau template
         </button>
+      </div>
+
+      {/* Filtres studio */}
+      <div className="flex items-center gap-2 mb-5">
+        {studios.map(s => {
+          const active = s.id === activeStudio;
+          const short = s.name.replace(/^Skult\s+/i, "");
+          return (
+            <button key={s.id} onClick={() => setActiveStudio(s.id)}
+              className="rounded-full px-4 py-1.5"
+              style={{
+                fontSize: 12,
+                fontWeight: active ? 500 : 400,
+                backgroundColor: active ? "var(--foreground)" : "var(--card)",
+                color: active ? "var(--card)" : "var(--foreground)",
+                border: `0.5px solid ${active ? "var(--foreground)" : "var(--border)"}`,
+              }}>
+              {short}
+            </button>
+          );
+        })}
       </div>
 
       {creatingTpl && (
         <div className="rounded-xl border p-4 mb-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--coral)" }}>
           <div className="flex items-center gap-3 flex-wrap">
             <span style={{ fontSize: 12, fontWeight: 500 }}>Studio</span>
-            <select value={tplStudio} onChange={e => setTplStudio(e.target.value)}
-              style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid var(--border)", borderRadius: 6 }}>
-              {studios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <span className="rounded-md px-2.5 py-1" style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--muted)" }}>
+              {activeStudioName}
+            </span>
             <span style={{ fontSize: 12, fontWeight: 500, marginLeft: 8 }}>Rôle</span>
             <div className="flex items-center gap-1">
               {allRoles.map(r => {
@@ -139,12 +176,12 @@ function ChecklistsPage() {
 
       <div className="grid grid-cols-3 gap-5">
         <div className="flex flex-col gap-2">
-          {templates.length === 0 && (
+          {studioTemplates.length === 0 && (
             <div className="rounded-lg border px-4 py-6 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: 12, color: "var(--muted-foreground)" }}>
-              Aucun template. Crée le premier.
+              Aucun template pour ce studio. Crée le premier.
             </div>
           )}
-          {templates.map(cl => {
+          {studioTemplates.map(cl => {
             const rc = roleColors[cl.business_role];
             const isSelected = cl.id === selected;
             return (
