@@ -25,7 +25,8 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
     select: (s) => s.location.pathname,
   });
   const navigate = useNavigate();
-  const openNewShift = () => navigate({ to: "/planning", search: { add: true } });
+  const [shiftOpen, setShiftOpen] = useState(false);
+  const openNewShift = () => setShiftOpen(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [notifOpen, setNotifOpen] = useState(false);
