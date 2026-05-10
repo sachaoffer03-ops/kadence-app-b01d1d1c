@@ -19,10 +19,10 @@ function StaffAppPage() {
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#FAF8F4", maxWidth: 430, margin: "0 auto", position: "relative" }}>
       {/* Content */}
       <div className="flex-1 overflow-y-auto pb-20">
-        {tab === 'accueil' && <AccueilTab />}
+        {tab === 'accueil' && <AccueilTab onNavigate={setTab} />}
         {tab === 'planning' && <PlanningTab />}
         {tab === 'dispos' && <DisposTab />}
-        {tab === 'profil' && <ProfilTab />}
+        {tab === 'profil' && <ProfilTab onNavigate={setTab} />}
       </div>
 
       {/* Bottom tab bar */}
