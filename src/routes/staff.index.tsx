@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { employees, roleColors, getQuotaStatus, getInitials, type Employee, type Role } from "@/lib/mock-data";
-import { Search, X, ArrowLeft, ArrowRight, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX, UserPlus, CalendarPlus } from "lucide-react";
+import { Search, X, ArrowLeft, ArrowRight, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { InviteEmployeeModal } from "@/components/InviteEmployeeModal";
 import { CreateShiftModal } from "@/components/CreateShiftModal";
