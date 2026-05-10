@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { employees, roleColors, getQuotaStatus, getInitials, type Employee, type Role } from "@/lib/mock-data";
-import { Search, X, ArrowLeft, ArrowRight, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX } from "lucide-react";
+import { Search, X, ArrowLeft, ArrowRight, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX, UserPlus } from "lucide-react";
 import { useState } from "react";
+import { InviteEmployeeModal } from "@/components/InviteEmployeeModal";
 
 export const Route = createFileRoute("/staff/")({
   component: StaffPage,
@@ -18,6 +19,7 @@ function StaffPage() {
   const [studioFilters, setStudioFilters] = useState<Set<StudioFilter>>(new Set());
   const [search, setSearch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const toggleContract = (f: ContractFilter) => {
     setContractFilters((prev) => {
@@ -122,10 +124,20 @@ function StaffPage() {
             </button>
           )}
         </div>
-        <div className="ml-auto" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-          {filtered.length} employé{filtered.length > 1 ? "s" : ""}
+        <div className="ml-auto flex items-center gap-3">
+          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            {filtered.length} employé{filtered.length > 1 ? "s" : ""}
+          </span>
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
+            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
+          >
+            <UserPlus size={13} /> Inviter
+          </button>
         </div>
       </div>
+      <InviteEmployeeModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
 
       {/* Table */}
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
