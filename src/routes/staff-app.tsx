@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { EndShiftSheet } from "@/components/staff-app/EndShiftSheet";
 import { SignalementSheet, RequestModificationSheet, FormationsSheet, MyRequestsSheet } from "@/components/staff-app/StaffActionsSheets";
+import { ShiftDetailSheet } from "@/components/staff-app/ProfileSheets";
 
 export const Route = createFileRoute("/staff-app")({
   component: StaffAppPage,
@@ -98,8 +99,10 @@ function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios:
   const [endShift, setEndShift] = useState<ShiftRow | null>(null);
   const [signalOpen, setSignalOpen] = useState(false);
   const [reqOpen, setReqOpen] = useState(false);
+  const [reqShiftId, setReqShiftId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [myReqOpen, setMyReqOpen] = useState(false);
+  const [shiftDetail, setShiftDetail] = useState<ShiftRow | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -170,7 +173,7 @@ function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios:
         const dateLabel = active ? "Aujourd'hui" : new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric" });
         const studioName = (s.studio_id && studios[s.studio_id]) || "—";
         return (
-          <div key={s.id} className="rounded-xl border px-4 py-3.5 flex items-center gap-3 mb-2" style={{ backgroundColor: active ? "var(--coral-light)" : "#fff", borderColor: active ? "var(--coral)" : "rgba(0,0,0,0.08)" }}>
+          <button key={s.id} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3.5 flex items-center gap-3 mb-2 text-left" style={{ backgroundColor: active ? "var(--coral-light)" : "#fff", borderColor: active ? "var(--coral)" : "rgba(0,0,0,0.08)" }}>
             <div className="rounded-lg flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: rc?.bg }}>
               <Clock size={16} style={{ color: rc?.text }} />
             </div>
@@ -179,12 +182,12 @@ function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios:
               <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{role} · {studioName.replace("Skult ", "")}</div>
             </div>
             {active && (
-              <button onClick={() => setEndShift(s)} className="rounded-md px-3 py-1.5 flex items-center gap-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "#fff" }}>
+              <span onClick={(e) => { e.stopPropagation(); setEndShift(s); }} className="rounded-md px-3 py-1.5 flex items-center gap-1 cursor-pointer" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "#fff" }}>
                 <CheckSquare size={12} /> Fin de shift
-              </button>
+              </span>
             )}
             <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />
-          </div>
+          </button>
         );
       })}
 
@@ -196,12 +199,18 @@ function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios:
         <QuickLink icon={<GraduationCap size={18} />} label="Formations" sub="À voir / valider" onClick={() => setFormOpen(true)} />
       </div>
 
+      <ShiftDetailSheet
+        open={!!shiftDetail} onClose={() => setShiftDetail(null)}
+        shift={shiftDetail} studios={studios}
+        onEndShift={() => { if (shiftDetail) { setEndShift(shiftDetail); setShiftDetail(null); } }}
+        onRequestModif={() => { if (shiftDetail) { setReqShiftId(shiftDetail.id); setShiftDetail(null); setReqOpen(true); } }}
+      />
       <EndShiftSheet
         open={!!endShift} onClose={() => setEndShift(null)}
         shift={endShift} userId={user!.id}
       />
       <SignalementSheet open={signalOpen} onClose={() => setSignalOpen(false)} userId={user!.id} studioId={profile?.studio_id ?? null} />
-      <RequestModificationSheet open={reqOpen} onClose={() => setReqOpen(false)} userId={user!.id} shiftId={shifts[0]?.id ?? null} />
+      <RequestModificationSheet open={reqOpen} onClose={() => { setReqOpen(false); setReqShiftId(null); }} userId={user!.id} shiftId={reqShiftId} />
       <FormationsSheet open={formOpen} onClose={() => setFormOpen(false)} userId={user!.id} />
       <MyRequestsSheet open={myReqOpen} onClose={() => setMyReqOpen(false)} userId={user!.id} />
     </div>
