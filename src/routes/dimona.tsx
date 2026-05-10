@@ -157,7 +157,7 @@ function DimonaPage() {
             {filtered.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucune déclaration ne correspond.</td></tr>
             ) : filtered.map((s) => {
-              const profile = s.user_id ? profiles.get(s.user_id) : null;
+              const profile = (s.user_id ? profiles.get(s.user_id) : null) ?? null;
               const studioName = s.studio_id ? (studios.get(s.studio_id) || "—").replace("Skult ", "") : "—";
               const status = getStatus(s);
               const urgency = getUrgency(s);
