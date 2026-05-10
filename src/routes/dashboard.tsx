@@ -16,41 +16,47 @@ function DashboardPage() {
     <div className="p-4 md:p-6">
       {/* Hero */}
       <div
-        className="rounded-xl p-6"
+        className="rounded-xl border p-6 md:p-8"
         style={{
-          background: "linear-gradient(135deg, var(--hero), var(--hero-end))",
+          backgroundColor: "var(--card)",
+          borderColor: "var(--border)",
           borderRadius: 14,
         }}
       >
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               <span
                 className="animate-pulse-dot rounded-full"
-                style={{ width: 8, height: 8, backgroundColor: "var(--coral)" }}
+                style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }}
               />
-              <span style={{ fontSize: 11, fontWeight: 500, color: "var(--coral)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                Shifts du jour
+              <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Aujourd'hui · {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
               </span>
             </div>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>
-              12 shifts au total · 2 studios · 8 employés actifs
+            <h1 style={{ fontSize: 28, fontWeight: 500, color: "var(--foreground)", lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+              12 shifts en cours
+            </h1>
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 6 }}>
+              2 studios · 8 employés actifs
             </p>
-            <div className="flex items-center gap-6">
-              <HeroStat value="5" label="En cours" />
-              <HeroStat value="4" label="Terminés" />
-              <HeroStat value="3" label="À venir" />
-            </div>
           </div>
-          <div className="text-right">
-            <div style={{ fontSize: 42, fontWeight: 500, color: "#7EC77B", lineHeight: 1 }}>
-              100%
-            </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>
-              Taux de couverture
-            </div>
-            <div style={{ fontSize: 11, color: "#7EC77B", marginTop: 2 }}>
-              Aucun trou aujourd'hui
+          <div className="flex items-center gap-8">
+            <HeroStat value="5" label="En cours" accent />
+            <HeroStat value="4" label="Terminés" />
+            <HeroStat value="3" label="À venir" />
+            <div
+              className="hidden md:block"
+              style={{ width: 1, height: 36, backgroundColor: "var(--border)" }}
+            />
+            <div>
+              <div className="flex items-baseline gap-1">
+                <span style={{ fontSize: 28, fontWeight: 500, color: "var(--foreground)", letterSpacing: "-0.02em" }}>100</span>
+                <span style={{ fontSize: 14, color: "var(--muted-foreground)" }}>%</span>
+              </div>
+              <div style={{ fontSize: 11, color: "var(--success-text)", marginTop: 2 }}>
+                Couverture complète
+              </div>
             </div>
           </div>
         </div>
