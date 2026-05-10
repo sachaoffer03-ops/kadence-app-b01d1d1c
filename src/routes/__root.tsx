@@ -161,7 +161,7 @@ function AppShell() {
     if (session && appRole === "employee" && !isStaffApp && !isPublic) {
       navigate({ to: "/staff-app" });
     }
-  }, [loading, session, appRole, currentPath, isPublic, isStaffApp, navigate]);
+  }, [loading, session, appRole, currentPath, isPublic, isStaffApp, isActivationPreview, navigate]);
 
   if (loading) {
     return (
