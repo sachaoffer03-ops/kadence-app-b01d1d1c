@@ -679,7 +679,7 @@ function Welcome({ invitation }: { invitation: Invitation }) {
           </p>
           <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
             {invitation.email}
-            {invitation.contract && ` · ${invitation.contract}`}
+            {(() => { const cs = invitation.contracts ?? (invitation.contract ? [invitation.contract] : []); return cs.length > 0 ? ` · ${cs.join(" + ")}` : ""; })()}
           </p>
         </div>
       </div>
@@ -1012,11 +1012,11 @@ function Review({
         </p>
         <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
           {invitation.email}
-          {invitation.contract && ` · ${invitation.contract}`}
+          {(() => { const cs = invitation.contracts ?? (invitation.contract ? [invitation.contract] : []); return cs.length > 0 ? ` · ${cs.join(" + ")}` : ""; })()}
         </p>
       </div>
 
-      {invitation.contract === "Étudiant" && (
+      {((invitation.contracts ?? (invitation.contract ? [invitation.contract] : [])).includes("Étudiant")) && (
         <label
           className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-[var(--secondary)]"
           style={{ borderColor: studentValid ? "var(--coral)" : "var(--border)" }}
