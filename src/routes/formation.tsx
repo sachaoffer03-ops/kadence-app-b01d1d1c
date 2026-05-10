@@ -469,3 +469,17 @@ function MiniKpi({ label, value, sub, color }: { label: string; value: string; s
     </div>
   );
 }
+
+function VideoPlayerModal({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }} onClick={onClose}>
+      <div className="rounded-xl overflow-hidden w-full max-w-3xl mx-4" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{title}</div>
+          <button onClick={onClose} style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
+        </div>
+        <video src={url} controls autoPlay style={{ width: "100%", maxHeight: "70vh", backgroundColor: "#000" }} />
+      </div>
+    </div>
+  );
+}
