@@ -110,8 +110,8 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
       </FormField>
       <FormField label="Urgence">
         <div className="grid grid-cols-3 gap-1.5">
-          {(["low","normal","high"] as Urgency[]).map(u => {
-            const labels = { low: "Faible", normal: "Normale", high: "Urgente" };
+          {(["normal","urgent","critique"] as Urgency[]).map(u => {
+            const labels: Record<Urgency, string> = { normal: "Normale", urgent: "Urgente", critique: "Critique" };
             const active = urgency === u;
             return (
               <button key={u} onClick={() => setUrgency(u)} className="rounded-md py-2"
