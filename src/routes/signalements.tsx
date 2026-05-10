@@ -37,6 +37,7 @@ function SignalementsPage() {
   const [tab, setTab] = useState<"actifs" | "resolus">("actifs");
   const [studio, setStudio] = useState<string>("Tous");
   const [cat, setCat] = useState<string>("Toutes");
+  const [dismissing, setDismissing] = useState<Record<string, "strike" | "fade">>({});
 
   useEffect(() => {
     const load = async () => {
@@ -66,12 +67,22 @@ function SignalementsPage() {
   const activeCount = items.filter(s => !s.resolved).length;
 
   const setResolved = async (id: string, val: boolean) => {
+    if (val) {
+      // Animate: strike-through, then fade out, then commit
+      setDismissing((d) => ({ ...d, [id]: "strike" }));
+      await new Promise((r) => setTimeout(r, 350));
+      setDismissing((d) => ({ ...d, [id]: "fade" }));
+      await new Promise((r) => setTimeout(r, 300));
+    }
     const { error } = await supabase.from("signalements").update({
       resolved: val,
       resolved_at: val ? new Date().toISOString() : null,
       resolved_by: val ? user?.id ?? null : null,
     }).eq("id", id);
-    if (error) { toast.error("Erreur"); return; }
+    if (error) {
+      setDismissing((d) => { const n = { ...d }; delete n[id]; return n; });
+      toast.error("Erreur"); return;
+    }
     toast.success(val ? "Signalement résolu" : "Signalement rouvert");
   };
 
@@ -107,8 +118,22 @@ function SignalementsPage() {
             const studioName = (s.studio_id && studios[s.studio_id]?.name) || "—";
             const initials = emp ? `${emp.first_name?.[0] || ""}${emp.last_name?.[0] || ""}`.toUpperCase() : "—";
             return (
-              <div key={s.id} className="flex items-start gap-4 px-4 py-3" style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)" }}>
-                <div className="flex-1 min-w-0">
+              <div key={s.id} className="flex items-start gap-4 px-4 py-3"
+                style={{
+                  borderTop: i === 0 ? "none" : "0.5px solid var(--border)",
+                  transition: "opacity 300ms ease, max-height 300ms ease, padding 300ms ease",
+                  opacity: dismissing[s.id] === "fade" ? 0 : 1,
+                  maxHeight: dismissing[s.id] === "fade" ? 0 : 200,
+                  paddingTop: dismissing[s.id] === "fade" ? 0 : undefined,
+                  paddingBottom: dismissing[s.id] === "fade" ? 0 : undefined,
+                  overflow: "hidden",
+                }}>
+                <div className="flex-1 min-w-0"
+                  style={{
+                    textDecoration: dismissing[s.id] ? "line-through" : "none",
+                    color: dismissing[s.id] ? "var(--muted-foreground)" : undefined,
+                    transition: "color 300ms ease",
+                  }}>
                   <div className="flex items-center gap-2 mb-1" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                     <div className="flex items-center justify-center rounded-full" style={{ width: 18, height: 18, fontSize: 9, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--foreground)" }}>{initials}</div>
                     <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{emp ? `${emp.first_name} ${emp.last_name}` : "Inconnu"}</span>
@@ -119,6 +144,7 @@ function SignalementsPage() {
                   <div style={{ fontSize: 13 }}>{s.message}</div>
                 </div>
                 <button onClick={() => setResolved(s.id, !s.resolved)}
+                  disabled={!!dismissing[s.id]}
                   className="rounded-md px-3 py-1.5 shrink-0"
                   style={{
                     fontSize: 11, fontWeight: 500,
