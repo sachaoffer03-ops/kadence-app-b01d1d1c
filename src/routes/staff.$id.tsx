@@ -68,11 +68,11 @@ function EmployeeDetailPage() {
 
   const handleDeactivate = async () => {
     if (!emp) return;
-    const next = emp.status === "active" ? "inactive" : "active";
+    const next = emp.status === "active" ? "suspended" : "active";
     const { error } = await supabase.from("profiles").update({ status: next }).eq("id", emp.id);
     if (error) { toast.error("Erreur"); return; }
     setEmp({ ...emp, status: next });
-    toast.success(next === "active" ? "Compte réactivé" : "Compte désactivé");
+    toast.success(next === "active" ? "Compte réactivé" : "Compte suspendu");
   };
 
   if (loading) return <div className="p-6" style={{ fontSize: 13 }}>Chargement…</div>;
@@ -103,7 +103,7 @@ function EmployeeDetailPage() {
 
       {emp.status !== "active" && (
         <div className="rounded-lg border px-3 py-2 mb-4 flex items-center justify-between" style={{ backgroundColor: "var(--warning-bg)", borderColor: "var(--border)", color: "var(--warning-text)", fontSize: 12 }}>
-          <span>Compte désactivé — n'apparaît plus dans les plannings.</span>
+          <span>Compte suspendu — n'apparaît plus dans les plannings.</span>
           <button onClick={handleDeactivate} className="rounded-md px-2 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--card)" }}>Réactiver</button>
         </div>
       )}
