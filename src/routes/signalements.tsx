@@ -67,12 +67,22 @@ function SignalementsPage() {
   const activeCount = items.filter(s => !s.resolved).length;
 
   const setResolved = async (id: string, val: boolean) => {
+    if (val) {
+      // Animate: strike-through, then fade out, then commit
+      setDismissing((d) => ({ ...d, [id]: "strike" }));
+      await new Promise((r) => setTimeout(r, 350));
+      setDismissing((d) => ({ ...d, [id]: "fade" }));
+      await new Promise((r) => setTimeout(r, 300));
+    }
     const { error } = await supabase.from("signalements").update({
       resolved: val,
       resolved_at: val ? new Date().toISOString() : null,
       resolved_by: val ? user?.id ?? null : null,
     }).eq("id", id);
-    if (error) { toast.error("Erreur"); return; }
+    if (error) {
+      setDismissing((d) => { const n = { ...d }; delete n[id]; return n; });
+      toast.error("Erreur"); return;
+    }
     toast.success(val ? "Signalement résolu" : "Signalement rouvert");
   };
 
