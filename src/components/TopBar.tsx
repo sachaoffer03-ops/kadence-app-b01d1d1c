@@ -1,4 +1,4 @@
-import { useRouterState } from "@tanstack/react-router";
+import { useRouterState, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, Plus, Menu } from "lucide-react";
 
 const pageTitles: Record<string, string> = {
