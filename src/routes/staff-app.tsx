@@ -399,8 +399,6 @@ function ProfilTab({ profile, businessRoles, studios, onNavigate }: { profile: P
   if (!profile) return <div className="px-5 pt-6" style={{ fontSize: 13 }}>Chargement…</div>;
 
   const initials = `${profile.first_name?.[0] || ""}${profile.last_name?.[0] || ""}`.toUpperCase();
-  const primaryRole = businessRoles[0];
-  const rc = primaryRole ? roleColors[primaryRole] : { bg: "var(--muted)", text: "var(--foreground)", dot: "" };
 
   const quotaUsed = profile.quota_used; const quotaMax = profile.quota_max;
   const quotaPct = quotaUsed !== null && quotaMax ? Math.round((quotaUsed / quotaMax) * 100) : 0;
