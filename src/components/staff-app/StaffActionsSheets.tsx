@@ -400,23 +400,41 @@ export function MyRequestsSheet({ open, onClose, userId }: { open: boolean; onCl
     return `${date} · ${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)} · ${shift.business_role}`;
   };
 
-  const statusMessage = (r: MyRequest) => {
-    if (r.status === "accepted") return r.admin_response || "Ta demande a été acceptée.";
-    if (r.status === "refused") return r.admin_response || "Ta demande a été refusée.";
-    return "En attente de réponse de l'admin.";
-  };
+  const ongoing = items.filter(r => (r.status || "pending").toLowerCase() === "pending");
+  const history = items.filter(r => (r.status || "pending").toLowerCase() !== "pending");
+  const visible = tab === "ongoing" ? ongoing : history;
+
+  const fmtDateTime = (iso: string) => new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
   return (
     <Sheet open={open} onClose={onClose} title="Mes demandes">
+      <div className="grid grid-cols-2 gap-1.5 mb-3">
+        {([
+          { key: "ongoing" as Tab, label: `En cours${ongoing.length ? ` · ${ongoing.length}` : ""}` },
+          { key: "history" as Tab, label: `Historique${history.length ? ` · ${history.length}` : ""}` },
+        ]).map(t => {
+          const active = tab === t.key;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)} className="rounded-md py-2"
+              style={{
+                fontSize: 12, fontWeight: active ? 500 : 400,
+                backgroundColor: active ? "var(--foreground)" : "#fff",
+                color: active ? "var(--background)" : "var(--foreground)",
+                border: `0.5px solid ${active ? "var(--foreground)" : "rgba(0,0,0,0.12)"}`,
+              }}>{t.label}</button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
-      ) : items.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div className="rounded-lg px-4 py-6 text-center" style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", fontSize: 12, color: "var(--muted-foreground)" }}>
-          Aucune demande envoyée pour le moment.
+          {tab === "ongoing" ? "Aucune demande en cours." : "Aucune demande traitée pour le moment."}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {items.map(r => {
+          {visible.map(r => {
             const status = (r.status || "pending").toLowerCase();
             const s = statusLabels[status] || statusLabels.pending;
             return (
@@ -426,17 +444,39 @@ export function MyRequestsSheet({ open, onClose, userId }: { open: boolean; onCl
                   <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: s.bg, color: s.color }}>{s.label}</span>
                 </div>
                 <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 6 }}>
-                  {fmtRelative(r.created_at)} · Urgence {urgencyLabels[r.urgency] || r.urgency}
+                  Urgence {urgencyLabels[r.urgency] || r.urgency}
                 </div>
                 <div className="rounded-md px-3 py-2 mb-2" style={{ backgroundColor: "var(--muted)", fontSize: 12, color: "var(--muted-foreground)" }}>
                   {formatShift(r.shift_id)}
                 </div>
-                <div style={{ fontSize: 13, lineHeight: 1.4 }}>{r.reason}</div>
-                <div className="mt-2 rounded-md px-3 py-2" style={{ backgroundColor: s.bg, color: s.color, fontSize: 12, lineHeight: 1.4 }}>
-                  {statusMessage(r)}
+                <div style={{ fontSize: 13, lineHeight: 1.4, marginBottom: 10 }}>{r.reason}</div>
+
+                {/* Timeline historique */}
+                <div className="flex flex-col gap-2 pl-3" style={{ borderLeft: "1.5px solid var(--muted)" }}>
+                  <TimelineStep
+                    dotColor="var(--coral)"
+                    title="Demande envoyée"
+                    date={fmtDateTime(r.created_at)}
+                  />
+                  {status === "pending" ? (
+                    <TimelineStep
+                      dotColor="var(--warning-text)"
+                      title="En attente de réponse"
+                      date="L'admin doit valider ta demande"
+                      muted
+                    />
+                  ) : (
+                    <TimelineStep
+                      dotColor={s.color}
+                      title={status === "accepted" ? "Demande acceptée" : "Demande refusée"}
+                      date={r.resolved_at ? fmtDateTime(r.resolved_at) : "Date inconnue"}
+                      message={r.admin_response || undefined}
+                    />
+                  )}
                 </div>
+
                 {status === "pending" && (
-                  <button onClick={() => cancel(r.id)} className="mt-2" style={{ fontSize: 11, color: "var(--danger-text)" }}>Annuler la demande</button>
+                  <button onClick={() => cancel(r.id)} className="mt-3" style={{ fontSize: 11, color: "var(--danger-text)" }}>Annuler la demande</button>
                 )}
               </div>
             );
@@ -444,6 +484,17 @@ export function MyRequestsSheet({ open, onClose, userId }: { open: boolean; onCl
         </div>
       )}
     </Sheet>
+  );
+}
+
+function TimelineStep({ dotColor, title, date, message, muted }: { dotColor: string; title: string; date: string; message?: string; muted?: boolean }) {
+  return (
+    <div className="relative">
+      <span style={{ position: "absolute", left: -18, top: 4, width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor, boxShadow: "0 0 0 2px #fff" }} />
+      <div style={{ fontSize: 12, fontWeight: 500, color: muted ? "var(--muted-foreground)" : "var(--foreground)" }}>{title}</div>
+      <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{date}</div>
+      {message && <div className="mt-1 rounded-md px-2.5 py-1.5" style={{ backgroundColor: "var(--muted)", fontSize: 12, lineHeight: 1.4 }}>{message}</div>}
+    </div>
   );
 }
 
