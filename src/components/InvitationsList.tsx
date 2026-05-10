@@ -319,20 +319,23 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
 
 function Row({
   inv,
-  studioName,
+  studioNames,
   onCopy,
   onResend,
   onRevoke,
   onPreview,
 }: {
   inv: Invitation;
-  studioName: string;
+  studioNames: string[];
   onCopy: () => void;
   onResend: () => void;
   onRevoke: () => void;
   onPreview: () => void;
 }) {
   const initials = `${inv.first_name[0] ?? ""}${inv.last_name[0] ?? ""}`.toUpperCase();
+  const contractsList = (inv.contracts && inv.contracts.length > 0)
+    ? inv.contracts
+    : (inv.contract ? [inv.contract] : []);
   return (
     <tr
       className="transition-colors"
