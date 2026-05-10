@@ -15,6 +15,7 @@ import { ShiftDetailSheet, DocumentsSheet, NotificationsSheet } from "@/componen
 import { DisposSheet, disposKey } from "@/components/staff-app/DisposSheet";
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { ChatPanel } from "@/components/staff-app/ChatPanel";
+import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 
 export const Route = createFileRoute("/staff-app")({
   component: StaffAppPage,
