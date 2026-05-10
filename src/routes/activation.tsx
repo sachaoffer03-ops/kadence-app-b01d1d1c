@@ -432,7 +432,7 @@ function ActivationPage() {
       )}
       {/* Top bar */}
       <header className="px-4 md:px-8 py-5 flex items-center justify-between">
-        <img src={logo} alt="Kadence" style={{ height: 24, width: "auto" }} />
+        <img src={logo} alt="Kadence" style={{ height: 40, width: "auto" }} />
         <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
           {step > 0 && step < TOTAL_STEPS && `Étape ${step} sur ${TOTAL_STEPS - 1}`}
         </div>
@@ -463,17 +463,19 @@ function ActivationPage() {
         <div className="w-full max-w-xl">
           {/* Icon + heading */}
           <div className="text-center mb-8">
-            <div
-              className="mx-auto mb-5 rounded-2xl flex items-center justify-center"
-              style={{
-                width: 56,
-                height: 56,
-                backgroundColor: "var(--coral-light)",
-                color: "var(--coral-dark)",
-              }}
-            >
-              <StepIcon size={24} strokeWidth={1.6} />
-            </div>
+            {step > 0 && (
+              <div
+                className="mx-auto mb-5 rounded-2xl flex items-center justify-center"
+                style={{
+                  width: 56,
+                  height: 56,
+                  backgroundColor: "var(--coral-light)",
+                  color: "var(--coral-dark)",
+                }}
+              >
+                <StepIcon size={24} strokeWidth={1.6} />
+              </div>
+            )}
             <h1
               style={{
                 fontSize: 26,
