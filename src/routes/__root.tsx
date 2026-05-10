@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -6,14 +6,18 @@ import {
   createRootRouteWithContext,
   useRouter,
   useRouterState,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { AppSidebar, MobileSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 
 import appCss from "../styles.css?url";
+
+const PUBLIC_ROUTES = ["/login", "/activation", "/reset-password"];
 
 function NotFoundComponent() {
   return (
@@ -119,33 +123,78 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+
+function AppShell() {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { session, appRole, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const isPublic = PUBLIC_ROUTES.some((p) => currentPath.startsWith(p));
   const isStaffApp = currentPath.startsWith("/staff-app");
+
+  // Redirect logic
+  useEffect(() => {
+    if (loading) return;
+    if (!session && !isPublic) {
+      navigate({ to: "/login" });
+      return;
+    }
+    if (session && isPublic && appRole) {
+      navigate({ to: appRole === "employee" ? "/staff-app" : "/dashboard" });
+      return;
+    }
+    // Block employees from admin routes
+    if (session && appRole === "employee" && !isStaffApp && !isPublic) {
+      navigate({ to: "/staff-app" });
+    }
+  }, [loading, session, appRole, currentPath, isPublic, isStaffApp, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement...</p>
+      </div>
+    );
+  }
+
+  if (isPublic) {
+    return (
+      <>
+        <Outlet />
+        <Toaster position="top-center" />
+      </>
+    );
+  }
 
   if (isStaffApp) {
     return (
-      <QueryClientProvider client={queryClient}>
+      <>
         <Outlet />
         <Toaster position="top-center" />
-      </QueryClientProvider>
+      </>
     );
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
-        <AppSidebar />
-        <MobileSidebar open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-        <div className="flex-1 flex flex-col md:ml-[220px]">
-          <TopBar onMenuToggle={() => setMobileMenuOpen(prev => !prev)} />
-          <main className="flex-1 overflow-y-auto">
-            <Outlet />
-          </main>
-        </div>
-        <Toaster position="top-right" />
+    <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+      <AppSidebar />
+      <MobileSidebar open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <div className="flex-1 flex flex-col md:ml-[220px]">
+        <TopBar onMenuToggle={() => setMobileMenuOpen(prev => !prev)} />
+        <main className="flex-1 overflow-y-auto">
+          <Outlet />
+        </main>
       </div>
-    </QueryClientProvider>
+      <Toaster position="top-right" />
+    </div>
   );
 }
