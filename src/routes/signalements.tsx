@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { employees, getInitials } from "@/lib/mock-data";
+import { Dropdown } from "@/components/Dropdown";
 
 export const Route = createFileRoute("/signalements")({
   component: SignalementsPage,
@@ -85,8 +85,8 @@ function SignalementsPage() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4 flex-wrap" style={{ fontSize: 12 }}>
-        <Select label="Studio" value={studio} options={["Tous", "Skult Rhodes", "Skult Châtelain"]} onChange={setStudio} />
-        <Select label="Catégorie" value={cat} options={["Toutes", ...CATEGORIES]} onChange={(v) => setCat(v as typeof cat)} />
+        <Dropdown label="Studio" value={studio} options={["Tous", "Skult Rhodes", "Skult Châtelain"]} onChange={setStudio} />
+        <Dropdown label="Catégorie" value={cat} options={["Toutes", ...CATEGORIES]} onChange={(v) => setCat(v as typeof cat)} />
       </div>
 
       {/* List */}
@@ -150,76 +150,3 @@ function Tab({ active, onClick, children }: { active: boolean; onClick: () => vo
   );
 }
 
-function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative flex items-center gap-2">
-      <span style={{ color: "var(--muted-foreground)" }}>{label}</span>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 rounded-md px-2.5 py-1.5 transition-colors"
-        style={{
-          fontSize: 12, fontWeight: 500,
-          border: "0.5px solid var(--border)",
-          backgroundColor: open ? "var(--muted)" : "var(--card)",
-          minWidth: 140,
-          justifyContent: "space-between",
-        }}
-      >
-        <span>{value}</span>
-        <ChevronDown size={12} style={{ color: "var(--muted-foreground)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
-      </button>
-      {open && (
-        <div
-          className="absolute z-20 rounded-lg overflow-hidden"
-          style={{
-            top: "calc(100% + 4px)",
-            left: label.length * 7 + 8,
-            minWidth: 180,
-            backgroundColor: "var(--card)",
-            border: "0.5px solid var(--border)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
-            padding: 4,
-          }}
-        >
-          {options.map(o => {
-            const sel = o === value;
-            return (
-              <button
-                key={o}
-                type="button"
-                onClick={() => { onChange(o); setOpen(false); }}
-                className="flex items-center justify-between w-full rounded-md px-2.5 py-1.5 text-left transition-colors"
-                style={{
-                  fontSize: 12,
-                  fontWeight: sel ? 500 : 400,
-                  backgroundColor: sel ? "var(--muted)" : "transparent",
-                  color: "var(--foreground)",
-                }}
-                onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
-                onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
-              >
-                <span>{o}</span>
-                {sel && <Check size={12} style={{ color: "var(--muted-foreground)" }} />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}

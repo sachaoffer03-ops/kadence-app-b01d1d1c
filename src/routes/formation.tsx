@@ -4,6 +4,7 @@ import { GraduationCap, Play, ChevronDown, ChevronUp, Bell, Check, Plus, Pencil,
 import { toast } from "sonner";
 import { trainingPaths as seedPaths, roleColors, employees, type TrainingPath, type TrainingModule, type Role } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
+import { Dropdown } from "@/components/Dropdown";
 
 type VideoItem = TrainingModule["videos"][number] & { url?: string; storagePath?: string };
 
@@ -242,9 +243,7 @@ function CreatePathForm({ onCancel, onCreate }: { onCancel: () => void; onCreate
           </button>
         </div>
         {type === "role" && (
-          <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="rounded-md px-3 py-2 outline-none" style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
-            {allRoles.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
+          <Dropdown value={role} options={allRoles} onChange={(v) => setRole(v as Role)} minWidth={180} />
         )}
         <div className="flex gap-2">
           <button onClick={onCancel} className="flex-1 rounded-md px-3 py-2" style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>Annuler</button>
