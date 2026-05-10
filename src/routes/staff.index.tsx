@@ -259,6 +259,20 @@ function EmployeeRow({ employee: e, onClick }: { employee: Employee; onClick: ()
 
 // ── Employee Slide-Over Panel ──────────────────────────────
 function EmployeeSlideOver({ employee: emp, onClose }: { employee: Employee; onClose: () => void }) {
+  const navigate = useNavigate();
+  const goToDetail = (modal?: "roles" | "score" | "deactivate") => {
+    onClose();
+    navigate({ to: "/staff/$id", params: { id: emp.id }, search: modal ? { modal } : undefined });
+  };
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(emp, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${emp.firstName}-${emp.lastName}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const quotaStatus = getQuotaStatus(emp.quotaUsed, emp.quotaMax);
   const quotaPct = emp.quotaUsed !== null && emp.quotaMax !== null ? Math.round((emp.quotaUsed / emp.quotaMax) * 100) : 0;
   const quotaColor = quotaStatus === "danger" ? "var(--danger-text)" : quotaStatus === "warning" ? "var(--warning-text)" : "var(--success-text)";
