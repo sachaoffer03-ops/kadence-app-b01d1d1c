@@ -609,19 +609,43 @@ export type Database = {
       }
       studios: {
         Row: {
+          address: string | null
+          capacity: number | null
+          city: string | null
+          color: string | null
           created_at: string
+          description: string | null
           id: string
           name: string
+          opening_hours: string | null
+          phone: string | null
+          postal_code: string | null
         }
         Insert: {
+          address?: string | null
+          capacity?: number | null
+          city?: string | null
+          color?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name: string
+          opening_hours?: string | null
+          phone?: string | null
+          postal_code?: string | null
         }
         Update: {
+          address?: string | null
+          capacity?: number | null
+          city?: string | null
+          color?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
+          opening_hours?: string | null
+          phone?: string | null
+          postal_code?: string | null
         }
         Relationships: []
       }
