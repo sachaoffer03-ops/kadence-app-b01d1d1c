@@ -226,7 +226,7 @@ function DisposTab() {
 }
 
 /* ─── PROFIL ─── */
-function ProfilTab() {
+function ProfilTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const quotaPct = Math.round(((emp.quotaUsed || 0) / (emp.quotaMax || 1)) * 100);
   const quotaColor = getQuotaStatus(emp.quotaUsed, emp.quotaMax);
   const barColor = quotaColor === 'danger' ? "var(--danger-text)" : quotaColor === 'warning' ? "var(--warning-text)" : "var(--success-text)";
