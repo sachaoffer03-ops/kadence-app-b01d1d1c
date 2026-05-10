@@ -64,6 +64,7 @@ const navSections: NavSection[] = [
     title: "Configuration",
     items: [
       { label: "Studios & postes", to: "/studios", icon: Building2 },
+      { label: "Aperçu employé", to: "/activation?preview=demo", icon: Eye },
       { label: "Réglages", to: "/reglages", icon: Settings },
     ],
   },
