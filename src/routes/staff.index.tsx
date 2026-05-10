@@ -464,7 +464,20 @@ function EmployeeSlideOver({ employee: emp, onClose }: { employee: Employee; onC
                   {a.icon} {a.label}
                 </button>
               ))}
-              <button className="flex items-center gap-2 rounded-md px-3 py-2 text-left transition-colors w-full" style={{ fontSize: 12, border: "0.5px solid var(--border)", color: "var(--danger-text)" }}
+              {[
+                { icon: <Edit size={13} />, label: "Modifier les rôles", onClick: () => goToDetail("roles") },
+                { icon: <Star size={13} />, label: "Ajuster le score", onClick: () => goToDetail("score") },
+                { icon: <FileText size={13} />, label: "Voir la formation", onClick: () => { onClose(); navigate({ to: "/formation" }); } },
+                { icon: <Download size={13} />, label: "Exporter les données", onClick: handleExport },
+              ].map((a) => (
+                <button key={a.label} onClick={a.onClick} className="flex items-center gap-2 rounded-md px-3 py-2 text-left transition-colors w-full" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+                >
+                  {a.icon} {a.label}
+                </button>
+              ))}
+              <button onClick={() => goToDetail("deactivate")} className="flex items-center gap-2 rounded-md px-3 py-2 text-left transition-colors w-full" style={{ fontSize: 12, border: "0.5px solid var(--border)", color: "var(--danger-text)" }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
               >
