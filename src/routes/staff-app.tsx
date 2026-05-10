@@ -272,20 +272,20 @@ function ProfilTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
       {/* Menu */}
       <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
         {[
-          { label: 'Mes informations', icon: User },
-          { label: 'Formation', icon: GraduationCap },
-          { label: 'Mes documents', icon: ClipboardCheck },
-          { label: 'Notifications', icon: Calendar },
+          { label: 'Mes informations', icon: User, action: () => toast("Mes informations", { description: "Section bientôt disponible" }) },
+          { label: 'Formation', icon: GraduationCap, action: () => toast("Formation", { description: "Section bientôt disponible" }) },
+          { label: 'Mes documents', icon: ClipboardCheck, action: () => toast("Mes documents", { description: "Section bientôt disponible" }) },
+          { label: 'Notifications', icon: Calendar, action: () => toast("Notifications", { description: "Section bientôt disponible" }) },
         ].map((item, i) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.06)" : "none", cursor: "pointer" }}>
+          <button key={i} onClick={item.action} className="w-full flex items-center gap-3 px-4 py-3.5 text-left" style={{ borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.06)" : "none", cursor: "pointer" }}>
             <item.icon size={16} style={{ color: "var(--muted-foreground)" }} />
             <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
             <ChevronRight size={14} style={{ color: "var(--muted-foreground)" }} />
-          </div>
+          </button>
         ))}
       </div>
 
-      <button className="w-full rounded-xl border px-4 py-3 mt-4 text-center" style={{ fontSize: 13, color: "var(--danger-text)", backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
+      <button onClick={() => { onNavigate('accueil'); toast.success("Déconnecté", { description: "À bientôt !" }); }} className="w-full rounded-xl border px-4 py-3 mt-4 text-center" style={{ fontSize: 13, color: "var(--danger-text)", backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
         Se déconnecter
       </button>
     </div>
