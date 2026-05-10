@@ -50,7 +50,7 @@ function ChecklistsPage() {
   const template = templates.find(t => t.id === selected) || null;
 
   const persistItems = async (id: string, items: Item[]) => {
-    const { error } = await supabase.from("checklist_templates").update({ items }).eq("id", id);
+    const { error } = await supabase.from("checklist_templates").update({ items: items as unknown as never }).eq("id", id);
     if (error) toast.error("Erreur sauvegarde");
   };
 
