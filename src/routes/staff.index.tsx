@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { employees, roleColors, getQuotaStatus, getInitials, type Employee, type Role } from "@/lib/mock-data";
 import { Search, X, ArrowLeft, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX } from "lucide-react";
 import { useState } from "react";
@@ -259,6 +259,20 @@ function EmployeeRow({ employee: e, onClick }: { employee: Employee; onClick: ()
 
 // ── Employee Slide-Over Panel ──────────────────────────────
 function EmployeeSlideOver({ employee: emp, onClose }: { employee: Employee; onClose: () => void }) {
+  const navigate = useNavigate();
+  const goToDetail = (modal?: "roles" | "score" | "deactivate") => {
+    onClose();
+    navigate({ to: "/staff/$id", params: { id: emp.id }, search: modal ? { modal } : undefined });
+  };
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(emp, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${emp.firstName}-${emp.lastName}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const quotaStatus = getQuotaStatus(emp.quotaUsed, emp.quotaMax);
   const quotaPct = emp.quotaUsed !== null && emp.quotaMax !== null ? Math.round((emp.quotaUsed / emp.quotaMax) * 100) : 0;
   const quotaColor = quotaStatus === "danger" ? "var(--danger-text)" : quotaStatus === "warning" ? "var(--warning-text)" : "var(--success-text)";
@@ -450,7 +464,20 @@ function EmployeeSlideOver({ employee: emp, onClose }: { employee: Employee; onC
                   {a.icon} {a.label}
                 </button>
               ))}
-              <button className="flex items-center gap-2 rounded-md px-3 py-2 text-left transition-colors w-full" style={{ fontSize: 12, border: "0.5px solid var(--border)", color: "var(--danger-text)" }}
+              {[
+                { icon: <Edit size={13} />, label: "Modifier les rôles", onClick: () => goToDetail("roles") },
+                { icon: <Star size={13} />, label: "Ajuster le score", onClick: () => goToDetail("score") },
+                { icon: <FileText size={13} />, label: "Voir la formation", onClick: () => { onClose(); navigate({ to: "/formation" }); } },
+                { icon: <Download size={13} />, label: "Exporter les données", onClick: handleExport },
+              ].map((a) => (
+                <button key={a.label} onClick={a.onClick} className="flex items-center gap-2 rounded-md px-3 py-2 text-left transition-colors w-full" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+                >
+                  {a.icon} {a.label}
+                </button>
+              ))}
+              <button onClick={() => goToDetail("deactivate")} className="flex items-center gap-2 rounded-md px-3 py-2 text-left transition-colors w-full" style={{ fontSize: 12, border: "0.5px solid var(--border)", color: "var(--danger-text)" }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
               >

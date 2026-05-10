@@ -4,9 +4,15 @@ import { toast } from "sonner";
 import { employees, roleColors, getQuotaStatus, getInitials, type Employee, type Role } from "@/lib/mock-data";
 import { ArrowLeft, Mail, Phone, MapPin, Star, Edit, FileText, Download, UserX, X, Check } from "lucide-react";
 
+type ModalParam = "roles" | "score" | "deactivate";
+
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
   head: () => ({ meta: [{ title: "Profil employé — Shyft" }] }),
+  validateSearch: (s: Record<string, unknown>): { modal?: ModalParam } => {
+    const m = s.modal;
+    return m === "roles" || m === "score" || m === "deactivate" ? { modal: m } : {};
+  },
 });
 
 const ALL_ROLES: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
@@ -17,9 +23,10 @@ function EmployeeDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const initial = employees.find(e => e.id === id);
+  const search = Route.useSearch();
   const [emp, setEmp] = useState<Employee | undefined>(initial);
   const [active, setActive] = useState(true);
-  const [modal, setModal] = useState<Modal>(null);
+  const [modal, setModal] = useState<Modal>(search.modal ?? null);
 
   if (!emp) {
     return (
