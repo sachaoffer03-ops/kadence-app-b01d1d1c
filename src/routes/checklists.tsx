@@ -34,7 +34,7 @@ function ChecklistsPage() {
         supabase.from("checklist_templates").select("*").order("created_at"),
       ]);
       setStudios(sts || []);
-      const tpls = (tps || []).map(t => ({ ...t, items: (t.items as Item[]) || [] })) as Template[];
+      const tpls = (tps || []).map(t => ({ ...t, items: (t.items as unknown as Item[]) || [] })) as Template[];
       setTemplates(tpls);
       if (tpls.length && !selected) setSelected(tpls[0].id);
       if (sts && sts.length && !tplStudio) setTplStudio(sts[0].id);
