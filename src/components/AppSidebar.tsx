@@ -44,6 +44,7 @@ const navSections: NavSection[] = [
     title: "Opérations",
     items: [
       { label: "Demandes modif", to: "/demandes", icon: FileEdit, badge: 3, badgeType: "danger" },
+      { label: "Signalements", to: "/signalements", icon: PackageSearch, badge: 5, badgeType: "danger" },
       { label: "Pointage", to: "/pointage", icon: Clock },
       { label: "Checklists", to: "/checklists", icon: ClipboardCheck },
       { label: "Feedbacks", to: "/feedbacks", icon: MessageSquare, badge: 5 },
