@@ -157,6 +157,8 @@ function ActivationPage() {
       setDone(true);
       return;
     }
+    // Real submission below — note: employee will receive a confirmation email
+    // and must click the link before being able to sign in.
     const isStudent = (invitation.contracts && invitation.contracts.length > 0)
       ? invitation.contracts.includes("Étudiant")
       : invitation.contract === "Étudiant";
@@ -205,7 +207,7 @@ function ActivationPage() {
     }
     setSubmitting(false);
     setDone(true);
-    setTimeout(() => navigate({ to: "/staff-app" }), 1800);
+    // No auto-redirect: user must confirm their email first.
   };
 
   // ───── render states ─────
@@ -259,7 +261,7 @@ function ActivationPage() {
         className="min-h-screen flex items-center justify-center px-4"
         style={{ backgroundColor: "var(--background)" }}
       >
-        <div className="max-w-sm text-center">
+        <div className="max-w-md text-center">
           <div
             className="mx-auto mb-6 rounded-full flex items-center justify-center"
             style={{
@@ -272,20 +274,71 @@ function ActivationPage() {
             <Check size={36} strokeWidth={1.8} />
           </div>
           <h1 style={{ fontSize: 26, fontWeight: 500, letterSpacing: "-0.01em" }}>
-            Bienvenue {invitation.first_name}
+            {isPreview ? `Bienvenue ${invitation.first_name}` : "Plus qu'une étape"}
           </h1>
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--muted-foreground)",
-              marginTop: 8,
-              lineHeight: 1.6,
-            }}
-          >
-            {isPreview
-              ? "Aperçu terminé. Dans la vraie vie, le compte est créé et l'employé arrive sur son espace."
-              : "Votre compte est activé. Redirection vers votre espace..."}
-          </p>
+          {isPreview ? (
+            <p
+              style={{
+                fontSize: 14,
+                color: "var(--muted-foreground)",
+                marginTop: 8,
+                lineHeight: 1.6,
+              }}
+            >
+              Aperçu terminé. Dans la vraie vie, l'employé reçoit un email de
+              confirmation à cette étape, puis arrive sur son espace.
+            </p>
+          ) : (
+            <>
+              <p
+                style={{
+                  fontSize: 14,
+                  color: "var(--foreground)",
+                  marginTop: 10,
+                  lineHeight: 1.6,
+                }}
+              >
+                On vient de vous envoyer un email à
+                <br />
+                <span style={{ fontWeight: 500 }}>{invitation.email}</span>
+              </p>
+              <div
+                className="mt-5 rounded-xl border text-left p-4"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--card)",
+                }}
+              >
+                <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
+                  Pour finaliser votre compte :
+                </p>
+                <ol
+                  style={{
+                    fontSize: 13,
+                    color: "var(--muted-foreground)",
+                    lineHeight: 1.7,
+                    paddingLeft: 18,
+                    listStyle: "decimal",
+                  }}
+                >
+                  <li>Ouvrez votre boîte mail</li>
+                  <li>Cliquez sur le lien de confirmation</li>
+                  <li>Vous serez automatiquement redirigé vers votre espace</li>
+                </ol>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--muted-foreground)",
+                    marginTop: 10,
+                    fontStyle: "italic",
+                  }}
+                >
+                  Pensez à vérifier vos spams si vous ne voyez rien dans les
+                  prochaines minutes.
+                </p>
+              </div>
+            </>
+          )}
           {isPreview && (
             <div className="mt-6 flex flex-col gap-2">
               <button
