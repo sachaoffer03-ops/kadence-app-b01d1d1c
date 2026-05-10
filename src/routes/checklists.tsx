@@ -181,7 +181,7 @@ function ChecklistsPage() {
               Aucun template pour ce studio. Crée le premier.
             </div>
           )}
-          {templates.map(cl => {
+          {studioTemplates.map(cl => {
             const rc = roleColors[cl.business_role];
             const isSelected = cl.id === selected;
             return (
