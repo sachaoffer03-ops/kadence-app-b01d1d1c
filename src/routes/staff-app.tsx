@@ -332,12 +332,24 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
 
   const monthLabel = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
+  const hasAnyShift = shifts.length > 0;
+
   return (
     <div className="px-5 pt-6">
       <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 4 }}>Mon planning</div>
       <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16, textTransform: "capitalize" }}>{monthLabel}</div>
 
-      {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : (
+      {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : !hasAnyShift ? (
+        <div className="rounded-xl px-5 py-6 flex flex-col items-center text-center gap-2" style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)" }}>
+          <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, backgroundColor: "var(--coral-light)" }}>
+            <Sparkles size={20} style={{ color: "var(--coral-dark)" }} />
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>Planning en préparation</div>
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, maxWidth: 280 }}>
+            Tes shifts s'afficheront ici dès que l'admin aura généré le planning du mois à partir des dispos de toute l'équipe.
+          </div>
+        </div>
+      ) : (
         <div className="flex flex-col gap-2">
           {days.map(day => {
             const dayShifts = shifts.filter((s) => s.shift_date === day.iso);
