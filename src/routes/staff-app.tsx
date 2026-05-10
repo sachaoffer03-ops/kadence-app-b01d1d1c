@@ -74,6 +74,8 @@ function StaffAppPage() {
 
   if (!user) return <div className="p-8" style={{ fontSize: 13 }}>Chargement…</div>;
 
+  const [notifOpen, setNotifOpen] = useState(false);
+
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#FAF8F4", maxWidth: 430, margin: "0 auto", position: "relative" }}>
       {isAdminPreviewing && (
@@ -82,6 +84,13 @@ function StaffAppPage() {
           <ArrowLeft size={12} /> Retour admin
         </Link>
       )}
+      {/* Cloche notifications globale */}
+      <button onClick={() => setNotifOpen(true)} aria-label="Notifications"
+        className="rounded-full flex items-center justify-center"
+        style={{ position: "fixed", top: 14, right: 14, zIndex: 50, width: 38, height: 38, backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
+        <Bell size={16} strokeWidth={1.6} style={{ color: "var(--foreground)" }} />
+      </button>
+
       <div className="flex-1 overflow-y-auto pb-20">
         {tab === "accueil" && <AccueilTab profile={profile} studios={studios} userId={user.id} />}
         {tab === "planning" && <PlanningTab studios={studios} userId={user.id} />}
@@ -89,6 +98,8 @@ function StaffAppPage() {
         {tab === "chat" && <ChatPanel meId={user.id} peerId={adminId} peerName={adminName} />}
         {tab === "profil" && <ProfilTab profile={profile} businessRoles={businessRoles} studios={studios} onNavigate={setTab} />}
       </div>
+
+      <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} />
 
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-around border-t"
         style={{ width: "100%", maxWidth: 430, height: 64, backgroundColor: "#FFFFFF", borderColor: "rgba(0,0,0,0.08)" }}>
