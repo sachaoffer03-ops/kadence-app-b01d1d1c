@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Home, Calendar, CalendarCheck, User, ChevronRight, Clock, GraduationCap, QrCode, ClipboardCheck, ArrowLeft } from "lucide-react";
+import { Home, Calendar, CalendarCheck, User, ChevronRight, Clock, GraduationCap, QrCode, ClipboardCheck, ArrowLeft, CheckSquare } from "lucide-react";
 import { roleColors, getQuotaStatus, type Role } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { EndShiftSheet } from "@/components/staff-app/EndShiftSheet";
+import type { ShiftRow as ShiftRowShared } from "@/components/staff-app/shared";
 
 export const Route = createFileRoute("/staff-app")({
   component: StaffAppPage,
@@ -93,6 +95,7 @@ function AccueilTab({ profile, studios, onNavigate }: { profile: ProfileRow | nu
   const { user } = useAuth();
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [weekStats, setWeekStats] = useState({ hours: 0, count: 0 });
+  const [endShift, setEndShift] = useState<ShiftRow | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -172,8 +175,8 @@ function AccueilTab({ profile, studios, onNavigate }: { profile: ProfileRow | nu
               <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{role} · {studioName.replace("Skult ", "")}</div>
             </div>
             {active && (
-              <button onClick={() => toast.success("Pointage enregistré", { description: `${role} · ${studioName}` })} className="rounded-md px-3 py-1.5 flex items-center gap-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "#fff" }}>
-                <QrCode size={12} /> Pointer
+              <button onClick={() => setEndShift(s)} className="rounded-md px-3 py-1.5 flex items-center gap-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "#fff" }}>
+                <CheckSquare size={12} /> Fin de shift
               </button>
             )}
             <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />

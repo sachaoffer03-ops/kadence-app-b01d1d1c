@@ -38,6 +38,106 @@ export type Database = {
         }
         Relationships: []
       }
+      feedbacks: {
+        Row: {
+          admin_reply: string | null
+          author_id: string
+          created_at: string
+          id: string
+          message: string | null
+          rating: number
+          read_at: string | null
+          shift_id: string | null
+        }
+        Insert: {
+          admin_reply?: string | null
+          author_id: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          rating: number
+          read_at?: string | null
+          shift_id?: string | null
+        }
+        Update: {
+          admin_reply?: string | null
+          author_id?: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          rating?: number
+          read_at?: string | null
+          shift_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedbacks_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formation_completions: {
+        Row: {
+          completed_at: string
+          formation_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          formation_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          formation_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formation_completions_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formations: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_min: number | null
+          id: string
+          required_role: Database["public"]["Enums"]["business_role"] | null
+          title: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_min?: number | null
+          id?: string
+          required_role?: Database["public"]["Enums"]["business_role"] | null
+          title: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_min?: number | null
+          id?: string
+          required_role?: Database["public"]["Enums"]["business_role"] | null
+          title?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -99,6 +199,53 @@ export type Database = {
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modification_requests: {
+        Row: {
+          admin_response: string | null
+          created_at: string
+          id: string
+          reason: string
+          resolved_at: string | null
+          shift_id: string | null
+          status: Database["public"]["Enums"]["modification_status"]
+          type: Database["public"]["Enums"]["modification_type"]
+          urgency: Database["public"]["Enums"]["modification_urgency"]
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string
+          id?: string
+          reason: string
+          resolved_at?: string | null
+          shift_id?: string | null
+          status?: Database["public"]["Enums"]["modification_status"]
+          type: Database["public"]["Enums"]["modification_type"]
+          urgency?: Database["public"]["Enums"]["modification_urgency"]
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          resolved_at?: string | null
+          shift_id?: string | null
+          status?: Database["public"]["Enums"]["modification_status"]
+          type?: Database["public"]["Enums"]["modification_type"]
+          urgency?: Database["public"]["Enums"]["modification_urgency"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modification_requests_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -195,9 +342,116 @@ export type Database = {
           },
         ]
       }
+      shift_checklist_items: {
+        Row: {
+          checked_at: string | null
+          created_at: string
+          id: string
+          label: string
+          photo_url: string | null
+          position: number
+          shift_id: string
+        }
+        Insert: {
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          photo_url?: string | null
+          position: number
+          shift_id: string
+        }
+        Update: {
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          photo_url?: string | null
+          position?: number
+          shift_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_checklist_items_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_handoffs: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          message: string
+          shift_id: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          message: string
+          shift_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          shift_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_handoffs_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_reports: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          message: string
+          resolved: boolean
+          shift_id: string | null
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          message: string
+          resolved?: boolean
+          shift_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          resolved?: boolean
+          shift_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_reports_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shifts: {
         Row: {
           business_role: Database["public"]["Enums"]["business_role"]
+          clocked_in_at: string | null
+          clocked_out_at: string | null
           created_at: string
           end_time: string
           id: string
@@ -211,6 +465,8 @@ export type Database = {
         }
         Insert: {
           business_role: Database["public"]["Enums"]["business_role"]
+          clocked_in_at?: string | null
+          clocked_out_at?: string | null
           created_at?: string
           end_time: string
           id?: string
@@ -224,6 +480,8 @@ export type Database = {
         }
         Update: {
           business_role?: Database["public"]["Enums"]["business_role"]
+          clocked_in_at?: string | null
+          clocked_out_at?: string | null
           created_at?: string
           end_time?: string
           id?: string
@@ -238,6 +496,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "shifts_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signalements: {
+        Row: {
+          author_id: string
+          category: Database["public"]["Enums"]["signalement_category"]
+          created_at: string
+          id: string
+          message: string
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          studio_id: string | null
+        }
+        Insert: {
+          author_id: string
+          category: Database["public"]["Enums"]["signalement_category"]
+          created_at?: string
+          id?: string
+          message: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          studio_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          category?: Database["public"]["Enums"]["signalement_category"]
+          created_at?: string
+          id?: string
+          message?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          studio_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signalements_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "studios"
@@ -304,6 +606,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_see_handoff: {
+        Args: { _from_shift_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -318,8 +624,12 @@ export type Database = {
       business_role: "Barista" | "Accueil" | "Host" | "Cuisine"
       contract_type: "Étudiant" | "Flexi" | "CDI"
       invitation_status: "pending" | "accepted" | "expired" | "revoked"
+      modification_status: "pending" | "accepted" | "refused"
+      modification_type: "swap" | "cancel" | "time_change" | "unavailable"
+      modification_urgency: "normal" | "urgent" | "critique"
       profile_status: "invited" | "active" | "suspended"
       shift_status: "scheduled" | "completed" | "cancelled" | "open"
+      signalement_category: "stock" | "materiel" | "hygiene" | "autre"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -452,8 +762,12 @@ export const Constants = {
       business_role: ["Barista", "Accueil", "Host", "Cuisine"],
       contract_type: ["Étudiant", "Flexi", "CDI"],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
+      modification_status: ["pending", "accepted", "refused"],
+      modification_type: ["swap", "cancel", "time_change", "unavailable"],
+      modification_urgency: ["normal", "urgent", "critique"],
       profile_status: ["invited", "active", "suspended"],
       shift_status: ["scheduled", "completed", "cancelled", "open"],
+      signalement_category: ["stock", "materiel", "hygiene", "autre"],
     },
   },
 } as const
