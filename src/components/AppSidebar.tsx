@@ -74,8 +74,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       {/* Logo */}
-      <div className="px-4 pt-6 pb-5 flex flex-col items-center">
-        <img src={logo} alt="Kadence" style={{ height: 80, width: "auto", maxWidth: "100%", display: "block" }} />
+      <div className="px-4 pt-6 pb-5">
+        <img src={logo} alt="Kadence" style={{ height: 80, width: "auto", maxWidth: "100%", display: "block", marginLeft: "auto", marginRight: "auto" }} />
         <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 6 }}>Skult Studios</div>
       </div>
 
