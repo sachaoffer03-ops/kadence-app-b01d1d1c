@@ -247,6 +247,7 @@ function EmployeeDetailPage() {
           </div>
 
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>Shifts récents</div>
             <div className="flex flex-col gap-1">
               {recentShifts.map((s, i) => (
                 <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors" style={{ cursor: "pointer" }}
