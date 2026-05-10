@@ -11,6 +11,7 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function DashboardPage() {
+  const navigate = useNavigate();
   return (
     <div className="p-4 md:p-6">
       {/* Hero */}
