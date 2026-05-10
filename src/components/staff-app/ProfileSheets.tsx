@@ -159,45 +159,76 @@ export function DocumentsSheet({ open, onClose }: { open: boolean; onClose: () =
 }
 
 /* ─── NotificationsSheet ─── */
-interface Notif { id: string; title: string; body: string; date: string; read: boolean; }
+import { useStaffNotifications } from "@/hooks/use-staff-notifications";
+import { Calendar, Replace as ReplaceIcon, MessageCircle } from "lucide-react";
 
-export function NotificationsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [notifs, setNotifs] = useState<Notif[]>([
-    { id: "1", title: "Nouveau planning publié", body: "Ton planning de la semaine prochaine est en ligne.", date: "Il y a 2h", read: false },
-    { id: "2", title: "Demande acceptée", body: "Sacha a accepté ton échange du 14 mai.", date: "Hier", read: false },
-    { id: "3", title: "Nouvelle formation disponible", body: "« Le menu Skult » a été ajoutée à ton parcours.", date: "Il y a 2 jours", read: true },
-    { id: "4", title: "Rappel pointage", body: "Pense à pointer en arrivant et en partant.", date: "Il y a 4 jours", read: true },
-  ]);
+function fmtRelative(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "À l'instant";
+  if (m < 60) return `Il y a ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `Il y a ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return "Hier";
+  if (d < 7) return `Il y a ${d} j`;
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
 
-  const markAllRead = () => setNotifs(prev => prev.map(n => ({ ...n, read: true })));
-  const unread = notifs.filter(n => !n.read).length;
+export function NotificationsSheet({ open, onClose, userId }: { open: boolean; onClose: () => void; userId: string }) {
+  const { items, unread, markAllRead } = useStaffNotifications(userId);
+
+  // Marquer comme lu à la fermeture
+  useEffect(() => {
+    if (!open && unread > 0) markAllRead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const iconFor = (kind: string) => {
+    if (kind === "shift") return Calendar;
+    if (kind === "request") return ReplaceIcon;
+    if (kind === "message") return MessageCircle;
+    return Bell;
+  };
 
   return (
     <Sheet open={open} onClose={onClose} title="Notifications">
       <div className="flex items-center justify-between mb-3">
-        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{unread} non lue{unread > 1 ? "s" : ""}</div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          {unread > 0 ? `${unread} non lue${unread > 1 ? "s" : ""}` : "Tout est à jour"}
+        </div>
         {unread > 0 && (
           <button onClick={markAllRead} style={{ fontSize: 11, fontWeight: 500, color: "var(--coral-dark)" }}>
             Tout marquer lu
           </button>
         )}
       </div>
-      <div className="flex flex-col gap-2">
-        {notifs.map(n => (
-          <div key={n.id} className="rounded-xl px-4 py-3 flex gap-3"
-            style={{ backgroundColor: n.read ? "#fff" : "var(--coral-light)", border: "0.5px solid rgba(0,0,0,0.08)" }}>
-            <div className="rounded-full flex items-center justify-center mt-0.5"
-              style={{ width: 28, height: 28, backgroundColor: n.read ? "var(--muted)" : "var(--coral)", color: n.read ? "var(--muted-foreground)" : "var(--coral-text)" }}>
-              {n.read ? <Check size={12} /> : <Bell size={12} />}
-            </div>
-            <div className="flex-1">
-              <div style={{ fontSize: 13, fontWeight: 500 }}>{n.title}</div>
-              <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>{n.body}</div>
-              <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 4 }}>{n.date}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {items.length === 0 ? (
+        <div className="rounded-lg px-4 py-6 text-center" style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", fontSize: 12, color: "var(--muted-foreground)" }}>
+          Aucune notification pour l'instant.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {items.map(n => {
+            const Icon = iconFor(n.kind);
+            return (
+              <div key={n.id} className="rounded-xl px-4 py-3 flex gap-3"
+                style={{ backgroundColor: n.read ? "#fff" : "var(--coral-light)", border: "0.5px solid rgba(0,0,0,0.08)" }}>
+                <div className="rounded-full flex items-center justify-center mt-0.5"
+                  style={{ width: 28, height: 28, backgroundColor: n.read ? "var(--muted)" : "var(--coral)", color: n.read ? "var(--muted-foreground)" : "var(--coral-text)" }}>
+                  {n.read ? <Check size={12} /> : <Icon size={12} />}
+                </div>
+                <div className="flex-1">
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{n.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>{n.body}</div>
+                  <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 4 }}>{fmtRelative(n.date)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </Sheet>
   );
 }
+
