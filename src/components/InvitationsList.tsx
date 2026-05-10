@@ -296,7 +296,7 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
                   onResend={() => resendEmail(inv)}
                   onRevoke={() => revoke(inv)}
                   onPreview={() =>
-                    navigate({ to: "/activation", search: { token: "", preview: inv.id } })
+                    window.open(`/activation?preview=${inv.id}`, "_blank", "noopener")
                   }
                 />
               ))}
