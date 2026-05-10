@@ -100,6 +100,14 @@ export function InviteEmployeeModal({ open, onClose, onCreated }: Props) {
   const inputCls = "mt-1 w-full rounded-md border px-3 py-2 outline-none";
   const inputStyle = { fontSize: 14, borderColor: "var(--border)", backgroundColor: "var(--background)" };
 
+  const chip = (active: boolean) => ({
+    fontSize: 12,
+    fontWeight: active ? 500 as const : 400 as const,
+    backgroundColor: active ? "var(--foreground)" : "transparent",
+    color: active ? "var(--card)" : "var(--muted-foreground)",
+    border: active ? "none" : "0.5px solid var(--border)",
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} onClick={handleClose}>
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }} onClick={(e) => e.stopPropagation()}>
