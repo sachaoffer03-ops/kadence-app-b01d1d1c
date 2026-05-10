@@ -31,7 +31,7 @@ export const Route = createFileRoute("/studios")({
   head: () => ({ meta: [{ title: "Studios & postes — Shyft" }] }),
 });
 
-const studioTabs = ["Skult Rhodes", "Skult Châtelain", "+ Nouveau studio"] as const;
+const baseStudioTabs: Studio[] = ["Skult Rhodes", "Skult Châtelain"];
 const subTabs = [
   "Informations",
   "Horaires d'ouverture",
