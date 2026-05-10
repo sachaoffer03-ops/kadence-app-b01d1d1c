@@ -3,7 +3,7 @@ import { employees, roleColors, getQuotaStatus, getInitials, type Employee, type
 import { Search, X, ArrowLeft, ArrowRight, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { InviteEmployeeModal } from "@/components/InviteEmployeeModal";
-import { CreateShiftModal } from "@/components/CreateShiftModal";
+
 
 export const Route = createFileRoute("/staff/")({
   component: StaffPage,
