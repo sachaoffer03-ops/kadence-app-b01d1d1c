@@ -493,6 +493,9 @@ function PlanningPage() {
   const holes = studioShifts.filter((s) => s.hole);
   const roleTotals = roles.map((r) => ({ role: r, count: realShifts.filter((s) => s.role === r).length }));
 
+  const [published, setPublished] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+
   const goToday = () => { setMonth(now.getMonth()); setYear(now.getFullYear()); setWeekOffset(0); };
   const goPrev = () => setWeekOffset((w) => w - 1);
   const goNext = () => setWeekOffset((w) => w + 1);
@@ -505,7 +508,51 @@ function PlanningPage() {
       return { ...s, hole: false, employeeId: emp.id, name: `${emp.firstName} ${emp.lastName.charAt(0)}.`, confirmation: "en-attente", phone: emp.phone };
     }));
     setHoleShift(null);
+    toast.success(`${emp.firstName} ${emp.lastName.charAt(0)}. assigné·e au shift`);
   };
+
+  const handleDeleteShift = (id: string) => {
+    setShifts((prev) => prev.filter((s) => s.id !== id));
+    setSelectedShift(null);
+    toast.success("Shift supprimé");
+  };
+
+  const handleUpdateSlot = (id: string, slot: number) => {
+    const def = timeSlotDefs[slot];
+    setShifts((prev) => prev.map((s) => s.id === id ? { ...s, slot, time: def.time, startHour: def.start, endHour: def.end } : s));
+    setSelectedShift((cur) => cur && cur.id === id ? { ...cur, slot, time: def.time, startHour: def.start, endHour: def.end } : cur);
+    toast.success("Horaire mis à jour");
+  };
+
+  const handleConfirmShift = (id: string) => {
+    setShifts((prev) => prev.map((s) => s.id === id ? { ...s, confirmation: "confirmé" } : s));
+    setSelectedShift((cur) => cur && cur.id === id ? { ...cur, confirmation: "confirmé" } : cur);
+    toast.success("Shift confirmé");
+  };
+
+  const handleAddShift = (empId: string, day: number, slot: number, role: Role) => {
+    const emp = employees.find((e) => e.id === empId);
+    if (!emp) return;
+    const def = timeSlotDefs[slot];
+    const newShift: PlanningShift = {
+      id: `new-${Date.now()}`,
+      day, slot, employeeId: emp.id,
+      name: `${emp.firstName} ${emp.lastName.charAt(0)}.`,
+      role, studio: selectedStudio,
+      time: def.time, startHour: def.start, endHour: def.end,
+      confirmation: "en-attente", pointage: "non-pointé",
+      phone: emp.phone,
+    };
+    setShifts((prev) => [...prev, newShift]);
+    setShowAdd(false);
+    toast.success(`Shift ajouté pour ${emp.firstName}`);
+  };
+
+  const handlePublish = () => {
+    setPublished(true);
+    toast.success("Planning publié — notifications envoyées à l'équipe");
+  };
+
 
   // Compute ISO-ish week number
   const weekNumber = useMemo(() => {
