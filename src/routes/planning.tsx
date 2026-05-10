@@ -853,28 +853,55 @@ function AddShiftModal({ studio, onClose, onAdd }: { studio: Studio; onClose: ()
           </button>
         </div>
         <div className="px-5 py-4 flex flex-col gap-3">
-          <Field label="Jour">
-            <select value={day} onChange={(e) => setDay(Number(e.target.value))} className="w-full rounded-md px-2 py-2 outline-none" style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
-              {dayNamesFull.slice(1).concat(dayNamesFull[0]).map((d, i) => (
-                <option key={i} value={i}>{d}</option>
-              ))}
-            </select>
-          </Field>
+          {(() => {
+            const dayLabels = dayNamesFull.slice(1).concat(dayNamesFull[0]);
+            return (
+              <Field label="Jour">
+                <Dropdown
+                  value={dayLabels[day]}
+                  options={dayLabels}
+                  onChange={(v) => setDay(dayLabels.indexOf(v))}
+                  minWidth={220}
+                />
+              </Field>
+            );
+          })()}
           <Field label="Créneau">
-            <select value={slot} onChange={(e) => setSlot(Number(e.target.value))} className="w-full rounded-md px-2 py-2 outline-none" style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
-              {timeSlotDefs.map((s, i) => <option key={i} value={i}>{s.time}</option>)}
-            </select>
+            <Dropdown
+              value={timeSlotDefs[slot].time}
+              options={timeSlotDefs.map(s => s.time)}
+              onChange={(v) => {
+                const idx = timeSlotDefs.findIndex(s => s.time === v);
+                if (idx >= 0) setSlot(idx);
+              }}
+              minWidth={220}
+            />
           </Field>
           <Field label="Poste">
-            <select value={role} onChange={(e) => { setRole(e.target.value as Role); setEmpId(""); }} className="w-full rounded-md px-2 py-2 outline-none" style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
-              {roles.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+            <Dropdown
+              value={role}
+              options={roles as readonly string[] as string[]}
+              onChange={(v) => { setRole(v as Role); setEmpId(""); }}
+              minWidth={220}
+            />
           </Field>
           <Field label="Employé">
-            <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="w-full rounded-md px-2 py-2 outline-none" style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
-              <option value="">— Sélectionner —</option>
-              {eligible.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
-            </select>
+            {(() => {
+              const empOptions = ["— Sélectionner —", ...eligible.map(e => `${e.firstName} ${e.lastName}`)];
+              const current = empId ? (() => { const e = eligible.find(e => e.id === empId); return e ? `${e.firstName} ${e.lastName}` : "— Sélectionner —"; })() : "— Sélectionner —";
+              return (
+                <Dropdown
+                  value={current}
+                  options={empOptions}
+                  onChange={(v) => {
+                    if (v === "— Sélectionner —") { setEmpId(""); return; }
+                    const found = eligible.find(e => `${e.firstName} ${e.lastName}` === v);
+                    setEmpId(found?.id || "");
+                  }}
+                  minWidth={220}
+                />
+              );
+            })()}
           </Field>
         </div>
         <div className="flex gap-2 px-5 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
