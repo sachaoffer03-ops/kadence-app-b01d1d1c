@@ -415,7 +415,9 @@ function PathCard({
                 {editing && (
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => renameModule(mod.id, mod.title)} className="rounded-md p-1" style={{ color: "var(--muted-foreground)" }}><Pencil size={11} /></button>
-                    <button onClick={() => addVideo(mod.id)} className="rounded-md p-1 flex items-center gap-1" style={{ fontSize: 10, color: "var(--coral-dark)" }}><Plus size={11} /> vidéo</button>
+                    <button onClick={() => onUpload(mod.id)} disabled={uploading === mod.id} className="rounded-md p-1 flex items-center gap-1" style={{ fontSize: 10, color: "var(--coral-dark)" }}>
+                      {uploading === mod.id ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />} {uploading === mod.id ? "Upload..." : "vidéo"}
+                    </button>
                     <button onClick={() => deleteModule(mod.id)} className="rounded-md p-1" style={{ color: "var(--danger-text)" }}><Trash2 size={11} /></button>
                   </div>
                 )}
