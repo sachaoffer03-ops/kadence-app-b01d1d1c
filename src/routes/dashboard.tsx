@@ -134,8 +134,8 @@ function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-5">
         <KpiCard label="7 derniers jours" value={data.weekCount.toString()} unit="shifts" change="Plage glissante" changeColor="var(--muted-foreground)" />
         <KpiCard label="Heures prestées" value={data.totalHours.toString()} unit="h" change="7 derniers jours" changeColor="var(--muted-foreground)" />
-        <KpiCard label="Demandes en attente" value={data.pendingRequests.toString()} unit="" change="À traiter" changeColor={data.pendingRequests > 0 ? "var(--warning-text)" : "var(--success-text)"} />
-        <KpiCard label="Signalements ouverts" value={data.pendingSignalements.toString()} unit="" change="À résoudre" changeColor={data.pendingSignalements > 0 ? "var(--warning-text)" : "var(--success-text)"} />
+        <KpiCard label="Demandes en attente" value={data.pendingRequests.toString()} unit="" change="À traiter" changeColor={data.pendingRequests > 0 ? "var(--warning-text)" : "var(--success-text)"} onClick={() => navigate({ to: "/demandes" })} />
+        <KpiCard label="Signalements ouverts" value={data.pendingSignalements.toString()} unit="" change="À résoudre" changeColor={data.pendingSignalements > 0 ? "var(--warning-text)" : "var(--success-text)"} onClick={() => navigate({ to: "/signalements" })} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mt-5">
@@ -212,9 +212,17 @@ function HeroStat({ value, label, accent }: { value: string; label: string; acce
   );
 }
 
-function KpiCard({ label, value, unit, change, changeColor }: { label: string; value: string; unit: string; change: string; changeColor: string }) {
+function KpiCard({ label, value, unit, change, changeColor, onClick }: { label: string; value: string; unit: string; change: string; changeColor: string; onClick?: () => void }) {
   return (
-    <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+    <div
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className="rounded-xl border p-4 transition-colors"
+      style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", cursor: onClick ? "pointer" : undefined }}
+      onMouseEnter={onClick ? (e) => (e.currentTarget.style.backgroundColor = "var(--muted)") : undefined}
+      onMouseLeave={onClick ? (e) => (e.currentTarget.style.backgroundColor = "var(--card)") : undefined}
+    >
       <div style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{label}</div>
       <div className="flex items-baseline gap-1">
         <span style={{ fontSize: 24, fontWeight: 500 }}>{value}</span>
