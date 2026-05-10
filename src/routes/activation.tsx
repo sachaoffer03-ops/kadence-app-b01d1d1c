@@ -207,7 +207,7 @@ function ActivationPage() {
     }
     setSubmitting(false);
     setDone(true);
-    setTimeout(() => navigate({ to: "/staff-app" }), 1800);
+    // No auto-redirect: user must confirm their email first.
   };
 
   // ───── render states ─────
