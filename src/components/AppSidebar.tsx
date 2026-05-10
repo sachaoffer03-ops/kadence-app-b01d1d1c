@@ -120,7 +120,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                         height: 18,
                         padding: "0 5px",
                         backgroundColor: item.badgeType === "danger" ? "var(--danger-bg)" : "var(--muted)",
-                        color: item.badgeType === "danger" ? "var(--muted-foreground)" : "var(--muted-foreground)",
+                        color: item.badgeType === "danger" ? "var(--danger-text)" : "var(--muted-foreground)",
                       }}
                     >
                       {item.badge}
