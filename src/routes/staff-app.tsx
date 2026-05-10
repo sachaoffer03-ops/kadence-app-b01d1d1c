@@ -44,7 +44,7 @@ function StaffAppPage() {
 }
 
 /* ─── ACCUEIL ─── */
-function AccueilTab() {
+function AccueilTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const shifts = [
     { date: "Aujourd'hui", time: '07h — 12h', role: 'Barista' as Role, studio: 'Skult Rhodes', active: true },
     { date: 'Demain', time: '10h — 15h', role: 'Barista' as Role, studio: 'Skult Rhodes', active: false },
