@@ -177,8 +177,16 @@ function FormationPage() {
         <MiniKpi label="Complétion moyenne" value={paths.length ? `${Math.round(paths.reduce((s, p) => s + p.avgCompletion, 0) / paths.length)}%` : "—"} />
         <MiniKpi label="Staff formé (commun)" value={`${Math.round(employees.length * 0.78)}`} sub={`/ ${employees.length}`} />
         <MiniKpi label="Vidéos totales" value={totalVideos.toString()} />
-        <MiniKpi label="En retard" value={lateCount.toString()} color="var(--warning-text)" sub="employés" />
+        <MiniKpi label="En retard" value={lateCount.toString()} color="var(--warning-text)" sub="employés" onClick={() => setShowLate(true)} />
       </div>
+
+      {showLate && (
+        <LateEmployeesModal
+          employees={lateEmployees}
+          onClose={() => setShowLate(false)}
+          onRemind={(name) => toast.success(`Rappel envoyé à ${name}`)}
+          onRemindAll={() => { toast.success(`Rappel envoyé à ${lateCount} employés`); setShowLate(false); }}
+        />
 
       {creating && <CreatePathForm onCancel={() => setCreating(false)} onCreate={addPath} />}
 
