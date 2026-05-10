@@ -18,7 +18,10 @@ import logo from "@/assets/kadence-logo.png";
 
 export const Route = createFileRoute("/activation")({
   component: ActivationPage,
-  validateSearch: (s: Record<string, unknown>) => ({ token: (s.token as string) || "" }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    token: (s.token as string) || "",
+    preview: (s.preview as string) || "",
+  }),
   head: () => ({ meta: [{ title: "Activation du compte — Kadence" }] }),
 });
 
