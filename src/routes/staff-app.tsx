@@ -84,11 +84,7 @@ function StaffAppPage() {
         </Link>
       )}
       {/* Cloche notifications globale */}
-      <button onClick={() => setNotifOpen(true)} aria-label="Notifications"
-        className="rounded-full flex items-center justify-center"
-        style={{ position: "fixed", top: 14, right: 14, zIndex: 50, width: 38, height: 38, backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
-        <Bell size={16} strokeWidth={1.6} style={{ color: "var(--foreground)" }} />
-      </button>
+      <BellButton userId={user.id} onOpen={() => setNotifOpen(true)} />
 
       <div className="flex-1 overflow-y-auto pb-20">
         {tab === "accueil" && <AccueilTab profile={profile} studios={studios} userId={user.id} />}
@@ -98,7 +94,7 @@ function StaffAppPage() {
         {tab === "profil" && <ProfilTab profile={profile} businessRoles={businessRoles} studios={studios} onNavigate={setTab} />}
       </div>
 
-      <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} />
+      <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} userId={user.id} />
 
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-around border-t"
         style={{ width: "100%", maxWidth: 430, height: 64, backgroundColor: "#FFFFFF", borderColor: "rgba(0,0,0,0.08)" }}>
