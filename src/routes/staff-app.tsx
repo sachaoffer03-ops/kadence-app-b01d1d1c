@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   Home, Calendar, User, ChevronRight, Clock, GraduationCap, ArrowLeft, CheckSquare,
   AlertCircle, Replace, Inbox, MessageCircle, CalendarCheck, CheckCircle2, Phone,
-  MapPin, Cake, CreditCard, Hash, AlertTriangle, Mail
+  MapPin, Cake, CreditCard, Hash, Mail, Bell, Sparkles
 } from "lucide-react";
 import { roleColors, getQuotaStatus, type Role } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
