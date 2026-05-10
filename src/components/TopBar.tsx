@@ -41,8 +41,9 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
     e.preventDefault();
     const q = searchValue.trim();
     if (!q) return;
-    navigate({ to: "/staff", search: { q } as never });
+    navigate({ to: "/staff" });
     setSearchOpen(false);
+    setSearchValue("");
   };
 
   const notifications = [
