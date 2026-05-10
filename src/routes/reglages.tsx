@@ -4,7 +4,7 @@ import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock } from "l
 
 export const Route = createFileRoute("/reglages")({
   component: ReglagesPage,
-  head: () => ({ meta: [{ title: "Réglages — Shifty" }] }),
+  head: () => ({ meta: [{ title: "Réglages — Shyft" }] }),
 });
 
 const tabs = [
@@ -22,7 +22,7 @@ function ReglagesPage() {
     <div className="p-6">
       <div className="mb-5">
         <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Réglages</h1>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Configuration générale de Shifty.</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Configuration générale de Shyft.</p>
       </div>
 
       <div className="flex gap-6">

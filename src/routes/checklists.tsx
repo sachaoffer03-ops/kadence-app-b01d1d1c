@@ -6,7 +6,7 @@ import { checklistTemplates as initial, roleColors, type ChecklistTemplate, type
 
 export const Route = createFileRoute("/checklists")({
   component: ChecklistsPage,
-  head: () => ({ meta: [{ title: "Checklists — Shifty" }] }),
+  head: () => ({ meta: [{ title: "Checklists — Shyft" }] }),
 });
 
 const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];

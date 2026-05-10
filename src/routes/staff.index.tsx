@@ -6,7 +6,7 @@ import { useState } from "react";
 export const Route = createFileRoute("/staff/")({
   component: StaffPage,
   head: () => ({
-    meta: [{ title: "Staff — Shifty" }],
+    meta: [{ title: "Staff — Shyft" }],
   }),
 });
 

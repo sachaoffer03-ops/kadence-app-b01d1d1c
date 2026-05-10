@@ -6,7 +6,7 @@ import { feedbackEntries, roleColors, getInitials, type FeedbackEntry, type Role
 
 export const Route = createFileRoute("/feedbacks")({
   component: FeedbacksPage,
-  head: () => ({ meta: [{ title: "Feedbacks — Shifty" }] }),
+  head: () => ({ meta: [{ title: "Feedbacks — Shyft" }] }),
 });
 
 function ratingColor(v: number) { return v >= 4 ? "var(--success-text)" : v >= 3 ? "var(--foreground)" : "var(--danger-text)"; }

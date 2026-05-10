@@ -290,7 +290,7 @@ export const trainingPaths: TrainingPath[] = [
       { id: 'm1', title: 'Notre histoire & valeurs', duration: '8 min', videos: [{ id: 'v1', title: 'L\'histoire de Skult', duration: '3:12' }, { id: 'v2', title: 'Nos valeurs au quotidien', duration: '2:45' }, { id: 'v3', title: 'Les deux studios', duration: '2:30' }] },
       { id: 'm2', title: 'Hygiène & sécurité', duration: '10 min', videos: [{ id: 'v4', title: 'Les règles HACCP', duration: '4:15' }, { id: 'v5', title: 'Lavage des mains', duration: '1:30' }, { id: 'v6', title: 'Gestion des allergènes', duration: '3:45' }] },
       { id: 'm3', title: 'Service client', duration: '12 min', videos: [{ id: 'v7', title: 'Accueillir un client', duration: '3:00' }, { id: 'v8', title: 'Gérer une plainte', duration: '4:20' }, { id: 'v9', title: 'Upselling naturel', duration: '2:50' }] },
-      { id: 'm4', title: 'L\'app Shifty', duration: '6 min', videos: [{ id: 'v10', title: 'Pointer son shift', duration: '2:00' }, { id: 'v11', title: 'Gérer ses dispos', duration: '2:15' }, { id: 'v12', title: 'Demander un changement', duration: '1:45' }] },
+      { id: 'm4', title: 'L\'app Shyft', duration: '6 min', videos: [{ id: 'v10', title: 'Pointer son shift', duration: '2:00' }, { id: 'v11', title: 'Gérer ses dispos', duration: '2:15' }, { id: 'v12', title: 'Demander un changement', duration: '1:45' }] },
     ],
   },
   {
