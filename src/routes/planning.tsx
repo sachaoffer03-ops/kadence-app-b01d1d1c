@@ -613,6 +613,29 @@ function PlanningPage() {
           })}
         </div>
 
+        {/* View mode toggle */}
+        <div className="flex rounded-full p-1" style={{ backgroundColor: "var(--muted)" }}>
+          {(["semaine", "jour"] as const).map((m) => {
+            const active = viewMode === m;
+            return (
+              <button
+                key={m}
+                onClick={() => setViewMode(m)}
+                className="rounded-full px-4 py-1.5 transition-colors"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  backgroundColor: active ? "var(--foreground)" : "transparent",
+                  color: active ? "var(--card)" : "var(--muted-foreground)",
+                  textTransform: "capitalize",
+                }}
+              >
+                {m === "semaine" ? "Semaine" : "Jour"}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-md" style={{ border: "0.5px solid var(--border)" }}>
             <button onClick={goPrev} className="p-1.5" style={{ color: "var(--muted-foreground)" }}>
