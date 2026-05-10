@@ -25,8 +25,30 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   });
   const navigate = useNavigate();
   const openNewShift = () => navigate({ to: "/planning", search: { add: true } });
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
-  const pageTitle = pageTitles[currentPath] || "Dashboard";
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchValue.trim();
+    if (!q) return;
+    navigate({ to: "/staff", search: { q } as never });
+    setSearchOpen(false);
+  };
+
+  const notifications = [
+    { id: 1, title: "Nouvelle demande de modif", desc: "Léa souhaite échanger son shift de vendredi", to: "/demandes" as const },
+  ];
 
   return (
     <header
