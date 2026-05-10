@@ -174,6 +174,25 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
     load();
   };
 
+  const validateManually = async (inv: Invitation) => {
+    if (
+      !confirm(
+        `Marquer l'invitation de ${inv.first_name} ${inv.last_name} comme acceptée ?\n\nÀ utiliser uniquement si l'employé n'arrive pas à activer son compte par email. Vous devrez alors lui transmettre ses identifiants par un autre moyen.`,
+      )
+    )
+      return;
+    const { error } = await supabase
+      .from("invitations")
+      .update({ status: "accepted", accepted_at: new Date().toISOString() })
+      .eq("id", inv.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Invitation validée manuellement");
+    load();
+  };
+
   return (
     <div>
       {/* Sub-tabs + search */}
