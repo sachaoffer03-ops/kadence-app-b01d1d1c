@@ -13,6 +13,7 @@ import {
   Mail,
   UserPlus,
   Eye,
+  CheckCheck,
 } from "lucide-react";
 
 type Status = "pending" | "accepted" | "expired" | "revoked";
@@ -173,6 +174,25 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
     load();
   };
 
+  const validateManually = async (inv: Invitation) => {
+    if (
+      !confirm(
+        `Marquer l'invitation de ${inv.first_name} ${inv.last_name} comme acceptée ?\n\nÀ utiliser uniquement si l'employé n'arrive pas à activer son compte par email. Vous devrez alors lui transmettre ses identifiants par un autre moyen.`,
+      )
+    )
+      return;
+    const { error } = await supabase
+      .from("invitations")
+      .update({ status: "accepted", accepted_at: new Date().toISOString() })
+      .eq("id", inv.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Invitation validée manuellement");
+    load();
+  };
+
   return (
     <div>
       {/* Sub-tabs + search */}
@@ -303,6 +323,7 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
                     onCopy={() => copyLink(inv.token)}
                     onResend={() => resendEmail(inv)}
                     onRevoke={() => revoke(inv)}
+                    onValidate={() => validateManually(inv)}
                     onPreview={() =>
                       window.open(`/activation?preview=${inv.id}`, "_blank", "noopener")
                     }
@@ -323,6 +344,7 @@ function Row({
   onCopy,
   onResend,
   onRevoke,
+  onValidate,
   onPreview,
 }: {
   inv: Invitation;
@@ -330,6 +352,7 @@ function Row({
   onCopy: () => void;
   onResend: () => void;
   onRevoke: () => void;
+  onValidate: () => void;
   onPreview: () => void;
 }) {
   const initials = `${inv.first_name[0] ?? ""}${inv.last_name[0] ?? ""}`.toUpperCase();
@@ -443,6 +466,9 @@ function Row({
               </IconBtn>
               <IconBtn label="Renvoyer" onClick={onResend}>
                 <Send size={13} />
+              </IconBtn>
+              <IconBtn label="Valider manuellement" onClick={onValidate}>
+                <CheckCheck size={13} />
               </IconBtn>
               <IconBtn label="Révoquer" onClick={onRevoke} danger>
                 <XCircle size={13} />
