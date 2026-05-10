@@ -14,7 +14,7 @@ const allStudios: Studio[] = ["Skult Rhodes", "Skult Châtelain"];
 function TrousPage() {
   const [studioFilter, setStudioFilter] = useState<Studio | "tous">("tous");
   const [roleFilter, setRoleFilter] = useState<Role | "tous">("tous");
-  const [expandedHole, setExpandedHole] = useState<string | null>(holeShifts[0]?.id || null);
+  const [expandedHole, setExpandedHole] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return holeShifts.filter((h) => {
