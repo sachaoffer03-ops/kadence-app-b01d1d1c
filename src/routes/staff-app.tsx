@@ -100,8 +100,10 @@ function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios:
   const [endShift, setEndShift] = useState<ShiftRow | null>(null);
   const [signalOpen, setSignalOpen] = useState(false);
   const [reqOpen, setReqOpen] = useState(false);
+  const [reqShiftId, setReqShiftId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [myReqOpen, setMyReqOpen] = useState(false);
+  const [shiftDetail, setShiftDetail] = useState<ShiftRow | null>(null);
 
   useEffect(() => {
     if (!user) return;
