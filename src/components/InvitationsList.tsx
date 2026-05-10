@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Mail,
   UserPlus,
+  Eye,
 } from "lucide-react";
 
 type Status = "pending" | "accepted" | "expired" | "revoked";
@@ -401,6 +402,12 @@ function Row({
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1 justify-end">
+          <IconBtn
+            label="Aperçu de l'onboarding"
+            onClick={() => window.open(`/activation?preview=${inv.id}`, "_blank")}
+          >
+            <Eye size={13} />
+          </IconBtn>
           {inv.status === "pending" && (
             <>
               <IconBtn label="Copier le lien" onClick={onCopy}>

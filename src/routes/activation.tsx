@@ -18,7 +18,10 @@ import logo from "@/assets/kadence-logo.png";
 
 export const Route = createFileRoute("/activation")({
   component: ActivationPage,
-  validateSearch: (s: Record<string, unknown>) => ({ token: (s.token as string) || "" }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    token: (s.token as string) || "",
+    preview: (s.preview as string) || "",
+  }),
   head: () => ({ meta: [{ title: "Activation du compte — Kadence" }] }),
 });
 
@@ -37,7 +40,8 @@ interface Invitation {
 const TOTAL_STEPS = 7; // 0 welcome, 1 password, 2 identity, 3 address, 4 rh, 5 emergency, 6 validation
 
 function ActivationPage() {
-  const { token } = Route.useSearch();
+  const { token, preview } = Route.useSearch();
+  const isPreview = !!preview;
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -63,24 +67,25 @@ function ActivationPage() {
   const [accept, setAccept] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    if (!token && !preview) {
       setError("Aucun lien d'invitation détecté");
       setLoading(false);
       return;
     }
     (async () => {
-      const { data, error } = await supabase
+      const query = supabase
         .from("invitations")
         .select(
           "id, email, first_name, last_name, phone, studio_id, contract, status, expires_at",
-        )
-        .eq("token", token)
-        .maybeSingle();
+        );
+      const { data, error } = await (isPreview
+        ? query.eq("id", preview).maybeSingle()
+        : query.eq("token", token).maybeSingle());
       if (error || !data) {
         setError("Invitation introuvable");
-      } else if (data.status !== "pending") {
+      } else if (!isPreview && data.status !== "pending") {
         setError("Cette invitation a déjà été utilisée ou révoquée");
-      } else if (new Date(data.expires_at) < new Date()) {
+      } else if (!isPreview && new Date(data.expires_at) < new Date()) {
         setError("Cette invitation a expiré. Demandez-en une nouvelle.");
       } else {
         setInvitation(data);
@@ -88,7 +93,7 @@ function ActivationPage() {
       }
       setLoading(false);
     })();
-  }, [token]);
+  }, [token, preview, isPreview]);
 
   // Password strength
   const pwStrength = useMemo(() => {
@@ -105,6 +110,7 @@ function ActivationPage() {
   const goPrev = () => setStep((s) => Math.max(0, s - 1));
 
   const validateStep = () => {
+    if (isPreview) return goNext(); // skip validation in preview mode
     if (step === 1) {
       if (password.length < 8) return toast.error("Mot de passe : 8 caractères minimum");
       if (password !== confirm) return toast.error("Les mots de passe ne correspondent pas");
@@ -126,6 +132,13 @@ function ActivationPage() {
 
   const handleSubmit = async () => {
     if (!invitation) return;
+    if (isPreview) {
+      setSubmitting(true);
+      await new Promise((r) => setTimeout(r, 600));
+      setSubmitting(false);
+      setDone(true);
+      return;
+    }
     if (invitation.contract === "Étudiant" && !studentValid)
       return toast.error("Confirmez la validité de votre carte étudiant");
     if (!accept) return toast.error("Vous devez accepter les conditions");
@@ -248,8 +261,38 @@ function ActivationPage() {
               lineHeight: 1.6,
             }}
           >
-            Votre compte est activé. Redirection vers votre espace...
+            {isPreview
+              ? "Aperçu terminé. Dans la vraie vie, le compte est créé et l'employé arrive sur son espace."
+              : "Votre compte est activé. Redirection vers votre espace..."}
           </p>
+          {isPreview && (
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                onClick={() => navigate({ to: "/staff-app" })}
+                className="rounded-md py-2.5 px-4"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  backgroundColor: "var(--coral)",
+                  color: "var(--coral-text)",
+                }}
+              >
+                Voir l'espace employé
+              </button>
+              <button
+                onClick={() => navigate({ to: "/staff" })}
+                className="rounded-md py-2.5 px-4 border"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  borderColor: "var(--border)",
+                  color: "var(--foreground)",
+                }}
+              >
+                Retour à l'admin
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -270,6 +313,14 @@ function ActivationPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+      {isPreview && (
+        <div
+          className="px-4 py-2 text-center"
+          style={{ backgroundColor: "var(--foreground)", color: "var(--card)", fontSize: 11, fontWeight: 500, letterSpacing: "0.02em" }}
+        >
+          MODE APERÇU · Aucune donnée ne sera enregistrée
+        </div>
+      )}
       {/* Top bar */}
       <header className="px-4 md:px-8 py-5 flex items-center justify-between">
         <img src={logo} alt="Kadence" style={{ height: 24, width: "auto" }} />
