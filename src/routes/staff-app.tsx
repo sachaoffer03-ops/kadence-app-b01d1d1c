@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Home, Calendar, CalendarCheck, User, ChevronRight, Clock, GraduationCap, QrCode, ClipboardCheck } from "lucide-react";
+import { Home, Calendar, CalendarCheck, User, ChevronRight, Clock, GraduationCap, QrCode, ClipboardCheck, ArrowLeft } from "lucide-react";
 import { roleColors, getQuotaStatus, type Role } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -26,7 +26,8 @@ function fmtTime(t: string) { return t.slice(0, 5).replace(":", "h"); }
 function todayISO() { return new Date().toISOString().slice(0, 10); }
 
 function StaffAppPage() {
-  const { user } = useAuth();
+  const { user, appRole } = useAuth();
+  const isAdminPreviewing = appRole === "admin" || appRole === "manager";
   const [tab, setTab] = useState<Tab>('accueil');
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [businessRoles, setBusinessRoles] = useState<Role[]>([]);
@@ -50,6 +51,19 @@ function StaffAppPage() {
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#FAF8F4", maxWidth: 430, margin: "0 auto", position: "relative" }}>
+      {isAdminPreviewing && (
+        <Link
+          to="/dashboard"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md"
+          style={{
+            position: "fixed", top: 12, left: 12, zIndex: 50,
+            fontSize: 11, fontWeight: 500,
+            backgroundColor: "var(--foreground)", color: "var(--card)",
+          }}
+        >
+          <ArrowLeft size={12} /> Retour admin
+        </Link>
+      )}
       <div className="flex-1 overflow-y-auto pb-20">
         {tab === 'accueil' && <AccueilTab profile={profile} studios={studios} onNavigate={setTab} />}
         {tab === 'planning' && <PlanningTab studios={studios} />}
