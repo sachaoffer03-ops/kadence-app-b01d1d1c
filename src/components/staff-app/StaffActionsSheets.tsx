@@ -326,10 +326,13 @@ interface MyRequest {
   id: string; type: string; reason: string; status: string; urgency: string; created_at: string; admin_response: string | null; shift_id: string | null;
 }
 interface RequestShift { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; }
+interface MyRequestRow extends MyRequest { resolved_at: string | null }
+type Tab = "ongoing" | "history";
 export function MyRequestsSheet({ open, onClose, userId }: { open: boolean; onClose: () => void; userId: string }) {
-  const [items, setItems] = useState<MyRequest[]>([]);
+  const [items, setItems] = useState<MyRequestRow[]>([]);
   const [shiftsById, setShiftsById] = useState<Record<string, RequestShift>>({});
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<Tab>("ongoing");
 
   useEffect(() => {
     if (!open) return;
