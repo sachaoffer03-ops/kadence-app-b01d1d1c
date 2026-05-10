@@ -475,13 +475,81 @@ function PathCard({
   );
 }
 
-function MiniKpi({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+function MiniKpi({ label, value, sub, color, onClick }: { label: string; value: string; sub?: string; color?: string; onClick?: () => void }) {
   return (
-    <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+    <div
+      onClick={onClick}
+      className="rounded-xl border p-4"
+      style={{
+        backgroundColor: "var(--card)",
+        borderColor: "var(--border)",
+        cursor: onClick ? "pointer" : "default",
+        transition: "border-color 120ms",
+      }}
+      onMouseEnter={(e) => { if (onClick) (e.currentTarget as HTMLDivElement).style.borderColor = "var(--coral)"; }}
+      onMouseLeave={(e) => { if (onClick) (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"; }}
+    >
       <div style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
       <div className="flex items-baseline gap-1">
         <span style={{ fontSize: 22, fontWeight: 500, color: color || "var(--foreground)" }}>{value}</span>
         {sub && <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{sub}</span>}
+        {onClick && <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginLeft: "auto" }}>Voir →</span>}
+      </div>
+    </div>
+  );
+}
+
+type LateEmp = { id: string; name: string; role: Role; studio: string; progress: number; lastSeen: string };
+
+function LateEmployeesModal({ employees, onClose, onRemind, onRemindAll }: {
+  employees: LateEmp[];
+  onClose: () => void;
+  onRemind: (name: string) => void;
+  onRemindAll: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} onClick={onClose}>
+      <div className="rounded-xl overflow-hidden w-full max-w-md mx-4" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Employés en retard</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{employees.length} personnes à relancer</div>
+          </div>
+          <button onClick={onClose} style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
+        </div>
+        <div className="flex flex-col">
+          {employees.map((e) => {
+            const rc = roleColors[e.role];
+            return (
+              <div key={e.id} className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>{e.name}</span>
+                    <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: rc.bg, color: rc.text }}>{e.role}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                    <span>{e.studio.replace("Skult ", "")}</span>
+                    <span>·</span>
+                    <span>{e.progress}% complété</span>
+                    <span>·</span>
+                    <span>{e.lastSeen}</span>
+                  </div>
+                </div>
+                <button onClick={() => onRemind(e.name)} className="rounded-md px-2.5 py-1 flex items-center gap-1"
+                  style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+                  <Bell size={11} /> Rappel
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center justify-between gap-2 px-5 py-3" style={{ backgroundColor: "var(--background)" }}>
+          <button onClick={onClose} className="rounded-md px-3 py-1.5" style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>Fermer</button>
+          <button onClick={onRemindAll} className="rounded-md px-3 py-1.5 flex items-center gap-1.5"
+            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+            <Bell size={12} /> Rappel à tous
+          </button>
+        </div>
       </div>
     </div>
   );
