@@ -94,7 +94,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     }
     localStorage.setItem(disposKey(userId, year, month), new Date().toISOString());
     setValidated(true);
-    toast.success("Planning validé pour " + monthLabel);
+    toast.success("Dispos envoyées pour " + monthLabel);
   };
 
   return (
@@ -102,7 +102,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       {validated ? (
         <div className="rounded-xl px-4 py-6 flex flex-col items-center gap-3 mb-3" style={{ backgroundColor: "var(--success-bg)" }}>
           <CheckCircle2 size={36} style={{ color: "var(--success-text)" }} />
-          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--success-text)" }}>Planning validé</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--success-text)" }}>Dispos envoyées</div>
           <div style={{ fontSize: 12, color: "var(--success-text)", textAlign: "center", textTransform: "capitalize" }}>
             Tes dispos pour {monthLabel} ont été envoyées.
           </div>
