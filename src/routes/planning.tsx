@@ -682,15 +682,19 @@ function PlanningPage() {
       {/* Grid */}
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         {/* Day headers */}
-        <div className="grid" style={{ gridTemplateColumns: "140px repeat(7, 1fr)", borderBottom: "0.5px solid var(--border)" }}>
+        <div className="grid" style={{ gridTemplateColumns: gridCols, borderBottom: "0.5px solid var(--border)" }}>
           <div className="px-4 py-3" style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>Horaire</div>
-          {weekDays.map((d, i) => {
-            const isSelected = selectedDayIdx === i;
+          {visibleDayIndices.map((i) => {
+            const d = weekDays[i];
+            const isSelected = viewMode === "jour" ? true : selectedDayIdx === i;
             const isToday = i === todayIdx;
             return (
               <button
                 key={i}
-                onClick={() => setSelectedDayIdx(isSelected ? null : i)}
+                onClick={() => {
+                  if (viewMode === "jour") return;
+                  setSelectedDayIdx(isSelected ? null : i);
+                }}
                 className="px-3 py-3 text-center transition-colors"
                 style={{
                   fontSize: 12,
@@ -698,10 +702,10 @@ function PlanningPage() {
                   borderLeft: "0.5px solid var(--border)",
                   backgroundColor: isSelected ? "var(--foreground)" : "transparent",
                   color: isSelected ? "var(--card)" : "var(--foreground)",
-                  cursor: "pointer",
+                  cursor: viewMode === "jour" ? "default" : "pointer",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 400, opacity: isSelected ? 0.7 : 0.6, marginBottom: 2 }}>{dayNamesShort[d.getDay()]}</div>
+                <div style={{ fontSize: 11, fontWeight: 400, opacity: isSelected ? 0.7 : 0.6, marginBottom: 2 }}>{viewMode === "jour" ? dayNamesFull[d.getDay()] : dayNamesShort[d.getDay()]}</div>
                 <div style={{ fontSize: 13 }}>
                   {d.getDate()} {monthNames[d.getMonth()].slice(0, 3).toLowerCase()}
                   {isToday && !isSelected && (
