@@ -13,6 +13,7 @@ import { Route as TrousRouteImport } from './routes/trous'
 import { Route as StudiosRouteImport } from './routes/studios'
 import { Route as StaffAppRouteImport } from './routes/staff-app'
 import { Route as StaffRouteImport } from './routes/staff'
+import { Route as SignalementsRouteImport } from './routes/signalements'
 import { Route as ReglagesRouteImport } from './routes/reglages'
 import { Route as PointageRouteImport } from './routes/pointage'
 import { Route as PlanningRouteImport } from './routes/planning'
@@ -46,6 +47,11 @@ const StaffAppRoute = StaffAppRouteImport.update({
 const StaffRoute = StaffRouteImport.update({
   id: '/staff',
   path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignalementsRoute = SignalementsRouteImport.update({
+  id: '/signalements',
+  path: '/signalements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReglagesRoute = ReglagesRouteImport.update({
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
   '/reglages': typeof ReglagesRoute
+  '/signalements': typeof SignalementsRoute
   '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
   '/reglages': typeof ReglagesRoute
+  '/signalements': typeof SignalementsRoute
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
   '/reglages': typeof ReglagesRoute
+  '/signalements': typeof SignalementsRoute
   '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/planning'
     | '/pointage'
     | '/reglages'
+    | '/signalements'
     | '/staff'
     | '/staff-app'
     | '/studios'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/planning'
     | '/pointage'
     | '/reglages'
+    | '/signalements'
     | '/staff-app'
     | '/studios'
     | '/trous'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/planning'
     | '/pointage'
     | '/reglages'
+    | '/signalements'
     | '/staff'
     | '/staff-app'
     | '/studios'
@@ -253,6 +265,7 @@ export interface RootRouteChildren {
   PlanningRoute: typeof PlanningRouteWithChildren
   PointageRoute: typeof PointageRoute
   ReglagesRoute: typeof ReglagesRoute
+  SignalementsRoute: typeof SignalementsRoute
   StaffRoute: typeof StaffRouteWithChildren
   StaffAppRoute: typeof StaffAppRoute
   StudiosRoute: typeof StudiosRoute
@@ -287,6 +300,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/staff'
       preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signalements': {
+      id: '/signalements'
+      path: '/signalements'
+      fullPath: '/signalements'
+      preLoaderRoute: typeof SignalementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reglages': {
@@ -426,6 +446,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlanningRoute: PlanningRouteWithChildren,
   PointageRoute: PointageRoute,
   ReglagesRoute: ReglagesRoute,
+  SignalementsRoute: SignalementsRoute,
   StaffRoute: StaffRouteWithChildren,
   StaffAppRoute: StaffAppRoute,
   StudiosRoute: StudiosRoute,
@@ -434,3 +455,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
