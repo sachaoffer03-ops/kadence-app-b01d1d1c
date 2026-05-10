@@ -496,7 +496,8 @@ function PlanningPage() {
   const roleTotals = roles.map((r) => ({ role: r, count: realShifts.filter((s) => s.role === r).length }));
 
   const [published, setPublished] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
+  const search = Route.useSearch();
+  const [showAdd, setShowAdd] = useState(!!search.add);
 
   const goToday = () => { setMonth(now.getMonth()); setYear(now.getFullYear()); setWeekOffset(0); };
   const goPrev = () => setWeekOffset((w) => w - 1);
