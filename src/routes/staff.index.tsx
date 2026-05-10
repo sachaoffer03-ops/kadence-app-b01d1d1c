@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { employees, roleColors, getQuotaStatus, getInitials, type Employee, type Role } from "@/lib/mock-data";
-import { Search, X, ArrowLeft, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX } from "lucide-react";
+import { Search, X, ArrowLeft, ArrowRight, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/staff/")({
@@ -323,12 +323,23 @@ function EmployeeSlideOver({ employee: emp, onClose }: { employee: Employee; onC
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-md p-1.5 transition-colors" style={{ color: "var(--muted-foreground)" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => goToDetail()}
+              className="flex items-center gap-1.5 rounded-md px-3 py-2 transition-opacity"
+              style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--card)" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.9"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+            >
+              Voir toute la fiche <ArrowRight size={13} />
+            </button>
+            <button onClick={onClose} className="rounded-md p-1.5 transition-colors" style={{ color: "var(--muted-foreground)" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="px-6 py-5 flex flex-col gap-5">
