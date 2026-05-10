@@ -24,7 +24,9 @@ interface Invitation {
   last_name: string;
   phone: string | null;
   studio_id: string | null;
+  studio_ids: string[] | null;
   contract: string | null;
+  contracts: string[] | null;
   business_roles: string[] | null;
   app_role: string;
   status: Status;
