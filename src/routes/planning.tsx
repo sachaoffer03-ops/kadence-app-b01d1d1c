@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
-  AlertCircle, User, Star, Sparkles, GripVertical, MapPin, Phone
+  Star, Sparkles, MapPin, Phone, Trash2, Sparkle
 } from "lucide-react";
+import { toast } from "sonner";
 import { employees, roleColors, type Role, type Studio, type Employee } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/planning")({
