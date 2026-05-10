@@ -4,7 +4,7 @@ import { ArrowLeft, Mail, Phone, MapPin, Calendar, Star, Clock, Edit, FileText, 
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
-  head: () => ({ meta: [{ title: "Profil employé — Shifty" }] }),
+  head: () => ({ meta: [{ title: "Profil employé — Shyft" }] }),
 });
 
 function EmployeeDetailPage() {

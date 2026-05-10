@@ -6,7 +6,7 @@ import { trainingPaths as seedPaths, roleColors, employees, type TrainingPath, t
 
 export const Route = createFileRoute("/formation")({
   component: FormationPage,
-  head: () => ({ meta: [{ title: "Formation — Shifty" }] }),
+  head: () => ({ meta: [{ title: "Formation — Shyft" }] }),
 });
 
 const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];

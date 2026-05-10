@@ -10,7 +10,7 @@ import { employees, roleColors, type Role, type Studio, type Employee } from "@/
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
   head: () => ({
-    meta: [{ title: "Planning — Shifty" }],
+    meta: [{ title: "Planning — Shyft" }],
   }),
 });
 

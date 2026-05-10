@@ -72,7 +72,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     <>
       {/* Logo */}
       <div className="px-5 pt-5 pb-4">
-        <div style={{ fontSize: 18, fontWeight: 500, color: "var(--foreground)" }}>Shifty</div>
+        <div style={{ fontSize: 18, fontWeight: 500, color: "var(--foreground)" }}>Shyft</div>
         <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 1 }}>Skult Studios</div>
       </div>
 
