@@ -216,10 +216,10 @@ function AccueilTab({ profile, studios, userId }: { profile: ProfileRow | null; 
         </div>
         <div className="flex-1">
           <div style={{ fontSize: 13, fontWeight: 500 }}>
-            {disposValidated ? "Planning validé" : "Indique tes dispos"}
+              {disposValidated ? "Dispos envoyées" : "Indique tes dispos"}
           </div>
           <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: "capitalize" }}>
-            {disposValidated ? `Tes dispos pour ${nextMonthLabel} sont envoyées` : `Pour ${nextMonthLabel} — une seule fois`}
+              {disposValidated ? `En attente du planning généré par l'admin` : `Pour ${nextMonthLabel} — une seule fois`}
           </div>
         </div>
         {!disposValidated && <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />}
