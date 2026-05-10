@@ -170,17 +170,76 @@ function StudiosPage() {
   const [activeStudio, setActiveStudio] = useState(0);
   const [activeSubTab, setActiveSubTab] = useState(0);
 
-  const [infos, setInfos] = useState(initialInfos);
-  const [activeRoles, setActiveRoles] = useState(initialActive);
+  const [extraStudios, setExtraStudios] = useState<Studio[]>([]);
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [newStudioName, setNewStudioName] = useState("");
+
+  const studioTabs = useMemo(() => [...baseStudioTabs, ...extraStudios], [extraStudios]);
+
+  const [infos, setInfos] = useState<Record<Studio, StudioInfo>>(initialInfos);
+  const [activeRoles, setActiveRoles] = useState<Record<Studio, Role[]>>(initialActive);
   const [customRoles, setCustomRoles] = useState<Record<Studio, string[]>>({
     "Skult Rhodes": [],
     "Skult Châtelain": [],
   });
-  const [week, setWeek] = useState(initialWeek);
-  const [roleHours, setRoleHours] = useState(initialRoleHours);
-  const [needs, setNeeds] = useState(initialNeeds);
+  const [week, setWeek] = useState<Record<Studio, DayHours[]>>(initialWeek);
+  const [roleHours, setRoleHours] = useState<Record<Studio, Partial<Record<Role, RoleSchedule>>>>(initialRoleHours);
+  const [needs, setNeeds] = useState<Record<Studio, ShiftNeeds[]>>(initialNeeds);
 
-  const studio = (studioTabs[activeStudio] as Studio);
+  const studio = studioTabs[activeStudio] as Studio;
+
+  const createStudio = () => {
+    const name = newStudioName.trim() as Studio;
+    if (!name) return;
+    if (studioTabs.includes(name)) {
+      setNewStudioName("");
+      return;
+    }
+    setExtraStudios((p) => [...p, name]);
+    setInfos((p) => ({
+      ...p,
+      [name]: {
+        name,
+        address: "",
+        postalCity: "",
+        phone: "",
+        email: "",
+        manager: "",
+        capacity: 0,
+        surface: "",
+        opened: new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" }),
+        notes: "",
+      },
+    }));
+    setActiveRoles((p) => ({ ...p, [name]: ["Barista", "Accueil"] }));
+    setCustomRoles((p) => ({ ...p, [name]: [] }));
+    setWeek((p) => ({
+      ...p,
+      [name]: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"].map((d) => ({
+        day: d,
+        open: "08h00",
+        close: "18h00",
+        closed: false,
+      })),
+    }));
+    setRoleHours((p) => ({
+      ...p,
+      [name]: {
+        Barista: { open: "08h00", close: "18h00" },
+        Accueil: { open: "08h00", close: "18h00" },
+      },
+    }));
+    setNeeds((p) => ({
+      ...p,
+      [name]: [
+        { id: "s1", label: "Matin", start: "08h00", end: "13h00", needs: { Barista: 1, Accueil: 1, Host: 0, Cuisine: 0 } },
+        { id: "s2", label: "Après-midi", start: "13h00", end: "18h00", needs: { Barista: 1, Accueil: 1, Host: 0, Cuisine: 0 } },
+      ],
+    }));
+    setActiveStudio(studioTabs.length);
+    setNewStudioName("");
+    setShowNewModal(false);
+  };
 
   return (
     <div className="p-6">
@@ -191,17 +250,13 @@ function StudiosPage() {
         {studioTabs.map((tab, i) => (
           <button
             key={tab}
-            onClick={() => i < 2 && setActiveStudio(i)}
+            onClick={() => setActiveStudio(i)}
             className="px-4 py-2 transition-colors"
             style={{
               fontSize: 13,
               fontWeight: activeStudio === i ? 500 : 400,
               color:
-                i === 2
-                  ? "var(--coral)"
-                  : activeStudio === i
-                    ? "var(--foreground)"
-                    : "var(--muted-foreground)",
+                activeStudio === i ? "var(--foreground)" : "var(--muted-foreground)",
               borderBottom:
                 activeStudio === i ? "2px solid var(--foreground)" : "2px solid transparent",
               marginBottom: -0.5,
@@ -210,7 +265,81 @@ function StudiosPage() {
             {tab}
           </button>
         ))}
+        <button
+          onClick={() => setShowNewModal(true)}
+          className="px-4 py-2 transition-colors"
+          style={{
+            fontSize: 13,
+            fontWeight: 400,
+            color: "var(--coral)",
+            marginBottom: -0.5,
+          }}
+        >
+          + Nouveau studio
+        </button>
       </div>
+
+      {showNewModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+          onClick={() => setShowNewModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="rounded-xl p-5 w-full max-w-sm"
+            style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>Nouveau studio</div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 14 }}>
+              Donne un nom à ton nouveau studio. Tu pourras compléter les informations ensuite.
+            </div>
+            <input
+              autoFocus
+              value={newStudioName}
+              onChange={(e) => setNewStudioName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") createStudio();
+                if (e.key === "Escape") setShowNewModal(false);
+              }}
+              placeholder="Ex. Skult Sablon"
+              className="w-full rounded-md px-2.5 py-2 mb-4"
+              style={{
+                fontSize: 13,
+                border: "0.5px solid var(--border)",
+                backgroundColor: "var(--background)",
+              }}
+            />
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setShowNewModal(false)}
+                className="rounded-md px-3 py-1.5"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: "0.5px solid var(--border)",
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={createStudio}
+                disabled={!newStudioName.trim()}
+                className="rounded-md px-3 py-1.5"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  backgroundColor: "var(--foreground)",
+                  color: "var(--card)",
+                  opacity: newStudioName.trim() ? 1 : 0.4,
+                }}
+              >
+                Créer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-1 mb-6 flex-wrap">
         {subTabs.map((tab, i) => (
