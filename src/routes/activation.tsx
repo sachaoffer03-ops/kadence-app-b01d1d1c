@@ -72,6 +72,22 @@ function ActivationPage() {
       setLoading(false);
       return;
     }
+    // Mode démo : invitation factice, pas d'appel DB
+    if (preview === "demo") {
+      setInvitation({
+        id: "demo",
+        email: "david.martin@skult.studio",
+        first_name: "David",
+        last_name: "Martin",
+        phone: "+32 470 12 34 56",
+        studio_id: null,
+        contract: "Étudiant",
+        status: "pending",
+        expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+      });
+      setLoading(false);
+      return;
+    }
     (async () => {
       const query = supabase
         .from("invitations")
