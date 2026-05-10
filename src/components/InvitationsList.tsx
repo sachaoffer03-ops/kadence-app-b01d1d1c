@@ -50,6 +50,7 @@ const subTabs: { key: SubTab; label: string }[] = [
 ];
 
 export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }) {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<SubTab>("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
