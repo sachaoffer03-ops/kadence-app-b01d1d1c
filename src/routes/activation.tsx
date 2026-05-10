@@ -261,9 +261,38 @@ function ActivationPage() {
               lineHeight: 1.6,
             }}
           >
-            Votre compte est activé. Redirection vers votre espace...
+            {isPreview
+              ? "Aperçu terminé. Dans la vraie vie, le compte est créé et l'employé arrive sur son espace."
+              : "Votre compte est activé. Redirection vers votre espace..."}
           </p>
-        </div>
+          {isPreview && (
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                onClick={() => navigate({ to: "/staff-app" })}
+                className="rounded-md py-2.5 px-4"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  backgroundColor: "var(--coral)",
+                  color: "var(--coral-text)",
+                }}
+              >
+                Voir l'espace employé
+              </button>
+              <button
+                onClick={() => navigate({ to: "/staff" })}
+                className="rounded-md py-2.5 px-4 border"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  borderColor: "var(--border)",
+                  color: "var(--foreground)",
+                }}
+              >
+                Retour à l'admin
+              </button>
+            </div>
+          )}
       </div>
     );
   }
