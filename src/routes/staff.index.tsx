@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { employees, roleColors, getQuotaStatus, getInitials, type Employee, type Role } from "@/lib/mock-data";
-import { Search, X, ArrowLeft, ArrowRight, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX, UserPlus } from "lucide-react";
+import { Search, X, ArrowLeft, ArrowRight, Mail, Phone, MapPin, Star, Clock, Edit, FileText, Download, UserX, UserPlus, CalendarPlus } from "lucide-react";
 import { useState } from "react";
 import { InviteEmployeeModal } from "@/components/InviteEmployeeModal";
+import { CreateShiftModal } from "@/components/CreateShiftModal";
 
 export const Route = createFileRoute("/staff/")({
   component: StaffPage,
@@ -20,6 +21,7 @@ function StaffPage() {
   const [search, setSearch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [shiftOpen, setShiftOpen] = useState(false);
 
   const toggleContract = (f: ContractFilter) => {
     setContractFilters((prev) => {
@@ -129,6 +131,13 @@ function StaffPage() {
             {filtered.length} employé{filtered.length > 1 ? "s" : ""}
           </span>
           <button
+            onClick={() => setShiftOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5"
+            style={{ fontSize: 12, fontWeight: 500, borderColor: "var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)" }}
+          >
+            <CalendarPlus size={13} /> Planifier un shift
+          </button>
+          <button
             onClick={() => setInviteOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
@@ -138,6 +147,7 @@ function StaffPage() {
         </div>
       </div>
       <InviteEmployeeModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      <CreateShiftModal open={shiftOpen} onClose={() => setShiftOpen(false)} />
 
       {/* Table */}
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>

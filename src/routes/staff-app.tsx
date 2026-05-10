@@ -85,7 +85,7 @@ function AccueilTab({ profile, studios, onNavigate }: { profile: ProfileRow | nu
     const today = todayISO();
     const in7 = new Date(); in7.setDate(in7.getDate() + 7);
     const weekEnd = in7.toISOString().slice(0, 10);
-    (async () => {
+    const load = async () => {
       const { data: next } = await supabase.from("shifts")
         .select("id,shift_date,start_time,end_time,business_role,studio_id")
         .eq("user_id", user.id).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
@@ -102,7 +102,17 @@ function AccueilTab({ profile, studios, onNavigate }: { profile: ProfileRow | nu
         }, 0);
         setWeekStats({ hours: Math.round(hours), count: week.length });
       }
-    })();
+    };
+    load();
+
+    const channel = supabase.channel(`shifts-accueil-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${user.id}` }, () => {
+        load();
+        toast("Planning mis à jour", { description: "Ton admin vient de modifier tes shifts" });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const firstName = profile?.first_name || "";
@@ -197,8 +207,7 @@ function PlanningTab({ studios }: { studios: Record<string, string> }) {
 
   useEffect(() => {
     if (!user) return;
-    (async () => {
-      setLoading(true);
+    const load = async () => {
       const { data } = await supabase.from("shifts")
         .select("id,shift_date,start_time,end_time,business_role,studio_id")
         .eq("user_id", user.id)
@@ -206,7 +215,15 @@ function PlanningTab({ studios }: { studios: Record<string, string> }) {
         .order("shift_date").order("start_time");
       if (data) setShifts(data);
       setLoading(false);
-    })();
+    };
+    setLoading(true);
+    load();
+
+    const channel = supabase.channel(`shifts-planning-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${user.id}` }, () => load())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const monthLabel = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
