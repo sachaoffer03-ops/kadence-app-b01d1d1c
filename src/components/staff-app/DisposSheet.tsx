@@ -107,7 +107,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
             Tes dispos pour {monthLabel} ont été envoyées.
           </div>
           <div style={{ fontSize: 11, color: "var(--muted-foreground)", textAlign: "center" }}>
-            Tu pourras à nouveau modifier le mois prochain. Pour un changement ponctuel, fais une demande de modification.
+            L'admin va générer le planning sous 24-48h. Tu pourras à nouveau modifier tes dispos le mois prochain.
           </div>
         </div>
       ) : (

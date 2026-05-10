@@ -132,10 +132,10 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
 
   return (
     <Sheet open={open} onClose={onClose} title="Demande de modification">
-      <FormField label="Quel shift ?" hint={shifts.length === 0 ? "Tu n'as aucun shift à venir." : "Choisis le shift concerné par ta demande."}>
+      <FormField label="Quel shift ?" hint={shifts.length === 0 ? undefined : "Choisis le shift concerné par ta demande."}>
         {shifts.length === 0 ? (
-          <div className="rounded-md px-3 py-3" style={{ fontSize: 12, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>
-            Aucun shift à venir
+          <div className="rounded-md px-3 py-3" style={{ fontSize: 12, backgroundColor: "var(--muted)", color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+            Aucun shift à venir. Tes shifts s'afficheront ici une fois que l'admin aura généré le planning à partir de tes dispos.
           </div>
         ) : (
           <ShiftDropdown

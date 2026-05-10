@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   Home, Calendar, User, ChevronRight, Clock, GraduationCap, ArrowLeft, CheckSquare,
   AlertCircle, Replace, Inbox, MessageCircle, CalendarCheck, CheckCircle2, Phone,
-  MapPin, Cake, CreditCard, Hash, AlertTriangle, Mail
+  MapPin, Cake, CreditCard, Hash, Mail, Bell, Sparkles
 } from "lucide-react";
 import { roleColors, getQuotaStatus, type Role } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
@@ -74,6 +74,8 @@ function StaffAppPage() {
 
   if (!user) return <div className="p-8" style={{ fontSize: 13 }}>Chargement…</div>;
 
+  const [notifOpen, setNotifOpen] = useState(false);
+
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#FAF8F4", maxWidth: 430, margin: "0 auto", position: "relative" }}>
       {isAdminPreviewing && (
@@ -82,6 +84,13 @@ function StaffAppPage() {
           <ArrowLeft size={12} /> Retour admin
         </Link>
       )}
+      {/* Cloche notifications globale */}
+      <button onClick={() => setNotifOpen(true)} aria-label="Notifications"
+        className="rounded-full flex items-center justify-center"
+        style={{ position: "fixed", top: 14, right: 14, zIndex: 50, width: 38, height: 38, backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
+        <Bell size={16} strokeWidth={1.6} style={{ color: "var(--foreground)" }} />
+      </button>
+
       <div className="flex-1 overflow-y-auto pb-20">
         {tab === "accueil" && <AccueilTab profile={profile} studios={studios} userId={user.id} />}
         {tab === "planning" && <PlanningTab studios={studios} userId={user.id} />}
@@ -89,6 +98,8 @@ function StaffAppPage() {
         {tab === "chat" && <ChatPanel meId={user.id} peerId={adminId} peerName={adminName} />}
         {tab === "profil" && <ProfilTab profile={profile} businessRoles={businessRoles} studios={studios} onNavigate={setTab} />}
       </div>
+
+      <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} />
 
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-around border-t"
         style={{ width: "100%", maxWidth: 430, height: 64, backgroundColor: "#FFFFFF", borderColor: "rgba(0,0,0,0.08)" }}>
@@ -321,12 +332,24 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
 
   const monthLabel = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
+  const hasAnyShift = shifts.length > 0;
+
   return (
     <div className="px-5 pt-6">
       <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 4 }}>Mon planning</div>
       <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16, textTransform: "capitalize" }}>{monthLabel}</div>
 
-      {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : (
+      {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : !hasAnyShift ? (
+        <div className="rounded-xl px-5 py-6 flex flex-col items-center text-center gap-2" style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)" }}>
+          <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, backgroundColor: "var(--coral-light)" }}>
+            <Sparkles size={20} style={{ color: "var(--coral-dark)" }} />
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>Planning en préparation</div>
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, maxWidth: 280 }}>
+            Tes shifts s'afficheront ici dès que l'admin aura généré le planning du mois à partir des dispos de toute l'équipe.
+          </div>
+        </div>
+      ) : (
         <div className="flex flex-col gap-2">
           {days.map(day => {
             const dayShifts = shifts.filter((s) => s.shift_date === day.iso);
@@ -371,13 +394,10 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
 function ProfilTab({ profile, businessRoles, studios, onNavigate }: { profile: ProfileRow | null; businessRoles: Role[]; studios: Record<string, string>; onNavigate: (t: Tab) => void }) {
   const { signOut } = useAuth();
   const [docsOpen, setDocsOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
 
   if (!profile) return <div className="px-5 pt-6" style={{ fontSize: 13 }}>Chargement…</div>;
 
   const initials = `${profile.first_name?.[0] || ""}${profile.last_name?.[0] || ""}`.toUpperCase();
-  const primaryRole = businessRoles[0];
-  const rc = primaryRole ? roleColors[primaryRole] : { bg: "var(--muted)", text: "var(--foreground)", dot: "" };
 
   const quotaUsed = profile.quota_used; const quotaMax = profile.quota_max;
   const quotaPct = quotaUsed !== null && quotaMax ? Math.round((quotaUsed / quotaMax) * 100) : 0;
@@ -387,19 +407,26 @@ function ProfilTab({ profile, businessRoles, studios, onNavigate }: { profile: P
   const fmtDate = (iso: string | null) => iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "—";
 
   return (
-    <div className="px-5 pt-6">
-      <div className="flex items-center gap-4 mb-6">
-        <div className="rounded-full flex items-center justify-center" style={{ width: 64, height: 64, backgroundColor: rc.bg, color: rc.text, fontSize: 20, fontWeight: 500 }}>
-          {initials || "—"}
-        </div>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 500 }}>{profile.first_name} {profile.last_name}</div>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
+    <div className="px-5 pt-12">
+      {/* Hero profil */}
+      <div className="rounded-2xl overflow-hidden mb-4" style={{ background: "linear-gradient(160deg, #1A1A1A 0%, #2A2A28 100%)", padding: 22 }}>
+        <div className="flex flex-col items-center text-center">
+          <div className="rounded-full flex items-center justify-center mb-3" style={{
+            width: 80, height: 80,
+            background: `linear-gradient(135deg, var(--coral) 0%, var(--coral-dark) 100%)`,
+            color: "#fff", fontSize: 26, fontWeight: 500,
+            boxShadow: "0 8px 24px rgba(240,153,123,0.35)",
+          }}>
+            {initials || "—"}
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 500, color: "#fff" }}>{profile.first_name} {profile.last_name}</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>{profile.email}</div>
+          <div className="flex items-center gap-1.5 mt-3 flex-wrap justify-center">
             {profile.contract && (
-              <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>{profile.contract}</span>
+              <span className="rounded-full px-2.5 py-1" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.85)", border: "0.5px solid rgba(255,255,255,0.12)" }}>{profile.contract}</span>
             )}
             {businessRoles.map(r => (
-              <span key={r} className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: roleColors[r].bg, color: roleColors[r].text }}>{r}</span>
+              <span key={r} className="rounded-full px-2 py-1" style={{ fontSize: 10, fontWeight: 500, backgroundColor: roleColors[r].bg, color: roleColors[r].text }}>{r}</span>
             ))}
           </div>
         </div>
@@ -409,7 +436,7 @@ function ProfilTab({ profile, businessRoles, studios, onNavigate }: { profile: P
       {quotaUsed !== null && quotaMax !== null && quotaMax > 0 && (
         <div className="rounded-xl border p-4 mb-4" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
           <div className="flex items-center justify-between mb-2">
-            <span style={{ fontSize: 12, fontWeight: 500 }}>Contingent</span>
+            <span style={{ fontSize: 12, fontWeight: 500 }}>Contingent étudiant</span>
             <span style={{ fontSize: 12, fontWeight: 500, color: barColor }}>{quotaUsed}h / {quotaMax}h</span>
           </div>
           <div style={{ width: "100%", height: 6, borderRadius: 3, backgroundColor: "var(--muted)" }}>
@@ -437,27 +464,11 @@ function ProfilTab({ profile, businessRoles, studios, onNavigate }: { profile: P
         <InfoRow icon={<CreditCard size={14} />} label="IBAN" value={profile.iban || "—"} last />
       </Card>
 
-      {/* Contact urgence */}
-      <SectionTitle>Contact d'urgence</SectionTitle>
-      <Card>
-        {profile.emergency_contact_name ? (
-          <>
-            <InfoRow icon={<AlertTriangle size={14} />} label="Nom" value={`${profile.emergency_contact_name}${profile.emergency_contact_relation ? ` (${profile.emergency_contact_relation})` : ""}`} />
-            <InfoRow icon={<Phone size={14} />} label="Téléphone" value={profile.emergency_contact_phone || "—"} last />
-          </>
-        ) : (
-          <div style={{ fontSize: 12, color: "var(--muted-foreground)", padding: "12px 0" }}>
-            Aucun contact d'urgence renseigné.
-          </div>
-        )}
-      </Card>
-
       {/* Liens utiles */}
       <div className="rounded-xl border overflow-hidden mt-4" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
         {[
           { label: "Mes formations", icon: GraduationCap, action: () => onNavigate("formation") },
           { label: "Mes documents", icon: Inbox, action: () => setDocsOpen(true) },
-          { label: "Notifications", icon: AlertCircle, action: () => setNotifOpen(true) },
           { label: "Conversation admin", icon: MessageCircle, action: () => onNavigate("chat") },
         ].map((item, i, arr) => (
           <button key={i} onClick={item.action} className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
@@ -476,7 +487,6 @@ function ProfilTab({ profile, businessRoles, studios, onNavigate }: { profile: P
       </button>
 
       <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} />
-      <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} />
     </div>
   );
 }
