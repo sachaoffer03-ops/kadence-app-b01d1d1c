@@ -203,6 +203,8 @@ function StaffPage() {
       {selectedEmployee && (
         <EmployeeSlideOver employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />
       )}
+        </>
+      )}
     </div>
   );
 }
