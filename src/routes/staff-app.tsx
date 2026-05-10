@@ -51,6 +51,19 @@ function StaffAppPage() {
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#FAF8F4", maxWidth: 430, margin: "0 auto", position: "relative" }}>
+      {isAdminPreviewing && (
+        <Link
+          to="/dashboard"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md"
+          style={{
+            position: "fixed", top: 12, left: 12, zIndex: 50,
+            fontSize: 11, fontWeight: 500,
+            backgroundColor: "var(--foreground)", color: "var(--card)",
+          }}
+        >
+          <ArrowLeft size={12} /> Retour admin
+        </Link>
+      )}
       <div className="flex-1 overflow-y-auto pb-20">
         {tab === 'accueil' && <AccueilTab profile={profile} studios={studios} onNavigate={setTab} />}
         {tab === 'planning' && <PlanningTab studios={studios} />}
