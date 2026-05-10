@@ -514,6 +514,7 @@ function InformationsTab({
   customRoles,
   onAddCustomRole,
   onRemoveCustomRole,
+  onRequestDelete,
 }: {
   info: StudioInfo;
   onChange: (patch: Partial<StudioInfo>) => void;
@@ -522,6 +523,7 @@ function InformationsTab({
   customRoles: string[];
   onAddCustomRole: (name: string) => void;
   onRemoveCustomRole: (name: string) => void;
+  onRequestDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [newRole, setNewRole] = useState("");
