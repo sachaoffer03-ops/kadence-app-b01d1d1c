@@ -10,7 +10,7 @@ export const Route = createFileRoute("/demandes")({
 });
 
 type Urgency = "normal" | "urgent" | "critique";
-type Status = "pending" | "approved" | "rejected";
+type Status = "pending" | "accepted" | "refused";
 type ReqType = "swap" | "cancel" | "time_change";
 
 interface Row {
@@ -58,13 +58,13 @@ function DemandesPage() {
   const pending = requests.filter(r => r.status === "pending").sort((a, b) => order[a.urgency] - order[b.urgency]);
   const handled = requests.filter(r => r.status !== "pending").slice(0, 20);
 
-  const handleAction = async (id: string, status: "approved" | "rejected") => {
+  const handleAction = async (id: string, status: "accepted" | "refused") => {
     const { error } = await supabase.from("modification_requests").update({
       status, resolved_at: new Date().toISOString(),
     }).eq("id", id);
     if (error) { toast.error("Erreur"); return; }
     setExpandedId(null);
-    toast.success(status === "approved" ? "Demande acceptée" : "Demande refusée");
+    toast.success(status === "accepted" ? "Demande acceptée" : "Demande refusée");
   };
 
   return (
@@ -123,12 +123,12 @@ function DemandesPage() {
                     <div className="rounded-lg p-4" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}>
                       <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 12 }}>"{req.reason}"</div>
                       <div className="flex items-center gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); handleAction(req.id, "approved"); }}
+                        <button onClick={(e) => { e.stopPropagation(); handleAction(req.id, "accepted"); }}
                           className="rounded-md px-4 py-2 flex items-center gap-1.5"
                           style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
                           <Check size={14} /> Accepter
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleAction(req.id, "rejected"); }}
+                        <button onClick={(e) => { e.stopPropagation(); handleAction(req.id, "refused"); }}
                           className="rounded-md px-4 py-2 flex items-center gap-1.5"
                           style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
                           <X size={14} /> Refuser
@@ -158,10 +158,10 @@ function DemandesPage() {
                   </div>
                   <span className="rounded-full px-2 py-0.5" style={{
                     fontSize: 10, fontWeight: 500,
-                    backgroundColor: req.status === "approved" ? "var(--success-bg)" : "var(--danger-bg)",
-                    color: req.status === "approved" ? "var(--success-text)" : "var(--danger-text)",
+                    backgroundColor: req.status === "accepted" ? "var(--success-bg)" : "var(--danger-bg)",
+                    color: req.status === "accepted" ? "var(--success-text)" : "var(--danger-text)",
                   }}>
-                    {req.status === "approved" ? "Acceptée" : "Refusée"}
+                    {req.status === "accepted" ? "Acceptée" : "Refusée"}
                   </span>
                 </div>
               );
