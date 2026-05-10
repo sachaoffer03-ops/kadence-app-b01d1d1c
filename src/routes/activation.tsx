@@ -331,17 +331,17 @@ function ActivationPage() {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
       {isPreview && (
         <div
-          className="border-b"
+          className="sticky top-0 z-20 border-b"
           style={{ backgroundColor: "var(--foreground)", borderColor: "var(--border)" }}
         >
-          <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2" style={{ color: "var(--card)" }}>
+          <div className="max-w-6xl mx-auto px-3 md:px-6 py-2.5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 shrink-0" style={{ color: "var(--card)" }}>
               <span
                 style={{
                   fontSize: 10,
                   fontWeight: 500,
                   letterSpacing: "0.08em",
-                  padding: "2px 6px",
+                  padding: "3px 7px",
                   borderRadius: 4,
                   backgroundColor: "var(--coral)",
                   color: "var(--coral-text)",
@@ -349,56 +349,13 @@ function ActivationPage() {
               >
                 APERÇU
               </span>
-              <span style={{ fontSize: 12, opacity: 0.85 }}>
-                Aucune donnée ne sera enregistrée
+              <span className="hidden md:inline" style={{ fontSize: 12, opacity: 0.85 }}>
+                Données non enregistrées
               </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {["Bienvenue", "Mot de passe", "Identité", "Adresse", "RH", "Urgence", "Validation"].map(
-                (label, i) => {
-                  const active = i === step;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setStep(i);
-                        setDone(false);
-                      }}
-                      className="rounded-full px-2.5 py-1 transition-opacity"
-                      style={{
-                        fontSize: 11,
-                        fontWeight: active ? 500 : 400,
-                        backgroundColor: active ? "var(--card)" : "transparent",
-                        color: active ? "var(--foreground)" : "var(--card)",
-                        opacity: active ? 1 : 0.7,
-                        border: active ? "none" : "0.5px solid rgba(255,255,255,0.2)",
-                      }}
-                    >
-                      {i + 1}. {label}
-                    </button>
-                  );
-                },
-              )}
-              <button
-                onClick={() => {
-                  setStep(0);
-                  setDone(true);
-                }}
-                className="rounded-full px-2.5 py-1"
-                style={{
-                  fontSize: 11,
-                  backgroundColor: done ? "var(--card)" : "transparent",
-                  color: done ? "var(--foreground)" : "var(--card)",
-                  opacity: done ? 1 : 0.7,
-                  border: done ? "none" : "0.5px solid rgba(255,255,255,0.2)",
-                }}
-              >
-                ✓ Final
-              </button>
             </div>
             <button
               onClick={() => navigate({ to: "/staff" })}
-              className="rounded-md px-3 py-1.5"
+              className="rounded-md px-3 py-1.5 shrink-0"
               style={{
                 fontSize: 11,
                 fontWeight: 500,
@@ -406,8 +363,70 @@ function ActivationPage() {
                 color: "var(--foreground)",
               }}
             >
-              ← Retour admin
+              ← Admin
             </button>
+          </div>
+          {/* Step shortcut bar — scrollable on mobile */}
+          <div className="border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+            <div
+              className="max-w-6xl mx-auto px-3 md:px-6 py-2 flex items-center gap-1.5 overflow-x-auto"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {[
+                { n: 1, label: "Bienvenue" },
+                { n: 2, label: "Mot de passe" },
+                { n: 3, label: "Identité" },
+                { n: 4, label: "Adresse" },
+                { n: 5, label: "RH" },
+                { n: 6, label: "Urgence" },
+                { n: 7, label: "Validation" },
+              ].map((s, i) => {
+                const active = !done && i === step;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setStep(i);
+                      setDone(false);
+                    }}
+                    className="rounded-full shrink-0 transition-all flex items-center gap-1.5"
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      fontWeight: active ? 500 : 400,
+                      backgroundColor: active ? "var(--coral)" : "transparent",
+                      color: active ? "var(--coral-text)" : "var(--card)",
+                      opacity: active ? 1 : 0.75,
+                      border: active ? "none" : "0.5px solid rgba(255,255,255,0.2)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <span style={{ opacity: active ? 0.9 : 0.5 }}>{s.n}</span>
+                    {s.label}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => {
+                  setStep(0);
+                  setDone(true);
+                }}
+                className="rounded-full shrink-0 flex items-center gap-1.5"
+                style={{
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  fontWeight: done ? 500 : 400,
+                  backgroundColor: done ? "var(--coral)" : "transparent",
+                  color: done ? "var(--coral-text)" : "var(--card)",
+                  opacity: done ? 1 : 0.75,
+                  border: done ? "none" : "0.5px solid rgba(255,255,255,0.2)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Check size={12} strokeWidth={2.2} />
+                Compte créé
+              </button>
+            </div>
           </div>
         </div>
       )}
