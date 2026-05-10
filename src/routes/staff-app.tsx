@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Home, Calendar, CalendarCheck, User, ChevronRight, Clock, Star, GraduationCap, QrCode, ClipboardCheck } from "lucide-react";
 import { employees, roleColors, getQuotaStatus, type Role } from "@/lib/mock-data";
 
@@ -18,10 +19,10 @@ function StaffAppPage() {
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#FAF8F4", maxWidth: 430, margin: "0 auto", position: "relative" }}>
       {/* Content */}
       <div className="flex-1 overflow-y-auto pb-20">
-        {tab === 'accueil' && <AccueilTab />}
+        {tab === 'accueil' && <AccueilTab onNavigate={setTab} />}
         {tab === 'planning' && <PlanningTab />}
         {tab === 'dispos' && <DisposTab />}
-        {tab === 'profil' && <ProfilTab />}
+        {tab === 'profil' && <ProfilTab onNavigate={setTab} />}
       </div>
 
       {/* Bottom tab bar */}
@@ -43,7 +44,7 @@ function StaffAppPage() {
 }
 
 /* ─── ACCUEIL ─── */
-function AccueilTab() {
+function AccueilTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const shifts = [
     { date: "Aujourd'hui", time: '07h — 12h', role: 'Barista' as Role, studio: 'Skult Rhodes', active: true },
     { date: 'Demain', time: '10h — 15h', role: 'Barista' as Role, studio: 'Skult Rhodes', active: false },
@@ -84,7 +85,7 @@ function AccueilTab() {
               <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{s.role} · {s.studio.replace('Skult ', '')}</div>
             </div>
             {s.active && (
-              <button className="rounded-md px-3 py-1.5 flex items-center gap-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "#fff" }}>
+              <button onClick={() => toast.success("Pointage enregistré", { description: `${s.role} · ${s.studio}` })} className="rounded-md px-3 py-1.5 flex items-center gap-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "#fff" }}>
                 <QrCode size={12} /> Pointer
               </button>
             )}
@@ -95,20 +96,20 @@ function AccueilTab() {
 
       {/* Quick links */}
       <div className="grid grid-cols-2 gap-3 mt-5">
-        <QuickLink icon={<CalendarCheck size={18} />} label="Mes disponibilités" sub="Juin 2026" />
-        <QuickLink icon={<GraduationCap size={18} />} label="Formation" sub="3 vidéos restantes" />
+        <QuickLink icon={<CalendarCheck size={18} />} label="Mes disponibilités" sub="Juin 2026" onClick={() => onNavigate('dispos')} />
+        <QuickLink icon={<GraduationCap size={18} />} label="Formation" sub="3 vidéos restantes" onClick={() => toast("Formation à venir", { description: "Cette section sera bientôt disponible" })} />
       </div>
     </div>
   );
 }
 
-function QuickLink({ icon, label, sub }: { icon: React.ReactNode; label: string; sub: string }) {
+function QuickLink({ icon, label, sub, onClick }: { icon: React.ReactNode; label: string; sub: string; onClick?: () => void }) {
   return (
-    <div className="rounded-xl border px-4 py-4" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)", cursor: "pointer" }}>
+    <button onClick={onClick} className="rounded-xl border px-4 py-4 text-left" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)", cursor: "pointer" }}>
       <div style={{ color: "var(--coral)", marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
       <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{sub}</div>
-    </div>
+    </button>
   );
 }
 
@@ -225,7 +226,7 @@ function DisposTab() {
 }
 
 /* ─── PROFIL ─── */
-function ProfilTab() {
+function ProfilTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const quotaPct = Math.round(((emp.quotaUsed || 0) / (emp.quotaMax || 1)) * 100);
   const quotaColor = getQuotaStatus(emp.quotaUsed, emp.quotaMax);
   const barColor = quotaColor === 'danger' ? "var(--danger-text)" : quotaColor === 'warning' ? "var(--warning-text)" : "var(--success-text)";
@@ -271,20 +272,20 @@ function ProfilTab() {
       {/* Menu */}
       <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
         {[
-          { label: 'Mes informations', icon: User },
-          { label: 'Formation', icon: GraduationCap },
-          { label: 'Mes documents', icon: ClipboardCheck },
-          { label: 'Notifications', icon: Calendar },
+          { label: 'Mes informations', icon: User, action: () => toast("Mes informations", { description: "Section bientôt disponible" }) },
+          { label: 'Formation', icon: GraduationCap, action: () => toast("Formation", { description: "Section bientôt disponible" }) },
+          { label: 'Mes documents', icon: ClipboardCheck, action: () => toast("Mes documents", { description: "Section bientôt disponible" }) },
+          { label: 'Notifications', icon: Calendar, action: () => toast("Notifications", { description: "Section bientôt disponible" }) },
         ].map((item, i) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.06)" : "none", cursor: "pointer" }}>
+          <button key={i} onClick={item.action} className="w-full flex items-center gap-3 px-4 py-3.5 text-left" style={{ borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.06)" : "none", cursor: "pointer" }}>
             <item.icon size={16} style={{ color: "var(--muted-foreground)" }} />
             <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
             <ChevronRight size={14} style={{ color: "var(--muted-foreground)" }} />
-          </div>
+          </button>
         ))}
       </div>
 
-      <button className="w-full rounded-xl border px-4 py-3 mt-4 text-center" style={{ fontSize: 13, color: "var(--danger-text)", backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
+      <button onClick={() => { onNavigate('accueil'); toast.success("Déconnecté", { description: "À bientôt !" }); }} className="w-full rounded-xl border px-4 py-3 mt-4 text-center" style={{ fontSize: 13, color: "var(--danger-text)", backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
         Se déconnecter
       </button>
     </div>

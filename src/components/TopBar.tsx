@@ -1,5 +1,6 @@
 import { useRouterState, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, Plus, Menu } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -23,6 +24,31 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   });
   const navigate = useNavigate();
   const openNewShift = () => navigate({ to: "/planning", search: { add: true } });
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchValue.trim();
+    if (!q) return;
+    navigate({ to: "/staff" });
+    setSearchOpen(false);
+    setSearchValue("");
+  };
+
+  const notifications = [
+    { id: 1, title: "Nouvelle demande de modif", desc: "Léa souhaite échanger son shift de vendredi", to: "/demandes" as const },
+  ];
 
   const pageTitle = pageTitles[currentPath] || "Dashboard";
 
@@ -56,45 +82,67 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
       </div>
 
       {/* Center: search (hidden on mobile) */}
-      <div
+      <form
+        onSubmit={submitSearch}
         className="hidden md:flex items-center gap-2 rounded-md border px-3"
-        style={{
-          width: 220,
-          height: 32,
-          borderColor: "var(--border)",
-          backgroundColor: "var(--card)",
-        }}
+        style={{ width: 220, height: 32, borderColor: "var(--border)", backgroundColor: "var(--card)" }}
       >
         <Search size={14} style={{ color: "var(--muted-foreground)" }} />
-        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-          Rechercher staff, shift…
-        </span>
-      </div>
+        <input
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          placeholder="Rechercher staff, shift…"
+          className="flex-1 bg-transparent outline-none"
+          style={{ fontSize: 12, color: "var(--foreground)" }}
+        />
+      </form>
 
       {/* Right: actions */}
       <div className="flex items-center gap-2">
+        {searchOpen && (
+          <form onSubmit={submitSearch} className="md:hidden absolute left-0 right-0 top-[52px] z-40 px-4 py-2 border-b" style={{ backgroundColor: "var(--background)", borderColor: "var(--border)" }}>
+            <input
+              autoFocus
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              placeholder="Rechercher staff, shift…"
+              className="w-full rounded-md border px-3 py-2"
+              style={{ fontSize: 13, borderColor: "var(--border)", backgroundColor: "var(--card)" }}
+            />
+          </form>
+        )}
         <button
+          onClick={() => setSearchOpen((v) => !v)}
           className="flex items-center justify-center rounded-md md:hidden"
           style={{ width: 32, height: 32 }}
         >
           <Search size={18} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
         </button>
+        <div className="relative" ref={notifRef}>
         <button
+          onClick={() => setNotifOpen((v) => !v)}
           className="relative flex items-center justify-center rounded-md transition-colors"
           style={{ width: 32, height: 32 }}
         >
           <Bell size={16} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
-          <span
-            className="absolute rounded-full"
-            style={{
-              top: 5,
-              right: 6,
-              width: 6,
-              height: 6,
-              backgroundColor: "var(--coral)",
-            }}
-          />
+          <span className="absolute rounded-full" style={{ top: 5, right: 6, width: 6, height: 6, backgroundColor: "var(--coral)" }} />
         </button>
+        {notifOpen && (
+          <div className="absolute right-0 mt-2 rounded-lg border shadow-lg overflow-hidden z-50" style={{ width: 280, backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+            <div className="px-3 py-2 border-b" style={{ borderColor: "var(--border)", fontSize: 12, fontWeight: 500 }}>Notifications</div>
+            {notifications.map((n) => (
+              <button
+                key={n.id}
+                onClick={() => { setNotifOpen(false); navigate({ to: n.to }); }}
+                className="block w-full text-left px-3 py-2.5 hover:bg-muted transition-colors"
+              >
+                <div style={{ fontSize: 12, fontWeight: 500 }}>{n.title}</div>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{n.desc}</div>
+              </button>
+            ))}
+          </div>
+        )}
+        </div>
         <button
           onClick={openNewShift}
           className="hidden md:flex items-center gap-1.5 rounded-md px-3 transition-colors"
