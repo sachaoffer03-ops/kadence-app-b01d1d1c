@@ -68,6 +68,38 @@ function StaffPage() {
 
   return (
     <div className="p-6">
+      {/* Tabs */}
+      <div className="flex items-center gap-1 mb-5 border-b" style={{ borderColor: "var(--border)" }}>
+        {[
+          { key: "employees" as const, label: "Employés", Icon: Users },
+          { key: "invitations" as const, label: "Invitations", Icon: Mail },
+        ].map(({ key, label, Icon }) => {
+          const active = tab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 transition-colors"
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                borderBottom: active ? "2px solid var(--coral)" : "2px solid transparent",
+                marginBottom: -1,
+              }}
+            >
+              <Icon size={13} strokeWidth={1.8} /> {label}
+            </button>
+          );
+        })}
+      </div>
+
+      <InviteEmployeeModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
+
+      {tab === "invitations" ? (
+        <InvitationsList onInviteClick={() => setInviteOpen(true)} />
+      ) : (
+        <>
       {/* Search + filters */}
       <div className="flex items-center gap-3 mb-4">
         <div
