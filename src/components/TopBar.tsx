@@ -1,7 +1,6 @@
 import { useRouterState, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, Plus, Menu } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
