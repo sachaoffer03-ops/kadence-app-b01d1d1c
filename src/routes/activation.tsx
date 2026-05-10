@@ -157,6 +157,8 @@ function ActivationPage() {
       setDone(true);
       return;
     }
+    // Real submission below — note: employee will receive a confirmation email
+    // and must click the link before being able to sign in.
     const isStudent = (invitation.contracts && invitation.contracts.length > 0)
       ? invitation.contracts.includes("Étudiant")
       : invitation.contract === "Étudiant";
