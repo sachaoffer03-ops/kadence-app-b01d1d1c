@@ -728,12 +728,12 @@ function PlanningPage() {
                   fontSize: 12,
                   fontWeight: 500,
                   borderLeft: "0.5px solid var(--border)",
-                  backgroundColor: isSelected ? "var(--foreground)" : "transparent",
-                  color: isSelected ? "var(--card)" : "var(--foreground)",
+                  backgroundColor: viewMode === "jour" ? "var(--card)" : (isSelected ? "var(--foreground)" : "transparent"),
+                  color: viewMode === "jour" ? "var(--foreground)" : (isSelected ? "var(--card)" : "var(--foreground)"),
                   cursor: viewMode === "jour" ? "default" : "pointer",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 400, opacity: isSelected ? 0.7 : 0.6, marginBottom: 2 }}>{viewMode === "jour" ? dayNamesFull[d.getDay()] : dayNamesShort[d.getDay()]}</div>
+                <div style={{ fontSize: 11, fontWeight: 400, opacity: viewMode === "jour" ? 0.6 : (isSelected ? 0.7 : 0.6), marginBottom: 2 }}>{viewMode === "jour" ? dayNamesFull[d.getDay()] : dayNamesShort[d.getDay()]}</div>
                 <div style={{ fontSize: 13 }}>
                   {d.getDate()} {monthNames[d.getMonth()].slice(0, 3).toLowerCase()}
                   {isToday && !isSelected && (
