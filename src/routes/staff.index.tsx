@@ -17,6 +17,7 @@ type ContractFilter = "Étudiant" | "Flexi" | "CDI";
 type StudioFilter = "Skult Rhodes" | "Skult Châtelain";
 
 function StaffPage() {
+  const [tab, setTab] = useState<"employees" | "invitations">("employees");
   const [contractFilters, setContractFilters] = useState<Set<ContractFilter>>(new Set());
   const [studioFilters, setStudioFilters] = useState<Set<StudioFilter>>(new Set());
   const [search, setSearch] = useState("");
