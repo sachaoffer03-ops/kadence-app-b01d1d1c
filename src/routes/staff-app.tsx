@@ -513,3 +513,22 @@ function InfoRow({ icon, label, value, last }: { icon: React.ReactNode; label: s
     </div>
   );
 }
+
+function BellButton({ userId, onOpen }: { userId: string; onOpen: () => void }) {
+  const { unread } = useStaffNotifications(userId);
+  return (
+    <button onClick={onOpen} aria-label="Notifications"
+      className="rounded-full flex items-center justify-center"
+      style={{ position: "fixed", top: 14, right: 14, zIndex: 50, width: 38, height: 38, backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
+      <Bell size={16} strokeWidth={1.6} style={{ color: "var(--foreground)" }} />
+      {unread > 0 && (
+        <span style={{
+          position: "absolute", top: 6, right: 6, minWidth: 16, height: 16, padding: "0 4px",
+          borderRadius: 8, backgroundColor: "var(--coral)", color: "var(--coral-text)",
+          fontSize: 9, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center",
+          border: "1.5px solid #fff",
+        }}>{unread > 9 ? "9+" : unread}</span>
+      )}
+    </button>
+  );
+}
