@@ -98,20 +98,16 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               {section.title}
             </div>
             {section.items.map((item) => {
-              const isActive = currentPath === item.to || currentPath.startsWith(item.to + "/");
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={onNavigate}
-                  className="flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors"
-                  style={{
-                    fontSize: 13,
-                    fontWeight: isActive ? 500 : 400,
-                    color: isActive ? "var(--foreground)" : "var(--sidebar-foreground)",
-                    backgroundColor: isActive ? "var(--sidebar-accent)" : "transparent",
-                  }}
-                >
+              const isExternal = item.to.includes("?");
+              const isActive = !isExternal && (currentPath === item.to || currentPath.startsWith(item.to + "/"));
+              const linkStyle = {
+                fontSize: 13,
+                fontWeight: isActive ? 500 : 400,
+                color: isActive ? "var(--foreground)" : "var(--sidebar-foreground)",
+                backgroundColor: isActive ? "var(--sidebar-accent)" : "transparent",
+              } as const;
+              const inner = (
+                <>
                   <item.icon size={15} strokeWidth={1.8} />
                   <span className="flex-1">{item.label}</span>
                   {item.badge && (
@@ -124,12 +120,36 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                         height: 18,
                         padding: "0 5px",
                         backgroundColor: item.badgeType === "danger" ? "var(--danger-bg)" : "var(--muted)",
-                        color: item.badgeType === "danger" ? "var(--danger-text)" : "var(--muted-foreground)",
+                        color: item.badgeType === "danger" ? "var(--muted-foreground)" : "var(--muted-foreground)",
                       }}
                     >
                       {item.badge}
                     </span>
                   )}
+                </>
+              );
+              if (isExternal) {
+                return (
+                  <a
+                    key={item.to}
+                    href={item.to}
+                    onClick={onNavigate}
+                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors"
+                    style={linkStyle}
+                  >
+                    {inner}
+                  </a>
+                );
+              }
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={onNavigate}
+                  className="flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors"
+                  style={linkStyle}
+                >
+                  {inner}
                 </Link>
               );
             })}
