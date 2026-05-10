@@ -23,9 +23,10 @@ function EmployeeDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const initial = employees.find(e => e.id === id);
+  const search = Route.useSearch();
   const [emp, setEmp] = useState<Employee | undefined>(initial);
   const [active, setActive] = useState(true);
-  const [modal, setModal] = useState<Modal>(null);
+  const [modal, setModal] = useState<Modal>(search.modal ?? null);
 
   if (!emp) {
     return (
