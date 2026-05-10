@@ -60,7 +60,7 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
 }
 
 type ReqType = "swap" | "cancel" | "time_change";
-type Urgency = "low" | "normal" | "high";
+type Urgency = "normal" | "urgent" | "critique";
 const REQ_TYPES: { key: ReqType; label: string; icon: typeof Replace }[] = [
   { key: "swap", label: "Échanger", icon: Replace },
   { key: "cancel", label: "Annuler", icon: XIcon },
