@@ -183,7 +183,9 @@ function FormationPage() {
             onToggleEdit={() => setEditingPath(editingPath === path.id ? null : path.id)}
             onUpdate={(fn) => updatePath(path.id, fn)}
             onDelete={() => deletePath(path.id)}
-            completed={completed} onToggleVideo={toggleVideo} />
+            completed={completed} onToggleVideo={toggleVideo}
+            uploading={uploading} onUpload={(modId) => triggerUpload(path.id, modId)}
+            onPlayVideo={playVideo} />
         ))}
       </div>
 
