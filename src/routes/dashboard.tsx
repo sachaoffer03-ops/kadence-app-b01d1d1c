@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { todayShifts, roleColors, getStatusColor, type TodayShift } from "@/lib/mock-data";
 import { ArrowRight, AlertTriangle, ChevronRight } from "lucide-react";
+
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
@@ -10,6 +11,7 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function DashboardPage() {
+  const navigate = useNavigate();
   return (
     <div className="p-4 md:p-6">
       {/* Hero */}
@@ -104,9 +106,9 @@ function DashboardPage() {
               </span>
             </div>
             <div className="flex flex-col gap-3">
-              <ActionRow title="3 inscriptions à valider" subtitle="Reçues hier et aujourd'hui" />
-              <ActionRow title="2 Dimona à envoyer" subtitle="Pour les shifts de demain" />
-              <ActionRow title="1 demande de modif shift" subtitle="Léa Berger · vendredi 16 mai" />
+              <ActionRow title="3 inscriptions à valider" subtitle="Reçues hier et aujourd'hui" onClick={() => navigate({ to: "/staff" })} />
+              <ActionRow title="2 Dimona à envoyer" subtitle="Pour les shifts de demain" onClick={() => navigate({ to: "/dimona" })} />
+              <ActionRow title="1 demande de modif shift" subtitle="Léa Berger · vendredi 16 mai" onClick={() => navigate({ to: "/demandes" })} />
             </div>
           </div>
 
@@ -131,17 +133,22 @@ function DashboardPage() {
               <div>Shifts attribués : <span style={{ fontWeight: 500 }}>182 / 184</span></div>
               <div style={{ color: "var(--muted-foreground)" }}>Prochaine génération : 26 mai</div>
             </div>
-            <button
-              className="mt-4 w-full flex items-center justify-center gap-1.5 rounded-md border py-2 transition-colors"
-              style={{
-                fontSize: 12, fontWeight: 500,
-                borderColor: "var(--border)", color: "var(--foreground)",
-                backgroundColor: "transparent",
-              }}
-            >
-              Voir le planning complet
-              <ArrowRight size={13} />
-            </button>
+            <div className="flex gap-2 mt-4">
+              <Link
+                to="/planning"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-md border py-2 transition-colors"
+                style={{ fontSize: 12, fontWeight: 500, borderColor: "var(--border)", color: "var(--foreground)", backgroundColor: "transparent", textDecoration: "none" }}
+              >
+                Voir le planning <ArrowRight size={13} />
+              </Link>
+              <Link
+                to="/planning/generate"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-md py-2 transition-colors"
+                style={{ fontSize: 12, fontWeight: 500, color: "var(--card)", backgroundColor: "var(--foreground)", textDecoration: "none" }}
+              >
+                Générer juin
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -238,9 +245,12 @@ function ShiftRow({ shift }: { shift: TodayShift }) {
   );
 }
 
-function ActionRow({ title, subtitle }: { title: string; subtitle: string }) {
+function ActionRow({ title, subtitle, onClick }: { title: string; subtitle: string; onClick?: () => void }) {
   return (
     <div
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
       className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors"
       style={{ cursor: "pointer", backgroundColor: "rgba(255,255,255,0.5)" }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.8)"; }}

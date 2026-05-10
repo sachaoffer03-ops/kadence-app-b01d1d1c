@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
-  AlertCircle, User, Star, Sparkles, GripVertical, MapPin, Phone
+  Star, Sparkles, MapPin, Phone, Trash2, Sparkle
 } from "lucide-react";
+import { toast } from "sonner";
 import { employees, roleColors, type Role, type Studio, type Employee } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/planning")({
@@ -165,7 +166,8 @@ function StatusDot({ confirmation, pointage, delayMinutes }: { confirmation: Shi
 }
 
 // ── Shift Detail Modal ─────────────────────────────────────
-function ShiftDetailModal({ shift, employee, onClose }: { shift: PlanningShift; employee?: Employee; onClose: () => void }) {
+function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, onConfirm }: { shift: PlanningShift; employee?: Employee; onClose: () => void; onDelete: () => void; onUpdateSlot: (slot: number) => void; onConfirm: () => void }) {
+  const [editing, setEditing] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.3)" }} onClick={onClose}>
       <div
@@ -197,9 +199,24 @@ function ShiftDetailModal({ shift, employee, onClose }: { shift: PlanningShift; 
           {/* Horaire */}
           <div className="flex items-center gap-3">
             <Clock size={14} style={{ color: "var(--muted-foreground)" }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>{shift.time}</div>
-              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>5 heures</div>
+            <div className="flex-1">
+              {editing ? (
+                <select
+                  value={shift.slot}
+                  onChange={(e) => onUpdateSlot(Number(e.target.value))}
+                  className="w-full rounded-md px-2 py-1.5 outline-none"
+                  style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
+                >
+                  {timeSlotDefs.map((s, i) => (
+                    <option key={i} value={i}>{s.time}</option>
+                  ))}
+                </select>
+              ) : (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{shift.time}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>5 heures</div>
+                </>
+              )}
             </div>
           </div>
 
@@ -245,6 +262,15 @@ function ShiftDetailModal({ shift, employee, onClose }: { shift: PlanningShift; 
                 <span style={{ fontSize: 11, fontWeight: 500 }}>{shift.clockIn}</span>
               </div>
             )}
+            {shift.confirmation === "en-attente" && (
+              <button
+                onClick={onConfirm}
+                className="w-full mt-1 rounded-md py-1.5 transition-colors"
+                style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}
+              >
+                Forcer la confirmation
+              </button>
+            )}
           </div>
 
           {/* Employee info */}
@@ -278,19 +304,27 @@ function ShiftDetailModal({ shift, employee, onClose }: { shift: PlanningShift; 
 
         {/* Footer */}
         <div className="flex gap-2 px-5 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
+          <button
+            onClick={onDelete}
+            className="rounded-md px-3 py-2 transition-colors flex items-center gap-1.5"
+            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", color: "var(--danger-text)" }}
+          >
+            <Trash2 size={13} /> Supprimer
+          </button>
           <Link
             to="/staff/$id"
             params={{ id: shift.employeeId }}
             className="flex-1 rounded-md px-3 py-2 text-center transition-colors"
             style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", textDecoration: "none", color: "var(--foreground)" }}
           >
-            Voir le profil
+            Profil
           </Link>
           <button
+            onClick={() => setEditing((v) => !v)}
             className="flex-1 rounded-md px-3 py-2 transition-colors"
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
           >
-            Modifier le shift
+            {editing ? "Terminer" : "Modifier"}
           </button>
         </div>
       </div>
@@ -459,6 +493,9 @@ function PlanningPage() {
   const holes = studioShifts.filter((s) => s.hole);
   const roleTotals = roles.map((r) => ({ role: r, count: realShifts.filter((s) => s.role === r).length }));
 
+  const [published, setPublished] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+
   const goToday = () => { setMonth(now.getMonth()); setYear(now.getFullYear()); setWeekOffset(0); };
   const goPrev = () => setWeekOffset((w) => w - 1);
   const goNext = () => setWeekOffset((w) => w + 1);
@@ -471,7 +508,51 @@ function PlanningPage() {
       return { ...s, hole: false, employeeId: emp.id, name: `${emp.firstName} ${emp.lastName.charAt(0)}.`, confirmation: "en-attente", phone: emp.phone };
     }));
     setHoleShift(null);
+    toast.success(`${emp.firstName} ${emp.lastName.charAt(0)}. assigné·e au shift`);
   };
+
+  const handleDeleteShift = (id: string) => {
+    setShifts((prev) => prev.filter((s) => s.id !== id));
+    setSelectedShift(null);
+    toast.success("Shift supprimé");
+  };
+
+  const handleUpdateSlot = (id: string, slot: number) => {
+    const def = timeSlotDefs[slot];
+    setShifts((prev) => prev.map((s) => s.id === id ? { ...s, slot, time: def.time, startHour: def.start, endHour: def.end } : s));
+    setSelectedShift((cur) => cur && cur.id === id ? { ...cur, slot, time: def.time, startHour: def.start, endHour: def.end } : cur);
+    toast.success("Horaire mis à jour");
+  };
+
+  const handleConfirmShift = (id: string) => {
+    setShifts((prev) => prev.map((s) => s.id === id ? { ...s, confirmation: "confirmé" } : s));
+    setSelectedShift((cur) => cur && cur.id === id ? { ...cur, confirmation: "confirmé" } : cur);
+    toast.success("Shift confirmé");
+  };
+
+  const handleAddShift = (empId: string, day: number, slot: number, role: Role) => {
+    const emp = employees.find((e) => e.id === empId);
+    if (!emp) return;
+    const def = timeSlotDefs[slot];
+    const newShift: PlanningShift = {
+      id: `new-${Date.now()}`,
+      day, slot, employeeId: emp.id,
+      name: `${emp.firstName} ${emp.lastName.charAt(0)}.`,
+      role, studio: selectedStudio,
+      time: def.time, startHour: def.start, endHour: def.end,
+      confirmation: "en-attente", pointage: "non-pointé",
+      phone: emp.phone,
+    };
+    setShifts((prev) => [...prev, newShift]);
+    setShowAdd(false);
+    toast.success(`Shift ajouté pour ${emp.firstName}`);
+  };
+
+  const handlePublish = () => {
+    setPublished(true);
+    toast.success("Planning publié — notifications envoyées à l'équipe");
+  };
+
 
   // Compute ISO-ish week number
   const weekNumber = useMemo(() => {
@@ -532,13 +613,20 @@ function PlanningPage() {
               <ChevronRight size={14} />
             </button>
           </div>
-          <a
-            href="/planning/generate"
+          <button
+            onClick={() => setShowAdd(true)}
             className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
-            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}
+            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "transparent", color: "var(--foreground)" }}
           >
-            + Ajouter un shift
-          </a>
+            + Ajouter
+          </button>
+          <Link
+            to="/planning/generate"
+            className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
+            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff", textDecoration: "none" }}
+          >
+            <Sparkle size={13} /> Générer
+          </Link>
         </div>
       </div>
 
@@ -687,13 +775,26 @@ function PlanningPage() {
             </>
           )}
         </div>
-        <div className="flex items-center gap-4" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+        <div className="flex items-center gap-4 flex-wrap" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
           {roleTotals.map(({ role, count }) => (
             <span key={role} className="flex items-center gap-1.5">
               <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: roleColors[role].dot }} />
               {count} {role}
             </span>
           ))}
+          <button
+            onClick={handlePublish}
+            disabled={published}
+            className="rounded-md px-3 py-1.5 transition-colors"
+            style={{
+              fontSize: 11, fontWeight: 500,
+              backgroundColor: published ? "var(--success-bg)" : "var(--foreground)",
+              color: published ? "var(--success-text)" : "var(--card)",
+              cursor: published ? "default" : "pointer",
+            }}
+          >
+            {published ? "✓ Publié" : "Publier la semaine"}
+          </button>
         </div>
       </div>
 
@@ -703,6 +804,9 @@ function PlanningPage() {
           shift={selectedShift}
           employee={employees.find((e) => e.id === selectedShift.employeeId)}
           onClose={() => setSelectedShift(null)}
+          onDelete={() => handleDeleteShift(selectedShift.id)}
+          onUpdateSlot={(slot) => handleUpdateSlot(selectedShift.id, slot)}
+          onConfirm={() => handleConfirmShift(selectedShift.id)}
         />
       )}
       {holeShift && (
@@ -712,6 +816,90 @@ function PlanningPage() {
           onFill={(empId) => handleFillHole(holeShift.id, empId)}
         />
       )}
+      {showAdd && (
+        <AddShiftModal
+          studio={selectedStudio}
+          onClose={() => setShowAdd(false)}
+          onAdd={handleAddShift}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Add Shift Modal ────────────────────────────────────────
+function AddShiftModal({ studio, onClose, onAdd }: { studio: Studio; onClose: () => void; onAdd: (empId: string, day: number, slot: number, role: Role) => void }) {
+  const [day, setDay] = useState(0);
+  const [slot, setSlot] = useState(0);
+  const [role, setRole] = useState<Role>("Barista");
+  const [empId, setEmpId] = useState("");
+
+  const eligible = useMemo(() => employees.filter((e) => e.roles.includes(role)), [role]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.3)" }} onClick={onClose}>
+      <div
+        className="rounded-xl w-full max-w-md mx-4 overflow-hidden"
+        style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "0.5px solid var(--border)" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Ajouter un shift</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{studio}</div>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1" style={{ color: "var(--muted-foreground)" }}>
+            <X size={16} />
+          </button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-3">
+          <Field label="Jour">
+            <select value={day} onChange={(e) => setDay(Number(e.target.value))} className="w-full rounded-md px-2 py-2 outline-none" style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+              {dayNamesFull.slice(1).concat(dayNamesFull[0]).map((d, i) => (
+                <option key={i} value={i}>{d}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Créneau">
+            <select value={slot} onChange={(e) => setSlot(Number(e.target.value))} className="w-full rounded-md px-2 py-2 outline-none" style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+              {timeSlotDefs.map((s, i) => <option key={i} value={i}>{s.time}</option>)}
+            </select>
+          </Field>
+          <Field label="Poste">
+            <select value={role} onChange={(e) => { setRole(e.target.value as Role); setEmpId(""); }} className="w-full rounded-md px-2 py-2 outline-none" style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+              {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </Field>
+          <Field label="Employé">
+            <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="w-full rounded-md px-2 py-2 outline-none" style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+              <option value="">— Sélectionner —</option>
+              {eligible.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
+            </select>
+          </Field>
+        </div>
+        <div className="flex gap-2 px-5 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
+          <button onClick={onClose} className="flex-1 rounded-md px-3 py-2" style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+            Annuler
+          </button>
+          <button
+            onClick={() => empId && onAdd(empId, day, slot, role)}
+            disabled={!empId}
+            className="flex-1 rounded-md px-3 py-2 transition-colors"
+            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)", opacity: empId ? 1 : 0.4 }}
+          >
+            Ajouter
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{label}</div>
+      {children}
     </div>
   );
 }
