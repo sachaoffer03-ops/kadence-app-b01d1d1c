@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRight, AlertTriangle, ChevronRight } from "lucide-react";
+import { ArrowRight, AlertTriangle, ChevronRight, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getRoleStyle, hhmm } from "@/lib/staff-helpers";
 
@@ -223,7 +223,10 @@ function KpiCard({ label, value, unit, change, changeColor, onClick }: { label: 
       onMouseEnter={onClick ? (e) => (e.currentTarget.style.backgroundColor = "var(--muted)") : undefined}
       onMouseLeave={onClick ? (e) => (e.currentTarget.style.backgroundColor = "var(--card)") : undefined}
     >
-      <div style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{label}</div>
+      <div className="flex items-start justify-between" style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+        {onClick && <ArrowUpRight size={13} style={{ color: "var(--muted-foreground)", marginTop: -1 }} />}
+      </div>
       <div className="flex items-baseline gap-1">
         <span style={{ fontSize: 24, fontWeight: 500 }}>{value}</span>
         {unit && <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{unit}</span>}
