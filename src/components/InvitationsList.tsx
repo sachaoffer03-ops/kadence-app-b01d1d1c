@@ -1,0 +1,520 @@
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  Search,
+  Copy,
+  Send,
+  XCircle,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Mail,
+  UserPlus,
+} from "lucide-react";
+
+type Status = "pending" | "accepted" | "expired" | "revoked";
+
+interface Invitation {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  studio_id: string | null;
+  contract: string | null;
+  business_roles: string[] | null;
+  app_role: string;
+  status: Status;
+  token: string;
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+}
+
+interface Studio {
+  id: string;
+  name: string;
+}
+
+type SubTab = "all" | "pending" | "expired" | "accepted" | "revoked";
+
+const subTabs: { key: SubTab; label: string }[] = [
+  { key: "all", label: "Toutes" },
+  { key: "pending", label: "En attente" },
+  { key: "expired", label: "Expirées" },
+  { key: "accepted", label: "Acceptées" },
+  { key: "revoked", label: "Révoquées" },
+];
+
+export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }) {
+  const [tab, setTab] = useState<SubTab>("all");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [studios, setStudios] = useState<Studio[]>([]);
+
+  const load = async () => {
+    setLoading(true);
+    const [{ data: invs }, { data: studs }] = await Promise.all([
+      supabase
+        .from("invitations")
+        .select(
+          "id, email, first_name, last_name, phone, studio_id, contract, business_roles, app_role, status, token, created_at, expires_at, accepted_at",
+        )
+        .order("created_at", { ascending: false }),
+      supabase.from("studios").select("id, name"),
+    ]);
+    // Auto-mark expired
+    const now = new Date();
+    const cleaned = (invs ?? []).map((i) => {
+      if (i.status === "pending" && new Date(i.expires_at) < now) {
+        return { ...i, status: "expired" as Status };
+      }
+      return i as Invitation;
+    });
+    setInvitations(cleaned);
+    setStudios(studs ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    const channel = supabase
+      .channel("invitations-list")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "invitations" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const studioName = (id: string | null) =>
+    studios.find((s) => s.id === id)?.name?.replace("Skult ", "") ?? "—";
+
+  const counts = useMemo(() => {
+    return {
+      all: invitations.length,
+      pending: invitations.filter((i) => i.status === "pending").length,
+      expired: invitations.filter((i) => i.status === "expired").length,
+      accepted: invitations.filter((i) => i.status === "accepted").length,
+      revoked: invitations.filter((i) => i.status === "revoked").length,
+    };
+  }, [invitations]);
+
+  const filtered = useMemo(() => {
+    return invitations.filter((i) => {
+      if (tab !== "all" && i.status !== tab) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const hay = `${i.first_name} ${i.last_name} ${i.email}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [invitations, tab, search]);
+
+  const copyLink = async (token: string) => {
+    const link = `${window.location.origin}/activation?token=${token}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Lien copié");
+    } catch {
+      toast.error("Impossible de copier");
+    }
+  };
+
+  const resendEmail = async (inv: Invitation) => {
+    const t = toast.loading("Renvoi de l'email...");
+    const { error } = await supabase.functions.invoke("send-invitation", {
+      body: {
+        email: inv.email,
+        first_name: inv.first_name,
+        last_name: inv.last_name,
+        phone: inv.phone,
+        studio_id: inv.studio_id,
+        contract: inv.contract,
+        business_roles: inv.business_roles ?? [],
+        app_role: inv.app_role,
+      },
+    });
+    toast.dismiss(t);
+    if (error) {
+      toast.error("Erreur lors du renvoi");
+      return;
+    }
+    // Revoke the old one (the new one replaces it)
+    await supabase.from("invitations").update({ status: "revoked" }).eq("id", inv.id);
+    toast.success(`Email renvoyé à ${inv.email}`);
+    load();
+  };
+
+  const revoke = async (inv: Invitation) => {
+    if (!confirm(`Révoquer l'invitation de ${inv.first_name} ${inv.last_name} ?`)) return;
+    const { error } = await supabase
+      .from("invitations")
+      .update({ status: "revoked" })
+      .eq("id", inv.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Invitation révoquée");
+    load();
+  };
+
+  return (
+    <div>
+      {/* Sub-tabs + search */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div
+          className="flex items-center gap-2 rounded-md border px-3"
+          style={{
+            height: 32,
+            borderColor: "var(--border)",
+            backgroundColor: "var(--card)",
+            width: 220,
+          }}
+        >
+          <Search size={14} style={{ color: "var(--muted-foreground)" }} />
+          <input
+            type="text"
+            placeholder="Rechercher..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="border-0 bg-transparent outline-none flex-1"
+            style={{ fontSize: 12, color: "var(--foreground)" }}
+          />
+        </div>
+        <div className="flex items-center gap-1">
+          {subTabs.map((t) => {
+            const active = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className="rounded-full px-2.5 py-1 transition-colors"
+                style={{
+                  fontSize: 12,
+                  fontWeight: active ? 500 : 400,
+                  backgroundColor: active ? "var(--foreground)" : "transparent",
+                  color: active ? "var(--card)" : "var(--muted-foreground)",
+                  border: active ? "none" : "0.5px solid var(--border)",
+                }}
+              >
+                {t.label} · {counts[t.key]}
+              </button>
+            );
+          })}
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            {filtered.length} invitation{filtered.length > 1 ? "s" : ""}
+          </span>
+          <button
+            onClick={onInviteClick}
+            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              backgroundColor: "var(--foreground)",
+              color: "var(--card)",
+            }}
+          >
+            <UserPlus size={13} /> Inviter
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div
+        className="rounded-xl border overflow-hidden"
+        style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
+      >
+        {loading ? (
+          <div className="p-10 text-center">
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement...</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center">
+            <div
+              className="mx-auto mb-4 rounded-full flex items-center justify-center"
+              style={{
+                width: 44,
+                height: 44,
+                backgroundColor: "var(--muted)",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              <Mail size={18} strokeWidth={1.6} />
+            </div>
+            <p style={{ fontSize: 14, fontWeight: 500 }}>
+              Aucune invitation
+              {tab !== "all" && ` ${subTabs.find((s) => s.key === tab)?.label.toLowerCase()}`}
+            </p>
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>
+              {tab === "pending"
+                ? "Tous les employés invités ont activé leur compte."
+                : "Cliquez sur Inviter pour ajouter un nouvel employé."}
+            </p>
+          </div>
+        ) : (
+          <table className="w-full" style={{ fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "0.5px solid var(--border)" }}>
+                {["Personne", "Email", "Studio", "Contrat", "Statut", "Envoyée", "Expire", ""].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="text-left px-4 py-2.5"
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: "var(--muted-foreground)",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((inv) => (
+                <Row
+                  key={inv.id}
+                  inv={inv}
+                  studioName={studioName(inv.studio_id)}
+                  onCopy={() => copyLink(inv.token)}
+                  onResend={() => resendEmail(inv)}
+                  onRevoke={() => revoke(inv)}
+                />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Row({
+  inv,
+  studioName,
+  onCopy,
+  onResend,
+  onRevoke,
+}: {
+  inv: Invitation;
+  studioName: string;
+  onCopy: () => void;
+  onResend: () => void;
+  onRevoke: () => void;
+}) {
+  const initials = `${inv.first_name[0] ?? ""}${inv.last_name[0] ?? ""}`.toUpperCase();
+  return (
+    <tr
+      className="transition-colors"
+      style={{ borderBottom: "0.5px solid var(--border)" }}
+      onMouseEnter={(ev) => {
+        (ev.currentTarget as HTMLElement).style.backgroundColor = "var(--muted)";
+      }}
+      onMouseLeave={(ev) => {
+        (ev.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+      }}
+    >
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex items-center justify-center rounded-full shrink-0"
+            style={{
+              width: 30,
+              height: 30,
+              backgroundColor: "var(--muted)",
+              color: "var(--muted-foreground)",
+              fontSize: 10,
+              fontWeight: 500,
+            }}
+          >
+            {initials}
+          </div>
+          <div>
+            <div style={{ fontWeight: 500, color: "var(--foreground)" }}>
+              {inv.first_name} {inv.last_name}
+            </div>
+            {(inv.business_roles ?? []).length > 0 && (
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                {(inv.business_roles ?? []).join(" · ")}
+              </div>
+            )}
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3" style={{ color: "var(--muted-foreground)", fontSize: 12 }}>
+        {inv.email}
+      </td>
+      <td className="px-4 py-3" style={{ fontSize: 12 }}>
+        {studioName}
+      </td>
+      <td className="px-4 py-3">
+        {inv.contract ? (
+          <span
+            className="rounded-full px-2 py-0.5"
+            style={{
+              fontSize: 11,
+              backgroundColor:
+                inv.contract === "CDI"
+                  ? "var(--info-bg)"
+                  : inv.contract === "Flexi"
+                  ? "var(--warning-bg)"
+                  : "var(--muted)",
+              color:
+                inv.contract === "CDI"
+                  ? "var(--info-text)"
+                  : inv.contract === "Flexi"
+                  ? "var(--warning-text)"
+                  : "var(--muted-foreground)",
+            }}
+          >
+            {inv.contract}
+          </span>
+        ) : (
+          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>—</span>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <StatusBadge status={inv.status} />
+      </td>
+      <td className="px-4 py-3" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+        {formatRelative(inv.created_at)}
+      </td>
+      <td className="px-4 py-3" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+        {inv.status === "pending"
+          ? formatRelative(inv.expires_at, true)
+          : inv.status === "accepted" && inv.accepted_at
+          ? `accepté ${formatRelative(inv.accepted_at)}`
+          : "—"}
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-1 justify-end">
+          {inv.status === "pending" && (
+            <>
+              <IconBtn label="Copier le lien" onClick={onCopy}>
+                <Copy size={13} />
+              </IconBtn>
+              <IconBtn label="Renvoyer" onClick={onResend}>
+                <Send size={13} />
+              </IconBtn>
+              <IconBtn label="Révoquer" onClick={onRevoke} danger>
+                <XCircle size={13} />
+              </IconBtn>
+            </>
+          )}
+          {inv.status === "expired" && (
+            <IconBtn label="Renvoyer une nouvelle invitation" onClick={onResend}>
+              <Send size={13} />
+            </IconBtn>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function StatusBadge({ status }: { status: Status }) {
+  const cfg: Record<Status, { label: string; bg: string; text: string; Icon: typeof Clock }> = {
+    pending: {
+      label: "En attente",
+      bg: "var(--warning-bg)",
+      text: "var(--warning-text)",
+      Icon: Clock,
+    },
+    accepted: {
+      label: "Acceptée",
+      bg: "var(--success-bg)",
+      text: "var(--success-text)",
+      Icon: CheckCircle2,
+    },
+    expired: {
+      label: "Expirée",
+      bg: "var(--muted)",
+      text: "var(--muted-foreground)",
+      Icon: AlertTriangle,
+    },
+    revoked: {
+      label: "Révoquée",
+      bg: "var(--danger-bg)",
+      text: "var(--danger-text)",
+      Icon: XCircle,
+    },
+  };
+  const c = cfg[status];
+  const Icon = c.Icon;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5"
+      style={{ fontSize: 11, backgroundColor: c.bg, color: c.text }}
+    >
+      <Icon size={11} strokeWidth={1.8} />
+      {c.label}
+    </span>
+  );
+}
+
+function IconBtn({
+  children,
+  onClick,
+  label,
+  danger,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  label: string;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className="rounded-md p-1.5 transition-colors"
+      style={{
+        color: danger ? "var(--danger-text)" : "var(--muted-foreground)",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.backgroundColor = danger
+          ? "var(--danger-bg)"
+          : "var(--muted)";
+        (e.currentTarget as HTMLElement).style.color = danger
+          ? "var(--danger-text)"
+          : "var(--foreground)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+        (e.currentTarget as HTMLElement).style.color = danger
+          ? "var(--danger-text)"
+          : "var(--muted-foreground)";
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function formatRelative(iso: string, future = false) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = future ? d.getTime() - now.getTime() : now.getTime() - d.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return future ? "expire bientôt" : "à l'instant";
+  if (mins < 60) return future ? `dans ${mins} min` : `il y a ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return future ? `dans ${hours}h` : `il y a ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return future ? `dans ${days}j` : `il y a ${days}j`;
+  return d.toLocaleDateString("fr-BE", { day: "numeric", month: "short" });
+}
