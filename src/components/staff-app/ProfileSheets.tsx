@@ -19,11 +19,13 @@ export function ShiftDetailSheet({ open, onClose, shift, studios, onEndShift, on
   onRequestModif?: () => void;
 }) {
   const [handoff, setHandoff] = useState<string | null>(null);
+  const [prevShiftIds, setPrevShiftIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open || !shift || !shift.studio_id) return;
+    let cancelled = false;
     (async () => {
-      // Cherche un handoff laissé par le shift précédent (même studio + même poste, finissant avant ce shift)
+      // Cherche les shifts précédents (même studio + même poste)
       const { data: prevShifts } = await supabase.from("shifts")
         .select("id")
         .eq("studio_id", shift.studio_id!)
@@ -31,15 +33,30 @@ export function ShiftDetailSheet({ open, onClose, shift, studios, onEndShift, on
         .lte("shift_date", shift.shift_date)
         .order("shift_date", { ascending: false }).order("start_time", { ascending: false })
         .limit(5);
-      if (!prevShifts || prevShifts.length === 0) { setHandoff(null); return; }
-      const ids = prevShifts.map(s => s.id);
+      if (cancelled) return;
+      const ids = (prevShifts || []).map(s => s.id);
+      setPrevShiftIds(ids);
+      if (ids.length === 0) { setHandoff(null); return; }
       const { data: ho } = await supabase.from("shift_handoffs")
         .select("message,created_at")
         .in("shift_id", ids)
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
-      setHandoff(ho?.message || null);
+      if (!cancelled) setHandoff(ho?.message || null);
     })();
+    return () => { cancelled = true; };
   }, [open, shift]);
+
+  // Realtime : si l'employé précédent dépose un handoff pendant qu'on a la sheet ouverte, on l'affiche tout de suite
+  useEffect(() => {
+    if (!open || !shift || prevShiftIds.length === 0) return;
+    const channel = supabase.channel(`handoff-${shift.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "shift_handoffs" }, (payload) => {
+        const row = payload.new as { shift_id: string; message: string };
+        if (prevShiftIds.includes(row.shift_id)) setHandoff(row.message);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [open, shift, prevShiftIds]);
 
   if (!shift) return null;
   const role = shift.business_role as Role;

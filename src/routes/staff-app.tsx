@@ -1,28 +1,39 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Home, Calendar, CalendarCheck, User, ChevronRight, Clock, GraduationCap, ClipboardCheck, ArrowLeft, CheckSquare, AlertCircle, Replace, Inbox } from "lucide-react";
+import {
+  Home, Calendar, User, ChevronRight, Clock, GraduationCap, ArrowLeft, CheckSquare,
+  AlertCircle, Replace, Inbox, MessageCircle, CalendarCheck, CheckCircle2, Phone,
+  MapPin, Cake, CreditCard, Hash, AlertTriangle, Mail
+} from "lucide-react";
 import { roleColors, getQuotaStatus, type Role } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { EndShiftSheet } from "@/components/staff-app/EndShiftSheet";
-import { SignalementSheet, RequestModificationSheet, FormationsSheet, MyRequestsSheet } from "@/components/staff-app/StaffActionsSheets";
-import { ShiftDetailSheet } from "@/components/staff-app/ProfileSheets";
+import { SignalementSheet, RequestModificationSheet, MyRequestsSheet } from "@/components/staff-app/StaffActionsSheets";
+import { ShiftDetailSheet, DocumentsSheet, NotificationsSheet } from "@/components/staff-app/ProfileSheets";
+import { DisposSheet, disposKey } from "@/components/staff-app/DisposSheet";
+import { FormationPanel } from "@/components/staff-app/FormationPanel";
+import { ChatPanel } from "@/components/staff-app/ChatPanel";
 
 export const Route = createFileRoute("/staff-app")({
   component: StaffAppPage,
 });
 
-type Tab = 'accueil' | 'planning' | 'dispos' | 'profil';
+type Tab = "accueil" | "planning" | "formation" | "chat" | "profil";
 
 interface ProfileRow {
-  first_name: string; last_name: string; email: string; contract: string | null;
-  studio_id: string | null; quota_used: number | null; quota_max: number | null;
-  score: number | null;
+  first_name: string; last_name: string; email: string; phone: string | null;
+  birth_date: string | null; address: string | null; city: string | null;
+  contract: string | null; studio_id: string | null;
+  hire_date: string | null; niss: string | null; iban: string | null;
+  emergency_contact_name: string | null; emergency_contact_phone: string | null;
+  emergency_contact_relation: string | null; nationality: string | null;
+  quota_used: number | null; quota_max: number | null; score: number | null;
 }
 interface ShiftRow {
   id: string; shift_date: string; start_time: string; end_time: string;
-  business_role: string; studio_id: string | null;
+  business_role: string; studio_id: string | null; notes?: string | null;
 }
 
 function fmtTime(t: string) { return t.slice(0, 5).replace(":", "h"); }
@@ -31,22 +42,33 @@ function todayISO() { return new Date().toISOString().slice(0, 10); }
 function StaffAppPage() {
   const { user, appRole } = useAuth();
   const isAdminPreviewing = appRole === "admin" || appRole === "manager";
-  const [tab, setTab] = useState<Tab>('accueil');
+  const [tab, setTab] = useState<Tab>("accueil");
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [businessRoles, setBusinessRoles] = useState<Role[]>([]);
   const [studios, setStudios] = useState<Record<string, string>>({});
+  const [adminId, setAdminId] = useState<string | null>(null);
+  const [adminName, setAdminName] = useState<string>("Administrateur");
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [{ data: p }, { data: br }, { data: st }] = await Promise.all([
-        supabase.from("profiles").select("first_name,last_name,email,contract,studio_id,quota_used,quota_max,score").eq("id", user.id).maybeSingle(),
+      const [{ data: p }, { data: br }, { data: st }, { data: admins }] = await Promise.all([
+        supabase.from("profiles").select(
+          "first_name,last_name,email,phone,birth_date,address,city,contract,studio_id,hire_date,niss,iban,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,nationality,quota_used,quota_max,score"
+        ).eq("id", user.id).maybeSingle(),
         supabase.from("user_business_roles").select("role").eq("user_id", user.id),
         supabase.from("studios").select("id,name"),
+        supabase.from("user_roles").select("user_id").eq("role", "admin").limit(1),
       ]);
       if (p) setProfile(p as ProfileRow);
       if (br) setBusinessRoles(br.map((r) => r.role as Role));
       if (st) setStudios(Object.fromEntries(st.map((s) => [s.id, s.name])));
+      if (admins && admins.length > 0) {
+        const aid = admins[0].user_id as string;
+        setAdminId(aid);
+        const { data: ap } = await supabase.from("profiles").select("first_name,last_name").eq("id", aid).maybeSingle();
+        if (ap) setAdminName(`${ap.first_name || ""} ${ap.last_name || ""}`.trim() || "Administrateur");
+      }
     })();
   }, [user]);
 
@@ -55,33 +77,29 @@ function StaffAppPage() {
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#FAF8F4", maxWidth: 430, margin: "0 auto", position: "relative" }}>
       {isAdminPreviewing && (
-        <Link
-          to="/dashboard"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md"
-          style={{
-            position: "fixed", top: 12, left: 12, zIndex: 50,
-            fontSize: 11, fontWeight: 500,
-            backgroundColor: "var(--foreground)", color: "var(--card)",
-          }}
-        >
+        <Link to="/dashboard" className="flex items-center gap-1.5 px-3 py-1.5 rounded-md"
+          style={{ position: "fixed", top: 12, left: 12, zIndex: 50, fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
           <ArrowLeft size={12} /> Retour admin
         </Link>
       )}
       <div className="flex-1 overflow-y-auto pb-20">
-        {tab === 'accueil' && <AccueilTab profile={profile} studios={studios} onNavigate={setTab} />}
-        {tab === 'planning' && <PlanningTab studios={studios} />}
-        {tab === 'dispos' && <DisposTab userId={user.id} />}
-        {tab === 'profil' && <ProfilTab profile={profile} businessRoles={businessRoles} onNavigate={setTab} />}
+        {tab === "accueil" && <AccueilTab profile={profile} studios={studios} userId={user.id} />}
+        {tab === "planning" && <PlanningTab studios={studios} userId={user.id} />}
+        {tab === "formation" && <FormationPanel userId={user.id} />}
+        {tab === "chat" && <ChatPanel meId={user.id} peerId={adminId} peerName={adminName} />}
+        {tab === "profil" && <ProfilTab profile={profile} businessRoles={businessRoles} studios={studios} onNavigate={setTab} />}
       </div>
 
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-around border-t" style={{ width: "100%", maxWidth: 430, height: 64, backgroundColor: "#FFFFFF", borderColor: "rgba(0,0,0,0.08)" }}>
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-around border-t"
+        style={{ width: "100%", maxWidth: 430, height: 64, backgroundColor: "#FFFFFF", borderColor: "rgba(0,0,0,0.08)" }}>
         {([
-          { id: 'accueil' as Tab, label: 'Accueil', icon: Home },
-          { id: 'planning' as Tab, label: 'Planning', icon: Calendar },
-          { id: 'dispos' as Tab, label: 'Dispos', icon: CalendarCheck },
-          { id: 'profil' as Tab, label: 'Profil', icon: User },
+          { id: "accueil" as Tab, label: "Accueil", icon: Home },
+          { id: "planning" as Tab, label: "Planning", icon: Calendar },
+          { id: "formation" as Tab, label: "Formation", icon: GraduationCap },
+          { id: "chat" as Tab, label: "Chat", icon: MessageCircle },
+          { id: "profil" as Tab, label: "Profil", icon: User },
         ]).map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-2 px-4">
+          <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-2 px-2">
             <t.icon size={20} strokeWidth={1.6} style={{ color: tab === t.id ? "var(--coral)" : "var(--muted-foreground)" }} />
             <span style={{ fontSize: 10, fontWeight: tab === t.id ? 500 : 400, color: tab === t.id ? "var(--coral-dark)" : "var(--muted-foreground)" }}>{t.label}</span>
           </button>
@@ -92,31 +110,42 @@ function StaffAppPage() {
 }
 
 /* ─── ACCUEIL ─── */
-function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios: Record<string, string>; onNavigate?: (t: Tab) => void }) {
-  const { user } = useAuth();
+function AccueilTab({ profile, studios, userId }: { profile: ProfileRow | null; studios: Record<string, string>; userId: string }) {
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [weekStats, setWeekStats] = useState({ hours: 0, count: 0 });
   const [endShift, setEndShift] = useState<ShiftRow | null>(null);
   const [signalOpen, setSignalOpen] = useState(false);
   const [reqOpen, setReqOpen] = useState(false);
   const [reqShiftId, setReqShiftId] = useState<string | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
   const [myReqOpen, setMyReqOpen] = useState(false);
   const [shiftDetail, setShiftDetail] = useState<ShiftRow | null>(null);
+  const [disposOpen, setDisposOpen] = useState(false);
+  const [disposValidated, setDisposValidated] = useState(false);
+
+  // Mois suivant
+  const nextMonth = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1, 1);
+    return d;
+  }, []);
+  const nextMonthLabel = nextMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
   useEffect(() => {
-    if (!user) return;
+    setDisposValidated(!!localStorage.getItem(disposKey(userId, nextMonth.getFullYear(), nextMonth.getMonth())));
+  }, [userId, disposOpen, nextMonth]);
+
+  useEffect(() => {
     const today = todayISO();
     const in7 = new Date(); in7.setDate(in7.getDate() + 7);
     const weekEnd = in7.toISOString().slice(0, 10);
     const load = async () => {
       const { data: next } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id")
-        .eq("user_id", user.id).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes")
+        .eq("user_id", userId).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
       if (next) setShifts(next);
 
       const { data: week } = await supabase.from("shifts")
-        .select("start_time,end_time").eq("user_id", user.id)
+        .select("start_time,end_time").eq("user_id", userId)
         .gte("shift_date", today).lte("shift_date", weekEnd);
       if (week) {
         const hours = week.reduce((acc, s) => {
@@ -129,15 +158,15 @@ function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios:
     };
     load();
 
-    const channel = supabase.channel(`shifts-accueil-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${user.id}` }, () => {
+    const channel = supabase.channel(`shifts-accueil-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, () => {
         load();
         toast("Planning mis à jour", { description: "Ton admin vient de modifier tes shifts" });
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [userId]);
 
   const firstName = profile?.first_name || "";
   const today = todayISO();
@@ -160,6 +189,30 @@ function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios:
           </div>
         </div>
       </div>
+
+      {/* Bandeau dispos */}
+      <button
+        onClick={() => !disposValidated && setDisposOpen(true)}
+        className="w-full rounded-xl px-4 py-4 mb-5 flex items-center gap-3 text-left"
+        style={{
+          backgroundColor: disposValidated ? "var(--success-bg)" : "#fff",
+          border: `0.5px solid ${disposValidated ? "var(--success-text)" : "var(--coral)"}`,
+          cursor: disposValidated ? "default" : "pointer",
+        }}
+      >
+        <div className="rounded-lg flex items-center justify-center" style={{ width: 40, height: 40, backgroundColor: disposValidated ? "var(--success-text)" : "var(--coral-light)", color: disposValidated ? "#fff" : "var(--coral-dark)" }}>
+          {disposValidated ? <CheckCircle2 size={18} /> : <CalendarCheck size={18} />}
+        </div>
+        <div className="flex-1">
+          <div style={{ fontSize: 13, fontWeight: 500 }}>
+            {disposValidated ? "Planning validé" : "Indique tes dispos"}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: "capitalize" }}>
+            {disposValidated ? `Tes dispos pour ${nextMonthLabel} sont envoyées` : `Pour ${nextMonthLabel} — une seule fois`}
+          </div>
+        </div>
+        {!disposValidated && <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />}
+      </button>
 
       <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Prochain shift</div>
       {shifts.length === 0 ? (
@@ -196,7 +249,7 @@ function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios:
         <QuickLink icon={<AlertCircle size={18} />} label="Signaler" sub="Stock, matériel, hygiène" onClick={() => setSignalOpen(true)} />
         <QuickLink icon={<Replace size={18} />} label="Demande" sub="Échange, annulation…" onClick={() => setReqOpen(true)} />
         <QuickLink icon={<Inbox size={18} />} label="Mes demandes" sub="Suivi des réponses" onClick={() => setMyReqOpen(true)} />
-        <QuickLink icon={<GraduationCap size={18} />} label="Formations" sub="À voir / valider" onClick={() => setFormOpen(true)} />
+        <QuickLink icon={<CalendarCheck size={18} />} label="Mes dispos" sub={disposValidated ? "Validées" : "À envoyer"} onClick={() => setDisposOpen(true)} />
       </div>
 
       <ShiftDetailSheet
@@ -205,14 +258,11 @@ function AccueilTab({ profile, studios }: { profile: ProfileRow | null; studios:
         onEndShift={() => { if (shiftDetail) { setEndShift(shiftDetail); setShiftDetail(null); } }}
         onRequestModif={() => { if (shiftDetail) { setReqShiftId(shiftDetail.id); setShiftDetail(null); setReqOpen(true); } }}
       />
-      <EndShiftSheet
-        open={!!endShift} onClose={() => setEndShift(null)}
-        shift={endShift} userId={user!.id}
-      />
-      <SignalementSheet open={signalOpen} onClose={() => setSignalOpen(false)} userId={user!.id} studioId={profile?.studio_id ?? null} />
-      <RequestModificationSheet open={reqOpen} onClose={() => { setReqOpen(false); setReqShiftId(null); }} userId={user!.id} shiftId={reqShiftId} />
-      <FormationsSheet open={formOpen} onClose={() => setFormOpen(false)} userId={user!.id} />
-      <MyRequestsSheet open={myReqOpen} onClose={() => setMyReqOpen(false)} userId={user!.id} />
+      <EndShiftSheet open={!!endShift} onClose={() => setEndShift(null)} shift={endShift} userId={userId} />
+      <SignalementSheet open={signalOpen} onClose={() => setSignalOpen(false)} userId={userId} studioId={profile?.studio_id ?? null} />
+      <RequestModificationSheet open={reqOpen} onClose={() => { setReqOpen(false); setReqShiftId(null); }} userId={userId} shiftId={reqShiftId} />
+      <MyRequestsSheet open={myReqOpen} onClose={() => setMyReqOpen(false)} userId={userId} />
+      <DisposSheet open={disposOpen} onClose={() => setDisposOpen(false)} userId={userId} />
     </div>
   );
 }
@@ -228,12 +278,14 @@ function QuickLink({ icon, label, sub, onClick }: { icon: React.ReactNode; label
 }
 
 /* ─── PLANNING ─── */
-function PlanningTab({ studios }: { studios: Record<string, string> }) {
-  const { user } = useAuth();
+function PlanningTab({ studios, userId }: { studios: Record<string, string>; userId: string }) {
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [shiftDetail, setShiftDetail] = useState<ShiftRow | null>(null);
+  const [endShift, setEndShift] = useState<ShiftRow | null>(null);
+  const [reqOpen, setReqOpen] = useState(false);
+  const [reqShiftId, setReqShiftId] = useState<string | null>(null);
 
-  // 14 days starting today
   const days = useMemo(() => {
     const arr: { iso: string; label: string }[] = [];
     const d = new Date();
@@ -248,11 +300,10 @@ function PlanningTab({ studios }: { studios: Record<string, string> }) {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
     const load = async () => {
       const { data } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id")
-        .eq("user_id", user.id)
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes")
+        .eq("user_id", userId)
         .gte("shift_date", days[0].iso).lte("shift_date", days[days.length - 1].iso)
         .order("shift_date").order("start_time");
       if (data) setShifts(data);
@@ -261,12 +312,12 @@ function PlanningTab({ studios }: { studios: Record<string, string> }) {
     setLoading(true);
     load();
 
-    const channel = supabase.channel(`shifts-planning-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${user.id}` }, () => load())
+    const channel = supabase.channel(`shifts-planning-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, () => load())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [userId]);
 
   const monthLabel = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
@@ -288,14 +339,14 @@ function PlanningTab({ studios }: { studios: Record<string, string> }) {
                   const rc = roleColors[s.business_role as Role];
                   const studioName = (s.studio_id && studios[s.studio_id]) || "";
                   return (
-                    <div key={s.id} className="rounded-xl border px-4 py-3 flex items-center gap-3 mb-1" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
+                    <button key={s.id} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3 flex items-center gap-3 mb-1 text-left" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
                       <span className="rounded-full" style={{ width: 8, height: 8, backgroundColor: rc?.dot }} />
                       <div className="flex-1">
                         <span style={{ fontSize: 13, fontWeight: 500 }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)}</span>
                         <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginLeft: 8 }}>{s.business_role} · {studioName.replace("Skult ", "")}</span>
                       </div>
                       <ChevronRight size={14} style={{ color: "var(--muted-foreground)" }} />
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -303,121 +354,25 @@ function PlanningTab({ studios }: { studios: Record<string, string> }) {
           })}
         </div>
       )}
-    </div>
-  );
-}
 
-/* ─── DISPOS ─── */
-type Slot = 'matin' | 'midi' | 'soir';
-
-function DisposTab({ userId }: { userId: string }) {
-  // Next month
-  const monthRef = useMemo(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 1, 1);
-    return d;
-  }, []);
-  const year = monthRef.getFullYear();
-  const month = monthRef.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = monthRef.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-
-  const [availability, setAvailability] = useState<Record<number, Set<Slot>>>({});
-  const [loading, setLoading] = useState(true);
-
-  const dateISO = (day: number) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-
-  useEffect(() => {
-    (async () => {
-      const start = dateISO(1); const end = dateISO(daysInMonth);
-      const { data } = await supabase.from("availabilities")
-        .select("avail_date,slot").eq("user_id", userId)
-        .gte("avail_date", start).lte("avail_date", end);
-      const map: Record<number, Set<Slot>> = {};
-      data?.forEach((r) => {
-        const d = parseInt(r.avail_date.slice(8, 10), 10);
-        if (!map[d]) map[d] = new Set();
-        map[d].add(r.slot as Slot);
-      });
-      setAvailability(map);
-      setLoading(false);
-    })();
-  }, [userId]);
-
-  const toggleSlot = async (day: number, slot: Slot) => {
-    const current = availability[day] || new Set<Slot>();
-    const has = current.has(slot);
-    const next = new Set(current);
-    if (has) next.delete(slot); else next.add(slot);
-    setAvailability((p) => ({ ...p, [day]: next }));
-
-    if (has) {
-      const { error } = await supabase.from("availabilities").delete()
-        .eq("user_id", userId).eq("avail_date", dateISO(day)).eq("slot", slot);
-      if (error) toast.error("Erreur de sauvegarde");
-    } else {
-      const { error } = await supabase.from("availabilities").insert({
-        user_id: userId, avail_date: dateISO(day), slot,
-      });
-      if (error) toast.error("Erreur de sauvegarde");
-    }
-  };
-
-  const configured = Object.values(availability).filter((s) => s.size > 0).length;
-  const slotsLabels: { key: Slot; short: string }[] = [
-    { key: 'matin', short: 'M' }, { key: 'midi', short: 'Mi' }, { key: 'soir', short: 'S' },
-  ];
-
-  return (
-    <div className="px-5 pt-6">
-      <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Mes disponibilités</div>
-      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 4, textTransform: "capitalize" }}>{monthLabel}</div>
-
-      <div className="rounded-xl px-4 py-2.5 flex items-center justify-between mb-4" style={{ backgroundColor: configured >= 20 ? "var(--success-bg)" : "var(--warning-bg)" }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: configured >= 20 ? "var(--success-text)" : "var(--warning-text)" }}>
-          {configured} / {daysInMonth} jours configurés
-        </span>
-      </div>
-
-      {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : (
-        <div className="flex flex-col gap-1">
-          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-            const dow = dayNames[new Date(year, month, day).getDay()];
-            const daySlots = availability[day] || new Set<Slot>();
-            return (
-              <div key={day} className="rounded-lg border px-3 py-2.5 flex items-center gap-3" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
-                <div style={{ minWidth: 50 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500 }}>{dow} {day}</div>
-                </div>
-                <div className="flex items-center gap-1 flex-1">
-                  {slotsLabels.map((sl) => {
-                    const active = daySlots.has(sl.key);
-                    return (
-                      <button key={sl.key} onClick={() => toggleSlot(day, sl.key)} className="rounded-md px-2.5 py-1 transition-colors" style={{
-                        fontSize: 10, fontWeight: active ? 500 : 400,
-                        backgroundColor: active ? "var(--coral)" : "transparent",
-                        color: active ? "#fff" : "var(--muted-foreground)",
-                        border: active ? "none" : "0.5px solid var(--border)",
-                      }}>
-                        {sl.short}
-                      </button>
-                    );
-                  })}
-                </div>
-                {daySlots.size > 0 && <span style={{ fontSize: 10, color: "var(--success-text)" }}>{daySlots.size} slot{daySlots.size > 1 ? 's' : ''}</span>}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <ShiftDetailSheet
+        open={!!shiftDetail} onClose={() => setShiftDetail(null)}
+        shift={shiftDetail} studios={studios}
+        onEndShift={() => { if (shiftDetail) { setEndShift(shiftDetail); setShiftDetail(null); } }}
+        onRequestModif={() => { if (shiftDetail) { setReqShiftId(shiftDetail.id); setShiftDetail(null); setReqOpen(true); } }}
+      />
+      <EndShiftSheet open={!!endShift} onClose={() => setEndShift(null)} shift={endShift} userId={userId} />
+      <RequestModificationSheet open={reqOpen} onClose={() => { setReqOpen(false); setReqShiftId(null); }} userId={userId} shiftId={reqShiftId} />
     </div>
   );
 }
 
 /* ─── PROFIL ─── */
-function ProfilTab({ profile, businessRoles, onNavigate }: { profile: ProfileRow | null; businessRoles: Role[]; onNavigate: (t: Tab) => void }) {
+function ProfilTab({ profile, businessRoles, studios, onNavigate }: { profile: ProfileRow | null; businessRoles: Role[]; studios: Record<string, string>; onNavigate: (t: Tab) => void }) {
   const { signOut } = useAuth();
+  const [docsOpen, setDocsOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+
   if (!profile) return <div className="px-5 pt-6" style={{ fontSize: 13 }}>Chargement…</div>;
 
   const initials = `${profile.first_name?.[0] || ""}${profile.last_name?.[0] || ""}`.toUpperCase();
@@ -427,12 +382,14 @@ function ProfilTab({ profile, businessRoles, onNavigate }: { profile: ProfileRow
   const quotaUsed = profile.quota_used; const quotaMax = profile.quota_max;
   const quotaPct = quotaUsed !== null && quotaMax ? Math.round((quotaUsed / quotaMax) * 100) : 0;
   const quotaColor = getQuotaStatus(quotaUsed, quotaMax);
-  const barColor = quotaColor === 'danger' ? "var(--danger-text)" : quotaColor === 'warning' ? "var(--warning-text)" : "var(--success-text)";
+  const barColor = quotaColor === "danger" ? "var(--danger-text)" : quotaColor === "warning" ? "var(--warning-text)" : "var(--success-text)";
+  const studioName = profile.studio_id ? studios[profile.studio_id] : null;
+  const fmtDate = (iso: string | null) => iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "—";
 
   return (
     <div className="px-5 pt-6">
       <div className="flex items-center gap-4 mb-6">
-        <div className="rounded-full flex items-center justify-center" style={{ width: 56, height: 56, backgroundColor: rc.bg, color: rc.text, fontSize: 18, fontWeight: 500 }}>
+        <div className="rounded-full flex items-center justify-center" style={{ width: 64, height: 64, backgroundColor: rc.bg, color: rc.text, fontSize: 20, fontWeight: 500 }}>
           {initials || "—"}
         </div>
         <div>
@@ -448,7 +405,8 @@ function ProfilTab({ profile, businessRoles, onNavigate }: { profile: ProfileRow
         </div>
       </div>
 
-      {quotaUsed !== null && quotaMax !== null && (
+      {/* Contingent */}
+      {quotaUsed !== null && quotaMax !== null && quotaMax > 0 && (
         <div className="rounded-xl border p-4 mb-4" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
           <div className="flex items-center justify-between mb-2">
             <span style={{ fontSize: 12, fontWeight: 500 }}>Contingent</span>
@@ -461,19 +419,49 @@ function ProfilTab({ profile, businessRoles, onNavigate }: { profile: ProfileRow
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 mb-5">
-        <StatCard label="Email" value={profile.email} small />
-        <StatCard label="Score" value={(profile.score ?? 0).toString()} sub="/10" />
-      </div>
+      {/* Informations personnelles */}
+      <SectionTitle>Informations personnelles</SectionTitle>
+      <Card>
+        <InfoRow icon={<Mail size={14} />} label="Email" value={profile.email} />
+        <InfoRow icon={<Phone size={14} />} label="Téléphone" value={profile.phone || "—"} />
+        <InfoRow icon={<Cake size={14} />} label="Date de naissance" value={fmtDate(profile.birth_date)} />
+        <InfoRow icon={<MapPin size={14} />} label="Adresse" value={profile.address ? `${profile.address}${profile.city ? `, ${profile.city}` : ""}` : "—"} last />
+      </Card>
 
-      <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
+      {/* Informations contrat */}
+      <SectionTitle>Contrat</SectionTitle>
+      <Card>
+        <InfoRow icon={<User size={14} />} label="Studio" value={studioName?.replace("Skult ", "") || "—"} />
+        <InfoRow icon={<Calendar size={14} />} label="Date d'embauche" value={fmtDate(profile.hire_date)} />
+        <InfoRow icon={<Hash size={14} />} label="NISS" value={profile.niss || "—"} />
+        <InfoRow icon={<CreditCard size={14} />} label="IBAN" value={profile.iban || "—"} last />
+      </Card>
+
+      {/* Contact urgence */}
+      <SectionTitle>Contact d'urgence</SectionTitle>
+      <Card>
+        {profile.emergency_contact_name ? (
+          <>
+            <InfoRow icon={<AlertTriangle size={14} />} label="Nom" value={`${profile.emergency_contact_name}${profile.emergency_contact_relation ? ` (${profile.emergency_contact_relation})` : ""}`} />
+            <InfoRow icon={<Phone size={14} />} label="Téléphone" value={profile.emergency_contact_phone || "—"} last />
+          </>
+        ) : (
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)", padding: "12px 0" }}>
+            Aucun contact d'urgence renseigné.
+          </div>
+        )}
+      </Card>
+
+      {/* Liens utiles */}
+      <div className="rounded-xl border overflow-hidden mt-4" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
         {[
-          { label: 'Mes informations', icon: User, action: () => toast("Mes informations", { description: "Section bientôt disponible" }) },
-          { label: 'Formation', icon: GraduationCap, action: () => toast("Formation", { description: "Section bientôt disponible" }) },
-          { label: 'Mes documents', icon: ClipboardCheck, action: () => toast("Mes documents", { description: "Section bientôt disponible" }) },
-          { label: 'Notifications', icon: Calendar, action: () => toast("Notifications", { description: "Section bientôt disponible" }) },
-        ].map((item, i) => (
-          <button key={i} onClick={item.action} className="w-full flex items-center gap-3 px-4 py-3.5 text-left" style={{ borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.06)" : "none", cursor: "pointer" }}>
+          { label: "Mes formations", icon: GraduationCap, action: () => onNavigate("formation") },
+          { label: "Mes documents", icon: Inbox, action: () => setDocsOpen(true) },
+          { label: "Notifications", icon: AlertCircle, action: () => setNotifOpen(true) },
+          { label: "Conversation admin", icon: MessageCircle, action: () => onNavigate("chat") },
+        ].map((item, i, arr) => (
+          <button key={i} onClick={item.action} className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+            style={{ borderBottom: i < arr.length - 1 ? "0.5px solid rgba(0,0,0,0.06)" : "none", cursor: "pointer" }}>
             <item.icon size={16} style={{ color: "var(--muted-foreground)" }} />
             <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
             <ChevronRight size={14} style={{ color: "var(--muted-foreground)" }} />
@@ -481,20 +469,41 @@ function ProfilTab({ profile, businessRoles, onNavigate }: { profile: ProfileRow
         ))}
       </div>
 
-      <button onClick={async () => { await signOut(); onNavigate('accueil'); toast.success("Déconnecté"); }} className="w-full rounded-xl border px-4 py-3 mt-4 text-center" style={{ fontSize: 13, color: "var(--danger-text)", backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
+      <button onClick={async () => { await signOut(); onNavigate("accueil"); toast.success("Déconnecté"); }}
+        className="w-full rounded-xl border px-4 py-3 mt-4 text-center"
+        style={{ fontSize: 13, color: "var(--danger-text)", backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
         Se déconnecter
       </button>
+
+      <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} />
+      <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} />
     </div>
   );
 }
 
-function StatCard({ label, value, sub, small }: { label: string; value: string; sub?: string; small?: boolean }) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border p-3" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
-      <div style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
-      <div className="flex items-baseline gap-0.5">
-        <span style={{ fontSize: small ? 12 : 20, fontWeight: 500, wordBreak: "break-all" }}>{value}</span>
-        {sub && <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{sub}</span>}
+    <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 16, marginBottom: 8 }}>
+      {children}
+    </div>
+  );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
+      {children}
+    </div>
+  );
+}
+
+function InfoRow({ icon, label, value, last }: { icon: React.ReactNode; label: string; value: string; last?: boolean }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: last ? "none" : "0.5px solid rgba(0,0,0,0.06)" }}>
+      <span style={{ color: "var(--muted-foreground)" }}>{icon}</span>
+      <div className="flex-1 min-w-0">
+        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{label}</div>
+        <div style={{ fontSize: 13, fontWeight: 500, wordBreak: "break-word" }}>{value}</div>
       </div>
     </div>
   );
