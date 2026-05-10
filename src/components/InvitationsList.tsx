@@ -65,7 +65,7 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
       supabase
         .from("invitations")
         .select(
-          "id, email, first_name, last_name, phone, studio_id, contract, business_roles, app_role, status, token, created_at, expires_at, accepted_at",
+          "id, email, first_name, last_name, phone, studio_id, studio_ids, contract, contracts, business_roles, app_role, status, token, created_at, expires_at, accepted_at",
         )
         .order("created_at", { ascending: false }),
       supabase.from("studios").select("id, name"),
