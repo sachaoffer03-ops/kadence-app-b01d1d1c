@@ -85,8 +85,61 @@ function FormationPage() {
     toast.success("Parcours créé");
   };
 
-  return (
-    <div className="p-6">
+  // ── Video upload ────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingTarget = useRef<{ pathId: string; modId: string } | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null); // module id being uploaded to
+  const [playing, setPlaying] = useState<{ url: string; title: string } | null>(null);
+
+  const triggerUpload = (pathId: string, modId: string) => {
+    pendingTarget.current = { pathId, modId };
+    fileInputRef.current?.click();
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    const target = pendingTarget.current;
+    if (!file || !target) return;
+    if (!file.type.startsWith("video/")) { toast.error("Le fichier doit être une vidéo"); return; }
+
+    setUploading(target.modId);
+    try {
+      const duration = await probeDuration(file);
+      const ext = file.name.split(".").pop() || "mp4";
+      const path = `${target.pathId}/${target.modId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("formation-videos").upload(path, file, {
+        cacheControl: "3600", upsert: false, contentType: file.type,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from("formation-videos").getPublicUrl(path);
+      const baseTitle = file.name.replace(/\.[^.]+$/, "");
+      const newVideo: VideoItem = {
+        id: `vid-${Date.now()}`,
+        title: baseTitle,
+        duration: formatDuration(duration),
+        url: data.publicUrl,
+        storagePath: path,
+      };
+      setPaths((prev) => prev.map((p) => p.id !== target.pathId ? p : recount({
+        ...p,
+        modules: p.modules.map((m) => m.id !== target.modId ? m : { ...m, videos: [...m.videos, newVideo] }),
+      })));
+      toast.success(`"${baseTitle}" uploadée`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Échec de l'upload");
+    } finally {
+      setUploading(null);
+      pendingTarget.current = null;
+    }
+  };
+
+  const playVideo = (url: string | undefined, title: string) => {
+    if (!url) { toast.info("Aucune vidéo associée — utilise le mode édition pour en uploader une"); return; }
+    setPlaying({ url, title });
+  };
+
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Formation</h1>
