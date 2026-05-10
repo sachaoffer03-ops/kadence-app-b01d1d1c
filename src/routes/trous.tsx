@@ -6,7 +6,7 @@ import { holeShifts, employees, roleColors, type HoleShift, type Role, type Stud
 
 export const Route = createFileRoute("/trous")({
   component: TrousPage,
-  head: () => ({ meta: [{ title: "Trous à combler — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Trous à combler — Kadence" }] }),
 });
 
 const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];

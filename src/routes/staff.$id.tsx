@@ -8,7 +8,7 @@ type ModalParam = "roles" | "score" | "deactivate";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
-  head: () => ({ meta: [{ title: "Profil employé — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Profil employé — Kadence" }] }),
   validateSearch: (s: Record<string, unknown>): { modal?: ModalParam } => {
     const m = s.modal;
     return m === "roles" || m === "score" || m === "deactivate" ? { modal: m } : {};

@@ -73,7 +73,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           </button>
         )}
         <span className="hidden md:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-          Shyft
+          Kadence
         </span>
         <span className="hidden md:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>/</span>
         <span style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>

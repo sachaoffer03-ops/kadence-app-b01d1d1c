@@ -28,7 +28,7 @@ const probeDuration = (file: File): Promise<number> => new Promise((resolve) => 
 
 export const Route = createFileRoute("/formation")({
   component: FormationPage,
-  head: () => ({ meta: [{ title: "Formation — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Formation — Kadence" }] }),
 });
 
 const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];

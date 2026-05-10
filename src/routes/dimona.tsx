@@ -6,7 +6,7 @@ import { dimonaEntries, roleColors, getUrgencyColor, type DimonaEntry, type Stud
 
 export const Route = createFileRoute("/dimona")({
   component: DimonaPage,
-  head: () => ({ meta: [{ title: "Dimona — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Dimona — Kadence" }] }),
 });
 
 const allStudios: (Studio | "tous")[] = ["tous", "Skult Rhodes", "Skult Châtelain"];

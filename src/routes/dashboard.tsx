@@ -6,7 +6,7 @@ import { ArrowRight, AlertTriangle, ChevronRight } from "lucide-react";
 export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
   head: () => ({
-    meta: [{ title: "Dashboard — Shyft" }],
+    meta: [{ title: "Dashboard — Kadence" }],
   }),
 });
 

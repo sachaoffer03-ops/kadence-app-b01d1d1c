@@ -6,7 +6,7 @@ import { pointageEntries, roleColors, type PointageEntry, type Studio } from "@/
 
 export const Route = createFileRoute("/pointage")({
   component: PointagePage,
-  head: () => ({ meta: [{ title: "Pointage — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Pointage — Kadence" }] }),
 });
 
 function nowHHMM() {

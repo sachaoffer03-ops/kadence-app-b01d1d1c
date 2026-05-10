@@ -6,7 +6,7 @@ import { modificationRequests, roleColors, employees, type ModificationRequest }
 
 export const Route = createFileRoute("/demandes")({
   component: DemandesPage,
-  head: () => ({ meta: [{ title: "Demandes de modification — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Demandes de modification — Kadence" }] }),
 });
 
 const urgencyStyles: Record<string, { bg: string; text: string; label: string }> = {

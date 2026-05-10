@@ -4,7 +4,7 @@ import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock } from "l
 
 export const Route = createFileRoute("/reglages")({
   component: ReglagesPage,
-  head: () => ({ meta: [{ title: "Réglages — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Réglages — Kadence" }] }),
 });
 
 const tabs = [
@@ -22,7 +22,7 @@ function ReglagesPage() {
     <div className="p-6">
       <div className="mb-5">
         <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Réglages</h1>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Configuration générale de Shyft.</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Configuration générale de Kadence.</p>
       </div>
 
       <div className="flex gap-6">

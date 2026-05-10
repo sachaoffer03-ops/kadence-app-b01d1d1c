@@ -6,7 +6,7 @@ import { Dropdown } from "@/components/Dropdown";
 
 export const Route = createFileRoute("/signalements")({
   component: SignalementsPage,
-  head: () => ({ meta: [{ title: "Signalements — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Signalements — Kadence" }] }),
 });
 
 type Category = "Stock" | "Matériel" | "Hygiène" | "Autre";

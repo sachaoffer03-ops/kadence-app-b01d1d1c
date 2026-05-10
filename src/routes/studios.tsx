@@ -28,7 +28,7 @@ import {
 
 export const Route = createFileRoute("/studios")({
   component: StudiosPage,
-  head: () => ({ meta: [{ title: "Studios & postes — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Studios & postes — Kadence" }] }),
 });
 
 const baseStudioTabs: Studio[] = ["Skult Rhodes", "Skult Châtelain"];

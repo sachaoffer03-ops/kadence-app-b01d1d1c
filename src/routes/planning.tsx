@@ -11,7 +11,7 @@ import { Dropdown } from "@/components/Dropdown";
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
   head: () => ({
-    meta: [{ title: "Planning — Shyft" }],
+    meta: [{ title: "Planning — Kadence" }],
   }),
   validateSearch: (s: Record<string, unknown>): { add?: boolean } =>
     s.add ? { add: true } : {},

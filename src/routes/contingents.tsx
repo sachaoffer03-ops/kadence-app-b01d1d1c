@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/contingents")({
   component: ContingentsPage,
-  head: () => ({ meta: [{ title: "Quotas étudiants — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Quotas étudiants — Kadence" }] }),
 });
 
 type StatusFilter = "tous" | "danger" | "warning" | "safe";

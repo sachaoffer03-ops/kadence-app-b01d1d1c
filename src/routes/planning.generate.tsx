@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/planning/generate")({
   component: GeneratePlanningPage,
-  head: () => ({ meta: [{ title: "Générer le planning — Shyft" }] }),
+  head: () => ({ meta: [{ title: "Générer le planning — Kadence" }] }),
 });
 
 const steps = [
