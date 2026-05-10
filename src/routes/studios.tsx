@@ -1308,18 +1308,12 @@ function ExceptionForm({
           />
         </FormField>
         <FormField label="Type">
-          <select
-            value={draft.type}
-            onChange={(e) => setDraft({ ...draft, type: e.target.value as ExceptionType })}
-            className="w-full rounded-md px-2 py-1.5"
-            style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
-          >
-            {exceptionTypes.map((t) => (
-              <option key={t} value={t}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </option>
-            ))}
-          </select>
+          <Dropdown
+            value={draft.type.charAt(0).toUpperCase() + draft.type.slice(1)}
+            options={exceptionTypes.map(t => t.charAt(0).toUpperCase() + t.slice(1))}
+            onChange={(v) => setDraft({ ...draft, type: v.toLowerCase() as ExceptionType })}
+            minWidth={180}
+          />
         </FormField>
         <FormField label="Horaires (optionnel)">
           <input
