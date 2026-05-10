@@ -40,7 +40,8 @@ interface Invitation {
 const TOTAL_STEPS = 7; // 0 welcome, 1 password, 2 identity, 3 address, 4 rh, 5 emergency, 6 validation
 
 function ActivationPage() {
-  const { token } = Route.useSearch();
+  const { token, preview } = Route.useSearch();
+  const isPreview = !!preview;
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -66,24 +67,25 @@ function ActivationPage() {
   const [accept, setAccept] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    if (!token && !preview) {
       setError("Aucun lien d'invitation détecté");
       setLoading(false);
       return;
     }
     (async () => {
-      const { data, error } = await supabase
+      const query = supabase
         .from("invitations")
         .select(
           "id, email, first_name, last_name, phone, studio_id, contract, status, expires_at",
-        )
-        .eq("token", token)
-        .maybeSingle();
+        );
+      const { data, error } = await (isPreview
+        ? query.eq("id", preview).maybeSingle()
+        : query.eq("token", token).maybeSingle());
       if (error || !data) {
         setError("Invitation introuvable");
-      } else if (data.status !== "pending") {
+      } else if (!isPreview && data.status !== "pending") {
         setError("Cette invitation a déjà été utilisée ou révoquée");
-      } else if (new Date(data.expires_at) < new Date()) {
+      } else if (!isPreview && new Date(data.expires_at) < new Date()) {
         setError("Cette invitation a expiré. Demandez-en une nouvelle.");
       } else {
         setInvitation(data);
@@ -91,7 +93,7 @@ function ActivationPage() {
       }
       setLoading(false);
     })();
-  }, [token]);
+  }, [token, preview, isPreview]);
 
   // Password strength
   const pwStrength = useMemo(() => {
