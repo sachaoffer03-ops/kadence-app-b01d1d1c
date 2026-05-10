@@ -131,13 +131,6 @@ function StaffPage() {
             {filtered.length} employé{filtered.length > 1 ? "s" : ""}
           </span>
           <button
-            onClick={() => setShiftOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5"
-            style={{ fontSize: 12, fontWeight: 500, borderColor: "var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)" }}
-          >
-            <CalendarPlus size={13} /> Planifier un shift
-          </button>
-          <button
             onClick={() => setInviteOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
