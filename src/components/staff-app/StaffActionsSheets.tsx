@@ -250,8 +250,8 @@ export function MyRequestsSheet({ open, onClose, userId }: { open: boolean; onCl
 
   const statusLabels: Record<string, { label: string; bg: string; color: string }> = {
     pending: { label: "En attente", bg: "var(--warning-bg)", color: "var(--warning-text)" },
-    approved: { label: "Acceptée", bg: "var(--success-bg)", color: "var(--success-text)" },
-    rejected: { label: "Refusée", bg: "var(--danger-bg)", color: "var(--danger-text)" },
+    accepted: { label: "Acceptée", bg: "var(--success-bg)", color: "var(--success-text)" },
+    refused: { label: "Refusée", bg: "var(--danger-bg)", color: "var(--danger-text)" },
   };
   const typeLabels: Record<string, string> = { swap: "Échange", cancel: "Annulation", time_change: "Changement d'horaire" };
 
