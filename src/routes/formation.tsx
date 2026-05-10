@@ -317,17 +317,6 @@ function PathCard({
     if (!window.confirm("Supprimer ce module ?")) return;
     onUpdate((p) => ({ ...p, modules: p.modules.filter((m) => m.id !== modId) }));
   };
-  const addVideo = (modId: string) => {
-    const t = window.prompt("Titre de la vidéo");
-    if (!t || !t.trim()) return;
-    const d = window.prompt("Durée (ex: 4min)", "5min") || "5min";
-    onUpdate((p) => ({
-      ...p,
-      modules: p.modules.map((m) => m.id === modId
-        ? { ...m, videos: [...m.videos, { id: `vid-${Date.now()}`, title: t.trim(), duration: d }] }
-        : m),
-    }));
-  };
   const renameVideo = (modId: string, vidId: string, current: string) => {
     const t = window.prompt("Titre de la vidéo", current);
     if (t && t.trim()) onUpdate((p) => ({
@@ -337,11 +326,13 @@ function PathCard({
         : m),
     }));
   };
-  const deleteVideo = (modId: string, vidId: string) => {
+  const deleteVideo = async (modId: string, video: VideoItem) => {
+    const sp = video.storagePath;
+    if (sp) { try { await supabase.storage.from("formation-videos").remove([sp]); } catch (e) { console.error(e); } }
     onUpdate((p) => ({
       ...p,
       modules: p.modules.map((m) => m.id === modId
-        ? { ...m, videos: m.videos.filter((v) => v.id !== vidId) }
+        ? { ...m, videos: m.videos.filter((v) => v.id !== video.id) }
         : m),
     }));
   };
