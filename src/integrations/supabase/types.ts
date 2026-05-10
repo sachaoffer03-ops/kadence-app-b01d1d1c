@@ -38,6 +38,33 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_templates: {
+        Row: {
+          business_role: Database["public"]["Enums"]["business_role"]
+          created_at: string
+          id: string
+          items: Json
+          studio_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          business_role: Database["public"]["Enums"]["business_role"]
+          created_at?: string
+          id?: string
+          items?: Json
+          studio_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          business_role?: Database["public"]["Enums"]["business_role"]
+          created_at?: string
+          id?: string
+          items?: Json
+          studio_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feedbacks: {
         Row: {
           admin_reply: string | null
@@ -114,6 +141,8 @@ export type Database = {
           description: string | null
           duration_min: number | null
           id: string
+          path_id: string | null
+          position: number
           required_role: Database["public"]["Enums"]["business_role"] | null
           title: string
           video_url: string | null
@@ -123,6 +152,8 @@ export type Database = {
           description?: string | null
           duration_min?: number | null
           id?: string
+          path_id?: string | null
+          position?: number
           required_role?: Database["public"]["Enums"]["business_role"] | null
           title: string
           video_url?: string | null
@@ -132,6 +163,8 @@ export type Database = {
           description?: string | null
           duration_min?: number | null
           id?: string
+          path_id?: string | null
+          position?: number
           required_role?: Database["public"]["Enums"]["business_role"] | null
           title?: string
           video_url?: string | null
@@ -562,6 +595,39 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      training_paths: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          position: number
+          required_role: Database["public"]["Enums"]["business_role"] | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          position?: number
+          required_role?: Database["public"]["Enums"]["business_role"] | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          position?: number
+          required_role?: Database["public"]["Enums"]["business_role"] | null
+          title?: string
+          type?: string
+          updated_at?: string
         }
         Relationships: []
       }
