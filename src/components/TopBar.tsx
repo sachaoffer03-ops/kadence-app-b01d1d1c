@@ -96,6 +96,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           />
         </button>
         <button
+          onClick={openNewShift}
           className="hidden md:flex items-center gap-1.5 rounded-md px-3 transition-colors"
           style={{
             height: 32,
@@ -109,6 +110,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           Nouveau shift
         </button>
         <button
+          onClick={openNewShift}
           className="flex md:hidden items-center justify-center rounded-md"
           style={{
             width: 32,
