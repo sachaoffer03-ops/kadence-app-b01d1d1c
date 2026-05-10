@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { employees, getInitials } from "@/lib/mock-data";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Dropdown } from "@/components/Dropdown";
 
 export const Route = createFileRoute("/signalements")({
@@ -9,60 +10,68 @@ export const Route = createFileRoute("/signalements")({
   head: () => ({ meta: [{ title: "Signalements — Kadence" }] }),
 });
 
-type Category = "Stock" | "Matériel" | "Hygiène" | "Autre";
+type Category = "stock" | "materiel" | "hygiene" | "autre";
+const CAT_LABEL: Record<Category, string> = { stock: "Stock", materiel: "Matériel", hygiene: "Hygiène", autre: "Autre" };
 
-interface Signalement {
-  id: string;
-  category: Category;
-  message: string;
-  studio: string;
-  authorId: string;
-  createdAt: string;
-  resolved: boolean;
+interface Row {
+  id: string; category: Category; message: string; studio_id: string | null;
+  author_id: string; created_at: string; resolved: boolean;
 }
-
-const CATEGORIES: Category[] = ["Stock", "Matériel", "Hygiène", "Autre"];
-const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
-
-const initial: Signalement[] = [
-  { id: "s1", category: "Stock",    message: "Plus de lait entier, il reste juste 2 briques d'avoine.",      studio: "Skult Rhodes",    authorId: "1", createdAt: minutesAgo(12),   resolved: false },
-  { id: "s2", category: "Hygiène",  message: "Plus de papier toilette dans les WC clients.",                 studio: "Skult Châtelain", authorId: "6", createdAt: minutesAgo(48),   resolved: false },
-  { id: "s3", category: "Matériel", message: "Moulin à café qui chauffe et fait un bruit anormal.",          studio: "Skult Rhodes",    authorId: "5", createdAt: minutesAgo(120),  resolved: false },
-  { id: "s4", category: "Stock",    message: "Sirop vanille épuisé.",                                        studio: "Skult Châtelain", authorId: "2", createdAt: minutesAgo(220),  resolved: false },
-  { id: "s5", category: "Autre",    message: "Client a oublié sa veste hier soir, gardée au coffre.",        studio: "Skult Rhodes",    authorId: "3", createdAt: minutesAgo(1440), resolved: false },
-  { id: "s6", category: "Hygiène",  message: "Bouteille de savon mains vide.",                               studio: "Skult Rhodes",    authorId: "1", createdAt: minutesAgo(2880), resolved: true  },
-  { id: "s7", category: "Matériel", message: "Chaise terrasse cassée, pied avant fissuré.",                  studio: "Skult Châtelain", authorId: "9", createdAt: minutesAgo(4320), resolved: true  },
-];
+interface ProfileLite { id: string; first_name: string; last_name: string; }
+interface StudioLite { id: string; name: string; }
 
 const formatRelative = (iso: string) => {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.round(diff / 60_000);
   if (m < 1) return "à l'instant";
   if (m < 60) return `il y a ${m} min`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `il y a ${h}h`;
-  const d = Math.round(h / 24);
-  return `il y a ${d}j`;
+  const h = Math.round(m / 60); if (h < 24) return `il y a ${h}h`;
+  return `il y a ${Math.round(h / 24)}j`;
 };
 
 function SignalementsPage() {
-  const [items, setItems] = useState<Signalement[]>(initial);
+  const { user } = useAuth();
+  const [items, setItems] = useState<Row[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({});
+  const [studios, setStudios] = useState<Record<string, StudioLite>>({});
   const [tab, setTab] = useState<"actifs" | "resolus">("actifs");
-  const [studio, setStudio] = useState<"Tous" | string>("Tous");
-  const [cat, setCat] = useState<"Toutes" | Category>("Toutes");
+  const [studio, setStudio] = useState<string>("Tous");
+  const [cat, setCat] = useState<string>("Toutes");
 
-  const filtered = useMemo(() => {
-    return [...items]
-      .filter(s => tab === "actifs" ? !s.resolved : s.resolved)
-      .filter(s => studio === "Tous" || s.studio === studio)
-      .filter(s => cat === "Toutes" || s.category === cat)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [items, tab, studio, cat]);
+  useEffect(() => {
+    const load = async () => {
+      const [{ data: rows }, { data: ps }, { data: sts }] = await Promise.all([
+        supabase.from("signalements").select("*").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id,first_name,last_name"),
+        supabase.from("studios").select("id,name"),
+      ]);
+      if (rows) setItems(rows as Row[]);
+      if (ps) setProfiles(Object.fromEntries(ps.map((p) => [p.id, p as ProfileLite])));
+      if (sts) setStudios(Object.fromEntries(sts.map((s) => [s.id, s as StudioLite])));
+    };
+    load();
+    const channel = supabase.channel("signalements-admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "signalements" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const studioNames = useMemo(() => ["Tous", ...Object.values(studios).map(s => s.name)], [studios]);
+
+  const filtered = items
+    .filter(s => tab === "actifs" ? !s.resolved : s.resolved)
+    .filter(s => studio === "Tous" || (s.studio_id && studios[s.studio_id]?.name === studio))
+    .filter(s => cat === "Toutes" || CAT_LABEL[s.category] === cat);
 
   const activeCount = items.filter(s => !s.resolved).length;
 
-  const setResolved = (id: string, val: boolean) => {
-    setItems(prev => prev.map(s => s.id === id ? { ...s, resolved: val } : s));
+  const setResolved = async (id: string, val: boolean) => {
+    const { error } = await supabase.from("signalements").update({
+      resolved: val,
+      resolved_at: val ? new Date().toISOString() : null,
+      resolved_by: val ? user?.id ?? null : null,
+    }).eq("id", id);
+    if (error) { toast.error("Erreur"); return; }
     toast.success(val ? "Signalement résolu" : "Signalement rouvert");
   };
 
@@ -75,7 +84,6 @@ function SignalementsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex items-center gap-1 mb-4 border-b" style={{ borderColor: "var(--border)" }}>
         <Tab active={tab === "actifs"} onClick={() => setTab("actifs")}>
           À traiter <span style={{ marginLeft: 6, fontSize: 11, color: "var(--muted-foreground)" }}>{activeCount}</span>
@@ -83,13 +91,11 @@ function SignalementsPage() {
         <Tab active={tab === "resolus"} onClick={() => setTab("resolus")}>Résolus</Tab>
       </div>
 
-      {/* Filters */}
       <div className="flex items-center gap-3 mb-4 flex-wrap" style={{ fontSize: 12 }}>
-        <Dropdown label="Studio" value={studio} options={["Tous", "Skult Rhodes", "Skult Châtelain"]} onChange={setStudio} />
-        <Dropdown label="Catégorie" value={cat} options={["Toutes", ...CATEGORIES]} onChange={(v) => setCat(v as typeof cat)} />
+        <Dropdown label="Studio" value={studio} options={studioNames} onChange={setStudio} />
+        <Dropdown label="Catégorie" value={cat} options={["Toutes", "Stock", "Matériel", "Hygiène", "Autre"]} onChange={setCat} />
       </div>
 
-      {/* List */}
       {filtered.length === 0 ? (
         <div className="rounded-lg border p-6 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: 13, color: "var(--muted-foreground)" }}>
           Aucun signalement.
@@ -97,36 +103,29 @@ function SignalementsPage() {
       ) : (
         <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
           {filtered.map((s, i) => {
-            const emp = employees.find(e => e.id === s.authorId);
+            const emp = profiles[s.author_id];
+            const studioName = (s.studio_id && studios[s.studio_id]?.name) || "—";
+            const initials = emp ? `${emp.first_name?.[0] || ""}${emp.last_name?.[0] || ""}`.toUpperCase() : "—";
             return (
-              <div key={s.id} className="flex items-start gap-4 px-4 py-3" style={{
-                borderTop: i === 0 ? "none" : "0.5px solid var(--border)",
-              }}>
+              <div key={s.id} className="flex items-start gap-4 px-4 py-3" style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)" }}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                    <div className="flex items-center justify-center rounded-full" style={{ width: 18, height: 18, fontSize: 9, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--foreground)" }}>
-                      {emp ? getInitials(emp.firstName, emp.lastName) : "—"}
-                    </div>
-                    <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{emp ? `${emp.firstName} ${emp.lastName}` : "Inconnu"}</span>
-                    <span>·</span>
-                    <span>{s.studio.replace("Skult ", "")}</span>
-                    <span>·</span>
-                    <span>{formatRelative(s.createdAt)}</span>
-                    <span>·</span>
-                    <span>{s.category}</span>
+                    <div className="flex items-center justify-center rounded-full" style={{ width: 18, height: 18, fontSize: 9, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--foreground)" }}>{initials}</div>
+                    <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{emp ? `${emp.first_name} ${emp.last_name}` : "Inconnu"}</span>
+                    <span>·</span><span>{studioName.replace("Skult ", "")}</span>
+                    <span>·</span><span>{formatRelative(s.created_at)}</span>
+                    <span>·</span><span>{CAT_LABEL[s.category]}</span>
                   </div>
                   <div style={{ fontSize: 13 }}>{s.message}</div>
                 </div>
-                <button
-                  onClick={() => setResolved(s.id, !s.resolved)}
+                <button onClick={() => setResolved(s.id, !s.resolved)}
                   className="rounded-md px-3 py-1.5 shrink-0"
                   style={{
                     fontSize: 11, fontWeight: 500,
                     border: "0.5px solid var(--border)",
                     backgroundColor: s.resolved ? "transparent" : "var(--foreground)",
                     color: s.resolved ? "var(--muted-foreground)" : "var(--background)",
-                  }}
-                >
+                  }}>
                   {s.resolved ? "Rouvrir" : "Résolu"}
                 </button>
               </div>
@@ -141,12 +140,10 @@ function SignalementsPage() {
 function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick} className="px-3 py-2" style={{
-      fontSize: 13,
-      fontWeight: active ? 500 : 400,
+      fontSize: 13, fontWeight: active ? 500 : 400,
       color: active ? "var(--foreground)" : "var(--muted-foreground)",
       borderBottom: active ? "1.5px solid var(--foreground)" : "1.5px solid transparent",
       marginBottom: -1,
     }}>{children}</button>
   );
 }
-
