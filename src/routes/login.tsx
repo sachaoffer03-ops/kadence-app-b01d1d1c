@@ -118,7 +118,7 @@ function AdminLogin(p: AdminFormProps) {
     <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: "var(--background)" }}>
       <div className="w-full max-w-[400px]">
         <div className="mb-10 flex flex-col items-center">
-          <img src={logo} alt="Kadence" style={{ height: 36, width: "auto", objectFit: "contain" }} />
+          <img src={logo} alt="Kadence" style={{ height: 80, width: "auto", objectFit: "contain" }} />
           <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 10, letterSpacing: "0.02em" }}>
             Espace administrateur · Skult Studios
           </p>
@@ -175,7 +175,7 @@ function EmployeeLogin(p: FormProps) {
       style={{ backgroundColor: "var(--background)" }}>
       <div className="flex-1 flex flex-col justify-center max-w-[440px] w-full mx-auto">
         <div className="mb-8">
-          <img src={logo} alt="Kadence" style={{ height: 32, width: "auto", objectFit: "contain" }} />
+          <img src={logo} alt="Kadence" style={{ height: 72, width: "auto", objectFit: "contain" }} />
           <h1 style={{ fontSize: 28, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 28, lineHeight: 1.2 }}>
             Bonjour 👋
           </h1>
