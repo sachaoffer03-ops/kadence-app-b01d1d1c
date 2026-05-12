@@ -141,6 +141,21 @@ function StaffPage() {
                 );
               })}
               <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
+              {studios.map(s => {
+                const a = studioFilters.has(s.id);
+                const count = profiles.filter(p => p.studio_id === s.id).length;
+                return (
+                  <button key={s.id} onClick={() => toggle(studioFilters, setStudioFilters, s.id)}
+                    className="rounded-full px-2.5 py-1"
+                    style={{ fontSize: 12, fontWeight: a ? 500 : 400,
+                      backgroundColor: a ? "var(--foreground)" : "transparent",
+                      color: a ? "var(--card)" : "var(--muted-foreground)",
+                      border: a ? "none" : "0.5px solid var(--border)" }}>
+                    {s.name.replace("Skult ", "")} · {count}
+                  </button>
+                );
+              })}
+              <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
               {businessRoleOptions.map(r => {
                 const a = roleFilters.has(r);
                 const count = profiles.filter(p => (rolesByUser[p.id] || []).includes(r)).length;
