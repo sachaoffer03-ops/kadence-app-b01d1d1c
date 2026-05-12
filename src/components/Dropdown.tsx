@@ -8,9 +8,11 @@ interface DropdownProps {
   onChange: (v: string) => void;
   minWidth?: number;
   align?: "left" | "right";
+  fullWidth?: boolean;
+  placeholder?: string;
 }
 
-export function Dropdown({ label, value, options, onChange, minWidth = 140, align = "left" }: DropdownProps) {
+export function Dropdown({ label, value, options, onChange, minWidth = 140, align = "left", fullWidth = false, placeholder }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -29,23 +31,23 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
   }, [open]);
 
   return (
-    <div ref={ref} className="relative inline-flex items-center gap-2" style={{ fontSize: 12 }}>
+    <div ref={ref} className={`relative ${fullWidth ? "flex w-full" : "inline-flex"} items-center gap-2`} style={{ fontSize: 12 }}>
       {label && <span style={{ color: "var(--muted-foreground)" }}>{label}</span>}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 transition-colors"
+        className={`flex items-center justify-between gap-2 rounded-md transition-colors ${fullWidth ? "w-full px-3 py-2" : "px-2.5 py-1.5"}`}
         style={{
-          fontSize: 12,
-          fontWeight: 500,
+          fontSize: fullWidth ? 13 : 12,
+          fontWeight: value ? 500 : 400,
           border: "0.5px solid var(--border)",
           backgroundColor: open ? "var(--muted)" : "var(--card)",
-          minWidth,
-          color: "var(--foreground)",
+          minWidth: fullWidth ? undefined : minWidth,
+          color: value ? "var(--foreground)" : "var(--muted-foreground)",
         }}
       >
-        <span>{value}</span>
-        <ChevronDown size={12} style={{ color: "var(--muted-foreground)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder || "Sélectionner..."}</span>
+        <ChevronDown size={fullWidth ? 14 : 12} style={{ color: "var(--muted-foreground)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }} />
       </button>
       {open && (
         <div
