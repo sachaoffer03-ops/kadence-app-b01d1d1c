@@ -53,22 +53,22 @@ function StaffAppPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [{ data: p }, { data: br }, { data: st }, { data: admins }] = await Promise.all([
+      const [{ data: p }, { data: br }, { data: st }, { data: admin }] = await Promise.all([
         supabase.from("profiles").select(
           "first_name,last_name,email,phone,birth_date,address,city,contract,studio_id,hire_date,niss,iban,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,nationality,quota_used,quota_max,score"
         ).eq("id", user.id).maybeSingle(),
         supabase.from("user_business_roles").select("role").eq("user_id", user.id),
         supabase.from("studios").select("id,name"),
-        supabase.from("user_roles").select("user_id").eq("role", "admin").limit(1),
+        supabase.rpc("get_default_admin").maybeSingle(),
       ]);
       if (p) setProfile(p as ProfileRow);
       if (br) setBusinessRoles(br.map((r) => r.role as Role));
       if (st) setStudios(Object.fromEntries(st.map((s) => [s.id, s.name])));
-      if (admins && admins.length > 0) {
-        const aid = admins[0].user_id as string;
-        setAdminId(aid);
-        const { data: ap } = await supabase.from("profiles").select("first_name,last_name").eq("id", aid).maybeSingle();
-        if (ap) setAdminName(`${ap.first_name || ""} ${ap.last_name || ""}`.trim() || "Administrateur");
+      const a = admin as { user_id?: string; first_name?: string | null; last_name?: string | null } | null;
+      if (a?.user_id) {
+        setAdminId(a.user_id);
+        const name = `${a.first_name || ""} ${a.last_name || ""}`.trim();
+        setAdminName(name || "Administrateur");
       }
     })();
   }, [user]);
