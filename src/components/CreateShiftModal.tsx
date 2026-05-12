@@ -185,9 +185,37 @@ export function CreateShiftModal({ open, onClose, defaultUserId, onCreated }: Pr
           </div>
 
           <div>
+            <label style={labelStyle}>Répétition</label>
+            <div className="flex flex-wrap gap-1 mt-2">
+              {([
+                { v: "none", label: "Jamais" },
+                { v: "weekly", label: "Chaque semaine" },
+                { v: "biweekly", label: "Toutes les 2 semaines" },
+                { v: "monthly", label: "Chaque mois" },
+              ] as const).map((opt) => (
+                <button key={opt.v} type="button" onClick={() => setRecurrence(opt.v)}
+                  className="rounded-full px-2.5 py-1 transition-colors" style={chip(recurrence === opt.v)}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {recurrence !== "none" && (
+              <div className="mt-3">
+                <label style={labelStyle}>Jusqu'au *</label>
+                <input type="date" value={until} min={date} onChange={(e) => setUntil(e.target.value)}
+                  className={inputCls} style={inputStyle} required />
+                <p style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                  Le shift sera dupliqué automatiquement jusqu'à cette date.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div>
             <label style={labelStyle}>Note (optionnel)</label>
             <input value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} style={inputStyle} placeholder="Briefing, info particulière..." />
           </div>
+
 
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={handleClose} className="rounded-md border px-4 py-2"
