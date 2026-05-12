@@ -700,8 +700,8 @@ function PlanningPage() {
                   fontSize: 12,
                   fontWeight: 500,
                   borderLeft: "0.5px solid var(--border)",
-                  backgroundColor: isSelected ? "var(--foreground)" : "transparent",
-                  color: isSelected ? "var(--card)" : "var(--foreground)",
+                  backgroundColor: isSelected ? "var(--muted)" : "transparent",
+                  color: "var(--foreground)",
                   cursor: viewMode === "jour" ? "default" : "pointer",
                 }}
               >
