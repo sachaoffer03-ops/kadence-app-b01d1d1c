@@ -160,6 +160,128 @@ function AdminLogin(p: AdminFormProps) {
 
 function EmployeeLogin(p: FormProps) {
   return (
+    <div
+      className="min-h-screen flex flex-col relative overflow-hidden"
+      style={{ backgroundColor: "var(--background)" }}
+    >
+      {/* halo coral décoratif en haut */}
+      <div
+        aria-hidden
+        className="absolute pointer-events-none"
+        style={{
+          top: -160,
+          right: -120,
+          width: 360,
+          height: 360,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(240,153,123,0.28) 0%, rgba(240,153,123,0) 70%)",
+          filter: "blur(10px)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="absolute pointer-events-none"
+        style={{
+          bottom: -180,
+          left: -140,
+          width: 380,
+          height: 380,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(240,153,123,0.18) 0%, rgba(240,153,123,0) 70%)",
+          filter: "blur(10px)",
+        }}
+      />
+
+      <div className="relative flex-1 flex flex-col justify-center px-6">
+        <div className="max-w-[400px] w-full mx-auto">
+          <div className="flex flex-col items-center text-center mb-10">
+            <img
+              src={logo}
+              alt="Kadence"
+              style={{ height: 88, width: "auto", objectFit: "contain" }}
+            />
+            <h1
+              style={{
+                fontSize: 26,
+                fontWeight: 500,
+                letterSpacing: "-0.02em",
+                marginTop: 28,
+                lineHeight: 1.2,
+              }}
+            >
+              Bonjour
+            </h1>
+            <p
+              style={{
+                fontSize: 14,
+                color: "var(--muted-foreground)",
+                marginTop: 6,
+              }}
+            >
+              {p.mode === "login"
+                ? "Connectez-vous à votre espace"
+                : "Réinitialisez votre mot de passe"}
+            </p>
+          </div>
+
+          <form onSubmit={p.onSubmit} className="space-y-3.5">
+            <Field label="Email" type="email" value={p.email} onChange={p.setEmail} large />
+            {p.mode === "login" && (
+              <Field
+                label="Mot de passe"
+                type="password"
+                value={p.password}
+                onChange={p.setPassword}
+                large
+              />
+            )}
+
+            <button
+              type="submit"
+              disabled={p.loading}
+              className="w-full rounded-2xl mt-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+              style={{
+                fontSize: 15,
+                fontWeight: 500,
+                padding: "16px 0",
+                backgroundColor: "#F0997B",
+                color: "#fff",
+                boxShadow: "0 12px 28px -14px rgba(240, 153, 123, 0.7)",
+              }}
+            >
+              {p.loading ? "..." : p.mode === "login" ? "Se connecter" : "Envoyer le lien"}
+            </button>
+
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => p.setMode(p.mode === "login" ? "forgot" : "login")}
+                style={{ fontSize: 13, color: "var(--muted-foreground)" }}
+                className="hover:underline"
+              >
+                {p.mode === "login" ? "Mot de passe oublié ?" : "Retour à la connexion"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <p
+        className="relative text-center pb-6"
+        style={{
+          fontSize: 11,
+          color: "var(--muted-foreground)",
+          letterSpacing: "0.08em",
+        }}
+      >
+        Skult Studios · Brussels
+      </p>
+    </div>
+  );
+}
+  return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
       {/* Hero sombre */}
       <div
