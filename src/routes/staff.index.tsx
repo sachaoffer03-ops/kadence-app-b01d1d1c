@@ -141,22 +141,33 @@ function StaffPage() {
                 );
               })}
               <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
-              {studios.map(s => {
-                const a = studioFilters.has(s.id);
-                const count = profiles.filter(p => p.studio_id === s.id).length;
+              {businessRoleOptions.map(r => {
+                const a = roleFilters.has(r);
+                const count = profiles.filter(p => (rolesByUser[p.id] || []).includes(r)).length;
+                if (count === 0) return null;
+                const rc = roleColors[r];
                 return (
-                  <button key={s.id} onClick={() => toggle(studioFilters, setStudioFilters, s.id)}
-                    className="rounded-full px-2.5 py-1"
+                  <button key={r} onClick={() => toggle(roleFilters, setRoleFilters, r)}
+                    className="rounded-full px-2.5 py-1 inline-flex items-center gap-1.5"
                     style={{ fontSize: 12, fontWeight: a ? 500 : 400,
-                      backgroundColor: a ? "var(--foreground)" : "transparent",
-                      color: a ? "var(--card)" : "var(--muted-foreground)",
+                      backgroundColor: a ? rc.dot : "transparent",
+                      color: a ? "#fff" : "var(--muted-foreground)",
                       border: a ? "none" : "0.5px solid var(--border)" }}>
-                    {s.name.replace("Skult ", "")} · {count}
+                    <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: a ? "#fff" : rc.dot }} />
+                    {r} · {count}
                   </button>
                 );
               })}
             </div>
             <div className="ml-auto flex items-center gap-3">
+              <button onClick={() => setSortScore(s => s === "desc" ? "asc" : s === "asc" ? "none" : "desc")}
+                className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5"
+                style={{ fontSize: 12, fontWeight: 500,
+                  backgroundColor: sortScore !== "none" ? "var(--foreground)" : "transparent",
+                  color: sortScore !== "none" ? "var(--card)" : "var(--muted-foreground)",
+                  border: sortScore !== "none" ? "none" : "0.5px solid var(--border)" }}>
+                Score {sortScore === "desc" ? "↓" : sortScore === "asc" ? "↑" : ""}
+              </button>
               <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{filtered.length} employé{filtered.length > 1 ? "s" : ""}</span>
               <button onClick={() => setInviteOpen(true)} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
                 style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
@@ -164,6 +175,7 @@ function StaffPage() {
               </button>
             </div>
           </div>
+
 
           <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
             <table className="w-full" style={{ fontSize: 13 }}>
