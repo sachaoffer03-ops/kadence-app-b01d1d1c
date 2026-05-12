@@ -125,7 +125,9 @@ function EmployeeDetailPage() {
               <div>
                 <div style={{ fontSize: 18, fontWeight: 500 }}>{emp.first_name} {emp.last_name}</div>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  {emp.contract && <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>{emp.contract}</span>}
+                  {(userContracts.length > 0 ? userContracts : emp.contract ? [emp.contract] : []).map(c => (
+                    <span key={c} className="rounded-full px-2 py-0.5" style={{ fontSize: 10, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>{c}</span>
+                  ))}
                   {businessRoles.map(r => (
                     <span key={r} className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: roleColors[r].bg, color: roleColors[r].text }}>{r}</span>
                   ))}
@@ -136,9 +138,30 @@ function EmployeeDetailPage() {
             <div className="flex flex-col gap-2" style={{ fontSize: 12 }}>
               <Info icon={Mail} value={emp.email} />
               <Info icon={Phone} value={emp.phone || "—"} />
-              <Info icon={MapPin} value={`${emp.city || "—"}${emp.studio_id && studios[emp.studio_id] ? ` · ${studios[emp.studio_id]}` : ""}`} />
+              <Info icon={MapPin} value={emp.city || "—"} />
             </div>
+
+            {(() => {
+              const ids = userStudioIds.length > 0 ? userStudioIds : (emp.studio_id ? [emp.studio_id] : []);
+              if (ids.length === 0) return null;
+              return (
+                <div className="mt-4 pt-4" style={{ borderTop: "0.5px solid var(--border)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                    Studios rattachés
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {ids.map(sid => (
+                      <div key={sid} className="flex items-center gap-2 rounded-md px-2 py-1.5" style={{ backgroundColor: "var(--background)", fontSize: 12 }}>
+                        <MapPin size={12} style={{ color: "var(--coral)" }} />
+                        <span style={{ fontWeight: 500 }}>{studios[sid] || "Studio inconnu"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
+
 
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Performance</div>
