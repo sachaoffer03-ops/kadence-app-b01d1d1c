@@ -168,6 +168,15 @@ function StatusDot({ confirmation, pointage, delayMinutes }: { confirmation: Shi
   return null;
 }
 
+// ── Visual time-position bar (7h → 23h scale) ──────────────
+function TimeBar({ leftPct, widthPct, color }: { leftPct: number; widthPct: number; color: string }) {
+  return (
+    <div style={{ position: "relative", height: 4, marginTop: 4, borderRadius: 2, backgroundColor: "rgba(0,0,0,0.07)", overflow: "hidden" }}>
+      <div style={{ position: "absolute", left: `${leftPct}%`, width: `${widthPct}%`, top: 0, bottom: 0, borderRadius: 2, backgroundColor: color, opacity: 0.85 }} />
+    </div>
+  );
+}
+
 // ── Shift Detail Modal ─────────────────────────────────────
 function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, onConfirm }: { shift: PlanningShift; employee?: Employee; onClose: () => void; onDelete: () => void; onUpdateSlot: (slot: number) => void; onConfirm: () => void }) {
   const [editing, setEditing] = useState(false);
