@@ -160,41 +160,140 @@ function AdminLogin(p: AdminFormProps) {
 
 function EmployeeLogin(p: FormProps) {
   return (
-    <div className="min-h-screen flex flex-col px-5 py-8"
-      style={{ backgroundColor: "var(--background)" }}>
-      <div className="flex-1 flex flex-col justify-center max-w-[440px] w-full mx-auto">
-        <div className="mb-8">
-          <img src={logo} alt="Kadence" style={{ height: 72, width: "auto", objectFit: "contain" }} />
-          <h1 style={{ fontSize: 28, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 28, lineHeight: 1.2 }}>
-            Bonjour 👋
-          </h1>
-          <p style={{ fontSize: 15, color: "var(--muted-foreground)", marginTop: 6 }}>
-            {p.mode === "login" ? "Connectez-vous à votre espace équipe" : "On vous envoie un lien pour réinitialiser"}
-          </p>
-        </div>
-
-        <form onSubmit={p.onSubmit} className="space-y-4">
-          <Field label="Email" type="email" value={p.email} onChange={p.setEmail} large />
-          {p.mode === "login" && (
-            <Field label="Mot de passe" type="password" value={p.password} onChange={p.setPassword} large />
-          )}
-
-          <button type="submit" disabled={p.loading}
-            className="w-full rounded-xl mt-3 disabled:opacity-50 transition-all active:scale-[0.98]"
-            style={{ fontSize: 16, fontWeight: 500, padding: "16px 0", backgroundColor: "#F0997B", color: "#fff" }}>
-            {p.loading ? "..." : p.mode === "login" ? "Se connecter" : "Envoyer le lien"}
-          </button>
-
-          <div className="flex justify-center pt-2">
-            <button type="button" onClick={() => p.setMode(p.mode === "login" ? "forgot" : "login")}
-              style={{ fontSize: 13, color: "var(--muted-foreground)" }} className="hover:underline">
-              {p.mode === "login" ? "Mot de passe oublié ?" : "Retour à la connexion"}
-            </button>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+      {/* Hero sombre */}
+      <div
+        className="relative px-6 pt-14 pb-24"
+        style={{
+          background:
+            "linear-gradient(160deg, #2A201C 0%, #3A2A24 55%, #5C3A2E 100%)",
+          color: "#FAFAF8",
+        }}
+      >
+        {/* halo coral subtil */}
+        <div
+          aria-hidden
+          className="absolute pointer-events-none"
+          style={{
+            top: -80,
+            right: -60,
+            width: 260,
+            height: 260,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(240,153,123,0.35) 0%, rgba(240,153,123,0) 70%)",
+            filter: "blur(8px)",
+          }}
+        />
+        <div className="relative max-w-[440px] w-full mx-auto">
+          <img
+            src={logo}
+            alt="Kadence"
+            style={{ height: 64, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+          />
+          <div className="mt-10">
+            <p
+              style={{
+                fontSize: 12,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "rgba(250,250,248,0.55)",
+                fontWeight: 500,
+              }}
+            >
+              Espace équipe
+            </p>
+            <h1
+              style={{
+                fontSize: 34,
+                fontWeight: 500,
+                letterSpacing: "-0.025em",
+                marginTop: 10,
+                lineHeight: 1.1,
+              }}
+            >
+              Bonjour,
+              <br />
+              <span style={{ color: "#F0997B" }}>ravi de vous revoir.</span>
+            </h1>
+            <p
+              style={{
+                fontSize: 14,
+                color: "rgba(250,250,248,0.65)",
+                marginTop: 12,
+                maxWidth: 320,
+                lineHeight: 1.5,
+              }}
+            >
+              {p.mode === "login"
+                ? "Connectez-vous pour accéder à votre planning, vos shifts et l'équipe."
+                : "Indiquez votre email, on vous envoie un lien pour réinitialiser votre mot de passe."}
+            </p>
           </div>
-        </form>
+        </div>
       </div>
 
-      <div className="pb-2" />
+      {/* Carte formulaire qui chevauche le hero */}
+      <div className="flex-1 px-5" style={{ marginTop: -56 }}>
+        <div className="max-w-[440px] w-full mx-auto">
+          <div
+            className="rounded-3xl border p-6"
+            style={{
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
+              boxShadow: "0 20px 50px -30px rgba(42, 32, 28, 0.35)",
+            }}
+          >
+            <form onSubmit={p.onSubmit} className="space-y-4">
+              <Field label="Email" type="email" value={p.email} onChange={p.setEmail} large />
+              {p.mode === "login" && (
+                <Field label="Mot de passe" type="password" value={p.password} onChange={p.setPassword} large />
+              )}
+
+              <button
+                type="submit"
+                disabled={p.loading}
+                className="w-full rounded-2xl mt-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+                style={{
+                  fontSize: 16,
+                  fontWeight: 500,
+                  padding: "16px 0",
+                  backgroundColor: "#F0997B",
+                  color: "#fff",
+                  boxShadow: "0 10px 24px -12px rgba(240, 153, 123, 0.7)",
+                }}
+              >
+                {p.loading ? "..." : p.mode === "login" ? "Se connecter" : "Envoyer le lien"}
+              </button>
+
+              <div className="flex justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => p.setMode(p.mode === "login" ? "forgot" : "login")}
+                  style={{ fontSize: 13, color: "var(--muted-foreground)" }}
+                  className="hover:underline"
+                >
+                  {p.mode === "login" ? "Mot de passe oublié ?" : "Retour à la connexion"}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <p
+            className="text-center"
+            style={{
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+              marginTop: 24,
+              letterSpacing: "0.02em",
+            }}
+          >
+            Skult Studios · Brussels
+          </p>
+        </div>
+      </div>
+
+      <div className="pb-8" />
     </div>
   );
 }
