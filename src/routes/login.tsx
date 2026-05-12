@@ -8,17 +8,21 @@ import { getAppMode, getOtherSpaceUrl, setPreviewMode, type AppMode } from "@/li
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
+  validateSearch: (s: Record<string, unknown>) => ({
+    mode: s.mode === "employee" || s.mode === "app" || s.mode === "admin" ? s.mode : undefined,
+  }),
   head: () => ({ meta: [{ title: "Connexion — Kadence" }] }),
 });
 
 function LoginPage() {
+  const { mode: searchMode } = Route.useSearch();
   const navigate = useNavigate();
   const { session, appRole, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "forgot">("login");
-  const [appMode, setAppMode] = useState<AppMode>(() => getAppMode());
+  const [appMode, setAppMode] = useState<AppMode>(searchMode === "employee" || searchMode === "app" ? "employee" : "admin");
 
   useEffect(() => {
     setAppMode(getAppMode());
