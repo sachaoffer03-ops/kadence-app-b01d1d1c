@@ -68,8 +68,21 @@ Deno.serve(async (req) => {
 
     if (invErr) return new Response(JSON.stringify({ error: invErr.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/") || "";
-    const activationUrl = `${origin}/activation?token=${inv.token}`;
+    // Choisir le bon sous-domaine selon le rôle de l'invité
+    const appRole = body.app_role ?? "employee";
+    const requestOrigin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/") || "";
+    const isProd = requestOrigin.includes("shyft.flashsite.fr");
+    let activationOrigin: string;
+    if (isProd) {
+      activationOrigin = appRole === "employee"
+        ? "https://app.shyft.flashsite.fr"
+        : "https://admin.shyft.flashsite.fr";
+    } else {
+      // Preview / dev: garde l'origine d'appel et passe le mode en hint
+      activationOrigin = requestOrigin;
+    }
+    const modeHint = !isProd ? `&mode=${appRole === "employee" ? "employee" : "admin"}` : "";
+    const activationUrl = `${activationOrigin}/activation?token=${inv.token}${modeHint}`;
 
     // Send email via Lovable AI Gateway / Resend if configured. Fallback: just return the link.
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
