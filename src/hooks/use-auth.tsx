@@ -20,6 +20,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+    const loadingTimeout = window.setTimeout(() => {
+      if (active) setLoading(false);
+    }, 3000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
@@ -31,12 +36,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (!active) return;
       setSession(s);
       if (s?.user) fetchRole(s.user.id);
       setLoading(false);
+      window.clearTimeout(loadingTimeout);
+    }).catch(() => {
+      if (!active) return;
+      setSession(null);
+      setAppRole(null);
+      setLoading(false);
+      window.clearTimeout(loadingTimeout);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      window.clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchRole = async (userId: string) => {
