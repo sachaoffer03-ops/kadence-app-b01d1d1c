@@ -79,11 +79,12 @@ export function useStaffNotifications(userId: string | undefined) {
     });
 
     (msgs || []).forEach((m) => {
+      const c = m.content ?? "";
       list.push({
         id: `msg-${m.id}`,
         kind: "message",
         title: "Nouveau message",
-        body: m.content.length > 90 ? m.content.slice(0, 90) + "…" : m.content,
+        body: c.length > 90 ? c.slice(0, 90) + "…" : (c || "Pièce jointe"),
         date: m.created_at,
         read: !!m.read_at || new Date(m.created_at).getTime() <= seenAt,
       });
