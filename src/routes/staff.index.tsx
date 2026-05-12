@@ -29,6 +29,8 @@ function StaffPage() {
   const [search, setSearch] = useState("");
   const [contractFilters, setContractFilters] = useState<Set<string>>(new Set());
   const [studioFilters, setStudioFilters] = useState<Set<string>>(new Set());
+  const [roleFilters, setRoleFilters] = useState<Set<string>>(new Set());
+  const [sortScore, setSortScore] = useState<"none" | "desc" | "asc">("none");
   const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
@@ -57,15 +59,28 @@ function StaffPage() {
 
   const studioName = (id: string | null) => studios.find(s => s.id === id)?.name || "—";
 
-  const filtered = useMemo(() => profiles.filter(p => {
-    if (search) {
-      const q = search.toLowerCase();
-      if (!`${p.first_name} ${p.last_name}`.toLowerCase().includes(q) && !p.email.toLowerCase().includes(q)) return false;
+  const filtered = useMemo(() => {
+    const list = profiles.filter(p => {
+      if (search) {
+        const q = search.toLowerCase();
+        if (!`${p.first_name} ${p.last_name}`.toLowerCase().includes(q) && !p.email.toLowerCase().includes(q)) return false;
+      }
+      if (contractFilters.size && (!p.contract || !contractFilters.has(p.contract))) return false;
+      if (studioFilters.size && (!p.studio_id || !studioFilters.has(p.studio_id))) return false;
+      if (roleFilters.size) {
+        const roles = rolesByUser[p.id] || [];
+        if (!roles.some(r => roleFilters.has(r))) return false;
+      }
+      return true;
+    });
+    if (sortScore !== "none") {
+      list.sort((a, b) => {
+        const sa = a.score ?? -1; const sb = b.score ?? -1;
+        return sortScore === "desc" ? sb - sa : sa - sb;
+      });
     }
-    if (contractFilters.size && (!p.contract || !contractFilters.has(p.contract))) return false;
-    if (studioFilters.size && (!p.studio_id || !studioFilters.has(p.studio_id))) return false;
-    return true;
-  }), [profiles, search, contractFilters, studioFilters]);
+    return list;
+  }, [profiles, search, contractFilters, studioFilters, roleFilters, sortScore, rolesByUser]);
 
   const toggle = (set: Set<string>, fn: (s: Set<string>) => void, key: string) => {
     const next = new Set(set);
@@ -75,6 +90,8 @@ function StaffPage() {
 
   const contracts = ["etudiant", "flexi", "cdi", "cdd"];
   const contractLabels: Record<string, string> = { etudiant: "Étudiants", flexi: "Flexis", cdi: "CDI", cdd: "CDD" };
+  const businessRoleOptions: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
+
 
   return (
     <div className="p-6">
