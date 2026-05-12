@@ -84,8 +84,8 @@ function StaffAppPage() {
           <ArrowLeft size={12} /> Retour admin
         </Link>
       )}
-      {/* Cloche notifications globale */}
-      <BellButton userId={user.id} onOpen={() => setNotifOpen(true)} />
+      {/* Cloche notifications globale — l'onglet Accueil a sa propre cloche inline */}
+      {tab !== "accueil" && <BellButton userId={user.id} onOpen={() => setNotifOpen(true)} />}
 
       <div className="flex-1 overflow-y-auto pb-20">
         {tab === "accueil" && <AccueilTab profile={profile} studios={studios} userId={user.id} />}
