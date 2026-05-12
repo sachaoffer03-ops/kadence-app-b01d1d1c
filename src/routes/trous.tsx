@@ -77,14 +77,27 @@ function TrousPage() {
         <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500, marginRight: 4 }}>Rôle</span>
         {[{ value: "tous", label: "Tous" }, ...allRoles.map((r) => ({ value: r, label: r }))].map((opt) => {
           const a = filterRole === opt.value;
+          const count = opt.value === "tous" ? holes.length : holes.filter((h) => h.business_role === opt.value).length;
+          const rc = opt.value !== "tous" ? getRoleStyle(opt.value) : null;
           return (
-            <button key={opt.value} onClick={() => setFilterRole(opt.value)} className="rounded-full px-2.5 py-1"
+            <button key={opt.value} onClick={() => setFilterRole(opt.value)} className="rounded-full px-2.5 py-1 flex items-center gap-1.5"
               style={{ fontSize: 11, fontWeight: a ? 500 : 400, backgroundColor: a ? "var(--foreground)" : "transparent", color: a ? "var(--card)" : "var(--muted-foreground)", border: a ? "none" : "0.5px solid var(--border)" }}>
               {opt.label}
+              {count > 0 && (
+                <span className="rounded-full inline-flex items-center justify-center"
+                  style={{
+                    minWidth: 16, height: 16, padding: "0 5px", fontSize: 10, fontWeight: 500,
+                    backgroundColor: a ? "var(--card)" : (rc ? rc.bg : "var(--muted)"),
+                    color: a ? "var(--foreground)" : (rc ? rc.text : "var(--muted-foreground)"),
+                  }}>
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
+
 
       {filtered.length === 0 ? (
         <div className="rounded-xl border px-6 py-10 text-center" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
