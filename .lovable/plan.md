@@ -1,85 +1,59 @@
 ## Objectif
 
-Permettre qu'un employé puisse :
-- travailler dans **plusieurs studios**
-- avoir **plusieurs types de contrat** en parallèle (ex. CDI + Flexi)
-- exercer **plusieurs rôles métier** (déjà partiellement en place)
+Aujourd'hui tout le monde passe par `/login` puis est redirigé selon le rôle. On va séparer en deux espaces clairement distincts, chacun avec sa propre URL et sa propre page de connexion.
 
-Et que toute l'app le comprenne (invitations, fiche employé, planning, dimona, etc.).
+- **admin.shyft.flashsite.fr** → espace admin / manager (dashboard, planning, staff, etc.)
+- **app.shyft.flashsite.fr** → espace employé (l'app `/staff-app` orientée mobile)
 
-## 1. Base de données
+## Ce qu'il faut faire côté Lovable (DNS) — à toi
 
-Aujourd'hui :
-- `invitations` : `studio_id` (1 seul), `contract` (1 seul), `business_roles` (déjà tableau ✅)
-- `profiles` : `studio_id` (1 seul), `contract` (1 seul)
-- `user_business_roles` : table déjà multi ✅
+Avant que la séparation marche en prod, **tu dois ajouter les deux sous-domaines** dans Lovable :
 
-Changements :
+1. Project Settings → Domains → Connect Domain → `admin.shyft.flashsite.fr`
+2. Pareil pour `app.shyft.flashsite.fr`
+3. Suivre les instructions DNS chez ton registrar
 
-**Sur `invitations`** :
-- Ajouter `studio_ids uuid[] NOT NULL DEFAULT '{}'` (remplace progressivement `studio_id`)
-- Ajouter `contracts contract_type[] NOT NULL DEFAULT '{}'` (remplace `contract`)
-- On garde `studio_id` et `contract` en lecture seule pendant la transition (rempli avec le 1er du tableau pour rétrocompat).
+Le domaine actuel `shyft.flashsite.fr` peut rester (page d'accueil avec deux boutons "Espace admin" / "Espace employé") ou rediriger vers l'un des deux.
 
-**Nouvelle table `user_studios`** (multi-studios par employé) :
+## Ce que je code
+
+### 1. Détection du sous-domaine
+
+Helper `getAppMode()` qui lit `window.location.hostname` :
+- contient `admin.` → mode admin
+- contient `app.` → mode employee
+- sinon (preview, dev) → fallback via `?mode=admin` dans l'URL pour pouvoir tester les deux
+
+### 2. Deux pages de connexion distinctes
+
+- **Login admin** : design sobre/pro, formulaire centré classique, titre "Espace administrateur — Skult Studios", fond clair off-white.
+- **Login employé** : design type app mobile, plus chaleureux, accent coral plus présent, gros boutons tactiles, titre "Bonjour 👋 Connectez-vous à votre espace".
+
+Même backend Supabase derrière, deux composants visuels.
+
+### 3. Routing & garde-fous
+
+Dans `src/routes/__root.tsx` :
+- Mode **employee** : tout chemin admin (`/dashboard`, `/planning`, `/staff`, etc.) → redirige vers `/staff-app`. Si un admin se connecte ici → message "Cet espace est réservé aux employés. Rendez-vous sur admin.shyft.flashsite.fr".
+- Mode **admin** : `/staff-app` bloqué. Si un employé se connecte ici → message "Cet espace est réservé aux administrateurs. Rendez-vous sur app.shyft.flashsite.fr".
+- Après login OK, redirection vers le bon espace selon rôle + mode.
+
+### 4. Email d'invitation
+
+L'edge function `send-invitation` envoie le lien d'activation vers le bon sous-domaine selon le rôle invité (employee → `app.*`, admin/manager → `admin.*`).
+
+## Fichiers touchés
+
+```text
+src/lib/app-mode.ts                              [NEW]
+src/routes/login.tsx                             [EDIT — split visuel]
+src/routes/__root.tsx                            [EDIT — redirections]
+src/routes/activation.tsx                        [EDIT — cohérent]
+supabase/functions/send-invitation/index.ts      [EDIT — URL selon rôle]
 ```
-user_studios(user_id, studio_id) — clé composite
-```
-RLS :
-- L'utilisateur voit ses studios
-- Admin/manager voient et gèrent tout
 
-**Nouvelle table `user_contracts`** (multi-contrats) :
-```
-user_contracts(user_id, contract type) — clé composite
-```
-RLS identique.
+## Avant que je commence
 
-**Trigger `handle_new_user`** : adapté pour insérer N lignes dans `user_studios` et `user_contracts` à partir de `invitations.studio_ids` / `contracts`, plus les rôles métier déjà gérés.
-
-`profiles.studio_id` et `profiles.contract` restent (rempli avec le "principal" = premier du tableau) pour ne pas casser les écrans existants. La source de vérité passe sur les tables de jointure.
-
-## 2. Formulaire d'invitation (`InviteEmployeeModal`)
-
-- **Studios** : passe d'un `<select>` à un multi-select (chips cochables, identique au design des rôles métier).
-- **Contrat** : passe à multi-select (CDI, Flexi, Étudiant — case à cocher).
-- **Rôles métier** : déjà multi, on garde.
-- Validation : au moins 1 studio + au moins 1 contrat + au moins 1 rôle métier.
-- Envoi : on poste `studio_ids` + `contracts` au lieu des champs simples.
-
-## 3. Liste des invitations (`InvitationsList`)
-
-- Colonne « Studio » → affiche jusqu'à 2 puces, puis « +N ».
-- Colonne « Contrat » → idem (CDI, Flexi…).
-- Filtres existants conservés.
-
-## 4. Page d'activation (`/activation`)
-
-- Affichage de bienvenue : « Vous êtes invité chez Skult X et Y, en CDI + Flexi, comme Barista et Accueil. »
-- Pour la carte étudiant : on affiche la question seulement si `Étudiant` fait partie des contrats.
-
-## 5. Reste de l'app — ajustements minimum
-
-- **Fiche employé** (`/staff/$id`) : lister tous les studios et tous les contrats (badges).
-- **Planning / shifts** : un shift garde 1 studio (logique métier inchangée). On filtre les employés disponibles par appartenance à `user_studios`.
-- **Dimona** : on liste les contrats de l'employé.
-- Les autres pages (feedbacks, formations…) ne dépendent pas du studio unique → rien à changer.
-
-## 6. Edge function `send-invitation`
-
-- Accepter `studio_ids: string[]` et `contracts: string[]` dans le body.
-- Email récap : « Vous rejoignez Skult Châtelain & Skult Sablon en CDI + Flexi ».
-
-## 7. Ordre d'exécution
-
-1. Migration SQL (nouvelles tables + colonnes tableau sur invitations + trigger mis à jour).
-2. Mise à jour de l'edge function `send-invitation`.
-3. UI : modal d'invitation, liste, activation, fiche employé.
-4. Vérification rapide du planning pour qu'il filtre par `user_studios`.
-
-## Points qui restent en single (à confirmer)
-
-- Un **shift** reste rattaché à 1 seul studio (un employé ne peut pas être à 2 endroits en même temps). ✅ pas de changement.
-- Le **studio « principal »** affiché dans certains résumés = premier de la liste, ou marqué explicitement plus tard si besoin.
-
-Validez-vous ce plan ? Je lance la migration dès votre OK.
+Confirme-moi :
+1. Tu vas bien ajouter les deux sous-domaines dans Project Settings → Domains ?
+2. Le domaine racine `shyft.flashsite.fr` : on en fait quoi — page d'accueil avec deux boutons, redirection vers `app.*`, ou on le retire ?
