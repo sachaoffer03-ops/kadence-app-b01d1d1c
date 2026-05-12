@@ -31,24 +31,29 @@ function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && session && appRole) {
-      // Vérifier la cohérence rôle / espace
-      const isEmployeeSpace = appMode === "employee";
-      const userIsEmployee = appRole === "employee";
+    if (authLoading || !session) return;
 
-      if (isEmployeeSpace && !userIsEmployee) {
+    const checkAccess = async () => {
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id);
+      const roles = (data ?? []).map((r) => r.role as "admin" | "manager" | "employee");
+      const hasEmployee = roles.includes("employee");
+      const hasAdminOrManager = roles.includes("admin") || roles.includes("manager");
+      const isEmployeeSpace = appMode === "employee";
+
+      if (isEmployeeSpace && !hasEmployee) {
         toast.error("Cet espace est réservé aux employés. Connectez-vous sur admin.shyft.flashsite.fr");
-        supabase.auth.signOut();
+        await supabase.auth.signOut();
         return;
       }
-      if (!isEmployeeSpace && userIsEmployee) {
+      if (!isEmployeeSpace && !hasAdminOrManager) {
         toast.error("Cet espace est réservé aux administrateurs. Connectez-vous sur app.shyft.flashsite.fr");
-        supabase.auth.signOut();
+        await supabase.auth.signOut();
         return;
       }
-      navigate({ to: userIsEmployee ? "/staff-app" : "/dashboard" });
-    }
-  }, [authLoading, session, appRole, appMode, navigate]);
+      navigate({ to: isEmployeeSpace ? "/staff-app" : "/dashboard" });
+    };
+    checkAccess();
+  }, [authLoading, session, appMode, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
