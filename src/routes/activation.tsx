@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getSpaceUrl } from "@/lib/app-mode";
 import {
   Check,
   ArrowRight,
@@ -35,6 +36,7 @@ interface Invitation {
   studio_ids?: string[] | null;
   contract: string | null;
   contracts?: string[] | null;
+  app_role?: string | null;
   status: string;
   expires_at: string;
 }
@@ -94,7 +96,7 @@ function ActivationPage() {
       const query = supabase
         .from("invitations")
         .select(
-          "id, email, first_name, last_name, phone, studio_id, contract, status, expires_at",
+          "id, email, first_name, last_name, phone, studio_id, contract, app_role, status, expires_at",
         );
       const { data, error } = await (isPreview
         ? query.eq("id", preview).maybeSingle()
@@ -167,6 +169,12 @@ function ActivationPage() {
     if (!accept) return toast.error("Vous devez accepter les conditions");
 
     setSubmitting(true);
+    const isAdmin = invitation.app_role === "admin" || invitation.app_role === "manager";
+    const targetPath = isAdmin ? "/" : "/staff-app";
+    // En prod, force le bon sous-domaine; en preview, reste sur l'origine actuelle.
+    const host = window.location.hostname.toLowerCase();
+    const isProd = host.endsWith("shyft.flashsite.fr");
+    const redirectBase = isProd ? getSpaceUrl(isAdmin ? "admin" : "employee") : window.location.origin;
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: invitation.email,
       password,
@@ -176,7 +184,7 @@ function ActivationPage() {
           first_name: invitation.first_name,
           last_name: invitation.last_name,
         },
-        emailRedirectTo: `${window.location.origin}/staff-app`,
+        emailRedirectTo: `${redirectBase}${targetPath}`,
       },
     });
 
