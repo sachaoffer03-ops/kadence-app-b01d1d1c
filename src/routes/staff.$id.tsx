@@ -32,6 +32,8 @@ function EmployeeDetailPage() {
   const [emp, setEmp] = useState<Profile | null>(null);
   const [businessRoles, setBusinessRoles] = useState<Role[]>([]);
   const [studios, setStudios] = useState<Record<string, string>>({});
+  const [userStudioIds, setUserStudioIds] = useState<string[]>([]);
+  const [userContracts, setUserContracts] = useState<string[]>([]);
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [fbs, setFbs] = useState<FB[]>([]);
   const [sigs, setSigs] = useState<Sig[]>([]);
@@ -39,10 +41,12 @@ function EmployeeDetailPage() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: p }, { data: br }, { data: sts }, { data: sh }, { data: fb }, { data: sg }] = await Promise.all([
+      const [{ data: p }, { data: br }, { data: sts }, { data: us }, { data: uc }, { data: sh }, { data: fb }, { data: sg }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
         supabase.from("user_business_roles").select("role").eq("user_id", id),
         supabase.from("studios").select("id,name"),
+        supabase.from("user_studios").select("studio_id").eq("user_id", id),
+        supabase.from("user_contracts").select("contract").eq("user_id", id),
         supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status").eq("user_id", id).order("shift_date", { ascending: false }).limit(20),
         supabase.from("feedbacks").select("id,rating,message,created_at").eq("author_id", id).order("created_at", { ascending: false }).limit(10),
         supabase.from("signalements").select("id,category,message,created_at,resolved").eq("author_id", id).order("created_at", { ascending: false }).limit(10),
@@ -50,6 +54,8 @@ function EmployeeDetailPage() {
       setEmp(p as Profile | null);
       setBusinessRoles((br || []).map(r => r.role as Role));
       setStudios(Object.fromEntries((sts || []).map(s => [s.id, s.name])));
+      setUserStudioIds((us || []).map(r => r.studio_id as string));
+      setUserContracts((uc || []).map(r => r.contract as string));
       setShifts(sh || []);
       setFbs(fb || []);
       setSigs(sg || []);
