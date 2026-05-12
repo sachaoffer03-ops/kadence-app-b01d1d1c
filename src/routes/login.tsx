@@ -153,17 +153,6 @@ function AdminLogin(p: AdminFormProps) {
           </form>
         </div>
 
-        <div className="mt-6 text-center">
-          {p.isLovablePreview ? (
-            <button onClick={p.onSwitchPreview} style={{ fontSize: 12, color: "var(--muted-foreground)" }} className="hover:underline">
-              Prévisualiser l'espace équipe →
-            </button>
-          ) : (
-            <a href={getOtherSpaceUrl("admin")} style={{ fontSize: 12, color: "var(--muted-foreground)" }} className="hover:underline">
-              Vous êtes employé ? Accéder à l'espace équipe →
-            </a>
-          )}
-        </div>
       </div>
     </div>
   );
