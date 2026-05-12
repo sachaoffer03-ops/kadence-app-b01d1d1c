@@ -29,6 +29,8 @@ function StaffPage() {
   const [search, setSearch] = useState("");
   const [contractFilters, setContractFilters] = useState<Set<string>>(new Set());
   const [studioFilters, setStudioFilters] = useState<Set<string>>(new Set());
+  const [roleFilters, setRoleFilters] = useState<Set<string>>(new Set());
+  const [sortScore, setSortScore] = useState<"none" | "desc" | "asc">("none");
   const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
@@ -57,15 +59,28 @@ function StaffPage() {
 
   const studioName = (id: string | null) => studios.find(s => s.id === id)?.name || "—";
 
-  const filtered = useMemo(() => profiles.filter(p => {
-    if (search) {
-      const q = search.toLowerCase();
-      if (!`${p.first_name} ${p.last_name}`.toLowerCase().includes(q) && !p.email.toLowerCase().includes(q)) return false;
+  const filtered = useMemo(() => {
+    const list = profiles.filter(p => {
+      if (search) {
+        const q = search.toLowerCase();
+        if (!`${p.first_name} ${p.last_name}`.toLowerCase().includes(q) && !p.email.toLowerCase().includes(q)) return false;
+      }
+      if (contractFilters.size && (!p.contract || !contractFilters.has(p.contract))) return false;
+      if (studioFilters.size && (!p.studio_id || !studioFilters.has(p.studio_id))) return false;
+      if (roleFilters.size) {
+        const roles = rolesByUser[p.id] || [];
+        if (!roles.some(r => roleFilters.has(r))) return false;
+      }
+      return true;
+    });
+    if (sortScore !== "none") {
+      list.sort((a, b) => {
+        const sa = a.score ?? -1; const sb = b.score ?? -1;
+        return sortScore === "desc" ? sb - sa : sa - sb;
+      });
     }
-    if (contractFilters.size && (!p.contract || !contractFilters.has(p.contract))) return false;
-    if (studioFilters.size && (!p.studio_id || !studioFilters.has(p.studio_id))) return false;
-    return true;
-  }), [profiles, search, contractFilters, studioFilters]);
+    return list;
+  }, [profiles, search, contractFilters, studioFilters, roleFilters, sortScore, rolesByUser]);
 
   const toggle = (set: Set<string>, fn: (s: Set<string>) => void, key: string) => {
     const next = new Set(set);
@@ -75,6 +90,8 @@ function StaffPage() {
 
   const contracts = ["etudiant", "flexi", "cdi", "cdd"];
   const contractLabels: Record<string, string> = { etudiant: "Étudiants", flexi: "Flexis", cdi: "CDI", cdd: "CDD" };
+  const businessRoleOptions: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
+
 
   return (
     <div className="p-6">
@@ -138,8 +155,34 @@ function StaffPage() {
                   </button>
                 );
               })}
+              <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
+              {businessRoleOptions.map(r => {
+                const a = roleFilters.has(r);
+                const count = profiles.filter(p => (rolesByUser[p.id] || []).includes(r)).length;
+                if (count === 0) return null;
+                const rc = roleColors[r];
+                return (
+                  <button key={r} onClick={() => toggle(roleFilters, setRoleFilters, r)}
+                    className="rounded-full px-2.5 py-1 inline-flex items-center gap-1.5"
+                    style={{ fontSize: 12, fontWeight: a ? 500 : 400,
+                      backgroundColor: a ? rc.dot : "transparent",
+                      color: a ? "#fff" : "var(--muted-foreground)",
+                      border: a ? "none" : "0.5px solid var(--border)" }}>
+                    <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: a ? "#fff" : rc.dot }} />
+                    {r} · {count}
+                  </button>
+                );
+              })}
             </div>
             <div className="ml-auto flex items-center gap-3">
+              <button onClick={() => setSortScore(s => s === "desc" ? "asc" : s === "asc" ? "none" : "desc")}
+                className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5"
+                style={{ fontSize: 12, fontWeight: 500,
+                  backgroundColor: sortScore !== "none" ? "var(--foreground)" : "transparent",
+                  color: sortScore !== "none" ? "var(--card)" : "var(--muted-foreground)",
+                  border: sortScore !== "none" ? "none" : "0.5px solid var(--border)" }}>
+                Score {sortScore === "desc" ? "↓" : sortScore === "asc" ? "↑" : ""}
+              </button>
               <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{filtered.length} employé{filtered.length > 1 ? "s" : ""}</span>
               <button onClick={() => setInviteOpen(true)} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
                 style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
@@ -147,6 +190,7 @@ function StaffPage() {
               </button>
             </div>
           </div>
+
 
           <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
             <table className="w-full" style={{ fontSize: 13 }}>
