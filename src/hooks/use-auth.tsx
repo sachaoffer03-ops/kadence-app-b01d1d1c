@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
     const loadingTimeout = window.setTimeout(() => {
       if (active) setLoading(false);
-    }, 3000);
+    }, 1500);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
