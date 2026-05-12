@@ -370,12 +370,10 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
         {!disposValidated && <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />}
       </button>
 
-      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Prochain shift</div>
-      {shifts.length === 0 ? (
-        <div className="rounded-xl border px-4 py-5 text-center" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)", fontSize: 12, color: "var(--muted-foreground)" }}>
-          Aucun shift planifié
-        </div>
-      ) : shifts.map((s) => {
+      {shifts.length > 1 && (
+        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Shifts suivants</div>
+      )}
+      {shifts.slice(1).map((s) => {
         const role = s.business_role as Role;
         const rc = roleColors[role];
         const active = s.shift_date === today;
