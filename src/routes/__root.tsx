@@ -141,7 +141,7 @@ function AppShell() {
   const { session, appRole, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isPublic = PUBLIC_ROUTES.some((p) => currentPath.startsWith(p));
+  const isPublic = currentPath === "/" || PUBLIC_ROUTES.some((p) => currentPath.startsWith(p));
   const isStaffApp = currentPath.startsWith("/staff-app");
   // Allow admins to view the activation page in preview mode (?preview=...)
   const isActivationPreview =
