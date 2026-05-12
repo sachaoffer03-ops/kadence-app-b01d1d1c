@@ -163,7 +163,7 @@ function AppShell() {
     }
   }, [loading, session, appRole, currentPath, isPublic, isStaffApp, isActivationPreview, navigate]);
 
-  if (loading) {
+  if (loading && !isPublic) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
         <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement...</p>
