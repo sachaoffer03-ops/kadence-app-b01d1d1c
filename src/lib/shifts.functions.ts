@@ -4,7 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const TIME = /^\d{2}:\d{2}(:\d{2})?$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const ROLES = ["Barista", "Accueil", "Host", "Cuisine"] as const;
+// Rôles métier : valeur libre (la table business_roles est la source de vérité, validée côté UI).
+const businessRoleSchema = z.string().min(1).max(64);
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
