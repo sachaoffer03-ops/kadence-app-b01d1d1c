@@ -370,6 +370,66 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      planning_publications: {
+        Row: {
+          id: string
+          period_end: string
+          period_start: string
+          published_at: string
+          published_by: string
+          shifts_count: number
+        }
+        Insert: {
+          id?: string
+          period_end: string
+          period_start: string
+          published_at?: string
+          published_by: string
+          shifts_count?: number
+        }
+        Update: {
+          id?: string
+          period_end?: string
+          period_start?: string
+          published_at?: string
+          published_by?: string
+          shifts_count?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
@@ -575,7 +635,10 @@ export type Database = {
           created_at: string
           end_time: string
           id: string
+          is_locked: boolean
+          is_manual: boolean
           notes: string | null
+          published_at: string | null
           shift_date: string
           start_time: string
           status: Database["public"]["Enums"]["shift_status"]
@@ -590,7 +653,10 @@ export type Database = {
           created_at?: string
           end_time: string
           id?: string
+          is_locked?: boolean
+          is_manual?: boolean
           notes?: string | null
+          published_at?: string | null
           shift_date: string
           start_time: string
           status?: Database["public"]["Enums"]["shift_status"]
@@ -605,7 +671,10 @@ export type Database = {
           created_at?: string
           end_time?: string
           id?: string
+          is_locked?: boolean
+          is_manual?: boolean
           notes?: string | null
+          published_at?: string | null
           shift_date?: string
           start_time?: string
           status?: Database["public"]["Enums"]["shift_status"]
@@ -885,7 +954,7 @@ export type Database = {
       modification_type: "swap" | "cancel" | "time_change" | "unavailable"
       modification_urgency: "normal" | "urgent" | "critique"
       profile_status: "invited" | "active" | "suspended"
-      shift_status: "scheduled" | "completed" | "cancelled" | "open"
+      shift_status: "scheduled" | "completed" | "cancelled" | "open" | "draft"
       signalement_category: "stock" | "materiel" | "hygiene" | "autre"
     }
     CompositeTypes: {
@@ -1023,7 +1092,7 @@ export const Constants = {
       modification_type: ["swap", "cancel", "time_change", "unavailable"],
       modification_urgency: ["normal", "urgent", "critique"],
       profile_status: ["invited", "active", "suspended"],
-      shift_status: ["scheduled", "completed", "cancelled", "open"],
+      shift_status: ["scheduled", "completed", "cancelled", "open", "draft"],
       signalement_category: ["stock", "materiel", "hygiene", "autre"],
     },
   },

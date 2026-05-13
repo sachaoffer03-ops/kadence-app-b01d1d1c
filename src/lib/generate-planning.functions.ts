@@ -143,17 +143,21 @@ export const generatePlanning = createServerFn({ method: "POST" })
     }
 
     if (replaceExisting) {
+      // On ne supprime QUE les shifts non verrouillés et non manuels
       await supabase
         .from("shifts")
         .delete()
         .gte("shift_date", firstDay)
-        .lte("shift_date", lastDay);
+        .lte("shift_date", lastDay)
+        .eq("is_locked", false)
+        .eq("is_manual", false);
     }
 
-    // 5. Charger shifts existants (pour repos 11h et déjà-occupé)
+    // 5. Charger shifts existants restants (verrouillés/manuels conservés)
+    // Servent à : (a) éviter de doubler une attribution, (b) repos 11h, (c) compter "déjà couverts"
     const { data: existingShifts } = await supabase
       .from("shifts")
-      .select("user_id, shift_date, start_time, end_time")
+      .select("user_id, shift_date, start_time, end_time, studio_id, business_role")
       .gte("shift_date", firstDay)
       .lte("shift_date", lastDay);
     const existing = (existingShifts ?? []) as any[];
@@ -181,9 +185,24 @@ export const generatePlanning = createServerFn({ method: "POST" })
       const todaysTemplates = tpls.filter((t) => t.day_of_week === dow);
 
       for (const t of todaysTemplates) {
+        // Compter les shifts déjà existants (verrouillés/manuels) qui couvrent ce créneau
+        const alreadyCovered = existing.filter(
+          (sh) =>
+            sh.shift_date === dateStr &&
+            sh.studio_id === t.studio_id &&
+            sh.business_role === t.business_role &&
+            sh.start_time === t.start_time &&
+            sh.end_time === t.end_time,
+        ).length;
+
+        const stillNeeded = Math.max(0, t.required_count - alreadyCovered);
+
         for (let i = 0; i < t.required_count; i++) {
           totalRequired++;
+        }
+        totalCreated += alreadyCovered; // les shifts conservés comptent comme couverts
 
+        for (let i = 0; i < stillNeeded; i++) {
           // Filtrer candidats éligibles
           const eligible = Array.from(candidates.values()).filter((c) => {
             if (!c.roles.has(t.business_role)) return false;
@@ -193,7 +212,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
               (sh) => sh.user_id === c.id && sh.shift_date === dateStr,
             );
             if (sameDay) return false;
-            // Repos 11h : on regarde le shift précédent (jour J-1 ou J) le plus récent
+            // Repos 11h
             if (s.enforce_rest_11h) {
               const refDateTime = new Date(`${dateStr}T${t.start_time}`);
               const conflict = [...existing, ...toInsert].some((sh) => {
@@ -218,13 +237,12 @@ export const generatePlanning = createServerFn({ method: "POST" })
             continue;
           }
 
-          // Score
           const maxAssigned = Math.max(1, ...eligible.map((c) => c.assigned_count));
           const wTot = s.weight_performance + s.weight_equity + s.weight_preference + s.weight_random || 1;
           const scored = eligible.map((c) => {
-            const perf = (c.score ?? 7) / 10; // 0..1
-            const eq = 1 - c.assigned_count / Math.max(maxAssigned, 1); // 0..1
-            const pref = 0.5; // placeholder, pas d'availabilities pour v1
+            const perf = (c.score ?? 7) / 10;
+            const eq = 1 - c.assigned_count / Math.max(maxAssigned, 1);
+            const pref = 0.5;
             const rnd = Math.random();
             const total =
               (s.weight_performance * perf +
@@ -245,7 +263,9 @@ export const generatePlanning = createServerFn({ method: "POST" })
             shift_date: dateStr,
             start_time: t.start_time,
             end_time: t.end_time,
-            status: "scheduled",
+            status: "draft", // brouillon : visible admin uniquement, pas de notif
+            is_locked: false,
+            is_manual: false,
           });
           totalCreated++;
         }

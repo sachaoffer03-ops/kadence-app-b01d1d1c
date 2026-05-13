@@ -1,13 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
-  Star, Sparkles, MapPin, Phone, Trash2, Sparkle
+  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit
 } from "lucide-react";
 import { toast } from "sonner";
 import { employees, roleColors, type Role, type Studio, type Employee } from "@/lib/mock-data";
 import { Dropdown } from "@/components/Dropdown";
 import { supabase } from "@/integrations/supabase/client";
+import { createShift, updateShift, deleteShift as deleteShiftFn, publishPlanning } from "@/lib/shifts.functions";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
@@ -33,9 +35,13 @@ interface PlanningShift {
   name: string;
   role: Role;
   studio: Studio;
+  studioId: string;
+  shiftDate: string;
   time: string;
   startHour: string;
   endHour: string;
+  startTime: string; // HH:MM:SS DB format
+  endTime: string;
   hole?: boolean;
   confirmation: ShiftConfirmation;
   pointage: ShiftPointage;
@@ -44,6 +50,10 @@ interface PlanningShift {
   clockOut?: string;
   phone?: string;
   note?: string;
+  isDraft?: boolean;
+  isLocked?: boolean;
+  isManual?: boolean;
+  conflict?: boolean; // overlap with another shift of same employee
 }
 
 const monthNames = [
@@ -429,6 +439,8 @@ function PlanningPage() {
   const weekDays = useMemo(() => getWeekDays(year, month, weekOffset), [year, month, weekOffset]);
   const [shifts, setShifts] = useState<PlanningShift[]>([]);
   const [studioMap, setStudioMap] = useState<Map<string, string>>(new Map());
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey((k) => k + 1);
 
   // Load studios once for id ↔ name mapping
   useEffect(() => {
@@ -448,15 +460,29 @@ function PlanningPage() {
     (async () => {
       const { data, error } = await supabase
         .from("shifts")
-        .select("id, user_id, studio_id, business_role, shift_date, start_time, end_time, status, clocked_in_at, profiles:user_id(first_name, last_name, phone)")
+        .select("id, user_id, studio_id, business_role, shift_date, start_time, end_time, status, clocked_in_at, is_locked, is_manual, published_at, profiles:user_id(first_name, last_name, phone)")
         .gte("shift_date", startISO)
         .lte("shift_date", endISO)
         .order("shift_date")
         .order("start_time")
-        .limit(1000);
+        .limit(2000);
       if (cancelled) return;
       if (error) { console.error(error); return; }
-      const mapped: PlanningShift[] = (data ?? []).map((row: any) => {
+      const rows = (data ?? []) as any[];
+
+      // Conflict detection (overlap per user)
+      const conflictIds = new Set<string>();
+      for (let i = 0; i < rows.length; i++) {
+        for (let j = i + 1; j < rows.length; j++) {
+          const a = rows[i], b = rows[j];
+          if (!a.user_id || a.user_id !== b.user_id || a.shift_date !== b.shift_date) continue;
+          if (a.start_time < b.end_time && b.start_time < a.end_time) {
+            conflictIds.add(a.id); conflictIds.add(b.id);
+          }
+        }
+      }
+
+      const mapped: PlanningShift[] = rows.map((row: any) => {
         const date = new Date(`${row.shift_date}T00:00:00`);
         const dayIdx = weekDays.findIndex((d) => d.toDateString() === date.toDateString());
         const startH = parseInt(String(row.start_time).slice(0, 2), 10);
@@ -475,19 +501,27 @@ function PlanningPage() {
           name: row.user_id ? `${fn} ${ln.charAt(0)}.` : "",
           role: row.business_role as Role,
           studio: studioName as Studio,
+          studioId: row.studio_id,
+          shiftDate: row.shift_date,
           time: `${fmt(row.start_time)} — ${fmt(row.end_time)}`,
           startHour: fmt(row.start_time),
           endHour: fmt(row.end_time),
+          startTime: row.start_time,
+          endTime: row.end_time,
           hole: !row.user_id,
           confirmation: row.status === "scheduled" ? "confirmé" : "en-attente",
           pointage: ptg,
           phone: row.profiles?.phone ?? undefined,
+          isDraft: row.status === "draft",
+          isLocked: !!row.is_locked,
+          isManual: !!row.is_manual,
+          conflict: conflictIds.has(row.id),
         };
       });
       setShifts(mapped);
     })();
     return () => { cancelled = true; };
-  }, [weekDays, studioMap]);
+  }, [weekDays, studioMap, refreshKey]);
 
   // weekKey ref kept for compatibility but no longer regenerates mock
   const lastWeekKey = useRef(`${year}-${month}-${weekOffset}`);
@@ -523,60 +557,113 @@ function PlanningPage() {
   const goPrev = () => setWeekOffset((w) => w - 1);
   const goNext = () => setWeekOffset((w) => w + 1);
 
-  const handleFillHole = (holeId: string, empId: string) => {
+  // Server functions
+  const createShiftFn = useServerFn(createShift);
+  const updateShiftFn = useServerFn(updateShift);
+  const deleteShiftRpc = useServerFn(deleteShiftFn);
+  const publishPlanningFn = useServerFn(publishPlanning);
+
+  const handleFillHole = async (holeId: string, empId: string) => {
     const emp = employees.find((e) => e.id === empId);
     if (!emp) return;
-    setShifts((prev) => prev.map((s) => {
-      if (s.id !== holeId) return s;
-      return { ...s, hole: false, employeeId: emp.id, name: `${emp.firstName} ${emp.lastName.charAt(0)}.`, confirmation: "en-attente", phone: emp.phone };
-    }));
-    setHoleShift(null);
-    toast.success(`${emp.firstName} ${emp.lastName.charAt(0)}. assigné·e au shift`);
+    try {
+      await updateShiftFn({ data: { shiftId: holeId, userId: empId } });
+      setHoleShift(null);
+      toast.success(`${emp.firstName} ${emp.lastName.charAt(0)}. assigné·e au shift`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
   const handleDeleteShift = async (id: string) => {
-    setShifts((prev) => prev.filter((s) => s.id !== id));
     setSelectedShift(null);
-    const { error } = await supabase.from("shifts").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else toast.success("Shift supprimé");
+    try {
+      await deleteShiftRpc({ data: { shiftId: id } });
+      toast.success("Shift supprimé");
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
-  const handleUpdateSlot = (id: string, slot: number) => {
+  const handleUpdateSlot = async (id: string, slot: number) => {
     const def = timeSlotDefs[slot];
-    setShifts((prev) => prev.map((s) => s.id === id ? { ...s, slot, time: def.time, startHour: def.start, endHour: def.end } : s));
-    setSelectedShift((cur) => cur && cur.id === id ? { ...cur, slot, time: def.time, startHour: def.start, endHour: def.end } : cur);
-    toast.success("Horaire mis à jour");
+    const startTime = `${def.start.replace("h", ":")}:00`;
+    const endTime = `${def.end.replace("h", ":")}:00`;
+    try {
+      await updateShiftFn({ data: { shiftId: id, startTime, endTime } });
+      toast.success("Horaire mis à jour");
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
-  const handleConfirmShift = (id: string) => {
-    setShifts((prev) => prev.map((s) => s.id === id ? { ...s, confirmation: "confirmé" } : s));
-    setSelectedShift((cur) => cur && cur.id === id ? { ...cur, confirmation: "confirmé" } : cur);
-    toast.success("Shift confirmé");
+  const handleConfirmShift = async (id: string) => {
+    // Force-confirmer = passer en scheduled (publié) si encore draft
+    try {
+      await updateShiftFn({ data: { shiftId: id } }); // marque locked+manual
+      toast.success("Shift confirmé");
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
-  const handleAddShift = (empId: string, day: number, slot: number, role: Role) => {
+  const handleAddShift = async (empId: string, day: number, slot: number, role: Role) => {
     const emp = employees.find((e) => e.id === empId);
     if (!emp) return;
     const def = timeSlotDefs[slot];
-    const newShift: PlanningShift = {
-      id: `new-${Date.now()}`,
-      day, slot, employeeId: emp.id,
-      name: `${emp.firstName} ${emp.lastName.charAt(0)}.`,
-      role, studio: selectedStudio,
-      time: def.time, startHour: def.start, endHour: def.end,
-      confirmation: "en-attente", pointage: "non-pointé",
-      phone: emp.phone,
-    };
-    setShifts((prev) => [...prev, newShift]);
-    setShowAdd(false);
-    toast.success(`Shift ajouté pour ${emp.firstName}`);
+    const date = weekDays[day];
+    const shiftDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const startTime = `${def.start.replace("h", ":")}:00`;
+    const endTime = `${def.end.replace("h", ":")}:00`;
+    // Resolve studio_id from name
+    const studioEntry = Array.from(studioMap.entries()).find(([_id, name]) => name === selectedStudio);
+    if (!studioEntry) {
+      toast.error("Studio introuvable");
+      return;
+    }
+    try {
+      await createShiftFn({
+        data: {
+          userId: empId,
+          studioId: studioEntry[0],
+          businessRole: role as any,
+          shiftDate,
+          startTime,
+          endTime,
+          publishImmediately: false,
+        },
+      });
+      setShowAdd(false);
+      toast.success(`Shift ajouté en brouillon pour ${emp.firstName}`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
-  const handlePublish = () => {
-    setPublished(true);
-    toast.success("Planning publié — notifications envoyées à l'équipe");
+  const draftCount = useMemo(() => studioShifts.filter((s) => s.isDraft).length, [studioShifts]);
+  const conflictCount = useMemo(() => studioShifts.filter((s) => s.conflict).length, [studioShifts]);
+  const [publishOpen, setPublishOpen] = useState(false);
+
+  const handlePublishConfirm = async () => {
+    const start = weekDays[0];
+    const end = weekDays[6];
+    const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    try {
+      const res: any = await publishPlanningFn({ data: { startDate: toISO(start), endDate: toISO(end) } });
+      setPublishOpen(false);
+      setPublished(true);
+      toast.success(`${res?.published ?? 0} shifts publiés · ${res?.notified ?? 0} employés notifiés`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
+  const handlePublish = () => setPublishOpen(true);
 
 
   // Compute ISO-ish week number
@@ -796,20 +883,26 @@ function PlanningPage() {
                             backgroundColor: rc.bg,
                             color: rc.text,
                             cursor: "pointer",
+                            opacity: shift.isDraft ? 0.75 : 1,
+                            border: shift.conflict ? "1px solid var(--danger-text)" : shift.isDraft ? "1px dashed var(--muted-foreground)" : "none",
                           }}
-                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.85"; }}
-                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = shift.isDraft ? "0.9" : "0.85"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = shift.isDraft ? "0.75" : "1"; }}
                         >
                           <div className="flex items-center justify-between gap-1">
-                            <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} className="flex items-center gap-1">
+                              {shift.isLocked && <Lock size={9} />}
                               {shift.name.split(" ")[0]}
                             </span>
-                            <StatusDot confirmation={shift.confirmation} pointage={shift.pointage} delayMinutes={shift.delayMinutes} />
+                            <span className="flex items-center gap-1">
+                              {shift.conflict && <AlertTriangle size={10} style={{ color: "var(--danger-text)" }} />}
+                              <StatusDot confirmation={shift.confirmation} pointage={shift.pointage} delayMinutes={shift.delayMinutes} />
+                            </span>
                           </div>
                           <div className="flex items-center justify-between gap-1" style={{ fontSize: 10, opacity: 0.85, marginTop: 1 }}>
                             <span className="flex items-center gap-1">
                               <span className="rounded-full" style={{ width: 5, height: 5, backgroundColor: rc.dot }} />
-                              {shift.role}
+                              {shift.isDraft ? "Brouillon" : shift.role}
                             </span>
                             <span style={{ fontWeight: 500 }}>{startLabel}–{endLabel}</span>
                           </div>
