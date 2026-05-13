@@ -524,6 +524,8 @@ function InformationsTab({
   onRemoveCustomRole: (name: string) => void;
   onRequestDelete: () => void;
 }) {
+  const { names: dbRoles } = useBusinessRoles({ onlyActive: true });
+  const allRoles = dbRoles as Role[];
   const [editing, setEditing] = useState(false);
   const [newRole, setNewRole] = useState("");
 
