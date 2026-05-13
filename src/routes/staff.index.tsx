@@ -231,7 +231,7 @@ function StaffPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 hidden sm:table-cell">
                         {p.contract ? (
                           <span className="rounded-full px-2 py-0.5" style={{
                             fontSize: 11,
@@ -250,13 +250,13 @@ function StaffPage() {
                           {userRoles.length === 0 && <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>—</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3" style={{ fontWeight: 500, color: scoreColor }}>{score || "—"}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 hidden md:table-cell" style={{ fontWeight: 500, color: scoreColor }}>{score || "—"}</td>
+                      <td className="px-4 py-3 hidden md:table-cell">
                         {used !== null && max !== null && max > 0 ? (
                           <span style={{ fontSize: 12, fontWeight: 500 }}>{used}/{max}h</span>
                         ) : <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>—</span>}
                       </td>
-                      <td className="px-4 py-3" style={{ fontWeight: 500 }}>{shiftCountByUser[p.id] || 0}</td>
+                      <td className="px-4 py-3 hidden md:table-cell" style={{ fontWeight: 500 }}>{shiftCountByUser[p.id] || 0}</td>
                     </tr>
                   );
                 })}
