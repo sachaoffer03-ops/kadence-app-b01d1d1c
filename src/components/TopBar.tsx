@@ -67,7 +67,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
       setNotifications((data ?? []) as NotifRow[]);
 
       channel = supabase
-        .channel("notif-" + userId)
+        .channel("notif-" + userId + "-" + Math.random().toString(36).slice(2))
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
