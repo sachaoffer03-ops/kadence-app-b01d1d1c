@@ -883,20 +883,26 @@ function PlanningPage() {
                             backgroundColor: rc.bg,
                             color: rc.text,
                             cursor: "pointer",
+                            opacity: shift.isDraft ? 0.75 : 1,
+                            border: shift.conflict ? "1px solid var(--danger-text)" : shift.isDraft ? "1px dashed var(--muted-foreground)" : "none",
                           }}
-                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.85"; }}
-                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = shift.isDraft ? "0.9" : "0.85"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = shift.isDraft ? "0.75" : "1"; }}
                         >
                           <div className="flex items-center justify-between gap-1">
-                            <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} className="flex items-center gap-1">
+                              {shift.isLocked && <Lock size={9} />}
                               {shift.name.split(" ")[0]}
                             </span>
-                            <StatusDot confirmation={shift.confirmation} pointage={shift.pointage} delayMinutes={shift.delayMinutes} />
+                            <span className="flex items-center gap-1">
+                              {shift.conflict && <AlertTriangle size={10} style={{ color: "var(--danger-text)" }} />}
+                              <StatusDot confirmation={shift.confirmation} pointage={shift.pointage} delayMinutes={shift.delayMinutes} />
+                            </span>
                           </div>
                           <div className="flex items-center justify-between gap-1" style={{ fontSize: 10, opacity: 0.85, marginTop: 1 }}>
                             <span className="flex items-center gap-1">
                               <span className="rounded-full" style={{ width: 5, height: 5, backgroundColor: rc.dot }} />
-                              {shift.role}
+                              {shift.isDraft ? "Brouillon" : shift.role}
                             </span>
                             <span style={{ fontWeight: 500 }}>{startLabel}–{endLabel}</span>
                           </div>
