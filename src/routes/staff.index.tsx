@@ -91,7 +91,8 @@ function StaffPage() {
 
   const contracts = ["etudiant", "flexi", "cdi", "cdd"];
   const contractLabels: Record<string, string> = { etudiant: "Étudiants", flexi: "Flexis", cdi: "CDI", cdd: "CDD" };
-  const businessRoleOptions: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
+  const { names: businessRoleOptionsRaw } = useBusinessRoles({ onlyActive: true });
+  const businessRoleOptions = businessRoleOptionsRaw as Role[];
 
 
   return (
