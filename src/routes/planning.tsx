@@ -557,60 +557,113 @@ function PlanningPage() {
   const goPrev = () => setWeekOffset((w) => w - 1);
   const goNext = () => setWeekOffset((w) => w + 1);
 
-  const handleFillHole = (holeId: string, empId: string) => {
+  // Server functions
+  const createShiftFn = useServerFn(createShift);
+  const updateShiftFn = useServerFn(updateShift);
+  const deleteShiftRpc = useServerFn(deleteShiftFn);
+  const publishPlanningFn = useServerFn(publishPlanning);
+
+  const handleFillHole = async (holeId: string, empId: string) => {
     const emp = employees.find((e) => e.id === empId);
     if (!emp) return;
-    setShifts((prev) => prev.map((s) => {
-      if (s.id !== holeId) return s;
-      return { ...s, hole: false, employeeId: emp.id, name: `${emp.firstName} ${emp.lastName.charAt(0)}.`, confirmation: "en-attente", phone: emp.phone };
-    }));
-    setHoleShift(null);
-    toast.success(`${emp.firstName} ${emp.lastName.charAt(0)}. assigné·e au shift`);
+    try {
+      await updateShiftFn({ data: { shiftId: holeId, userId: empId } });
+      setHoleShift(null);
+      toast.success(`${emp.firstName} ${emp.lastName.charAt(0)}. assigné·e au shift`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
   const handleDeleteShift = async (id: string) => {
-    setShifts((prev) => prev.filter((s) => s.id !== id));
     setSelectedShift(null);
-    const { error } = await supabase.from("shifts").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else toast.success("Shift supprimé");
+    try {
+      await deleteShiftRpc({ data: { shiftId: id } });
+      toast.success("Shift supprimé");
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
-  const handleUpdateSlot = (id: string, slot: number) => {
+  const handleUpdateSlot = async (id: string, slot: number) => {
     const def = timeSlotDefs[slot];
-    setShifts((prev) => prev.map((s) => s.id === id ? { ...s, slot, time: def.time, startHour: def.start, endHour: def.end } : s));
-    setSelectedShift((cur) => cur && cur.id === id ? { ...cur, slot, time: def.time, startHour: def.start, endHour: def.end } : cur);
-    toast.success("Horaire mis à jour");
+    const startTime = `${def.start.replace("h", ":")}:00`;
+    const endTime = `${def.end.replace("h", ":")}:00`;
+    try {
+      await updateShiftFn({ data: { shiftId: id, startTime, endTime } });
+      toast.success("Horaire mis à jour");
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
-  const handleConfirmShift = (id: string) => {
-    setShifts((prev) => prev.map((s) => s.id === id ? { ...s, confirmation: "confirmé" } : s));
-    setSelectedShift((cur) => cur && cur.id === id ? { ...cur, confirmation: "confirmé" } : cur);
-    toast.success("Shift confirmé");
+  const handleConfirmShift = async (id: string) => {
+    // Force-confirmer = passer en scheduled (publié) si encore draft
+    try {
+      await updateShiftFn({ data: { shiftId: id } }); // marque locked+manual
+      toast.success("Shift confirmé");
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
-  const handleAddShift = (empId: string, day: number, slot: number, role: Role) => {
+  const handleAddShift = async (empId: string, day: number, slot: number, role: Role) => {
     const emp = employees.find((e) => e.id === empId);
     if (!emp) return;
     const def = timeSlotDefs[slot];
-    const newShift: PlanningShift = {
-      id: `new-${Date.now()}`,
-      day, slot, employeeId: emp.id,
-      name: `${emp.firstName} ${emp.lastName.charAt(0)}.`,
-      role, studio: selectedStudio,
-      time: def.time, startHour: def.start, endHour: def.end,
-      confirmation: "en-attente", pointage: "non-pointé",
-      phone: emp.phone,
-    };
-    setShifts((prev) => [...prev, newShift]);
-    setShowAdd(false);
-    toast.success(`Shift ajouté pour ${emp.firstName}`);
+    const date = weekDays[day];
+    const shiftDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const startTime = `${def.start.replace("h", ":")}:00`;
+    const endTime = `${def.end.replace("h", ":")}:00`;
+    // Resolve studio_id from name
+    const studioEntry = Array.from(studioMap.entries()).find(([_id, name]) => name === selectedStudio);
+    if (!studioEntry) {
+      toast.error("Studio introuvable");
+      return;
+    }
+    try {
+      await createShiftFn({
+        data: {
+          userId: empId,
+          studioId: studioEntry[0],
+          businessRole: role as any,
+          shiftDate,
+          startTime,
+          endTime,
+          publishImmediately: false,
+        },
+      });
+      setShowAdd(false);
+      toast.success(`Shift ajouté en brouillon pour ${emp.firstName}`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
 
-  const handlePublish = () => {
-    setPublished(true);
-    toast.success("Planning publié — notifications envoyées à l'équipe");
+  const draftCount = useMemo(() => studioShifts.filter((s) => s.isDraft).length, [studioShifts]);
+  const conflictCount = useMemo(() => studioShifts.filter((s) => s.conflict).length, [studioShifts]);
+  const [publishOpen, setPublishOpen] = useState(false);
+
+  const handlePublishConfirm = async () => {
+    const start = weekDays[0];
+    const end = weekDays[6];
+    const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    try {
+      const res: any = await publishPlanningFn({ data: { startDate: toISO(start), endDate: toISO(end) } });
+      setPublishOpen(false);
+      setPublished(true);
+      toast.success(`${res?.published ?? 0} shifts publiés · ${res?.notified ?? 0} employés notifiés`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
   };
+  const handlePublish = () => setPublishOpen(true);
 
 
   // Compute ISO-ish week number
