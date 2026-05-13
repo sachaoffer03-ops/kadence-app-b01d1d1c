@@ -115,6 +115,8 @@ export const generatePlanning = createServerFn({ method: "POST" })
       weight_random: 10,
       enforce_rest_11h: true,
       strict_preferences: false,
+      enforce_max_weekly_cdi: true,
+      enforce_student_quota: true,
     } as Settings;
 
     // 2. Templates (besoins par studio/jour/créneau)
