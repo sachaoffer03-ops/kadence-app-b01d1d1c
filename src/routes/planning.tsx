@@ -10,6 +10,7 @@ import { employees, roleColors, type Role, type Studio, type Employee } from "@/
 import { Dropdown } from "@/components/Dropdown";
 import { supabase } from "@/integrations/supabase/client";
 import { createShift, updateShift, deleteShift as deleteShiftFn, publishPlanning } from "@/lib/shifts.functions";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
