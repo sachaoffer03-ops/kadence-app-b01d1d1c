@@ -119,12 +119,12 @@ function StaffPage() {
       ) : (
         <>
           <div className="flex items-center gap-3 mb-4 flex-wrap">
-            <div className="flex items-center gap-2 rounded-md border px-3" style={{ height: 32, borderColor: "var(--border)", backgroundColor: "var(--card)", width: 240 }}>
+            <div className="flex items-center gap-2 rounded-md border px-3 w-full md:w-auto" style={{ height: 32, borderColor: "var(--border)", backgroundColor: "var(--card)", maxWidth: 240 }}>
               <Search size={14} style={{ color: "var(--muted-foreground)" }} />
               <input type="text" placeholder="Rechercher…" value={search} onChange={e => setSearch(e.target.value)}
                 className="border-0 bg-transparent outline-none flex-1" style={{ fontSize: 12 }} />
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               {contracts.map(c => {
                 const a = contractFilters.has(c);
                 const count = profiles.filter(p => p.contract === c).length;
