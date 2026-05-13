@@ -593,10 +593,12 @@ function PlanningPage() {
     toast.success(`${emp.firstName} ${emp.lastName.charAt(0)}. assigné·e au shift`);
   };
 
-  const handleDeleteShift = (id: string) => {
+  const handleDeleteShift = async (id: string) => {
     setShifts((prev) => prev.filter((s) => s.id !== id));
     setSelectedShift(null);
-    toast.success("Shift supprimé");
+    const { error } = await supabase.from("shifts").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else toast.success("Shift supprimé");
   };
 
   const handleUpdateSlot = (id: string, slot: number) => {
