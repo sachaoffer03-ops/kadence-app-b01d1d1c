@@ -439,6 +439,8 @@ function PlanningPage() {
   const weekDays = useMemo(() => getWeekDays(year, month, weekOffset), [year, month, weekOffset]);
   const [shifts, setShifts] = useState<PlanningShift[]>([]);
   const [studioMap, setStudioMap] = useState<Map<string, string>>(new Map());
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey((k) => k + 1);
 
   // Load studios once for id ↔ name mapping
   useEffect(() => {
