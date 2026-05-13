@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { roleColors, type Role } from "@/lib/mock-data";
 import { InviteEmployeeModal } from "@/components/InviteEmployeeModal";
 import { InvitationsList } from "@/components/InvitationsList";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 export const Route = createFileRoute("/staff/")({
   component: StaffPage,
@@ -90,7 +91,8 @@ function StaffPage() {
 
   const contracts = ["etudiant", "flexi", "cdi", "cdd"];
   const contractLabels: Record<string, string> = { etudiant: "Étudiants", flexi: "Flexis", cdi: "CDI", cdd: "CDD" };
-  const businessRoleOptions: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
+  const { names: businessRoleOptionsRaw } = useBusinessRoles({ onlyActive: true });
+  const businessRoleOptions = businessRoleOptionsRaw as Role[];
 
 
   return (

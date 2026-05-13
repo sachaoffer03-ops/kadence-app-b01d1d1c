@@ -4,13 +4,12 @@ import { GripVertical, Plus, Trash2, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { roleColors, type Role } from "@/lib/mock-data";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 export const Route = createFileRoute("/checklists")({
   component: ChecklistsPage,
   head: () => ({ meta: [{ title: "Checklists — Kadence" }] }),
 });
-
-const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
 
 interface Item { id: string; label: string; photoRequired?: boolean; }
 interface Template {
@@ -19,13 +18,15 @@ interface Template {
 interface StudioRow { id: string; name: string; }
 
 function ChecklistsPage() {
+  const { names: allRoles } = useBusinessRoles({ onlyActive: true });
   const [studios, setStudios] = useState<StudioRow[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activeStudio, setActiveStudio] = useState<string>("");
   const [selected, setSelected] = useState<string>("");
   const [newItem, setNewItem] = useState("");
   const [creatingTpl, setCreatingTpl] = useState(false);
-  const [tplRole, setTplRole] = useState<Role>("Barista");
+  const [tplRole, setTplRole] = useState<Role>("");
+  useEffect(() => { if (!tplRole && allRoles.length) setTplRole(allRoles[0]); }, [allRoles.join(",")]);
 
   useEffect(() => {
     const load = async () => {

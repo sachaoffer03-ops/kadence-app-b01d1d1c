@@ -10,6 +10,7 @@ import { employees, roleColors, type Role, type Studio, type Employee } from "@/
 import { Dropdown } from "@/components/Dropdown";
 import { supabase } from "@/integrations/supabase/client";
 import { createShift, updateShift, deleteShift as deleteShiftFn, publishPlanning } from "@/lib/shifts.functions";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
@@ -20,9 +21,8 @@ export const Route = createFileRoute("/planning")({
     s.add ? { add: true } : {},
 });
 
-// Listes par défaut (UI filtres). Les vraies données viennent de la DB.
-// TODO: remplacer par useBusinessRoles() + supabase.from("studios") dans le composant.
-const roles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
+// Studios par défaut (UI filtres). Les vraies données viennent de la DB.
+// Les rôles métier sont chargés dynamiquement via useBusinessRoles().
 const studios: Studio[] = ["Skult Rhodes", "Skult Châtelain"];
 
 type ViewMode = "semaine" | "jour";
@@ -439,6 +439,7 @@ function FillHoleModal({ shift, onClose, onFill }: { shift: PlanningShift; onClo
 const fmtTime = (s: string) => s.replace("h00", ":00").replace("h", ":");
 
 function PlanningPage() {
+  const { names: roles } = useBusinessRoles({ onlyActive: true });
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
@@ -1131,10 +1132,12 @@ function PlanningPage() {
 
 // ── Add Shift Modal ────────────────────────────────────────
 function AddShiftModal({ studio, onClose, onAdd }: { studio: Studio; onClose: () => void; onAdd: (empId: string, day: number, slot: number, role: Role) => void }) {
+  const { names: roles } = useBusinessRoles({ onlyActive: true });
   const [day, setDay] = useState(0);
   const [slot, setSlot] = useState(0);
-  const [role, setRole] = useState<Role>("Barista");
+  const [role, setRole] = useState<Role>(roles[0] ?? "");
   const [empId, setEmpId] = useState("");
+  useEffect(() => { if (!role && roles.length) setRole(roles[0]); }, [roles.join(",")]);
 
   const eligible = useMemo(() => employees.filter((e) => e.roles.includes(role)), [role]);
 
@@ -1182,7 +1185,7 @@ function AddShiftModal({ studio, onClose, onAdd }: { studio: Studio; onClose: ()
           <Field label="Poste">
             <Dropdown
               value={role}
-              options={roles as readonly string[] as string[]}
+              options={roles}
               onChange={(v) => { setRole(v as Role); setEmpId(""); }}
               minWidth={220}
             />

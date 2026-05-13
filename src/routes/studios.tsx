@@ -26,6 +26,7 @@ import {
   checklistTemplates,
   studioExceptions,
 } from "@/lib/mock-data";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 export const Route = createFileRoute("/studios")({
   component: StudiosPage,
@@ -41,6 +42,8 @@ const subTabs = [
   "Checklists",
 ] as const;
 
+// Fallback statique (utilisé pour seed mock data uniquement) ; les listes UI
+// utilisent useBusinessRoles() pour rester en phase avec la table business_roles.
 const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
 
 /* ------------------------------------------------------------------ */
@@ -521,6 +524,8 @@ function InformationsTab({
   onRemoveCustomRole: (name: string) => void;
   onRequestDelete: () => void;
 }) {
+  const { names: dbRoles } = useBusinessRoles({ onlyActive: true });
+  const allRoles = dbRoles as Role[];
   const [editing, setEditing] = useState(false);
   const [newRole, setNewRole] = useState("");
 
@@ -1511,6 +1516,8 @@ function ExceptionForm({
   title: string;
   embedded?: boolean;
 }) {
+  const { names: dbRoles } = useBusinessRoles({ onlyActive: true });
+  const allRoles = dbRoles as Role[];
   const setImpact = (role: Role, delta: number) => {
     const others = draft.impact.filter((i) => i.role !== role);
     setDraft({
@@ -1713,6 +1720,8 @@ interface ChecklistModel {
 }
 
 function ChecklistsTab({ studio }: { studio: Studio }) {
+  const { names: dbRoles } = useBusinessRoles({ onlyActive: true });
+  const allRoles = dbRoles as Role[];
   const [models, setModels] = useState<ChecklistModel[]>(() =>
     checklistTemplates
       .filter((c) => c.studio === studio)

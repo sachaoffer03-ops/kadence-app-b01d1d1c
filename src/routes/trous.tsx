@@ -4,6 +4,7 @@ import { Send, UserPlus, ChevronDown, ChevronUp, Check, AlertTriangle } from "lu
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getRoleStyle, hhmm, fullName } from "@/lib/staff-helpers";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 export const Route = createFileRoute("/trous")({
   component: TrousPage,
@@ -57,7 +58,7 @@ function TrousPage() {
     else { toast.success(`${name} assigné${name.endsWith("e") ? "e" : ""} au shift`); setActions((s) => ({ ...s, [`${shiftId}-${userId}`]: "Assigné" })); }
   };
 
-  const allRoles = ["Barista", "Accueil", "Host", "Cuisine"];
+  const { names: allRoles } = useBusinessRoles({ onlyActive: true });
 
   return (
     <div className="p-4 md:p-6">
