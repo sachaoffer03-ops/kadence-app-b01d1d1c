@@ -3,11 +3,10 @@ import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dropdown } from "@/components/Dropdown";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 interface Studio { id: string; name: string }
 interface Employee { id: string; first_name: string; last_name: string; studio_id: string | null }
-
-const BUSINESS_ROLES = ["Barista", "Accueil", "Host", "Cuisine"] as const;
 
 interface Props {
   open: boolean;
