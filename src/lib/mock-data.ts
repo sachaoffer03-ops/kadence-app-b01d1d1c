@@ -1,6 +1,7 @@
-export type Role = 'Barista' | 'Accueil' | 'Host' | 'Cuisine';
+// Mock/seed data + types partagés. Les rôles métier sont libres (table business_roles).
+export type Role = string;
 export type ContractType = 'Étudiant' | 'Flexi' | 'CDI';
-export type Studio = 'Skult Rhodes' | 'Skult Châtelain';
+export type Studio = string;
 export type ShiftStatus = 'terminé' | 'en-cours' | 'retard' | 'à-venir';
 
 export interface Employee {
@@ -172,12 +173,13 @@ export interface FeedbackEntry {
   comment?: string;
 }
 
-export const roleColors: Record<Role, { bg: string; text: string; dot: string }> = {
-  Barista: { bg: 'var(--role-barista-bg)', text: 'var(--role-barista-text)', dot: 'var(--role-barista-dot)' },
-  Accueil: { bg: 'var(--role-accueil-bg)', text: 'var(--role-accueil-text)', dot: 'var(--role-accueil-dot)' },
-  Host: { bg: 'var(--role-host-bg)', text: 'var(--role-host-text)', dot: 'var(--role-host-dot)' },
-  Cuisine: { bg: 'var(--role-cuisine-bg)', text: 'var(--role-cuisine-text)', dot: 'var(--role-cuisine-dot)' },
-};
+// roleColors : proxy dynamique qui lit la table business_roles via le cache du hook.
+// Conserve l'API existante `roleColors[role].dot/bg/text` partout dans l'app.
+import { getRoleStyle } from "./staff-helpers";
+export const roleColors: Record<string, { bg: string; text: string; dot: string }> = new Proxy(
+  {},
+  { get: (_t, prop: string) => getRoleStyle(prop) },
+) as any;
 
 export const employees: Employee[] = [
   { id: '1', firstName: 'Clara', lastName: 'Martens', age: 22, city: 'Bruxelles', contract: 'Étudiant', roles: ['Barista', 'Accueil'], score: 9.4, quotaUsed: 198, quotaMax: 650, shiftsCount: 23, lastShift: "Aujourd'hui", studio: 'Skult Rhodes', phone: '+32 479 12 34 56', email: 'clara.martens@student.be', niss: '00.07.15-123.45', iban: 'BE68 5390 0754 7034', nationality: 'Belge', studentCardValid: true, punctuality: 9.8, presentation: 9.2, autonomy: 9.5, speed: 9.1, serviceQuality: 9.6, communication: 9.2, roleScores: { Barista: 9.6, Accueil: 9.1 } },
