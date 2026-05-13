@@ -592,7 +592,7 @@ function PlanningPage() {
     : `Semaine du ${startD.getDate()} ${monthNames[startD.getMonth()].toLowerCase()} au ${endD.getDate()} ${monthNames[endD.getMonth()].toLowerCase()} ${endD.getFullYear()}`;
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-6 mb-5 flex-wrap">
         <div>

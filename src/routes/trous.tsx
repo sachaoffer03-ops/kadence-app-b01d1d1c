@@ -60,7 +60,7 @@ function TrousPage() {
   const allRoles = ["Barista", "Accueil", "Host", "Cuisine"];
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">

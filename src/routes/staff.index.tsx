@@ -94,7 +94,7 @@ function StaffPage() {
 
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="flex items-center gap-1 mb-5 border-b" style={{ borderColor: "var(--border)" }}>
         {[
           { key: "employees" as const, label: "Employés", Icon: Users },

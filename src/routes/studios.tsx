@@ -260,7 +260,7 @@ function StudiosPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div
         className="flex items-center gap-1 mb-5"
         style={{ borderBottom: "0.5px solid var(--border)" }}

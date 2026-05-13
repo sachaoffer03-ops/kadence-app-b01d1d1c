@@ -88,7 +88,7 @@ function DashboardPage() {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  if (!data) return <div className="p-6" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement…</div>;
+  if (!data) return <div className="p-4 md:p-6" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement…</div>;
 
   const inProgress = data.todayShifts.filter((s) => s.clocked_in_at && !s.clocked_out_at).length;
   const done = data.todayShifts.filter((s) => s.clocked_out_at).length;

@@ -85,10 +85,10 @@ function FormationPage() {
     if (error) toast.error(error.message); else toast.success("Formation supprimée");
   };
 
-  if (loading) return <div className="p-6" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement…</div>;
+  if (loading) return <div className="p-4 md:p-6" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement…</div>;
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Formation</h1>

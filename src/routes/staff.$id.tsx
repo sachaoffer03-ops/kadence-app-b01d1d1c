@@ -81,9 +81,9 @@ function EmployeeDetailPage() {
     toast.success(next === "active" ? "Compte réactivé" : "Compte suspendu");
   };
 
-  if (loading) return <div className="p-6" style={{ fontSize: 13 }}>Chargement…</div>;
+  if (loading) return <div className="p-4 md:p-6" style={{ fontSize: 13 }}>Chargement…</div>;
   if (!emp) return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <Link to="/staff" className="flex items-center gap-1 mb-4" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
         <ArrowLeft size={14} /> Retour au staff
       </Link>
@@ -102,7 +102,7 @@ function EmployeeDetailPage() {
   const rc = firstRole ? roleColors[firstRole] : { bg: "var(--muted)", text: "var(--foreground)", dot: "" };
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <Link to="/staff" className="flex items-center gap-1 mb-4" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
         <ArrowLeft size={14} /> Retour au staff
       </Link>
