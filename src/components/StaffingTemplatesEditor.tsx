@@ -26,6 +26,7 @@ interface Props {
 }
 
 export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
+  const { names: ROLES } = useBusinessRoles({ onlyActive: true });
   const [studios, setStudios] = useState<Studio[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +62,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
       day_of_week: 0,
       start_time: "10:00",
       end_time: "15:00",
-      business_role: "Barista",
+      business_role: ROLES[0] ?? "Barista",
       required_count: 1,
     });
     if (error) return toast.error(error.message);
