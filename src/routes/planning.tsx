@@ -693,21 +693,33 @@ function PlanningPage() {
     const def = timeSlotDefs[newSlot];
     const date = weekDays[newDay];
     const shiftDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    // Préserve la durée originale du shift, on aligne juste le début sur le nouveau slot.
     const original = studioShifts.find((s) => s.id === shiftId);
     const slotStart = `${def.start.replace("h", ":")}:00`;
+    const slotEnd = `${def.end.replace("h", ":")}:00`;
     let startTime = slotStart;
-    let endTime = `${def.end.replace("h", ":")}:00`;
-    if (original) {
-      const toMin = (t: string) => {
-        const [h, m] = t.split(":").map(Number); return h * 60 + m;
-      };
-      const dur = toMin(original.endTime) - toMin(original.startTime);
-      const startMin = toMin(slotStart);
-      const endMin = Math.min(startMin + dur, 23 * 60 + 59);
-      const fmt = (mn: number) => `${String(Math.floor(mn / 60)).padStart(2, "0")}:${String(mn % 60).padStart(2, "0")}:00`;
-      startTime = fmt(startMin);
-      endTime = fmt(endMin);
+    let endTime = slotEnd;
+    // Les horaires doivent suivre les besoins définis par l'admin (staffing_templates)
+    // pour le studio, le jour et le poste cibles. Si un template matche le créneau,
+    // on utilise SES horaires (durée = celle configurée), pas la durée d'origine.
+    if (original?.studioId && original.role) {
+      const dow = (date.getDay() + 6) % 7; // 0 = Lundi
+      const { data: tpls } = await supabase
+        .from("staffing_templates")
+        .select("start_time, end_time")
+        .eq("studio_id", original.studioId)
+        .eq("day_of_week", dow)
+        .eq("business_role", original.role);
+      const list = (tpls ?? []).map((t: any) => ({
+        s: String(t.start_time).slice(0, 8),
+        e: String(t.end_time).slice(0, 8),
+      }));
+      // Match prioritaire : template dont le début tombe dans le slot cible.
+      const inSlot = list.find((t) => t.s >= slotStart && t.s < slotEnd)
+        ?? list.find((t) => t.s === slotStart);
+      if (inSlot) {
+        startTime = inSlot.s;
+        endTime = inSlot.e;
+      }
     }
     try {
       await updateShiftFn({ data: { shiftId, shiftDate, startTime, endTime } });
