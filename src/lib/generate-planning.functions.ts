@@ -139,10 +139,15 @@ export const generatePlanning = createServerFn({ method: "POST" })
     // 3. Employés + rôles + studios + dispos
     // On charge les dispos uniquement sur la période (perf + pertinence)
     // Note: on a besoin de la période donc on calcule firstDay/lastDay AVANT (déplacé ci-dessous)
-    const [{ data: profiles }, { data: ubr }, { data: us }] = await Promise.all([
-      supabase.from("profiles").select("id, first_name, last_name, score, contract, quota_max, quota_used").eq("status", "active"),
-      supabase.from("user_business_roles").select("user_id, role"),
-      supabase.from("user_studios").select("user_id, studio_id"),
+    const [profiles, ubr, us] = await Promise.all([
+      fetchAll<any>(
+        supabase
+          .from("profiles")
+          .select("id, first_name, last_name, score, contract, quota_max, quota_used")
+          .eq("status", "active"),
+      ),
+      fetchAll<any>(supabase.from("user_business_roles").select("user_id, role")),
+      fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
     ]);
 
     const candidates: Map<string, Candidate> = new Map();
@@ -199,21 +204,24 @@ export const generatePlanning = createServerFn({ method: "POST" })
 
     // 5. Charger shifts existants restants (verrouillés/manuels conservés)
     // Servent à : (a) éviter de doubler une attribution, (b) repos 11h, (c) compter "déjà couverts"
-    const { data: existingShifts } = await supabase
-      .from("shifts")
-      .select("user_id, shift_date, start_time, end_time, studio_id, business_role")
-      .gte("shift_date", firstDay)
-      .lte("shift_date", lastDay);
-    const existing = (existingShifts ?? []) as any[];
+    const existing = await fetchAll<any>(
+      supabase
+        .from("shifts")
+        .select("user_id, shift_date, start_time, end_time, studio_id, business_role")
+        .gte("shift_date", firstDay)
+        .lte("shift_date", lastDay),
+    );
 
     // 5b. Disponibilités sur la période -> Map<userId, Map<date, Set<slot>>>
-    const { data: avails } = await supabase
-      .from("availabilities")
-      .select("user_id, avail_date, slot")
-      .gte("avail_date", firstDay)
-      .lte("avail_date", lastDay);
+    const avails = await fetchAll<any>(
+      supabase
+        .from("availabilities")
+        .select("user_id, avail_date, slot")
+        .gte("avail_date", firstDay)
+        .lte("avail_date", lastDay),
+    );
     const availMap = new Map<string, Map<string, Set<Slot>>>();
-    for (const a of (avails ?? []) as any[]) {
+    for (const a of avails) {
       let byDate = availMap.get(a.user_id);
       if (!byDate) { byDate = new Map(); availMap.set(a.user_id, byDate); }
       let set = byDate.get(a.avail_date);
