@@ -176,6 +176,24 @@ export const generatePlanning = createServerFn({ method: "POST" })
       .lte("shift_date", lastDay);
     const existing = (existingShifts ?? []) as any[];
 
+    // 5b. Disponibilités sur la période -> Map<userId, Map<date, Set<slot>>>
+    const { data: avails } = await supabase
+      .from("availabilities")
+      .select("user_id, avail_date, slot")
+      .gte("avail_date", firstDay)
+      .lte("avail_date", lastDay);
+    const availMap = new Map<string, Map<string, Set<Slot>>>();
+    for (const a of (avails ?? []) as any[]) {
+      let byDate = availMap.get(a.user_id);
+      if (!byDate) { byDate = new Map(); availMap.set(a.user_id, byDate); }
+      let set = byDate.get(a.avail_date);
+      if (!set) { set = new Set(); byDate.set(a.avail_date, set); }
+      set.add(a.slot as Slot);
+    }
+    const isAvailable = (uid: string, date: string, slot: Slot) =>
+      availMap.get(uid)?.get(date)?.has(slot) ?? false;
+    const hasAnyAvailForUser = (uid: string) => (availMap.get(uid)?.size ?? 0) > 0;
+
     // 6. Boucle jours
     const toInsert: any[] = [];
     const unfilled: { date: string; time: string; role: string; studio_id: string; reason: string }[] = [];
