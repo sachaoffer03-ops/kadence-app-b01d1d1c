@@ -33,11 +33,22 @@ interface Candidate {
   assigned_count: number;
 }
 
-const GenerateInput = z.object({
-  year: z.number().int().min(2024).max(2100),
-  month: z.number().int().min(0).max(11),
-  replaceExisting: z.boolean().default(true),
-});
+const GenerateInput = z
+  .object({
+    // Mode 1 : mois entier (raccourci)
+    year: z.number().int().min(2024).max(2100).optional(),
+    month: z.number().int().min(0).max(11).optional(),
+    // Mode 2 : période personnalisée
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    replaceExisting: z.boolean().default(true),
+  })
+  .refine(
+    (v) =>
+      (v.year !== undefined && v.month !== undefined) ||
+      (v.startDate && v.endDate),
+    { message: "Fournis (year+month) ou (startDate+endDate)" },
+  );
 
 export const generatePlanning = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
