@@ -90,6 +90,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
       weight_preference: 20,
       weight_random: 10,
       enforce_rest_11h: true,
+      strict_preferences: false,
     } as Settings;
 
     // 2. Templates (besoins par studio/jour/créneau)
