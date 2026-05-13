@@ -820,6 +820,7 @@ function PlanningPage() {
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Footer summary */}
