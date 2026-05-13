@@ -458,15 +458,29 @@ function PlanningPage() {
     (async () => {
       const { data, error } = await supabase
         .from("shifts")
-        .select("id, user_id, studio_id, business_role, shift_date, start_time, end_time, status, clocked_in_at, profiles:user_id(first_name, last_name, phone)")
+        .select("id, user_id, studio_id, business_role, shift_date, start_time, end_time, status, clocked_in_at, is_locked, is_manual, published_at, profiles:user_id(first_name, last_name, phone)")
         .gte("shift_date", startISO)
         .lte("shift_date", endISO)
         .order("shift_date")
         .order("start_time")
-        .limit(1000);
+        .limit(2000);
       if (cancelled) return;
       if (error) { console.error(error); return; }
-      const mapped: PlanningShift[] = (data ?? []).map((row: any) => {
+      const rows = (data ?? []) as any[];
+
+      // Conflict detection (overlap per user)
+      const conflictIds = new Set<string>();
+      for (let i = 0; i < rows.length; i++) {
+        for (let j = i + 1; j < rows.length; j++) {
+          const a = rows[i], b = rows[j];
+          if (!a.user_id || a.user_id !== b.user_id || a.shift_date !== b.shift_date) continue;
+          if (a.start_time < b.end_time && b.start_time < a.end_time) {
+            conflictIds.add(a.id); conflictIds.add(b.id);
+          }
+        }
+      }
+
+      const mapped: PlanningShift[] = rows.map((row: any) => {
         const date = new Date(`${row.shift_date}T00:00:00`);
         const dayIdx = weekDays.findIndex((d) => d.toDateString() === date.toDateString());
         const startH = parseInt(String(row.start_time).slice(0, 2), 10);
@@ -485,19 +499,27 @@ function PlanningPage() {
           name: row.user_id ? `${fn} ${ln.charAt(0)}.` : "",
           role: row.business_role as Role,
           studio: studioName as Studio,
+          studioId: row.studio_id,
+          shiftDate: row.shift_date,
           time: `${fmt(row.start_time)} — ${fmt(row.end_time)}`,
           startHour: fmt(row.start_time),
           endHour: fmt(row.end_time),
+          startTime: row.start_time,
+          endTime: row.end_time,
           hole: !row.user_id,
           confirmation: row.status === "scheduled" ? "confirmé" : "en-attente",
           pointage: ptg,
           phone: row.profiles?.phone ?? undefined,
+          isDraft: row.status === "draft",
+          isLocked: !!row.is_locked,
+          isManual: !!row.is_manual,
+          conflict: conflictIds.has(row.id),
         };
       });
       setShifts(mapped);
     })();
     return () => { cancelled = true; };
-  }, [weekDays, studioMap]);
+  }, [weekDays, studioMap, refreshKey]);
 
   // weekKey ref kept for compatibility but no longer regenerates mock
   const lastWeekKey = useRef(`${year}-${month}-${weekOffset}`);
