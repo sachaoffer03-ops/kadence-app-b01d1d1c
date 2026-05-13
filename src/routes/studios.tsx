@@ -26,6 +26,7 @@ import {
   checklistTemplates,
   studioExceptions,
 } from "@/lib/mock-data";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 export const Route = createFileRoute("/studios")({
   component: StudiosPage,
