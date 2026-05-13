@@ -649,11 +649,10 @@ function PlanningPage() {
   const conflictCount = useMemo(() => studioShifts.filter((s) => s.conflict).length, [studioShifts]);
   const [publishOpen, setPublishOpen] = useState(false);
 
-  const handlePublishConfirm = async () => {
+  const handlePublishConfirm = async (force = false) => {
     const start = weekDays[0];
     const end = weekDays[6];
     const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    // Limite la publication au studio affiché
     const studioEntry = Array.from(studioMap.entries()).find(([_id, name]) => name === selectedStudio);
     try {
       const res: any = await publishPlanningFn({
@@ -661,8 +660,15 @@ function PlanningPage() {
           startDate: toISO(start),
           endDate: toISO(end),
           ...(studioEntry ? { studioId: studioEntry[0] } : {}),
+          ...(force ? { confirmRepublish: true } : {}),
         },
       });
+      if (res?.alreadyPublished) {
+        const dt = new Date(res.previousPublishedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+        const ok = window.confirm(`Cette période a déjà été publiée le ${dt}. Republier et notifier à nouveau les employés ?`);
+        if (ok) return handlePublishConfirm(true);
+        return;
+      }
       setPublishOpen(false);
       setPublished(true);
       toast.success(`${res?.published ?? 0} shifts publiés · ${res?.notified ?? 0} employés notifiés`);
