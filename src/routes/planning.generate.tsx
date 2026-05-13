@@ -264,7 +264,6 @@ function GeneratePlanningPage() {
           style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
           Ajuster & publier <ArrowRight size={16} />
         </button>
-        </button>
         <button onClick={() => { setState("idle"); setResult(null); }}
           className="rounded-md px-6 py-3 flex items-center gap-2 transition-colors"
           style={{ fontSize: 14, fontWeight: 500, border: "0.5px solid var(--border)" }}>
