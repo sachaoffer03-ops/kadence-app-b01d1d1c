@@ -151,7 +151,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
     ]);
 
     const candidates: Map<string, Candidate> = new Map();
-    for (const p of profiles ?? []) {
+    for (const p of profiles) {
       candidates.set(p.id, {
         id: p.id,
         first_name: p.first_name ?? "",
@@ -165,11 +165,11 @@ export const generatePlanning = createServerFn({ method: "POST" })
         assigned_count: 0,
       });
     }
-    for (const r of (ubr ?? []) as any[]) {
+    for (const r of ubr) {
       const c = candidates.get(r.user_id);
       if (c) c.roles.add(r.role);
     }
-    for (const r of (us ?? []) as any[]) {
+    for (const r of us) {
       const c = candidates.get(r.user_id);
       if (c) c.studio_ids.add(r.studio_id);
     }
