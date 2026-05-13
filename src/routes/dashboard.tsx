@@ -118,6 +118,7 @@ function DashboardPage() {
             <HeroStat value={done.toString()} label="Terminés" />
             <HeroStat value={upcoming.toString()} label="À venir" />
             <div className="hidden md:block" style={{ width: 1, height: 36, backgroundColor: "var(--border)" }} />
+            <div>
               <div className="flex items-baseline gap-1">
                 <span style={{ fontSize: 28, fontWeight: 500, letterSpacing: "-0.02em" }}>{coverage}</span>
                 <span style={{ fontSize: 14, color: "var(--muted-foreground)" }}>%</span>
