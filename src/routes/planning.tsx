@@ -653,8 +653,16 @@ function PlanningPage() {
     const start = weekDays[0];
     const end = weekDays[6];
     const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // Limite la publication au studio affiché
+    const studioEntry = Array.from(studioMap.entries()).find(([_id, name]) => name === selectedStudio);
     try {
-      const res: any = await publishPlanningFn({ data: { startDate: toISO(start), endDate: toISO(end) } });
+      const res: any = await publishPlanningFn({
+        data: {
+          startDate: toISO(start),
+          endDate: toISO(end),
+          ...(studioEntry ? { studioId: studioEntry[0] } : {}),
+        },
+      });
       setPublishOpen(false);
       setPublished(true);
       toast.success(`${res?.published ?? 0} shifts publiés · ${res?.notified ?? 0} employés notifiés`);

@@ -20,6 +20,17 @@ interface Settings {
   weight_preference: number;
   weight_random: number;
   enforce_rest_11h: boolean;
+  strict_preferences: boolean;
+}
+
+type Slot = "matin" | "midi" | "soir";
+
+// Mapping créneau template -> slot dispo employé selon l'heure de début
+function slotForStart(startTime: string): Slot {
+  const h = parseInt(startTime.slice(0, 2), 10);
+  if (h < 11) return "matin";
+  if (h < 16) return "midi";
+  return "soir";
 }
 
 interface Candidate {
@@ -79,6 +90,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
       weight_preference: 20,
       weight_random: 10,
       enforce_rest_11h: true,
+      strict_preferences: false,
     } as Settings;
 
     // 2. Templates (besoins par studio/jour/créneau)
@@ -96,7 +108,9 @@ export const generatePlanning = createServerFn({ method: "POST" })
       };
     }
 
-    // 3. Employés + rôles + studios
+    // 3. Employés + rôles + studios + dispos
+    // On charge les dispos uniquement sur la période (perf + pertinence)
+    // Note: on a besoin de la période donc on calcule firstDay/lastDay AVANT (déplacé ci-dessous)
     const [{ data: profiles }, { data: ubr }, { data: us }] = await Promise.all([
       supabase.from("profiles").select("id, first_name, last_name, score, contract").eq("status", "active"),
       supabase.from("user_business_roles").select("user_id, role"),
@@ -162,6 +176,24 @@ export const generatePlanning = createServerFn({ method: "POST" })
       .lte("shift_date", lastDay);
     const existing = (existingShifts ?? []) as any[];
 
+    // 5b. Disponibilités sur la période -> Map<userId, Map<date, Set<slot>>>
+    const { data: avails } = await supabase
+      .from("availabilities")
+      .select("user_id, avail_date, slot")
+      .gte("avail_date", firstDay)
+      .lte("avail_date", lastDay);
+    const availMap = new Map<string, Map<string, Set<Slot>>>();
+    for (const a of (avails ?? []) as any[]) {
+      let byDate = availMap.get(a.user_id);
+      if (!byDate) { byDate = new Map(); availMap.set(a.user_id, byDate); }
+      let set = byDate.get(a.avail_date);
+      if (!set) { set = new Set(); byDate.set(a.avail_date, set); }
+      set.add(a.slot as Slot);
+    }
+    const isAvailable = (uid: string, date: string, slot: Slot) =>
+      availMap.get(uid)?.get(date)?.has(slot) ?? false;
+    const hasAnyAvailForUser = (uid: string) => (availMap.get(uid)?.size ?? 0) > 0;
+
     // 6. Boucle jours
     const toInsert: any[] = [];
     const unfilled: { date: string; time: string; role: string; studio_id: string; reason: string }[] = [];
@@ -185,22 +217,20 @@ export const generatePlanning = createServerFn({ method: "POST" })
       const todaysTemplates = tpls.filter((t) => t.day_of_week === dow);
 
       for (const t of todaysTemplates) {
-        // Compter les shifts déjà existants (verrouillés/manuels) qui couvrent ce créneau
-        const alreadyCovered = existing.filter(
-          (sh) =>
-            sh.shift_date === dateStr &&
-            sh.studio_id === t.studio_id &&
-            sh.business_role === t.business_role &&
-            sh.start_time === t.start_time &&
-            sh.end_time === t.end_time,
-        ).length;
+        const tSlot = slotForStart(t.start_time);
+        // Compter les shifts conservés qui chevauchent ce créneau (même studio + rôle)
+        const alreadyCovered = existing.filter((sh) => {
+          if (sh.shift_date !== dateStr) return false;
+          if (sh.studio_id !== t.studio_id) return false;
+          if (sh.business_role !== t.business_role) return false;
+          // Chevauchement : sh.start < t.end ET sh.end > t.start
+          return String(sh.start_time) < String(t.end_time) && String(sh.end_time) > String(t.start_time);
+        }).length;
 
         const stillNeeded = Math.max(0, t.required_count - alreadyCovered);
 
-        for (let i = 0; i < t.required_count; i++) {
-          totalRequired++;
-        }
-        totalCreated += alreadyCovered; // les shifts conservés comptent comme couverts
+        totalRequired += t.required_count;
+        totalCreated += Math.min(alreadyCovered, t.required_count);
 
         for (let i = 0; i < stillNeeded; i++) {
           // Filtrer candidats éligibles
@@ -223,6 +253,11 @@ export const generatePlanning = createServerFn({ method: "POST" })
               });
               if (conflict) return false;
             }
+            // Dispos : si mode strict, on exige une dispo positive sur le slot.
+            // Sinon, on laisse passer mais le score "pref" pénalisera.
+            if (s.strict_preferences && hasAnyAvailForUser(c.id) && !isAvailable(c.id, dateStr, tSlot)) {
+              return false;
+            }
             return true;
           });
 
@@ -232,7 +267,9 @@ export const generatePlanning = createServerFn({ method: "POST" })
               time: `${t.start_time.slice(0, 5)} – ${t.end_time.slice(0, 5)}`,
               role: t.business_role,
               studio_id: t.studio_id,
-              reason: "Aucun employé éligible (rôle + studio + repos)",
+              reason: s.strict_preferences
+                ? "Aucun employé disponible (rôle + studio + repos + dispos)"
+                : "Aucun employé éligible (rôle + studio + repos)",
             });
             continue;
           }
@@ -242,7 +279,12 @@ export const generatePlanning = createServerFn({ method: "POST" })
           const scored = eligible.map((c) => {
             const perf = (c.score ?? 7) / 10;
             const eq = 1 - c.assigned_count / Math.max(maxAssigned, 1);
-            const pref = 0.5;
+            // pref : 1 si dispo déclarée sur ce slot, 0.3 si l'employé a déclaré
+            // des dispos mais PAS celle-ci (pénalité), 0.5 s'il n'a rien déclaré (neutre).
+            let pref: number;
+            if (isAvailable(c.id, dateStr, tSlot)) pref = 1;
+            else if (hasAnyAvailForUser(c.id)) pref = 0.3;
+            else pref = 0.5;
             const rnd = Math.random();
             const total =
               (s.weight_performance * perf +

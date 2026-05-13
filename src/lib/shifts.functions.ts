@@ -12,6 +12,35 @@ async function assertAdmin(supabase: any, userId: string) {
   if (!ok) throw new Error("Action réservée aux admins/managers");
 }
 
+// Vérifie qu'un user n'a pas déjà un shift qui chevauche [start,end] le même jour (hors le shift en cours d'édition).
+async function assertNoOverlap(
+  supabase: any,
+  userId: string | null | undefined,
+  shiftDate: string,
+  startTime: string,
+  endTime: string,
+  excludeShiftId?: string,
+) {
+  if (!userId) return;
+  const { data, error } = await supabase
+    .from("shifts")
+    .select("id, start_time, end_time")
+    .eq("user_id", userId)
+    .eq("shift_date", shiftDate);
+  if (error) throw new Error(error.message);
+  const s = startTime.slice(0, 8);
+  const e = endTime.slice(0, 8);
+  for (const row of data ?? []) {
+    if (excludeShiftId && row.id === excludeShiftId) continue;
+    const rs = String(row.start_time).slice(0, 8);
+    const re = String(row.end_time).slice(0, 8);
+    // Chevauchement si rs < e ET re > s
+    if (rs < e && re > s) {
+      throw new Error(`Conflit : cet employé a déjà un shift ${rs.slice(0,5)}–${re.slice(0,5)} ce jour-là`);
+    }
+  }
+}
+
 // ---------- UPDATE ----------
 export const updateShift = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -32,6 +61,20 @@ export const updateShift = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+
+    // Charger le shift courant pour combler les champs non fournis et valider les conflits
+    const { data: current, error: eCur } = await supabase
+      .from("shifts")
+      .select("user_id, shift_date, start_time, end_time")
+      .eq("id", data.shiftId)
+      .single();
+    if (eCur) throw new Error(eCur.message);
+
+    const nextUserId = data.userId !== undefined ? data.userId : current.user_id;
+    const nextDate = data.shiftDate ?? current.shift_date;
+    const nextStart = data.startTime ?? current.start_time;
+    const nextEnd = data.endTime ?? current.end_time;
+    await assertNoOverlap(supabase, nextUserId, nextDate, nextStart, nextEnd, data.shiftId);
 
     const patch: any = { is_manual: true, is_locked: true, updated_at: new Date().toISOString() };
     if (data.userId !== undefined) patch.user_id = data.userId;
@@ -67,6 +110,7 @@ export const createShift = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+    await assertNoOverlap(supabase, data.userId, data.shiftDate, data.startTime, data.endTime);
 
     const status = data.publishImmediately ? "scheduled" : "draft";
     const published_at = data.publishImmediately ? new Date().toISOString() : null;
@@ -96,7 +140,7 @@ export const createShift = createServerFn({ method: "POST" })
         type: "shift_added",
         title: "Nouveau shift ajouté",
         body: `${data.shiftDate} ${data.startTime.slice(0, 5)}-${data.endTime.slice(0, 5)}`,
-        link: "/mon-planning",
+        link: "/staff-app",
       });
     }
     return { ok: true, id: row?.id };
@@ -122,6 +166,7 @@ export const publishPlanning = createServerFn({ method: "POST" })
       .object({
         startDate: z.string().regex(DATE),
         endDate: z.string().regex(DATE),
+        studioId: z.string().uuid().optional(), // si fourni : ne publie que ce studio
       })
       .parse(input),
   )
@@ -130,12 +175,14 @@ export const publishPlanning = createServerFn({ method: "POST" })
     await assertAdmin(supabase, userId);
 
     // 1. Récupère les drafts à publier
-    const { data: drafts, error: e1 } = await supabase
+    let q = supabase
       .from("shifts")
-      .select("id, user_id, shift_date, start_time, end_time")
+      .select("id, user_id, shift_date, start_time, end_time, studio_id")
       .eq("status", "draft")
       .gte("shift_date", data.startDate)
       .lte("shift_date", data.endDate);
+    if (data.studioId) q = q.eq("studio_id", data.studioId);
+    const { data: drafts, error: e1 } = await q;
     if (e1) throw new Error(e1.message);
 
     const list = drafts ?? [];
@@ -171,7 +218,7 @@ export const publishPlanning = createServerFn({ method: "POST" })
         type: "planning_published",
         title: "Nouveau planning publié",
         body: `${count} shift${count > 1 ? "s" : ""} entre le ${data.startDate} et le ${data.endDate}`,
-        link: "/mon-planning",
+        link: "/staff-app",
       }));
       await supabase.from("notifications").insert(notifs);
     }
