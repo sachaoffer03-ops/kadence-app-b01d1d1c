@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
   Star, Sparkles, MapPin, Phone, Trash2, Sparkle
@@ -7,6 +7,7 @@ import {
 import { toast } from "sonner";
 import { employees, roleColors, type Role, type Studio, type Employee } from "@/lib/mock-data";
 import { Dropdown } from "@/components/Dropdown";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
