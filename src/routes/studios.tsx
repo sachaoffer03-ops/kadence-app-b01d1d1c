@@ -1720,6 +1720,8 @@ interface ChecklistModel {
 }
 
 function ChecklistsTab({ studio }: { studio: Studio }) {
+  const { names: dbRoles } = useBusinessRoles({ onlyActive: true });
+  const allRoles = dbRoles as Role[];
   const [models, setModels] = useState<ChecklistModel[]>(() =>
     checklistTemplates
       .filter((c) => c.studio === studio)
