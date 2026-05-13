@@ -1,59 +1,49 @@
-## Objectif
+## Contexte
 
-Aujourd'hui tout le monde passe par `/login` puis est redirigé selon le rôle. On va séparer en deux espaces clairement distincts, chacun avec sa propre URL et sa propre page de connexion.
+Aujourd'hui :
+- Les besoins par studio sont éditables dans **Réglages › Besoins par studio** et sauvegardés dans `staffing_templates` ✅
+- La fonction serveur `generatePlanning` lit `staffing_templates` à chaque exécution → elle utilise donc **toujours la dernière version** ✅
+- Mais : la régénération ne marche que **mois entier**, et la grille `planning.tsx` n'affiche pas encore les shifts réels du DB
 
-- **admin.shyft.flashsite.fr** → espace admin / manager (dashboard, planning, staff, etc.)
-- **app.shyft.flashsite.fr** → espace employé (l'app `/staff-app` orientée mobile)
+Tu veux pouvoir **changer les besoins quand tu veux** et **relancer la génération sur la bonne période** sans tout casser.
 
-## Ce qu'il faut faire côté Lovable (DNS) — à toi
+## Ce que je vais faire
 
-Avant que la séparation marche en prod, **tu dois ajouter les deux sous-domaines** dans Lovable :
+### 1. Régénération sur période choisie (du X au Y)
+- Étendre `generatePlanning` : accepter `startDate` + `endDate` au lieu de `year`/`month`
+- Quand `replaceExisting=true`, supprimer uniquement les shifts dans cette plage (pas tout le mois)
+- Garder la possibilité "mois entier" comme raccourci (bouton)
 
-1. Project Settings → Domains → Connect Domain → `admin.shyft.flashsite.fr`
-2. Pareil pour `app.shyft.flashsite.fr`
-3. Suivre les instructions DNS chez ton registrar
+### 2. UI de génération (`/planning/generate`)
+- Deux modes : **Mois entier** (raccourci) ou **Période personnalisée** (date début → date fin via 2 datepickers shadcn)
+- Bandeau d'info : "L'IA utilise les besoins définis dans Réglages › Besoins par studio à l'instant T"
+- Lien rapide vers Réglages depuis cette page
 
-Le domaine actuel `shyft.flashsite.fr` peut rester (page d'accueil avec deux boutons "Espace admin" / "Espace employé") ou rediriger vers l'un des deux.
+### 3. Réassurance dans Réglages › Besoins
+- Petit message persistant en haut de l'onglet : "Tes modifications sont enregistrées immédiatement. Pour les appliquer au planning existant, va sur Planning › Générer et choisis la période à recalculer."
+- Bouton raccourci "Régénérer une période" qui amène directement sur `/planning/generate`
 
-## Ce que je code
+### 4. Brancher la grille `planning.tsx` sur le DB
+- Remplacer le mock par un `useQuery` qui lit `shifts` (jointure `profiles` pour nom/avatar) sur la semaine/mois affiché
+- Filtres studio + rôle déjà présents → les conserver
+- Les shifts générés par l'IA apparaissent immédiatement après génération
+- Realtime optionnel (channel postgres_changes sur `shifts`) pour refresh auto
 
-### 1. Détection du sous-domaine
+## Détails techniques
 
-Helper `getAppMode()` qui lit `window.location.hostname` :
-- contient `admin.` → mode admin
-- contient `app.` → mode employee
-- sinon (preview, dev) → fallback via `?mode=admin` dans l'URL pour pouvoir tester les deux
-
-### 2. Deux pages de connexion distinctes
-
-- **Login admin** : design sobre/pro, formulaire centré classique, titre "Espace administrateur — Skult Studios", fond clair off-white.
-- **Login employé** : design type app mobile, plus chaleureux, accent coral plus présent, gros boutons tactiles, titre "Bonjour 👋 Connectez-vous à votre espace".
-
-Même backend Supabase derrière, deux composants visuels.
-
-### 3. Routing & garde-fous
-
-Dans `src/routes/__root.tsx` :
-- Mode **employee** : tout chemin admin (`/dashboard`, `/planning`, `/staff`, etc.) → redirige vers `/staff-app`. Si un admin se connecte ici → message "Cet espace est réservé aux employés. Rendez-vous sur admin.shyft.flashsite.fr".
-- Mode **admin** : `/staff-app` bloqué. Si un employé se connecte ici → message "Cet espace est réservé aux administrateurs. Rendez-vous sur app.shyft.flashsite.fr".
-- Après login OK, redirection vers le bon espace selon rôle + mode.
-
-### 4. Email d'invitation
-
-L'edge function `send-invitation` envoie le lien d'activation vers le bon sous-domaine selon le rôle invité (employee → `app.*`, admin/manager → `admin.*`).
-
-## Fichiers touchés
-
-```text
-src/lib/app-mode.ts                              [NEW]
-src/routes/login.tsx                             [EDIT — split visuel]
-src/routes/__root.tsx                            [EDIT — redirections]
-src/routes/activation.tsx                        [EDIT — cohérent]
-supabase/functions/send-invitation/index.ts      [EDIT — URL selon rôle]
+**Server fn `generatePlanning`** — nouveau schéma d'entrée :
+```ts
+{ startDate: string, endDate: string, replaceExisting: boolean }
 ```
+La logique de scoring/repos 11h reste identique, juste la boucle de jours s'adapte à la plage.
 
-## Avant que je commence
+**`planning.tsx`** : actuellement ~1000 lignes de mock. Je remplace la source de données par `supabase.from('shifts').select('*, profiles(first_name, last_name, avatar_url)').gte('shift_date', start).lte('shift_date', end)` avec pagination si > 1000 lignes (limite Supabase). Pour 50 employés × ~5 shifts/semaine = 250 lignes/semaine → safe en vue semaine, mais en vue mois il faut paginer.
 
-Confirme-moi :
-1. Tu vas bien ajouter les deux sous-domaines dans Project Settings → Domains ?
-2. Le domaine racine `shyft.flashsite.fr` : on en fait quoi — page d'accueil avec deux boutons, redirection vers `app.*`, ou on le retire ?
+**Pas de versioning daté** : un seul jeu de besoins actif à la fois (ton choix). Si tu modifies un besoin et régénères, c'est la nouvelle version qui s'applique sur la période choisie.
+
+## Ordre d'implémentation
+1. Server fn période + UI génération (rapide, débloque le flux)
+2. Bandeau Réglages
+3. Branchement grille `planning.tsx` sur DB (le plus gros morceau, ~300 lignes à toucher)
+
+Approuve et je lance.
