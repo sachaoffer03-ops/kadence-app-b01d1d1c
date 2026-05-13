@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_planning_settings: {
+        Row: {
+          enforce_max_weekly_cdi: boolean
+          enforce_rest_11h: boolean
+          enforce_student_quota: boolean
+          id: string
+          strict_preferences: boolean
+          updated_at: string
+          updated_by: string | null
+          weight_equity: number
+          weight_performance: number
+          weight_preference: number
+          weight_random: number
+        }
+        Insert: {
+          enforce_max_weekly_cdi?: boolean
+          enforce_rest_11h?: boolean
+          enforce_student_quota?: boolean
+          id?: string
+          strict_preferences?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          weight_equity?: number
+          weight_performance?: number
+          weight_preference?: number
+          weight_random?: number
+        }
+        Update: {
+          enforce_max_weekly_cdi?: boolean
+          enforce_rest_11h?: boolean
+          enforce_student_quota?: boolean
+          id?: string
+          strict_preferences?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          weight_equity?: number
+          weight_performance?: number
+          weight_preference?: number
+          weight_random?: number
+        }
+        Relationships: []
+      }
       availabilities: {
         Row: {
           avail_date: string
@@ -624,6 +666,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      staffing_templates: {
+        Row: {
+          business_role: Database["public"]["Enums"]["business_role"]
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          required_count: number
+          start_time: string
+          studio_id: string
+          updated_at: string
+        }
+        Insert: {
+          business_role: Database["public"]["Enums"]["business_role"]
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          required_count?: number
+          start_time: string
+          studio_id: string
+          updated_at?: string
+        }
+        Update: {
+          business_role?: Database["public"]["Enums"]["business_role"]
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          required_count?: number
+          start_time?: string
+          studio_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       studios: {
         Row: {
