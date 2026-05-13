@@ -665,6 +665,21 @@ function PlanningPage() {
   };
   const handlePublish = () => setPublishOpen(true);
 
+  const handleMoveShift = async (shiftId: string, newDay: number, newSlot: number) => {
+    const def = timeSlotDefs[newSlot];
+    const date = weekDays[newDay];
+    const shiftDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const startTime = `${def.start.replace("h", ":")}:00`;
+    const endTime = `${def.end.replace("h", ":")}:00`;
+    try {
+      await updateShiftFn({ data: { shiftId, shiftDate, startTime, endTime } });
+      toast.success("Shift déplacé");
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
+  };
+
 
   // Compute ISO-ish week number
   const weekNumber = useMemo(() => {
@@ -779,6 +794,30 @@ function PlanningPage() {
         </span>
       </div>
 
+      {/* Banners */}
+      {(draftCount > 0 || conflictCount > 0) && (
+        <div className="rounded-xl border mb-3 px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
+          style={{ borderColor: "var(--coral)", backgroundColor: "var(--coral-light)" }}>
+          <div className="flex items-center gap-2" style={{ fontSize: 12 }}>
+            <FileEdit size={14} style={{ color: "var(--coral-dark)" }} />
+            <span style={{ fontWeight: 500, color: "var(--coral-dark)" }}>
+              {draftCount > 0 && `${draftCount} shift${draftCount > 1 ? "s" : ""} en brouillon`}
+              {draftCount > 0 && conflictCount > 0 && " · "}
+              {conflictCount > 0 && `${conflictCount} conflit${conflictCount > 1 ? "s" : ""} détecté${conflictCount > 1 ? "s" : ""}`}
+            </span>
+            {draftCount > 0 && (
+              <span style={{ fontSize: 11, color: "var(--coral-dark)", opacity: 0.8 }}>· non visibles par les employés</span>
+            )}
+          </div>
+          {draftCount > 0 && (
+            <button onClick={handlePublish} className="rounded-md px-3 py-1.5 transition-colors"
+              style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
+              Publier la semaine
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Grid */}
       <div className="rounded-xl border overflow-x-auto" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         <div style={{ minWidth: viewMode === "jour" ? "auto" : 760 }}>
@@ -837,6 +876,14 @@ function PlanningPage() {
                   <div
                     key={dayIdx}
                     className="p-1.5 flex flex-col gap-1.5"
+                    onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).style.outline = "2px dashed var(--coral)"; (e.currentTarget as HTMLElement).style.outlineOffset = "-2px"; }}
+                    onDragLeave={(e) => { (e.currentTarget as HTMLElement).style.outline = "none"; }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      (e.currentTarget as HTMLElement).style.outline = "none";
+                      const sid = e.dataTransfer.getData("text/shift-id");
+                      if (sid) handleMoveShift(sid, dayIdx, slotIdx);
+                    }}
                     style={{
                       borderLeft: "0.5px solid var(--border)",
                       backgroundColor: isSelected ? "rgba(15,15,15,0.03)" : "transparent",
@@ -877,12 +924,14 @@ function PlanningPage() {
                         <button
                           key={shift.id}
                           onClick={() => setSelectedShift(shift)}
+                          draggable
+                          onDragStart={(e) => { e.dataTransfer.setData("text/shift-id", shift.id); e.dataTransfer.effectAllowed = "move"; }}
                           className="rounded-md px-2 py-1.5 text-left transition-all"
                           style={{
                             fontSize: 11,
                             backgroundColor: rc.bg,
                             color: rc.text,
-                            cursor: "pointer",
+                            cursor: "grab",
                             opacity: shift.isDraft ? 0.75 : 1,
                             border: shift.conflict ? "1px solid var(--danger-text)" : shift.isDraft ? "1px dashed var(--muted-foreground)" : "none",
                           }}
@@ -985,6 +1034,33 @@ function PlanningPage() {
           onClose={() => setShowAdd(false)}
           onAdd={handleAddShift}
         />
+      )}
+      {publishOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.3)" }} onClick={() => setPublishOpen(false)}>
+          <div className="rounded-xl w-full max-w-md mx-4 overflow-hidden" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4" style={{ borderBottom: "0.5px solid var(--border)" }}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Publier la semaine</div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{weekRangeLabel}</div>
+            </div>
+            <div className="px-5 py-4" style={{ fontSize: 13, color: "var(--foreground)" }}>
+              Tu vas publier <strong>{draftCount} shift{draftCount > 1 ? "s" : ""} en brouillon</strong>. Les employés concernés recevront une notification dans l'app.
+              {conflictCount > 0 && (
+                <div className="mt-3 rounded-md px-3 py-2 flex items-center gap-2" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger-text)", fontSize: 11 }}>
+                  <AlertTriangle size={12} /> {conflictCount} conflit{conflictCount > 1 ? "s" : ""} non résolu{conflictCount > 1 ? "s" : ""} — vérifie avant de publier.
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 px-5 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
+              <button onClick={() => setPublishOpen(false)} className="flex-1 rounded-md px-3 py-2" style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+                Annuler
+              </button>
+              <button onClick={handlePublishConfirm} className="flex-1 rounded-md px-3 py-2"
+                style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
+                Publier & notifier
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

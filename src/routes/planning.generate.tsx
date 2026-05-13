@@ -207,8 +207,11 @@ function GeneratePlanningPage() {
         <div className="rounded-full mx-auto flex items-center justify-center mb-4" style={{ width: 56, height: 56, backgroundColor: "var(--success-bg)" }}>
           <Check size={28} style={{ color: "var(--success-text)" }} />
         </div>
-        <h1 style={{ fontSize: 22, fontWeight: 500, marginBottom: 4 }}>Planning généré avec succès</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 500, marginBottom: 4 }}>Planning généré en brouillon</h1>
         <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{periodLabel} · {r.created} shifts créés sur {r.totalRequired} requis</p>
+        <p style={{ fontSize: 12, color: "var(--coral-dark)", marginTop: 8 }}>
+          ⓘ Aucune notification envoyée. Va dans <strong>Planning</strong> pour ajuster puis publier la semaine.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -258,8 +261,8 @@ function GeneratePlanningPage() {
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <button onClick={() => navigate({ to: "/planning" })}
           className="rounded-md px-6 py-3 flex items-center gap-2 transition-colors"
-          style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
-          Voir dans le planning <ArrowRight size={16} />
+          style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
+          Ajuster & publier <ArrowRight size={16} />
         </button>
         <button onClick={() => { setState("idle"); setResult(null); }}
           className="rounded-md px-6 py-3 flex items-center gap-2 transition-colors"
