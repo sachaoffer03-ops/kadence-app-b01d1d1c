@@ -21,6 +21,28 @@ interface Settings {
   weight_random: number;
   enforce_rest_11h: boolean;
   strict_preferences: boolean;
+  enforce_max_weekly_cdi: boolean;
+  enforce_student_quota: boolean;
+}
+
+const MAX_WEEKLY_CDI_HOURS = 38; // plafond hebdo CDI (Belgique)
+
+function durationHours(start: string, end: string): number {
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  return ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+}
+
+// Lundi de la semaine ISO contenant `dateStr` (YYYY-MM-DD)
+function isoWeekStart(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  const dow = d.getDay(); // 0 dim
+  const offset = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + offset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 type Slot = "matin" | "midi" | "soir";
