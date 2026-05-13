@@ -130,7 +130,7 @@ function TimeBar({ leftPct, widthPct, color }: { leftPct: number; widthPct: numb
 }
 
 // ── Shift Detail Modal ─────────────────────────────────────
-function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, onConfirm }: { shift: PlanningShift; employee?: Employee; onClose: () => void; onDelete: () => void; onUpdateSlot: (slot: number) => void; onConfirm: () => void }) {
+function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, onConfirm, onUnlock }: { shift: PlanningShift; employee?: Employee; onClose: () => void; onDelete: () => void; onUpdateSlot: (slot: number) => void; onConfirm: () => void; onUnlock?: () => void }) {
   const [editing, setEditing] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.3)" }} onClick={onClose}>
@@ -266,7 +266,7 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, on
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 px-5 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
+        <div className="flex flex-wrap gap-2 px-5 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
           <button
             onClick={onDelete}
             className="rounded-md px-3 py-2 transition-colors flex items-center gap-1.5"
@@ -274,6 +274,16 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, on
           >
             <Trash2 size={13} /> Supprimer
           </button>
+          {shift.isLocked && onUnlock && (
+            <button
+              onClick={onUnlock}
+              title="Permet à l'IA de réassigner ce shift à la prochaine génération"
+              className="rounded-md px-3 py-2 transition-colors flex items-center gap-1.5"
+              style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
+            >
+              <Lock size={13} /> Déverrouiller
+            </button>
+          )}
           <Link
             to="/staff/$id"
             params={{ id: shift.employeeId }}
@@ -649,11 +659,10 @@ function PlanningPage() {
   const conflictCount = useMemo(() => studioShifts.filter((s) => s.conflict).length, [studioShifts]);
   const [publishOpen, setPublishOpen] = useState(false);
 
-  const handlePublishConfirm = async () => {
+  const handlePublishConfirm = async (force = false) => {
     const start = weekDays[0];
     const end = weekDays[6];
     const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    // Limite la publication au studio affiché
     const studioEntry = Array.from(studioMap.entries()).find(([_id, name]) => name === selectedStudio);
     try {
       const res: any = await publishPlanningFn({
@@ -661,8 +670,15 @@ function PlanningPage() {
           startDate: toISO(start),
           endDate: toISO(end),
           ...(studioEntry ? { studioId: studioEntry[0] } : {}),
+          ...(force ? { confirmRepublish: true } : {}),
         },
       });
+      if (res?.alreadyPublished) {
+        const dt = new Date(res.previousPublishedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+        const ok = window.confirm(`Cette période a déjà été publiée le ${dt}. Republier et notifier à nouveau les employés ?`);
+        if (ok) return handlePublishConfirm(true);
+        return;
+      }
       setPublishOpen(false);
       setPublished(true);
       toast.success(`${res?.published ?? 0} shifts publiés · ${res?.notified ?? 0} employés notifiés`);
@@ -677,11 +693,35 @@ function PlanningPage() {
     const def = timeSlotDefs[newSlot];
     const date = weekDays[newDay];
     const shiftDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    const startTime = `${def.start.replace("h", ":")}:00`;
-    const endTime = `${def.end.replace("h", ":")}:00`;
+    // Préserve la durée originale du shift, on aligne juste le début sur le nouveau slot.
+    const original = studioShifts.find((s) => s.id === shiftId);
+    const slotStart = `${def.start.replace("h", ":")}:00`;
+    let startTime = slotStart;
+    let endTime = `${def.end.replace("h", ":")}:00`;
+    if (original) {
+      const toMin = (t: string) => {
+        const [h, m] = t.split(":").map(Number); return h * 60 + m;
+      };
+      const dur = toMin(original.endTime) - toMin(original.startTime);
+      const startMin = toMin(slotStart);
+      const endMin = Math.min(startMin + dur, 23 * 60 + 59);
+      const fmt = (mn: number) => `${String(Math.floor(mn / 60)).padStart(2, "0")}:${String(mn % 60).padStart(2, "0")}:00`;
+      startTime = fmt(startMin);
+      endTime = fmt(endMin);
+    }
     try {
       await updateShiftFn({ data: { shiftId, shiftDate, startTime, endTime } });
       toast.success("Shift déplacé");
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
+  };
+
+  const handleUnlockShift = async (id: string) => {
+    try {
+      await updateShiftFn({ data: { shiftId: id, unlock: true, markManual: false } });
+      toast.success("Shift déverrouillé — l'IA pourra le réassigner");
       refresh();
     } catch (e: any) {
       toast.error(e.message ?? "Erreur");
@@ -1027,6 +1067,7 @@ function PlanningPage() {
           onDelete={() => handleDeleteShift(selectedShift.id)}
           onUpdateSlot={(slot) => handleUpdateSlot(selectedShift.id, slot)}
           onConfirm={() => handleConfirmShift(selectedShift.id)}
+          onUnlock={() => { handleUnlockShift(selectedShift.id); setSelectedShift(null); }}
         />
       )}
       {holeShift && (
@@ -1062,7 +1103,7 @@ function PlanningPage() {
               <button onClick={() => setPublishOpen(false)} className="flex-1 rounded-md px-3 py-2" style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
                 Annuler
               </button>
-              <button onClick={handlePublishConfirm} className="flex-1 rounded-md px-3 py-2"
+              <button onClick={() => handlePublishConfirm()} className="flex-1 rounded-md px-3 py-2"
                 style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
                 Publier & notifier
               </button>

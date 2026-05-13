@@ -21,6 +21,28 @@ interface Settings {
   weight_random: number;
   enforce_rest_11h: boolean;
   strict_preferences: boolean;
+  enforce_max_weekly_cdi: boolean;
+  enforce_student_quota: boolean;
+}
+
+const MAX_WEEKLY_CDI_HOURS = 38; // plafond hebdo CDI (Belgique)
+
+function durationHours(start: string, end: string): number {
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  return ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+}
+
+// Lundi de la semaine ISO contenant `dateStr` (YYYY-MM-DD)
+function isoWeekStart(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  const dow = d.getDay(); // 0 dim
+  const offset = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + offset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 type Slot = "matin" | "midi" | "soir";
@@ -39,6 +61,8 @@ interface Candidate {
   last_name: string;
   score: number | null;
   contract: string | null;
+  quota_max: number | null;
+  quota_used: number | null;
   studio_ids: Set<string>;
   roles: Set<BusinessRole>;
   assigned_count: number;
@@ -91,6 +115,8 @@ export const generatePlanning = createServerFn({ method: "POST" })
       weight_random: 10,
       enforce_rest_11h: true,
       strict_preferences: false,
+      enforce_max_weekly_cdi: true,
+      enforce_student_quota: true,
     } as Settings;
 
     // 2. Templates (besoins par studio/jour/créneau)
@@ -112,7 +138,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
     // On charge les dispos uniquement sur la période (perf + pertinence)
     // Note: on a besoin de la période donc on calcule firstDay/lastDay AVANT (déplacé ci-dessous)
     const [{ data: profiles }, { data: ubr }, { data: us }] = await Promise.all([
-      supabase.from("profiles").select("id, first_name, last_name, score, contract").eq("status", "active"),
+      supabase.from("profiles").select("id, first_name, last_name, score, contract, quota_max, quota_used").eq("status", "active"),
       supabase.from("user_business_roles").select("user_id, role"),
       supabase.from("user_studios").select("user_id, studio_id"),
     ]);
@@ -125,6 +151,8 @@ export const generatePlanning = createServerFn({ method: "POST" })
         last_name: p.last_name ?? "",
         score: p.score ?? null,
         contract: p.contract ?? null,
+        quota_max: (p as any).quota_max ?? null,
+        quota_used: (p as any).quota_used ?? null,
         studio_ids: new Set(),
         roles: new Set(),
         assigned_count: 0,
@@ -254,9 +282,28 @@ export const generatePlanning = createServerFn({ method: "POST" })
               if (conflict) return false;
             }
             // Dispos : si mode strict, on exige une dispo positive sur le slot.
-            // Sinon, on laisse passer mais le score "pref" pénalisera.
             if (s.strict_preferences && hasAnyAvailForUser(c.id) && !isAvailable(c.id, dateStr, tSlot)) {
               return false;
+            }
+            const shiftDur = durationHours(t.start_time, t.end_time);
+            // Plafond hebdo CDI (38h)
+            if (s.enforce_max_weekly_cdi && c.contract === "CDI") {
+              const wkStart = isoWeekStart(dateStr);
+              const wkEndDate = new Date(`${wkStart}T00:00:00`);
+              wkEndDate.setDate(wkEndDate.getDate() + 6);
+              const wkEnd = wkEndDate.toISOString().slice(0, 10);
+              const weekHours = [...existing, ...toInsert]
+                .filter((sh) => sh.user_id === c.id && sh.shift_date >= wkStart && sh.shift_date <= wkEnd)
+                .reduce((acc, sh) => acc + durationHours(String(sh.start_time), String(sh.end_time)), 0);
+              if (weekHours + shiftDur > MAX_WEEKLY_CDI_HOURS) return false;
+            }
+            // Quota étudiant (heures restantes sur la période, basé sur quota_max - quota_used)
+            if (s.enforce_student_quota && c.contract === "Étudiant" && c.quota_max != null) {
+              const used = c.quota_used ?? 0;
+              const periodHours = [...toInsert]
+                .filter((sh) => sh.user_id === c.id)
+                .reduce((acc, sh) => acc + durationHours(String(sh.start_time), String(sh.end_time)), 0);
+              if (used + periodHours + shiftDur > Number(c.quota_max)) return false;
             }
             return true;
           });

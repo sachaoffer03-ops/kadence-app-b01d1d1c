@@ -55,6 +55,10 @@ export const updateShift = createServerFn({ method: "POST" })
         startTime: z.string().regex(TIME).optional(),
         endTime: z.string().regex(TIME).optional(),
         notes: z.string().max(500).nullable().optional(),
+        // Si true → on ne reverrouille pas (permet à l'IA de réassigner)
+        unlock: z.boolean().optional(),
+        // Si false → ne marque pas le shift comme manuel (utile pour le drag & drop pur)
+        markManual: z.boolean().optional(),
       })
       .parse(input),
   )
@@ -62,7 +66,6 @@ export const updateShift = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    // Charger le shift courant pour combler les champs non fournis et valider les conflits
     const { data: current, error: eCur } = await supabase
       .from("shifts")
       .select("user_id, shift_date, start_time, end_time")
@@ -76,7 +79,13 @@ export const updateShift = createServerFn({ method: "POST" })
     const nextEnd = data.endTime ?? current.end_time;
     await assertNoOverlap(supabase, nextUserId, nextDate, nextStart, nextEnd, data.shiftId);
 
-    const patch: any = { is_manual: true, is_locked: true, updated_at: new Date().toISOString() };
+    const patch: any = { updated_at: new Date().toISOString() };
+    if (data.markManual !== false) patch.is_manual = true;
+    if (data.unlock) {
+      patch.is_locked = false;
+    } else if (data.markManual !== false) {
+      patch.is_locked = true;
+    }
     if (data.userId !== undefined) patch.user_id = data.userId;
     if (data.studioId) patch.studio_id = data.studioId;
     if (data.businessRole) patch.business_role = data.businessRole;
@@ -167,12 +176,38 @@ export const publishPlanning = createServerFn({ method: "POST" })
         startDate: z.string().regex(DATE),
         endDate: z.string().regex(DATE),
         studioId: z.string().uuid().optional(), // si fourni : ne publie que ce studio
+        // Si false (défaut) → bloque si une publication existe déjà sur la période.
+        // Le client doit confirmer (true) pour republier.
+        confirmRepublish: z.boolean().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+
+    // 0. Garde-fou anti-double-publication : signale si une publication existe
+    // déjà qui chevauche la période. L'admin doit confirmer pour republier.
+    if (!data.confirmRepublish) {
+      const { data: prev } = await supabase
+        .from("planning_publications")
+        .select("id, period_start, period_end, published_at")
+        .lte("period_start", data.endDate)
+        .gte("period_end", data.startDate)
+        .order("published_at", { ascending: false })
+        .limit(1);
+      if (prev && prev.length > 0) {
+        const last = prev[0] as any;
+        return {
+          ok: false,
+          alreadyPublished: true,
+          previousPublishedAt: last.published_at,
+          previousRange: { start: last.period_start, end: last.period_end },
+          published: 0,
+          notified: 0,
+        };
+      }
+    }
 
     // 1. Récupère les drafts à publier
     let q = supabase
