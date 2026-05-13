@@ -113,12 +113,11 @@ function DashboardPage() {
               {data.studios.size} studio{data.studios.size > 1 ? "s" : ""} · {new Set(data.todayShifts.map((s) => s.user_id).filter(Boolean)).size} employé{data.todayShifts.length > 1 ? "s" : ""}
             </p>
           </div>
-          <div className="flex items-center gap-8">
+          <div className="flex flex-wrap items-center gap-5 md:gap-8">
             <HeroStat value={inProgress.toString()} label="En cours" accent />
             <HeroStat value={done.toString()} label="Terminés" />
             <HeroStat value={upcoming.toString()} label="À venir" />
             <div className="hidden md:block" style={{ width: 1, height: 36, backgroundColor: "var(--border)" }} />
-            <div>
               <div className="flex items-baseline gap-1">
                 <span style={{ fontSize: 28, fontWeight: 500, letterSpacing: "-0.02em" }}>{coverage}</span>
                 <span style={{ fontSize: 14, color: "var(--muted-foreground)" }}>%</span>
