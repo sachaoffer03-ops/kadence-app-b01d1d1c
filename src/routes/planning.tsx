@@ -1,13 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
-  Star, Sparkles, MapPin, Phone, Trash2, Sparkle
+  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit
 } from "lucide-react";
 import { toast } from "sonner";
-import { employees, roleColors, type Role, type Studio, type Employee } from "@/lib/mock-data";
+import { roleColors, type Role, type Studio, type Employee } from "@/lib/mock-data";
 import { Dropdown } from "@/components/Dropdown";
 import { supabase } from "@/integrations/supabase/client";
+import { createShift, updateShift, deleteShift as deleteShiftFn, publishPlanning } from "@/lib/shifts.functions";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
