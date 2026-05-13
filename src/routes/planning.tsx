@@ -438,6 +438,7 @@ function FillHoleModal({ shift, onClose, onFill }: { shift: PlanningShift; onClo
 const fmtTime = (s: string) => s.replace("h00", ":00").replace("h", ":");
 
 function PlanningPage() {
+  const { names: roles } = useBusinessRoles({ onlyActive: true });
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
