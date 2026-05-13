@@ -42,6 +42,8 @@ const subTabs = [
   "Checklists",
 ] as const;
 
+// Fallback statique (utilisé pour seed mock data uniquement) ; les listes UI
+// utilisent useBusinessRoles() pour rester en phase avec la table business_roles.
 const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
 
 /* ------------------------------------------------------------------ */
