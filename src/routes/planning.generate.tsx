@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Check, AlertTriangle, ArrowRight, AlertCircle } from "lucide-react";
+import { Sparkles, Check, AlertTriangle, ArrowRight, AlertCircle, Info } from "lucide-react";
 import { toast } from "sonner";
 import { generatePlanning } from "@/lib/generate-planning.functions";
 
@@ -24,13 +24,28 @@ interface GenerateResult {
   alerts: { name: string; detail: string; level: "danger" | "warning" }[];
 }
 
+type Mode = "month" | "range";
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function plusDaysISO(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function GeneratePlanningPage() {
   const navigate = useNavigate();
   const generate = useServerFn(generatePlanning);
 
   const today = new Date();
+  const [mode, setMode] = useState<Mode>("month");
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
+  const [startDate, setStartDate] = useState(todayISO());
+  const [endDate, setEndDate] = useState(plusDaysISO(13));
   const [replaceExisting, setReplaceExisting] = useState(true);
   const [state, setState] = useState<"idle" | "generating" | "done" | "error">("idle");
   const [result, setResult] = useState<GenerateResult | null>(null);
@@ -40,7 +55,11 @@ function GeneratePlanningPage() {
     setState("generating");
     setErrorMsg("");
     try {
-      const res = await generate({ data: { year, month, replaceExisting } });
+      const payload =
+        mode === "month"
+          ? { year, month, replaceExisting }
+          : { startDate, endDate, replaceExisting };
+      const res = await generate({ data: payload });
       const r = res as GenerateResult;
       setResult(r);
       if (!r.ok) {
@@ -59,41 +78,89 @@ function GeneratePlanningPage() {
   if (state === "idle") {
     return (
       <div className="p-4 md:p-6 flex items-center justify-center" style={{ minHeight: "calc(100vh - 52px)" }}>
-        <div className="text-center w-full" style={{ maxWidth: 500 }}>
+        <div className="text-center w-full" style={{ maxWidth: 520 }}>
           <div className="rounded-full mx-auto flex items-center justify-center mb-6" style={{ width: 64, height: 64, backgroundColor: "var(--coral-light)" }}>
             <Sparkles size={28} style={{ color: "var(--coral-dark)" }} />
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 500, marginBottom: 8 }}>Générer le planning</h1>
-          <p style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.7, marginBottom: 24 }}>
-            L'IA crée tous les shifts du mois selon les besoins définis dans Réglages, avec les pondérations actuelles de l'algorithme.
+          <p style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.7, marginBottom: 16 }}>
+            L'IA crée tous les shifts selon les besoins définis dans Réglages, avec les pondérations actuelles de l'algorithme.
           </p>
 
-          <div className="flex gap-2 mb-4 justify-center flex-wrap">
-            <select value={month} onChange={(e) => setMonth(Number(e.target.value))}
-              className="rounded-md px-3 py-2 outline-none"
-              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
-              {MONTHS_FR.map((m, i) => <option key={i} value={i}>{m}</option>)}
-            </select>
-            <select value={year} onChange={(e) => setYear(Number(e.target.value))}
-              className="rounded-md px-3 py-2 outline-none"
-              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
-              {[today.getFullYear(), today.getFullYear() + 1].map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
+          <div className="rounded-lg p-3 mb-5 flex items-start gap-2 text-left" style={{ backgroundColor: "var(--info-bg)" }}>
+            <Info size={14} style={{ color: "var(--info-text)", marginTop: 2, flexShrink: 0 }} />
+            <div style={{ fontSize: 11, color: "var(--info-text)", lineHeight: 1.5 }}>
+              Les besoins sont lus en direct au moment de la génération. Si tu modifies un créneau dans <Link to="/reglages" style={{ textDecoration: "underline" }}>Réglages › Besoins par studio</Link>, relance la génération sur la période concernée.
+            </div>
           </div>
+
+          {/* Toggle mode */}
+          <div className="inline-flex rounded-md p-0.5 mb-4" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}>
+            <button
+              onClick={() => setMode("month")}
+              className="rounded-[5px] px-4 py-1.5 transition-colors"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                backgroundColor: mode === "month" ? "var(--card)" : "transparent",
+                color: mode === "month" ? "var(--foreground)" : "var(--muted-foreground)",
+              }}
+            >
+              Mois entier
+            </button>
+            <button
+              onClick={() => setMode("range")}
+              className="rounded-[5px] px-4 py-1.5 transition-colors"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                backgroundColor: mode === "range" ? "var(--card)" : "transparent",
+                color: mode === "range" ? "var(--foreground)" : "var(--muted-foreground)",
+              }}
+            >
+              Période personnalisée
+            </button>
+          </div>
+
+          {mode === "month" ? (
+            <div className="flex gap-2 mb-4 justify-center flex-wrap">
+              <select value={month} onChange={(e) => setMonth(Number(e.target.value))}
+                className="rounded-md px-3 py-2 outline-none"
+                style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+                {MONTHS_FR.map((m, i) => <option key={i} value={i}>{m}</option>)}
+              </select>
+              <select value={year} onChange={(e) => setYear(Number(e.target.value))}
+                className="rounded-md px-3 py-2 outline-none"
+                style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+                {[today.getFullYear(), today.getFullYear() + 1].map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          ) : (
+            <div className="flex gap-2 mb-4 justify-center flex-wrap items-center">
+              <div className="flex flex-col items-start gap-1">
+                <label style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Du</label>
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-md px-3 py-2 outline-none"
+                  style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }} />
+              </div>
+              <div className="flex flex-col items-start gap-1">
+                <label style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Au</label>
+                <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-md px-3 py-2 outline-none"
+                  style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }} />
+              </div>
+            </div>
+          )}
 
           <label className="flex items-center justify-center gap-2 mb-6 cursor-pointer" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
             <input type="checkbox" checked={replaceExisting} onChange={(e) => setReplaceExisting(e.target.checked)} />
-            Remplacer les shifts existants de ce mois
+            Remplacer les shifts existants sur cette période
           </label>
 
           <button onClick={start} className="rounded-md px-6 py-3 flex items-center gap-2 mx-auto transition-colors"
             style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
             <Sparkles size={16} /> Lancer la génération
           </button>
-
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 16 }}>
-            Astuce : configurez les besoins dans <Link to="/reglages" style={{ color: "var(--coral-dark)", textDecoration: "underline" }}>Réglages › Besoins par studio</Link>.
-          </div>
         </div>
       </div>
     );
@@ -133,6 +200,7 @@ function GeneratePlanningPage() {
 
   // Done
   const r = result!;
+  const periodLabel = mode === "month" ? `${MONTHS_FR[month]} ${year}` : `${startDate} → ${endDate}`;
   return (
     <div className="p-4 md:p-6">
       <div className="text-center mb-8">
@@ -140,7 +208,7 @@ function GeneratePlanningPage() {
           <Check size={28} style={{ color: "var(--success-text)" }} />
         </div>
         <h1 style={{ fontSize: 22, fontWeight: 500, marginBottom: 4 }}>Planning généré avec succès</h1>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{MONTHS_FR[month]} {year} · {r.created} shifts créés sur {r.totalRequired} requis</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{periodLabel} · {r.created} shifts créés sur {r.totalRequired} requis</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

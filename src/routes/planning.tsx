@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
   Star, Sparkles, MapPin, Phone, Trash2, Sparkle
@@ -7,6 +7,7 @@ import {
 import { toast } from "sonner";
 import { employees, roleColors, type Role, type Studio, type Employee } from "@/lib/mock-data";
 import { Dropdown } from "@/components/Dropdown";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
@@ -73,66 +74,7 @@ function getWeekDays(year: number, month: number, weekOffset: number): Date[] {
   return days;
 }
 
-function generateShifts(weekDays: Date[]): PlanningShift[] {
-  const shifts: PlanningShift[] = [];
-  let id = 0;
-  const names = employees.slice(0, 16);
-  const confirmations: ShiftConfirmation[] = ["confirmé", "confirmé", "confirmé", "en-attente", "confirmé"];
-  const pointages: ShiftPointage[] = ["à-temps", "à-temps", "retard", "non-pointé", "en-cours", "à-temps"];
-
-  const now = new Date();
-
-  for (let day = 0; day < 7; day++) {
-    const shiftDate = weekDays[day];
-    const isPast = shiftDate < new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const isToday = shiftDate.toDateString() === now.toDateString();
-
-    for (let slot = 0; slot < 4; slot++) {
-      // Both studios run in parallel — generate shifts for each
-      for (const studio of studios) {
-        const count = slot === 0 || slot === 3 ? 1 : 2;
-        for (let i = 0; i < count; i++) {
-        const emp = names[(id + day * 3 + slot + (studio === "Skult Châtelain" ? 7 : 0)) % names.length];
-        const role = emp.roles[0];
-        const conf = isPast ? "confirmé" as const : confirmations[id % confirmations.length];
-        const delay = (id % 7 === 3) ? 8 + (id % 12) : undefined;
-        let ptg: ShiftPointage;
-        if (isPast) {
-          ptg = delay ? "retard" : "à-temps";
-        } else if (isToday) {
-          ptg = slot < 2 ? (delay ? "retard" : "à-temps") : "non-pointé";
-        } else {
-          ptg = "non-pointé";
-        }
-
-        shifts.push({
-          id: String(id++),
-          day, slot,
-          employeeId: emp.id,
-          name: `${emp.firstName} ${emp.lastName.charAt(0)}.`,
-          role, studio,
-          time: timeSlotDefs[slot].time,
-          startHour: timeSlotDefs[slot].start,
-          endHour: timeSlotDefs[slot].end,
-          confirmation: conf,
-          pointage: ptg,
-          delayMinutes: delay,
-          clockIn: ptg === "retard" ? `${timeSlotDefs[slot].start.replace("h00", `h${String(delay || 0).padStart(2, "0")}`)}` : (ptg === "à-temps" ? timeSlotDefs[slot].start : undefined),
-          phone: emp.phone,
-        });
-        }
-      }
-    }
-  }
-
-  // Add holes
-  shifts.push({ id: "hole1", day: 2, slot: 1, employeeId: "", name: "", role: "Barista", studio: "Skult Rhodes", time: "10h — 15h", startHour: "10h00", endHour: "15h00", hole: true, confirmation: "en-attente", pointage: "non-pointé" });
-  shifts.push({ id: "hole2", day: 5, slot: 2, employeeId: "", name: "", role: "Host", studio: "Skult Châtelain", time: "14h — 19h", startHour: "14h00", endHour: "19h00", hole: true, confirmation: "en-attente", pointage: "non-pointé" });
-  shifts.push({ id: "hole3", day: 1, slot: 3, employeeId: "", name: "", role: "Accueil", studio: "Skult Rhodes", time: "17h — 23h", startHour: "17h00", endHour: "23h00", hole: true, confirmation: "en-attente", pointage: "non-pointé" });
-  shifts.push({ id: "hole4", day: 6, slot: 0, employeeId: "", name: "", role: "Cuisine", studio: "Skult Châtelain", time: "07h — 12h", startHour: "07h00", endHour: "12h00", hole: true, confirmation: "en-attente", pointage: "non-pointé" });
-
-  return shifts;
-}
+// (Mock generateShifts removed — shifts are now loaded from Supabase.)
 
 // ── Confirmation/Pointage badge ────────────────────────────
 function StatusDot({ confirmation, pointage, delayMinutes }: { confirmation: ShiftConfirmation; pointage: ShiftPointage; delayMinutes?: number }) {
@@ -485,13 +427,73 @@ function PlanningPage() {
   const [holeShift, setHoleShift] = useState<PlanningShift | null>(null);
 
   const weekDays = useMemo(() => getWeekDays(year, month, weekOffset), [year, month, weekOffset]);
-  const [shifts, setShifts] = useState<PlanningShift[]>(() => generateShifts(weekDays));
+  const [shifts, setShifts] = useState<PlanningShift[]>([]);
+  const [studioMap, setStudioMap] = useState<Map<string, string>>(new Map());
 
+  // Load studios once for id ↔ name mapping
+  useEffect(() => {
+    supabase.from("studios").select("id, name").then(({ data }) => {
+      if (data) setStudioMap(new Map(data.map((s: any) => [s.id, s.name])));
+    });
+  }, []);
+
+  // Fetch real shifts from DB whenever the visible week changes
+  useEffect(() => {
+    const first = weekDays[0];
+    const last = weekDays[6];
+    const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const startISO = toISO(first);
+    const endISO = toISO(last);
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("shifts")
+        .select("id, user_id, studio_id, business_role, shift_date, start_time, end_time, status, clocked_in_at, profiles:user_id(first_name, last_name, phone)")
+        .gte("shift_date", startISO)
+        .lte("shift_date", endISO)
+        .order("shift_date")
+        .order("start_time")
+        .limit(1000);
+      if (cancelled) return;
+      if (error) { console.error(error); return; }
+      const mapped: PlanningShift[] = (data ?? []).map((row: any) => {
+        const date = new Date(`${row.shift_date}T00:00:00`);
+        const dayIdx = weekDays.findIndex((d) => d.toDateString() === date.toDateString());
+        const startH = parseInt(String(row.start_time).slice(0, 2), 10);
+        const slot = startH < 9 ? 0 : startH < 13 ? 1 : startH < 16 ? 2 : 3;
+        const fmt = (t: string) => `${t.slice(0, 2)}h${t.slice(3, 5)}`;
+        const studioName = (studioMap.get(row.studio_id) as Studio) ?? "Skult Rhodes";
+        const fn = row.profiles?.first_name ?? "";
+        const ln = row.profiles?.last_name ?? "";
+        const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
+        const ptg: ShiftPointage = row.clocked_in_at ? "à-temps" : isPast ? "absent" : "non-pointé";
+        return {
+          id: row.id,
+          day: dayIdx >= 0 ? dayIdx : 0,
+          slot,
+          employeeId: row.user_id ?? "",
+          name: row.user_id ? `${fn} ${ln.charAt(0)}.` : "",
+          role: row.business_role as Role,
+          studio: studioName as Studio,
+          time: `${fmt(row.start_time)} — ${fmt(row.end_time)}`,
+          startHour: fmt(row.start_time),
+          endHour: fmt(row.end_time),
+          hole: !row.user_id,
+          confirmation: row.status === "scheduled" ? "confirmé" : "en-attente",
+          pointage: ptg,
+          phone: row.profiles?.phone ?? undefined,
+        };
+      });
+      setShifts(mapped);
+    })();
+    return () => { cancelled = true; };
+  }, [weekDays, studioMap]);
+
+  // weekKey ref kept for compatibility but no longer regenerates mock
   const lastWeekKey = useRef(`${year}-${month}-${weekOffset}`);
   const weekKey = `${year}-${month}-${weekOffset}`;
   if (weekKey !== lastWeekKey.current) {
     lastWeekKey.current = weekKey;
-    setShifts(generateShifts(getWeekDays(year, month, weekOffset)));
   }
 
   const todayIdx = useMemo(() => {
@@ -532,10 +534,12 @@ function PlanningPage() {
     toast.success(`${emp.firstName} ${emp.lastName.charAt(0)}. assigné·e au shift`);
   };
 
-  const handleDeleteShift = (id: string) => {
+  const handleDeleteShift = async (id: string) => {
     setShifts((prev) => prev.filter((s) => s.id !== id));
     setSelectedShift(null);
-    toast.success("Shift supprimé");
+    const { error } = await supabase.from("shifts").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else toast.success("Shift supprimé");
   };
 
   const handleUpdateSlot = (id: string, slot: number) => {

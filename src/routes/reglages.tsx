@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Plus, Trash2, Save } from "lucide-react";
+import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Plus, Trash2, Save, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dropdown } from "@/components/Dropdown";
@@ -254,6 +254,12 @@ function StaffingTemplates() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="rounded-lg p-3 flex items-start gap-2" style={{ backgroundColor: "var(--info-bg)" }}>
+        <Info size={14} style={{ color: "var(--info-text)", marginTop: 2, flexShrink: 0 }} />
+        <div style={{ fontSize: 11, color: "var(--info-text)", lineHeight: 1.5 }}>
+          Tes modifications sont enregistrées immédiatement. Pour les appliquer au planning existant, va sur <a href="/planning/generate" style={{ textDecoration: "underline", fontWeight: 500 }}>Planning › Générer</a> et choisis la période à recalculer.
+        </div>
+      </div>
       <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
         <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
           <div>

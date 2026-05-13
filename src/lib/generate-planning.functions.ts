@@ -33,11 +33,22 @@ interface Candidate {
   assigned_count: number;
 }
 
-const GenerateInput = z.object({
-  year: z.number().int().min(2024).max(2100),
-  month: z.number().int().min(0).max(11),
-  replaceExisting: z.boolean().default(true),
-});
+const GenerateInput = z
+  .object({
+    // Mode 1 : mois entier (raccourci)
+    year: z.number().int().min(2024).max(2100).optional(),
+    month: z.number().int().min(0).max(11).optional(),
+    // Mode 2 : période personnalisée
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    replaceExisting: z.boolean().default(true),
+  })
+  .refine(
+    (v) =>
+      (v.year !== undefined && v.month !== undefined) ||
+      (v.startDate && v.endDate),
+    { message: "Fournis (year+month) ou (startDate+endDate)" },
+  );
 
 export const generatePlanning = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -114,10 +125,22 @@ export const generatePlanning = createServerFn({ method: "POST" })
       if (c) c.studio_ids.add(r.studio_id);
     }
 
-    // 4. Optionnel : effacer les shifts existants du mois
-    const firstDay = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-    const lastDate = new Date(year, month + 1, 0);
-    const lastDay = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDate.getDate()).padStart(2, "0")}`;
+    // 4. Calcul de la plage de dates
+    let firstDay: string;
+    let lastDay: string;
+    if (data.startDate && data.endDate) {
+      firstDay = data.startDate;
+      lastDay = data.endDate;
+      if (firstDay > lastDay) {
+        throw new Error("startDate doit être <= endDate");
+      }
+    } else {
+      const y = data.year as number;
+      const m = data.month as number;
+      const ld = new Date(y, m + 1, 0);
+      firstDay = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+      lastDay = `${y}-${String(m + 1).padStart(2, "0")}-${String(ld.getDate()).padStart(2, "0")}`;
+    }
 
     if (replaceExisting) {
       await supabase
@@ -142,15 +165,18 @@ export const generatePlanning = createServerFn({ method: "POST" })
     const { data: studiosData } = await supabase.from("studios").select("id, name");
     for (const st of studiosData ?? []) studioNames.set(st.id, st.name);
 
-    const daysInMonth = lastDate.getDate();
     let totalRequired = 0;
     let totalCreated = 0;
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const jsDow = date.getDay(); // 0=dim..6=sam
-      const dow = (jsDow + 6) % 7; // 0=lun..6=dim
-      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const startD = new Date(`${firstDay}T00:00:00`);
+    const endD = new Date(`${lastDay}T00:00:00`);
+    for (let cur = new Date(startD); cur <= endD; cur.setDate(cur.getDate() + 1)) {
+      const y = cur.getFullYear();
+      const m = cur.getMonth();
+      const day = cur.getDate();
+      const jsDow = cur.getDay();
+      const dow = (jsDow + 6) % 7;
+      const dateStr = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
       const todaysTemplates = tpls.filter((t) => t.day_of_week === dow);
 
