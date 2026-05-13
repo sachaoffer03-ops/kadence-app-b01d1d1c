@@ -61,6 +61,8 @@ interface Candidate {
   last_name: string;
   score: number | null;
   contract: string | null;
+  quota_max: number | null;
+  quota_used: number | null;
   studio_ids: Set<string>;
   roles: Set<BusinessRole>;
   assigned_count: number;
