@@ -79,13 +79,14 @@ function AISettings() {
     enforce_max_weekly_cdi: true,
     strict_preferences: false,
   });
+  const [bounds, setBounds] = useState({ min: 3, max: 6 });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     supabase.from("ai_planning_settings").select("*").order("updated_at", { ascending: false }).limit(1)
       .then(({ data }) => {
-        const r = data?.[0];
+        const r = data?.[0] as any;
         if (r) {
           setId(r.id);
           setWeights({
@@ -100,6 +101,7 @@ function AISettings() {
             enforce_max_weekly_cdi: r.enforce_max_weekly_cdi,
             strict_preferences: r.strict_preferences,
           });
+          setBounds({ min: r.min_shift_hours ?? 3, max: r.max_shift_hours ?? 6 });
         }
         setLoading(false);
       });
@@ -109,12 +111,15 @@ function AISettings() {
 
   const save = async () => {
     if (total !== 100) return toast.error("Le total des poids doit faire 100%");
+    if (bounds.min < 1 || bounds.max < bounds.min) return toast.error("Les bornes min/max sont invalides");
     setSaving(true);
     const payload = {
       weight_performance: weights.performance,
       weight_equity: weights.equity,
       weight_preference: weights.preference,
       weight_random: weights.random,
+      min_shift_hours: bounds.min,
+      max_shift_hours: bounds.max,
       ...rules,
     };
     const { error } = id
