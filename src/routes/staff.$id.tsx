@@ -262,18 +262,56 @@ function EmployeeDetailPage() {
               <div className="flex flex-col gap-1.5">
                 {shifts.slice(0, 8).map(s => {
                   const sname = s.studio_id ? studios[s.studio_id] : "—";
+                  const shiftFbs = fbsByShift[s.id] || [];
+                  const isRating = rateShiftId === s.id;
                   return (
-                    <div key={s.id} className="rounded-lg flex items-center gap-3 px-3 py-2" style={{ backgroundColor: "var(--background)" }}>
-                      <Clock size={13} style={{ color: "var(--muted-foreground)" }} />
-                      <div className="flex-1">
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</div>
-                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)} · {s.business_role} · {sname?.replace?.("Skult ", "")}</div>
+                    <div key={s.id} className="rounded-lg px-3 py-2" style={{ backgroundColor: "var(--background)" }}>
+                      <div className="flex items-center gap-3">
+                        <Clock size={13} style={{ color: "var(--muted-foreground)" }} />
+                        <div className="flex-1">
+                          <div style={{ fontSize: 12, fontWeight: 500 }}>{new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</div>
+                          <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)} · {s.business_role} · {sname?.replace?.("Skult ", "")}</div>
+                        </div>
+                        {shiftFbs.length > 0 && (
+                          <span className="flex items-center gap-0.5">
+                            {[1,2,3,4,5].map(n => (
+                              <Star key={n} size={10} fill={n <= shiftFbs[0].rating ? "var(--coral)" : "transparent"} color={n <= shiftFbs[0].rating ? "var(--coral)" : "rgba(0,0,0,0.2)"} strokeWidth={1.4} />
+                            ))}
+                          </span>
+                        )}
+                        <span className="rounded-full px-2 py-0.5" style={{
+                          fontSize: 10, fontWeight: 500,
+                          backgroundColor: s.status === "completed" ? "var(--success-bg)" : s.status === "cancelled" ? "var(--danger-bg)" : "var(--muted)",
+                          color: s.status === "completed" ? "var(--success-text)" : s.status === "cancelled" ? "var(--danger-text)" : "var(--muted-foreground)",
+                        }}>{s.status}</span>
+                        {canRate && !isRating && (
+                          <button onClick={() => { setRateShiftId(s.id); setRateValue(5); setRateMsg(""); }}
+                            className="rounded-md px-2 py-1 inline-flex items-center gap-1"
+                            style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+                            <Plus size={11} /> Noter
+                          </button>
+                        )}
                       </div>
-                      <span className="rounded-full px-2 py-0.5" style={{
-                        fontSize: 10, fontWeight: 500,
-                        backgroundColor: s.status === "completed" ? "var(--success-bg)" : s.status === "cancelled" ? "var(--danger-bg)" : "var(--muted)",
-                        color: s.status === "completed" ? "var(--success-text)" : s.status === "cancelled" ? "var(--danger-text)" : "var(--muted-foreground)",
-                      }}>{s.status}</span>
+                      {isRating && (
+                        <div className="mt-2 pt-2 flex flex-col gap-2" style={{ borderTop: "0.5px solid var(--border)" }}>
+                          <div className="flex items-center gap-1">
+                            {[1,2,3,4,5].map(n => (
+                              <button key={n} onClick={() => setRateValue(n)}>
+                                <Star size={16} fill={n <= rateValue ? "var(--coral)" : "transparent"} color={n <= rateValue ? "var(--coral)" : "rgba(0,0,0,0.3)"} strokeWidth={1.4} />
+                              </button>
+                            ))}
+                          </div>
+                          <textarea value={rateMsg} onChange={e => setRateMsg(e.target.value)} placeholder="Commentaire (optionnel)" rows={2}
+                            className="rounded-md border px-2 py-1.5 outline-none"
+                            style={{ fontSize: 12, borderColor: "var(--border)", backgroundColor: "var(--card)" }} />
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => setRateShiftId(null)} className="rounded-md px-2.5 py-1" style={{ fontSize: 11, border: "0.5px solid var(--border)" }}>Annuler</button>
+                            <button onClick={() => submitRating(s.id)} disabled={saving} className="rounded-md px-2.5 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+                              {saving ? "..." : "Enregistrer"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -283,21 +321,29 @@ function EmployeeDetailPage() {
 
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-              <MessageSquare size={11} className="inline mr-1.5" /> Feedbacks récents ({fbs.length})
+              <MessageSquare size={11} className="inline mr-1.5" /> Évaluations admin/manager ({fbs.length})
             </div>
-            {fbs.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun feedback</div> : (
+            {fbs.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucune évaluation pour le moment</div> : (
               <div className="flex flex-col gap-2">
-                {fbs.map(f => (
-                  <div key={f.id} className="rounded-lg px-3 py-2" style={{ backgroundColor: "var(--background)" }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      {[1,2,3,4,5].map(n => (
-                        <Star key={n} size={11} fill={n <= f.rating ? "var(--coral)" : "transparent"} color={n <= f.rating ? "var(--coral)" : "rgba(0,0,0,0.2)"} strokeWidth={1.4} />
-                      ))}
-                      <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{new Date(f.created_at).toLocaleDateString("fr-FR")}</span>
+                {fbs.map(f => {
+                  const a = authors[f.author_id];
+                  const sh = f.shift_id ? shifts.find(x => x.id === f.shift_id) : null;
+                  return (
+                    <div key={f.id} className="rounded-lg px-3 py-2" style={{ backgroundColor: "var(--background)" }}>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        {[1,2,3,4,5].map(n => (
+                          <Star key={n} size={11} fill={n <= f.rating ? "var(--coral)" : "transparent"} color={n <= f.rating ? "var(--coral)" : "rgba(0,0,0,0.2)"} strokeWidth={1.4} />
+                        ))}
+                        <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                          {a ? `par ${a.first_name} ${a.last_name}` : "—"}
+                          {sh && ` · shift du ${new Date(sh.shift_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`}
+                          {" · "}{new Date(f.created_at).toLocaleDateString("fr-FR")}
+                        </span>
+                      </div>
+                      {f.message && <div style={{ fontSize: 12 }}>{f.message}</div>}
                     </div>
-                    {f.message && <div style={{ fontSize: 12 }}>{f.message}</div>}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
