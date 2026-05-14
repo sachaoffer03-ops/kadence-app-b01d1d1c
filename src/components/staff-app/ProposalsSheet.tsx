@@ -63,14 +63,17 @@ export function ProposalsSheet({ open, onClose, userId, studios }: {
   open: boolean; onClose: () => void; userId: string; studios: Record<string, string>;
 }) {
   const acceptFn = useServerFn(acceptProposal);
+  const acceptReplFn = useServerFn(acceptReplacementProposal);
   const declineFn = useServerFn(declineProposal);
   const { proposals, reload } = useProposals(userId);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const accept = async (id: string) => {
-    setBusy(id);
+  const accept = async (p: ProposalView) => {
+    setBusy(p.id);
     try {
-      const r = await acceptFn({ data: { proposalId: id } });
+      const r = p.replacement_request_id
+        ? await acceptReplFn({ data: { proposalId: p.id } })
+        : await acceptFn({ data: { proposalId: p.id } });
       if (r.ok) toast.success("Shift accepté !");
       else toast.error("Trop tard, un autre employé a déjà accepté ce shift");
       reload();
