@@ -884,7 +884,7 @@ function PlanningCalendarPage() {
       )}
 
       {/* Planning lisible */}
-      <div className="rounded-xl border overflow-x-auto" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+      <div className="rounded-xl border" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         {(() => {
           const toMin = (t: string) => {
             const [h, m] = String(t).slice(0, 5).split(":").map(Number);
@@ -898,11 +898,10 @@ function PlanningCalendarPage() {
             if (h) return `${h}h`;
             return `${m}min`;
           };
-          const agendaCols = `repeat(${visibleDayIndices.length}, minmax(${viewMode === "jour" ? "340px" : "190px"}, 1fr))`;
+          const agendaCols = `repeat(${viewMode === "jour" ? 1 : 2}, minmax(0, 1fr))`;
 
           return (
-            <div style={{ minWidth: viewMode === "jour" ? 0 : 1360 }}>
-              <div className="grid" style={{ gridTemplateColumns: agendaCols }}>
+            <div className="grid" style={{ gridTemplateColumns: agendaCols }}>
                 {visibleDayIndices.map((dayIdx, colIdx) => {
                   const d = weekDays[dayIdx];
                   const dayShifts = studioShifts
@@ -920,7 +919,8 @@ function PlanningCalendarPage() {
                     <section
                       key={dayIdx}
                       style={{
-                        borderLeft: colIdx === 0 ? "none" : "0.5px solid var(--border)",
+                        borderLeft: viewMode === "jour" || colIdx % 2 === 0 ? "none" : "0.5px solid var(--border)",
+                        borderTop: colIdx < (viewMode === "jour" ? 1 : 2) ? "none" : "0.5px solid var(--border)",
                         backgroundColor: isSelected ? "var(--muted)" : "transparent",
                       }}
                       onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).style.outline = "2px dashed var(--coral)"; (e.currentTarget as HTMLElement).style.outlineOffset = "-2px"; }}
