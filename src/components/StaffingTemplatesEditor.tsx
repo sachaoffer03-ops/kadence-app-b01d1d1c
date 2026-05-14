@@ -164,6 +164,22 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                       <Dropdown value={t.business_role} options={[...ROLES]} onChange={(v) => updateRow(t.id, { business_role: v as typeof ROLES[number] })} minWidth={120} />
                     </td>
                     <td className="px-2 py-1">
+                      <Dropdown
+                        value={t.required_contract ?? "Tous"}
+                        options={[...CONTRACTS]}
+                        onChange={(v) => updateRow(t.id, { required_contract: v === "Tous" ? null : (v as "CDI" | "Étudiant" | "Flexi") })}
+                        minWidth={110}
+                      />
+                    </td>
+                    <td className="px-2 py-1">
+                      <Dropdown
+                        value={t.is_optional ? "Renfort" : "Obligatoire"}
+                        options={["Obligatoire", "Renfort"]}
+                        onChange={(v) => updateRow(t.id, { is_optional: v === "Renfort" })}
+                        minWidth={120}
+                      />
+                    </td>
+                    <td className="px-2 py-1">
                       <input type="number" min={0} max={20} value={t.required_count} onChange={(e) => updateRow(t.id, { required_count: Math.max(0, Number(e.target.value)) })}
                         className="rounded-md px-2 py-1.5 outline-none"
                         style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 70 }} />
