@@ -57,9 +57,9 @@ function TrousPage() {
   const [filterRole, setFilterRole] = useState<string>("tous");
   const [tick, setTick] = useState(0);
 
-  // Tick toutes les 30s pour rafraîchir le chronomètre
+  // Tick chaque seconde pour le chronomètre live
   useEffect(() => {
-    const i = setInterval(() => setTick((t) => t + 1), 30000);
+    const i = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(i);
   }, []);
 
