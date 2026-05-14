@@ -920,68 +920,119 @@ function PlanningPage() {
           })}
         </div>
 
-        {/* Time slot rows */}
-        {timeSlotDefs.map((slot, slotIdx) => {
+        {/* Vertical timeline 6h → 23h */}
+        {(() => {
+          const DAY_START = 6;
+          const DAY_END = 23;
+          const HOUR_PX = 48;
+          const totalH = (DAY_END - DAY_START) * HOUR_PX;
+          const toMin = (t: string) => {
+            const [h, m] = t.split(":").map(Number);
+            return h * 60 + m;
+          };
+          const topPx = (t: string) => Math.max(0, ((toMin(t) - DAY_START * 60) / 60) * HOUR_PX);
+          const heightPx = (s: string, e: string) => Math.max(22, ((toMin(e) - toMin(s)) / 60) * HOUR_PX);
           return (
-            <div
-              key={slot.label}
-              className="grid"
-              style={{ gridTemplateColumns: gridCols, borderBottom: "0.5px solid var(--border)", minHeight: 110 }}
-            >
-              <div className="px-3 py-3 flex flex-col justify-center" style={{ backgroundColor: "var(--muted)" }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{fmtTime(slot.start)}–{fmtTime(slot.end)}</div>
-                <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>5 heures</div>
+            <div className="grid" style={{ gridTemplateColumns: gridCols }}>
+              {/* Hour labels column */}
+              <div style={{ position: "relative", height: totalH, backgroundColor: "var(--muted)" }}>
+                {Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_START + i).map((h) => (
+                  <div
+                    key={h}
+                    style={{
+                      position: "absolute",
+                      top: (h - DAY_START) * HOUR_PX,
+                      left: 0,
+                      right: 0,
+                      height: HOUR_PX,
+                      paddingLeft: 12,
+                      paddingTop: 4,
+                      fontSize: 11,
+                      color: "var(--muted-foreground)",
+                      borderTop: h === DAY_START ? "none" : "0.5px solid var(--border)",
+                    }}
+                  >
+                    {String(h).padStart(2, "0")}h
+                  </div>
+                ))}
               </div>
+
+              {/* Day columns */}
               {visibleDayIndices.map((dayIdx) => {
-                const cellShifts = studioShifts.filter((s) => s.day === dayIdx && s.slot === slotIdx);
+                const cellShifts = studioShifts.filter((s) => s.day === dayIdx);
                 const isSelected = selectedDayIdx === dayIdx;
                 return (
                   <div
                     key={dayIdx}
-                    className="p-1.5 flex flex-col gap-1.5"
+                    style={{
+                      position: "relative",
+                      height: totalH,
+                      borderLeft: "0.5px solid var(--border)",
+                      backgroundColor: isSelected ? "rgba(15,15,15,0.03)" : "transparent",
+                    }}
                     onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).style.outline = "2px dashed var(--coral)"; (e.currentTarget as HTMLElement).style.outlineOffset = "-2px"; }}
                     onDragLeave={(e) => { (e.currentTarget as HTMLElement).style.outline = "none"; }}
                     onDrop={(e) => {
                       e.preventDefault();
                       (e.currentTarget as HTMLElement).style.outline = "none";
                       const sid = e.dataTransfer.getData("text/shift-id");
-                      if (sid) handleMoveShift(sid, dayIdx, slotIdx);
-                    }}
-                    style={{
-                      borderLeft: "0.5px solid var(--border)",
-                      backgroundColor: isSelected ? "rgba(15,15,15,0.03)" : "transparent",
+                      if (!sid) return;
+                      const orig = studioShifts.find((s) => s.id === sid);
+                      handleMoveShift(sid, dayIdx, orig?.slot ?? 0);
                     }}
                   >
+                    {/* Hour grid lines */}
+                    {Array.from({ length: DAY_END - DAY_START }, (_, i) => i + 1).map((i) => (
+                      <div
+                        key={i}
+                        style={{
+                          position: "absolute",
+                          top: i * HOUR_PX,
+                          left: 0,
+                          right: 0,
+                          borderTop: "0.5px solid var(--border)",
+                          opacity: 0.5,
+                          pointerEvents: "none",
+                        }}
+                      />
+                    ))}
+
                     {[...cellShifts].sort((a, b) => a.startHour.localeCompare(b.startHour)).map((shift) => {
                       const rc = roleColors[shift.role];
-                      const startH = parseInt(shift.startHour, 10) + parseInt(shift.startHour.slice(3, 5), 10) / 60;
-                      const endH = parseInt(shift.endHour, 10) + parseInt(shift.endHour.slice(3, 5), 10) / 60;
-                      const DAY_START = 7, DAY_END = 23, DAY_RANGE = DAY_END - DAY_START;
-                      const leftPct = Math.max(0, ((startH - DAY_START) / DAY_RANGE) * 100);
-                      const widthPct = Math.max(4, ((endH - startH) / DAY_RANGE) * 100);
-                      const startLabel = shift.startHour.replace("h00", "h").replace("h", "h");
+                      const sStr = String(shift.startTime).slice(0, 5);
+                      const eStr = String(shift.endTime).slice(0, 5);
+                      const top = topPx(sStr);
+                      const h = heightPx(sStr, eStr);
+                      const startLabel = shift.startHour.replace("h00", "h");
                       const endLabel = shift.endHour.replace("h00", "h");
+                      const compact = h < 56;
                       return shift.hole ? (
                         <button
                           key={shift.id}
                           onClick={() => setHoleShift(shift)}
-                          className="rounded-md px-2 py-1.5 text-left transition-all"
+                          className="rounded-md text-left transition-all"
                           style={{
+                            position: "absolute",
+                            top,
+                            height: h,
+                            left: 4,
+                            right: 4,
+                            padding: compact ? "4px 6px" : "6px 8px",
                             fontSize: 11,
                             backgroundColor: "var(--coral-light)",
                             color: "var(--coral-dark)",
                             border: "1px dashed var(--coral)",
                             cursor: "pointer",
+                            overflow: "hidden",
                           }}
                         >
                           <div className="flex items-center justify-between gap-1" style={{ fontWeight: 500 }}>
-                            <span className="flex items-center gap-1">
-                              <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: rc.dot }} />
+                            <span className="flex items-center gap-1" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: rc.dot, flexShrink: 0 }} />
                               + Libre · {shift.role}
                             </span>
                             <span style={{ fontSize: 10, fontWeight: 500 }}>{startLabel}–{endLabel}</span>
                           </div>
-                          <TimeBar leftPct={leftPct} widthPct={widthPct} color="var(--coral)" />
                         </button>
                       ) : (
                         <button
@@ -989,14 +1040,21 @@ function PlanningPage() {
                           onClick={() => setSelectedShift(shift)}
                           draggable
                           onDragStart={(e) => { e.dataTransfer.setData("text/shift-id", shift.id); e.dataTransfer.effectAllowed = "move"; }}
-                          className="rounded-md px-2 py-1.5 text-left transition-all"
+                          className="rounded-md text-left transition-all"
                           style={{
+                            position: "absolute",
+                            top,
+                            height: h,
+                            left: 4,
+                            right: 4,
+                            padding: compact ? "4px 6px" : "6px 8px",
                             fontSize: 11,
                             backgroundColor: rc.bg,
                             color: rc.text,
                             cursor: "grab",
                             opacity: shift.isDraft ? 0.75 : 1,
                             border: shift.conflict ? "1px solid var(--danger-text)" : shift.isDraft ? "1px dashed var(--muted-foreground)" : "none",
+                            overflow: "hidden",
                           }}
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = shift.isDraft ? "0.9" : "0.85"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = shift.isDraft ? "0.75" : "1"; }}
@@ -1006,29 +1064,29 @@ function PlanningPage() {
                               {shift.isLocked && <Lock size={9} />}
                               {shift.name.split(" ")[0]}
                             </span>
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1" style={{ flexShrink: 0 }}>
                               {shift.conflict && <AlertTriangle size={10} style={{ color: "var(--danger-text)" }} />}
                               <StatusDot confirmation={shift.confirmation} pointage={shift.pointage} delayMinutes={shift.delayMinutes} />
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-1" style={{ fontSize: 10, opacity: 0.85, marginTop: 1 }}>
-                            <span className="flex items-center gap-1">
-                              <span className="rounded-full" style={{ width: 5, height: 5, backgroundColor: rc.dot }} />
-                              {shift.isDraft ? "Brouillon" : shift.role}
-                            </span>
-                            <span style={{ fontWeight: 500 }}>{startLabel}–{endLabel}</span>
-                          </div>
-                          <TimeBar leftPct={leftPct} widthPct={widthPct} color={rc.dot} />
+                          {!compact && (
+                            <div className="flex items-center justify-between gap-1" style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>
+                              <span className="flex items-center gap-1">
+                                <span className="rounded-full" style={{ width: 5, height: 5, backgroundColor: rc.dot }} />
+                                {shift.isDraft ? "Brouillon" : shift.role}
+                              </span>
+                              <span style={{ fontWeight: 500 }}>{startLabel}–{endLabel}</span>
+                            </div>
+                          )}
                         </button>
                       );
                     })}
-
                   </div>
                 );
               })}
             </div>
           );
-        })}
+        })()}
         </div>
       </div>
 
