@@ -218,9 +218,21 @@ async function ensureStaffingTemplates(rhodeId: string, chatelainId: string, log
   }
 
   if (templates.length > 0) {
-    const { error } = await supabaseAdmin.from("staffing_templates").insert(templates as any);
+    const normalized = templates.map((t) => ({
+      studio_id: t.studio_id,
+      day_of_week: t.day_of_week,
+      start_time: t.start_time,
+      end_time: t.end_time,
+      business_role: t.business_role,
+      allowed_roles: t.allowed_roles ?? [],
+      allowed_contracts: t.allowed_contracts ?? [],
+      required_count: t.required_count ?? 1,
+      is_optional: t.is_optional ?? false,
+      required_contract: t.required_contract ?? null,
+    }));
+    const { error } = await supabaseAdmin.from("staffing_templates").insert(normalized as any);
     if (error) throw new Error(`staffing_templates: ${error.message}`);
-    created = templates.length;
+    created = normalized.length;
     log.push(`${created} staffing_templates créés`);
   } else {
     log.push("staffing_templates déjà présents");
