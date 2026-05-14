@@ -121,6 +121,12 @@ function PointagePage() {
                 : { bg: "var(--info-bg)", text: "var(--info-text)", label: "À venir" };
               const inT = entry.clocked_in_at ? new Date(entry.clocked_in_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
               const outT = entry.clocked_out_at ? new Date(entry.clocked_out_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
+              const punct = entry.clocked_out_at
+                ? computePunctuality(entry)
+                : entry.clocked_in_at
+                ? computePartialPunctuality(entry)
+                : null;
+              const punctIsFinal = !!entry.clocked_out_at;
 
               return (
                 <tr key={entry.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
@@ -134,6 +140,15 @@ function PointagePage() {
                   <td className="px-4 py-3" style={{ fontSize: 12 }}>{studioName}</td>
                   <td className="px-4 py-3" style={{ fontSize: 12, fontFamily: "monospace" }}>{inT}</td>
                   <td className="px-4 py-3" style={{ fontSize: 12, fontFamily: "monospace" }}>{outT}</td>
+                  <td className="px-4 py-3" style={{ fontSize: 12 }}>
+                    {punct === null ? (
+                      <span style={{ color: "var(--muted-foreground)" }}>—</span>
+                    ) : (
+                      <span style={{ fontWeight: 500, color: punctualityColor(punct) }}>
+                        {punct}%{!punctIsFinal && <span style={{ fontSize: 10, color: "var(--muted-foreground)", marginLeft: 4 }}>(IN)</span>}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: sty.bg, color: sty.text }}>{sty.label}</span></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
