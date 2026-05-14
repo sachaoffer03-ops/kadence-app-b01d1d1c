@@ -275,21 +275,25 @@ function buildEmployeeSpecs(): EmployeeSpec[] {
   specs.push({ contract: "CDI", roles: ["Accueil", "Barista", "Host"], studios: ["rhode"] });
   specs.push({ contract: "CDI", roles: ["Accueil", "Barista"], studios: ["rhode", "chatelain"] });
 
-  // 15 Étudiants — 6 Rhode, 7 Châtelain, 2 poly
+  // 15 Étudiants — 6 Rhode, 6 Châtelain polyvalents, 2 poly, 1 cuisine week-end (Léa Bernardi)
   for (let i = 0; i < 6; i++) {
     specs.push({ contract: "Étudiant", roles: i % 3 === 0 ? ["Accueil", "Barista", "Host"] : ["Accueil", "Barista"], studios: ["rhode"] });
   }
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 6; i++) {
     specs.push({ contract: "Étudiant", roles: i % 3 === 0 ? ["Accueil", "Barista", "Host"] : ["Accueil", "Barista"], studios: ["chatelain"] });
   }
   for (let i = 0; i < 2; i++) {
     specs.push({ contract: "Étudiant", roles: ["Accueil", "Barista"], studios: ["rhode", "chatelain"] });
   }
+  // Étudiante cuisine spécialisée week-end
+  specs.push({ contract: "Étudiant", roles: ["Cuisine"], studios: ["chatelain"], forcedName: { first: "Léa", last: "Bernardi" } });
 
-  // 7 Flexis — 3 Rhode, 3 Châtelain, 1 poly
+  // 7 Flexis — 3 Rhode, 2 Châtelain polyvalents, 1 poly, 1 cuisine week-end (Karim El Amrani)
   for (let i = 0; i < 3; i++) specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["rhode"] });
-  for (let i = 0; i < 3; i++) specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["chatelain"] });
+  for (let i = 0; i < 2; i++) specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["chatelain"] });
   specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["rhode", "chatelain"] });
+  // Flexi cuisine + accueil
+  specs.push({ contract: "Flexi", roles: ["Cuisine", "Accueil"], studios: ["chatelain"], forcedName: { first: "Karim", last: "El Amrani" } });
 
   return specs;
 }
