@@ -4,12 +4,13 @@ import { Send, Clock, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet } from "@/components/staff-app/shared";
-import { acceptProposal, declineProposal } from "@/lib/proposals.functions";
+import { acceptProposal, declineProposal, acceptReplacementProposal } from "@/lib/proposals.functions";
 
 interface ProposalView {
   id: string;
   status: string;
   sent_at: string;
+  replacement_request_id: string | null;
   shift: {
     id: string; shift_date: string; start_time: string; end_time: string;
     business_role: string; studio_id: string | null; user_id: string | null;
@@ -33,12 +34,16 @@ export function useProposals(userId: string) {
   const load = async () => {
     const { data } = await supabase
       .from("shift_proposals")
-      .select("id,status,sent_at,shift:shifts!inner(id,shift_date,start_time,end_time,business_role,studio_id,user_id)")
+      .select("id,status,sent_at,replacement_request_id,shift:shifts!inner(id,shift_date,start_time,end_time,business_role,studio_id,user_id)")
       .eq("user_id", userId)
       .eq("status", "pending")
       .order("sent_at", { ascending: false });
-    // Filtrer celles dont le shift est déjà attribué (sécurité affichage)
-    const list = (data || []).filter((p: any) => p.shift && !p.shift.user_id) as ProposalView[];
+    // On accepte : (a) trous classiques (shift libre) ; (b) remplacements (shift encore assigné à l'employé d'origine)
+    const list = (data || []).filter((p: any) => {
+      if (!p.shift) return false;
+      if (p.replacement_request_id) return p.shift.user_id !== userId; // pas à soi-même
+      return !p.shift.user_id;
+    }) as ProposalView[];
     setProposals(list);
   };
 
@@ -58,14 +63,17 @@ export function ProposalsSheet({ open, onClose, userId, studios }: {
   open: boolean; onClose: () => void; userId: string; studios: Record<string, string>;
 }) {
   const acceptFn = useServerFn(acceptProposal);
+  const acceptReplFn = useServerFn(acceptReplacementProposal);
   const declineFn = useServerFn(declineProposal);
   const { proposals, reload } = useProposals(userId);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const accept = async (id: string) => {
-    setBusy(id);
+  const accept = async (p: ProposalView) => {
+    setBusy(p.id);
     try {
-      const r = await acceptFn({ data: { proposalId: id } });
+      const r = p.replacement_request_id
+        ? await acceptReplFn({ data: { proposalId: p.id } })
+        : await acceptFn({ data: { proposalId: p.id } });
       if (r.ok) toast.success("Shift accepté !");
       else toast.error("Trop tard, un autre employé a déjà accepté ce shift");
       reload();
@@ -113,7 +121,7 @@ export function ProposalsSheet({ open, onClose, userId, studios }: {
                   <Clock size={10} /> envoyée {elapsed(p.sent_at)}
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={() => accept(p.id)} disabled={busy === p.id}
+                  <button onClick={() => accept(p)} disabled={busy === p.id}
                     className="flex-1 rounded-md py-2.5 flex items-center justify-center gap-1.5"
                     style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
                     <Check size={14} /> Accepter
