@@ -826,13 +826,6 @@ function PlanningPage() {
               <ChevronRight size={14} />
             </button>
           </div>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
-            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "transparent", color: "var(--foreground)" }}
-          >
-            + Ajouter
-          </button>
           <Link
             to="/planning/generate"
             className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
