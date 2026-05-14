@@ -244,17 +244,25 @@ function TrousPage() {
                               cancelled: { bg: "var(--muted)", text: "var(--muted-foreground)", label: "annulé" },
                             };
                             const ss = statusStyle[prop.status] || statusStyle.pending;
+                            const isPending = prop.status === "pending";
+                            const tone = isPending ? elapsedTone(prop.sent_at) : { bg: "var(--muted)", text: "var(--muted-foreground)" };
                             return (
                               <div key={prop.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: i === allProps.length - 1 ? "none" : "0.5px solid var(--border)" }}>
                                 <div className="flex-1 min-w-0">
                                   <div style={{ fontSize: 12, fontWeight: 500 }}>{p ? fullName(p) : "—"}</div>
-                                  <div className="flex items-center gap-1.5 mt-0.5" style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
-                                    <Clock size={10} />
-                                    <span title={new Date(prop.sent_at).toLocaleString("fr-FR")} key={tick /* force refresh */}>
-                                      envoyée {elapsed(prop.sent_at)}
-                                    </span>
+                                  <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>
+                                    Envoyée le {new Date(prop.sent_at).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                                   </div>
                                 </div>
+                                <span
+                                  key={tick}
+                                  className="rounded-full inline-flex items-center gap-1 px-2 py-0.5 tabular-nums"
+                                  style={{ fontSize: 10, fontWeight: 500, backgroundColor: tone.bg, color: tone.text }}
+                                  title={isPending ? "Temps écoulé depuis l'envoi" : "Temps avant réponse"}
+                                >
+                                  <Clock size={10} />
+                                  {elapsed(prop.sent_at)}
+                                </span>
                                 <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: ss.bg, color: ss.text }}>{ss.label}</span>
                                 {prop.status === "pending" && (
                                   <button onClick={() => cancelOne(prop.id)} title="Annuler" className="flex items-center justify-center rounded-md" style={{ width: 22, height: 22, color: "var(--muted-foreground)" }}>
