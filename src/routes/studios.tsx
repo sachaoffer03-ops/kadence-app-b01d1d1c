@@ -424,22 +424,9 @@ function StudiosPage() {
             />
           )}
           {activeSubTab === 1 && (
-            <HorairesTab
-              studio={studio}
-              week={week[studio]}
-              setWeek={(next) => setWeek((p) => ({ ...p, [studio]: next }))}
-              activeRoles={activeRoles[studio]}
-              roleHours={roleHours[studio]}
-              setRoleHours={(role, sched) =>
-                setRoleHours((p) => ({ ...p, [studio]: { ...p[studio], [role]: sched } }))
-              }
-            />
-          )}
-          {activeSubTab === 2 && (
             <StaffingTemplatesEditor lockedStudioName={studio} />
           )}
-          {activeSubTab === 3 && <ExceptionsTab studio={studio} />}
-          {activeSubTab === 4 && <ChecklistsTab studio={studio} />}
+          {activeSubTab === 2 && <ExceptionsTab studio={studio} />}
         </>
       )}
 
