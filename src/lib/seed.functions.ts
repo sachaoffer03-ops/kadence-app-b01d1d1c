@@ -99,16 +99,24 @@ async function cleanup(log: string[]) {
 
 // ---------- Studios + roles + settings ----------
 async function ensureBaseConfig(log: string[]) {
-  // Studios
+  // Studios — réutiliser les studios existants par fuzzy match avant d'en créer
   const { data: existingStudios } = await supabaseAdmin.from("studios").select("id, name");
-  const studiosByName = new Map((existingStudios ?? []).map((s: any) => [s.name, s.id]));
-  for (const name of ["Rhode", "Châtelain"]) {
-    if (!studiosByName.has(name)) {
-      const { data } = await supabaseAdmin.from("studios").insert({ name }).select("id").single();
-      if (data) studiosByName.set(name, data.id);
-      log.push(`Studio "${name}" créé`);
-    }
-  }
+  const all = existingStudios ?? [];
+  const findFuzzy = (needle: string) => {
+    const n = needle.toLowerCase();
+    return all.find((s: any) => s.name.toLowerCase().includes(n));
+  };
+  const ensureStudio = async (search: string, fallbackName: string) => {
+    const found = findFuzzy(search);
+    if (found) { log.push(`Studio "${found.name}" réutilisé`); return found.id as string; }
+    const { data } = await supabaseAdmin.from("studios").insert({ name: fallbackName }).select("id, name").single();
+    log.push(`Studio "${fallbackName}" créé`);
+    if (data) all.push(data);
+    return data!.id as string;
+  };
+  const rhodeId = await ensureStudio("rhode", "Skult Rhodes");
+  const chatelainId = await ensureStudio("châtelain", "Skult Châtelain");
+  const studiosByName = new Map<string, string>([["Rhode", rhodeId], ["Châtelain", chatelainId]]);
 
   // Business roles
   const desiredRoles = [
