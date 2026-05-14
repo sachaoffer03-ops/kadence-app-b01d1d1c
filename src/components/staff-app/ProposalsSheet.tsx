@@ -121,7 +121,7 @@ export function ProposalsSheet({ open, onClose, userId, studios }: {
                   <Clock size={10} /> envoyée {elapsed(p.sent_at)}
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={() => accept(p.id)} disabled={busy === p.id}
+                  <button onClick={() => accept(p)} disabled={busy === p.id}
                     className="flex-1 rounded-md py-2.5 flex items-center justify-center gap-1.5"
                     style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
                     <Check size={14} /> Accepter
