@@ -17,6 +17,8 @@ interface TemplateRow {
   required_count: number;
   is_optional: boolean;
   required_contract: ContractType;
+  allowed_contracts: string[] | null;
+  allowed_roles: string[] | null;
 }
 
 interface Settings {
@@ -30,6 +32,9 @@ interface Settings {
   enforce_student_quota: boolean;
   min_shift_hours: number;
   max_shift_hours: number;
+  max_weekly_cdi_hours: number;
+  max_weekly_student_hours: number;
+  max_weekly_flexi_hours: number;
 }
 
 interface Candidate {
@@ -45,8 +50,6 @@ interface Candidate {
   contracts: Set<string>; // user_contracts (un employé peut cumuler)
   assigned_count: number;
 }
-
-const MAX_WEEKLY_CDI_HOURS = 38;
 const SLOT_GRANULARITY_MIN = 30;
 
 // ─── Helpers temps ────────────────────────────────────────────────────
@@ -101,7 +104,11 @@ export const generatePlanning = createServerFn({ method: "POST" })
       enforce_rest_11h: true, strict_preferences: false,
       enforce_max_weekly_cdi: true, enforce_student_quota: true,
       min_shift_hours: 3, max_shift_hours: 6,
+      max_weekly_cdi_hours: 48, max_weekly_student_hours: 15, max_weekly_flexi_hours: 20,
     };
+    s.max_weekly_cdi_hours = s.max_weekly_cdi_hours ?? 48;
+    s.max_weekly_student_hours = s.max_weekly_student_hours ?? 15;
+    s.max_weekly_flexi_hours = s.max_weekly_flexi_hours ?? 20;
     const minMin = Math.max(60, (s.min_shift_hours ?? 3) * 60);
     const maxMin = Math.max(minMin, (s.max_shift_hours ?? 6) * 60);
 
@@ -193,6 +200,8 @@ export const generatePlanning = createServerFn({ method: "POST" })
       studio_id: string;
       role: BusinessRole;
       contract: ContractType;
+      allowed_contracts: string[];
+      allowed_roles: string[];
       is_optional: boolean;
       startMin: number;
       endMin: number;
@@ -213,6 +222,8 @@ export const generatePlanning = createServerFn({ method: "POST" })
           needs.push({
             date: dateStr, studio_id: t.studio_id, role: t.business_role,
             contract: t.required_contract, is_optional: t.is_optional,
+            allowed_contracts: t.allowed_contracts ?? [],
+            allowed_roles: t.allowed_roles ?? [],
             startMin: t2m(t.start_time.slice(0, 5)), endMin: t2m(t.end_time.slice(0, 5)),
             slotIndex: k,
           });
@@ -223,9 +234,19 @@ export const generatePlanning = createServerFn({ method: "POST" })
     // ─── 2. POOL ÉLIGIBLE PAR BESOIN (filtres durs sans dispo) ──────
     const eligibleFor = (n: Need): Candidate[] =>
       Array.from(candidates.values()).filter((c) => {
-        if (!c.roles.has(n.role)) return false;
+        // Rôle : si allowed_roles défini, l'employé doit savoir au moins l'un d'eux
+        if (n.allowed_roles.length > 0) {
+          if (!n.allowed_roles.some((r) => c.roles.has(r))) return false;
+        } else {
+          if (!c.roles.has(n.role)) return false;
+        }
         if (c.studio_ids.size > 0 && !c.studio_ids.has(n.studio_id)) return false;
-        if (n.contract && !c.contracts.has(n.contract)) return false;
+        // Contrat : si allowed_contracts défini, l'employé doit avoir au moins l'un d'eux
+        if (n.allowed_contracts.length > 0) {
+          if (!n.allowed_contracts.some((ct) => c.contracts.has(ct))) return false;
+        } else if (n.contract) {
+          if (!c.contracts.has(n.contract)) return false;
+        }
         return true;
       });
 
@@ -283,16 +304,29 @@ export const generatePlanning = createServerFn({ method: "POST" })
       return true;
     };
 
-    const checkWeeklyCDI = (c: Candidate, date: string, durH: number): boolean => {
-      if (!s.enforce_max_weekly_cdi || c.contract !== "CDI") return true;
+    const weeklyHoursFor = (c: Candidate, date: string): number => {
       const wkStart = isoWeekStart(date);
       const wkEnd = new Date(`${wkStart}T00:00:00`);
       wkEnd.setDate(wkEnd.getDate() + 6);
       const wkEndStr = wkEnd.toISOString().slice(0, 10);
-      const wkH = allShifts()
+      return allShifts()
         .filter((sh) => sh.user_id === c.id && sh.shift_date >= wkStart && sh.shift_date <= wkEndStr)
         .reduce((acc, sh) => acc + (t2m(String(sh.end_time).slice(0, 5)) - t2m(String(sh.start_time).slice(0, 5))) / 60, 0);
-      return wkH + durH <= MAX_WEEKLY_CDI_HOURS;
+    };
+
+    const checkWeeklyCDI = (c: Candidate, date: string, durH: number): boolean => {
+      if (!s.enforce_max_weekly_cdi || c.contract !== "CDI") return true;
+      return weeklyHoursFor(c, date) + durH <= s.max_weekly_cdi_hours;
+    };
+
+    const checkWeeklyStudent = (c: Candidate, date: string, durH: number): boolean => {
+      if (c.contract !== "Étudiant") return true;
+      return weeklyHoursFor(c, date) + durH <= s.max_weekly_student_hours;
+    };
+
+    const checkWeeklyFlexi = (c: Candidate, date: string, durH: number): boolean => {
+      if (c.contract !== "Flexi") return true;
+      return weeklyHoursFor(c, date) + durH <= s.max_weekly_flexi_hours;
     };
 
     const checkStudentQuota = (c: Candidate, durH: number): boolean => {
@@ -343,6 +377,8 @@ export const generatePlanning = createServerFn({ method: "POST" })
             if (candidateConflict(c, n.date, pointer, blockEnd)) continue;
             if (!checkRest11(c, n.date, pointer, blockEnd)) continue;
             if (!checkWeeklyCDI(c, n.date, durH)) continue;
+            if (!checkWeeklyStudent(c, n.date, durH)) continue;
+            if (!checkWeeklyFlexi(c, n.date, durH)) continue;
             if (!checkStudentQuota(c, durH)) continue;
 
             // Score
