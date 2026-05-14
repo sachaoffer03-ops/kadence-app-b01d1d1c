@@ -143,6 +143,152 @@ export const declineProposal = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ----- ENVOYER PROPOSITIONS DE REMPLACEMENT (liées à une demande de modif) -----
+export const sendReplacementProposals = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      requestId: z.string().uuid(),
+      userIds: z.array(z.string().uuid()).min(1).max(50),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    const { data: req, error: e0 } = await supabaseAdmin
+      .from("modification_requests")
+      .select("id, shift_id, user_id, status")
+      .eq("id", data.requestId)
+      .single();
+    if (e0) throw new Error(e0.message);
+    if (req.status !== "pending") throw new Error("Cette demande n'est plus en attente");
+    if (!req.shift_id) throw new Error("Demande sans shift associé");
+
+    const { data: shift, error: e1 } = await supabaseAdmin
+      .from("shifts")
+      .select("id, shift_date, start_time, end_time, business_role")
+      .eq("id", req.shift_id)
+      .single();
+    if (e1) throw new Error(e1.message);
+
+    const filtered = data.userIds.filter((uid) => uid !== req.user_id);
+    if (filtered.length === 0) throw new Error("Sélectionnez au moins un autre employé");
+
+    const rows = filtered.map((uid) => ({
+      shift_id: req.shift_id!,
+      user_id: uid,
+      sent_by: userId,
+      status: "pending",
+      sent_at: new Date().toISOString(),
+      responded_at: null,
+      replacement_request_id: req.id,
+    }));
+
+    const { error: e2 } = await supabaseAdmin
+      .from("shift_proposals")
+      .upsert(rows, { onConflict: "shift_id,user_id" });
+    if (e2) throw new Error(e2.message);
+
+    const dateLabel = new Date(shift.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+    const notifs = filtered.map((uid) => ({
+      user_id: uid,
+      type: "shift_proposal",
+      title: "Proposition de remplacement",
+      body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
+      link: "/staff-app",
+    }));
+    await supabaseAdmin.from("notifications").insert(notifs);
+
+    return { ok: true, count: filtered.length };
+  });
+
+// ----- ACCEPTER UN REMPLACEMENT (race-safe) -----
+export const acceptReplacementProposal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ proposalId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+
+    const { data: prop, error: e1 } = await supabaseAdmin
+      .from("shift_proposals")
+      .select("id, shift_id, user_id, status, sent_by, replacement_request_id")
+      .eq("id", data.proposalId)
+      .single();
+    if (e1) throw new Error(e1.message);
+    if (prop.user_id !== userId) throw new Error("Cette proposition ne vous appartient pas");
+    if (prop.status !== "pending") throw new Error("Cette proposition n'est plus disponible");
+    if (!prop.replacement_request_id) throw new Error("Proposition invalide");
+
+    const { data: req, error: e2 } = await supabaseAdmin
+      .from("modification_requests")
+      .select("id, shift_id, user_id, status")
+      .eq("id", prop.replacement_request_id)
+      .single();
+    if (e2) throw new Error(e2.message);
+    if (req.status !== "pending") {
+      await supabaseAdmin.from("shift_proposals")
+        .update({ status: "expired", responded_at: new Date().toISOString() })
+        .eq("id", prop.id);
+      return { ok: false, reason: "taken" };
+    }
+
+    // Réassignation atomique : on transfère le shift de l'employé d'origine au remplaçant
+    const { data: updated, error: e3 } = await supabaseAdmin
+      .from("shifts")
+      .update({ user_id: userId, updated_at: new Date().toISOString() })
+      .eq("id", prop.shift_id)
+      .eq("user_id", req.user_id)
+      .select("id, shift_date, start_time, end_time, business_role")
+      .maybeSingle();
+    if (e3) throw new Error(e3.message);
+
+    if (!updated) {
+      await supabaseAdmin.from("shift_proposals")
+        .update({ status: "expired", responded_at: new Date().toISOString() })
+        .eq("id", prop.id);
+      return { ok: false, reason: "taken" };
+    }
+
+    const now = new Date().toISOString();
+    await supabaseAdmin.from("shift_proposals")
+      .update({ status: "accepted", responded_at: now })
+      .eq("id", prop.id);
+    await supabaseAdmin.from("shift_proposals")
+      .update({ status: "expired", responded_at: now })
+      .eq("replacement_request_id", req.id)
+      .eq("status", "pending");
+
+    // Marque la demande de modification acceptée
+    await supabaseAdmin.from("modification_requests")
+      .update({ status: "accepted", resolved_at: now, admin_response: "Remplaçant trouvé automatiquement" })
+      .eq("id", req.id);
+
+    const dateLabel = new Date(updated.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+    const body = `${updated.business_role} · ${dateLabel} · ${String(updated.start_time).slice(0,5)}–${String(updated.end_time).slice(0,5)}`;
+
+    // Notifie l'admin
+    if (prop.sent_by) {
+      await supabaseAdmin.from("notifications").insert({
+        user_id: prop.sent_by,
+        type: "replacement_accepted",
+        title: "Remplaçant trouvé",
+        body,
+        link: "/demandes",
+      });
+    }
+    // Notifie l'employé d'origine
+    await supabaseAdmin.from("notifications").insert({
+      user_id: req.user_id,
+      type: "request_accepted",
+      title: "Demande acceptée",
+      body: `Un remplaçant a été trouvé. ${body}`,
+      link: "/staff-app",
+    });
+
+    return { ok: true };
+  });
+
 // ----- ANNULER (admin) -----
 export const cancelProposals = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
