@@ -344,7 +344,9 @@ export const generatePlanning = createServerFn({ method: "POST" })
 
       // ─── MODE ATOMIQUE : besoin avec contrat fixe (ex. CDI cuisine/bar)
       // → un seul employé couvre tout le créneau, sans découpe ni min/max.
-      const atomic = !!n.contract;
+      // Atomique si contrat fixe (CDI), OU si la durée du créneau dépasse max_shift_hours
+      // (un template défini comme "un poste continu de Xh" doit être tenu par une seule personne).
+      const atomic = !!n.contract || (n.endMin - n.startMin) > maxMin;
       if (atomic) {
         const fullDurH = (n.endMin - n.startMin) / 60;
         type AtomOpt = { c: Candidate; score: number };
