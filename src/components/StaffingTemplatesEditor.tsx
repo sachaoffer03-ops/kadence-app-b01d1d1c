@@ -67,6 +67,8 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
       end_time: "15:00",
       business_role: ROLES[0] ?? "Barista",
       required_count: 1,
+      is_optional: false,
+      required_contract: null,
     });
     if (error) return toast.error(error.message);
     reload();
