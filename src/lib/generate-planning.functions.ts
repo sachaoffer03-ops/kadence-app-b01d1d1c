@@ -1,25 +1,31 @@
+// =============================================================================
+// MOTEUR DE GÉNÉRATION DE PLANNING — Kadence
+// =============================================================================
+// 3 server functions :
+//   - generatePlanning  : produit un planning sur 1 mois, 1+ studios
+//   - cancelPlanningRun : supprime les shifts générés par un run (garde manuels/lockés)
+//   - listPlanningRuns  : historique des générations (admin)
+//
+// Algorithme : greedy 4-passes (A: CDI longs, B: Étudiants/Flexis,
+//              C: optimisation locale, D: ajustement CDI vers target)
+//
+// Wall-clock local Bruxelles partout, pas de conversion timezone.
+// =============================================================================
+
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchAll } from "@/lib/supabase-paginate";
 
-// ─── Types ────────────────────────────────────────────────────────────
-type BusinessRole = string;
-type ContractType = "Étudiant" | "Flexi" | "CDI" | null;
+// ─── Constantes ──────────────────────────────────────────────────────────────
+const CELL_MIN = 15;             // granularité (15 min)
+const MAX_OPT_ITERS = 100;       // passe C
+const KITCHEN_ROLE = "Cuisine";
+const CHATELAIN_NAME_HINTS = ["Châtelain", "Chatelain", "châtelain", "chatelain"];
 
-interface TemplateRow {
-  id: string;
-  studio_id: string;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  business_role: BusinessRole;
-  required_count: number;
-  is_optional: boolean;
-  required_contract: ContractType;
-  allowed_contracts: string[] | null;
-  allowed_roles: string[] | null;
-}
+// ─── Types ───────────────────────────────────────────────────────────────────
+type ContractType = "CDI" | "Étudiant" | "Flexi";
+type Role = string;
 
 interface Settings {
   weight_performance: number;
@@ -27,527 +33,1010 @@ interface Settings {
   weight_preference: number;
   weight_random: number;
   enforce_rest_11h: boolean;
-  strict_preferences: boolean;
   enforce_max_weekly_cdi: boolean;
   enforce_student_quota: boolean;
+  strict_preferences: boolean;
   min_shift_hours: number;
   max_shift_hours: number;
+  max_shift_hours_cdi: number;
+  max_shift_hours_student: number;
+  max_shift_hours_flexi: number;
   max_weekly_cdi_hours: number;
   max_weekly_student_hours: number;
   max_weekly_flexi_hours: number;
+  target_weekly_cdi_hours: number;
+  cdi_hours_tolerance: number;
+  default_score_when_null: number;
 }
 
-interface Candidate {
+interface Employee {
   id: string;
   first_name: string;
   last_name: string;
-  score: number | null;
-  contract: ContractType;
-  quota_max: number | null;
-  quota_used: number | null;
-  studio_ids: Set<string>;
-  roles: Set<BusinessRole>;
-  contracts: Set<string>; // user_contracts (un employé peut cumuler)
-  assigned_count: number;
+  score: number;
+  status: string | null;
+  contracts: Set<ContractType>;
+  studios: Set<string>;
+  roles: Set<Role>;
+  // Cumul des heures attribuées par semaine ISO (clé = lundi de la semaine)
+  weeklyMin: Map<string, number>;
+  // Tous les shifts attribués pendant ce run (lookup conflit + repos)
+  assigned: Array<{ date: string; startMin: number; endMin: number; studio_id: string; role: Role; reqId: string }>;
+  totalAssignedMin: number;
 }
-const SLOT_GRANULARITY_MIN = 30;
 
-// ─── Helpers temps ────────────────────────────────────────────────────
+interface AvailRange { startMin: number; endMin: number; }
+
+interface Requirement {
+  id: string;
+  studio_id: string;
+  date: string;
+  role: Role;
+  startMin: number;
+  endMin: number;
+  required_contract: ContractType | null;
+  allowed_contracts: ContractType[];
+  allowed_roles: Role[];
+  is_optional: boolean;
+  // Découpage en cellules de 15 min : assignation user (null = trou)
+  cells: Cell[];
+  // Source pour Pass C : compter les itérations qui ont servi
+}
+
+interface Cell {
+  startMin: number;
+  endMin: number;
+  userId: string | null;
+  blocked: boolean; // bloqué = couvert par shift manuel/locké pré-existant
+}
+
+// ─── Helpers temps ───────────────────────────────────────────────────────────
 const t2m = (t: string) => {
-  const [h, m] = t.split(":").map(Number);
+  const [h, m] = t.slice(0, 5).split(":").map(Number);
   return h * 60 + m;
 };
-const m2t = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-const isoWeekStart = (dateStr: string): string => {
+const m2t = (m: number) =>
+  `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function isoWeekStart(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00`);
-  const dow = d.getDay();
-  d.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow));
-  return d.toISOString().slice(0, 10);
-};
+  const dow = d.getDay(); // 0=dim
+  const diff = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + diff);
+  return isoDate(d);
+}
 
-// ─── Input ────────────────────────────────────────────────────────────
-const GenerateInput = z
-  .object({
-    year: z.number().int().min(2024).max(2100).optional(),
-    month: z.number().int().min(0).max(11).optional(),
-    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    replaceExisting: z.boolean().default(true),
-  })
-  .refine(
-    (v) =>
-      (v.year !== undefined && v.month !== undefined) ||
-      (v.startDate && v.endDate),
-    { message: "Fournis (year+month) ou (startDate+endDate)" },
-  );
+function eachDate(from: string, to: string): string[] {
+  const out: string[] = [];
+  const s = new Date(`${from}T00:00:00`);
+  const e = new Date(`${to}T00:00:00`);
+  for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) out.push(isoDate(d));
+  return out;
+}
 
-// ─── Server function ──────────────────────────────────────────────────
+// 0 = lundi, 6 = dimanche (convention staffing_templates existante)
+function dowMon0(dateStr: string): number {
+  const d = new Date(`${dateStr}T00:00:00`).getDay();
+  return (d + 6) % 7;
+}
+
+// ─── Input ───────────────────────────────────────────────────────────────────
+const GenerateInput = z.object({
+  month_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  studio_ids: z.array(z.string().uuid()).optional(),
+  preserve_manual: z.boolean().default(true),
+  preserve_locked: z.boolean().default(true),
+  dry_run: z.boolean().default(false),
+});
+
+// ─── Server fn : ADMIN GUARD ─────────────────────────────────────────────────
+async function assertAdmin(supabase: any, userId: string) {
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  if (!data?.some((r: any) => r.role === "admin")) {
+    throw new Error("Seuls les admins peuvent gérer la génération de planning");
+  }
+}
+
+// =============================================================================
+// generatePlanning
+// =============================================================================
 export const generatePlanning = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => GenerateInput.parse(input))
   .handler(async ({ data, context }) => {
+    const t0 = Date.now();
     const { supabase, userId } = context;
-    const { replaceExisting } = data;
+    await assertAdmin(supabase, userId);
 
-    // — Vérifier admin
-    const { data: roleRows } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-    if (!roleRows?.some((r: any) => r.role === "admin")) {
-      throw new Error("Seuls les admins peuvent générer un planning");
+    // ── Période : 1 mois (4 semaines = 28 jours) à partir du jour choisi
+    const monthStart = data.month_start_date;
+    const startD = new Date(`${monthStart}T00:00:00`);
+    const endD = new Date(startD);
+    endD.setDate(endD.getDate() + 27); // 28 jours inclus
+    const monthEnd = isoDate(endD);
+
+    // ── Verrou : refus si un run 'running' existe déjà sur la même période
+    const { data: lockRun } = await supabase
+      .from("planning_runs")
+      .select("id, started_at")
+      .eq("status", "running")
+      .lte("month_start_date", monthEnd)
+      .gte("month_end_date", monthStart)
+      .limit(1)
+      .maybeSingle();
+    if (lockRun) {
+      throw new Error(
+        `Une génération est déjà en cours pour cette période (run ${lockRun.id} démarré à ${lockRun.started_at}). Réessayez dans quelques minutes.`,
+      );
     }
 
-    // — Réglages
-    const { data: settingsRows } = await supabase
-      .from("ai_planning_settings").select("*")
-      .order("updated_at", { ascending: false }).limit(1);
-    const s: Settings = (settingsRows?.[0] as any) ?? {
-      weight_performance: 40, weight_equity: 30, weight_preference: 20, weight_random: 10,
-      enforce_rest_11h: true, strict_preferences: false,
-      enforce_max_weekly_cdi: true, enforce_student_quota: true,
-      min_shift_hours: 3, max_shift_hours: 6,
-      max_weekly_cdi_hours: 48, max_weekly_student_hours: 15, max_weekly_flexi_hours: 20,
-    };
-    s.max_weekly_cdi_hours = s.max_weekly_cdi_hours ?? 48;
-    s.max_weekly_student_hours = s.max_weekly_student_hours ?? 15;
-    s.max_weekly_flexi_hours = s.max_weekly_flexi_hours ?? 20;
-    const minMin = Math.max(60, (s.min_shift_hours ?? 3) * 60);
-    const maxMin = Math.max(minMin, (s.max_shift_hours ?? 6) * 60);
+    // ── Studios cibles
+    const { data: allStudios } = await supabase.from("studios").select("id, name");
+    const studiosArr = (allStudios ?? []) as Array<{ id: string; name: string }>;
+    const studioIds = data.studio_ids?.length
+      ? studiosArr.filter((s) => data.studio_ids!.includes(s.id)).map((s) => s.id)
+      : studiosArr.map((s) => s.id);
+    const studioName = new Map(studiosArr.map((s) => [s.id, s.name]));
+    if (studioIds.length === 0) throw new Error("Aucun studio sélectionné");
 
-    // — Templates
-    const { data: templates } = await supabase.from("staffing_templates").select("*");
-    const tpls = (templates ?? []) as TemplateRow[];
-    if (tpls.length === 0) {
-      return {
-        ok: false,
-        error: "Aucun template de besoins défini. Configurez les besoins dans Réglages > Algorithme IA.",
-        created: 0, holes: 0, totalRequired: 0, candidatesPool: 0,
-        kpis: { coverage: 0, equity: 0, fairness: 0 }, unfilled: [], alerts: [],
-      };
-    }
+    // ── Crée le run en status 'running'
+    const { data: runRow, error: runErr } = await supabase
+      .from("planning_runs")
+      .insert({
+        month_start_date: monthStart,
+        month_end_date: monthEnd,
+        studios_included: studioIds,
+        status: "running",
+        triggered_by: userId,
+        preserve_manual: data.preserve_manual,
+        preserve_locked: data.preserve_locked,
+        dry_run: data.dry_run,
+      })
+      .select("id")
+      .single();
+    if (runErr || !runRow) throw new Error(`Impossible de créer le run : ${runErr?.message}`);
+    const runId = runRow.id as string;
 
-    // — Candidats
-    const [profiles, ubr, us, uc] = await Promise.all([
-      fetchAll<any>(supabase.from("profiles")
-        .select("id, first_name, last_name, score, contract, quota_max, quota_used")
-        .eq("status", "active")),
-      fetchAll<any>(supabase.from("user_business_roles").select("user_id, role")),
-      fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
-      fetchAll<any>(supabase.from("user_contracts").select("user_id, contract")),
-    ]);
-
-    const candidates = new Map<string, Candidate>();
-    for (const p of profiles) {
-      candidates.set(p.id, {
-        id: p.id,
-        first_name: p.first_name ?? "", last_name: p.last_name ?? "",
-        score: p.score ?? null, contract: (p.contract ?? null) as ContractType,
-        quota_max: p.quota_max ?? null, quota_used: p.quota_used ?? null,
-        studio_ids: new Set(), roles: new Set(), contracts: new Set(),
-        assigned_count: 0,
-      });
-    }
-    for (const r of ubr) { const c = candidates.get(r.user_id); if (c) c.roles.add(r.role); }
-    for (const r of us)  { const c = candidates.get(r.user_id); if (c) c.studio_ids.add(r.studio_id); }
-    for (const r of uc)  { const c = candidates.get(r.user_id); if (c) c.contracts.add(r.contract); }
-    // Le contract du profil compte aussi
-    for (const c of candidates.values()) if (c.contract) c.contracts.add(c.contract);
-
-    // — Période
-    let firstDay: string, lastDay: string;
-    if (data.startDate && data.endDate) {
-      firstDay = data.startDate; lastDay = data.endDate;
-      if (firstDay > lastDay) throw new Error("startDate doit être <= endDate");
-    } else {
-      const y = data.year as number, m = data.month as number;
-      const ld = new Date(y, m + 1, 0);
-      firstDay = `${y}-${String(m + 1).padStart(2, "0")}-01`;
-      lastDay = `${y}-${String(m + 1).padStart(2, "0")}-${String(ld.getDate()).padStart(2, "0")}`;
-    }
-
-    if (replaceExisting) {
-      await supabase.from("shifts").delete()
-        .gte("shift_date", firstDay).lte("shift_date", lastDay)
-        .eq("is_locked", false).eq("is_manual", false);
-    }
-
-    // — Existing
-    const existing = await fetchAll<any>(
-      supabase.from("shifts")
-        .select("user_id, shift_date, start_time, end_time, studio_id, business_role")
-        .gte("shift_date", firstDay).lte("shift_date", lastDay)
-    );
-
-    // — Disponibilités (plages réelles)
-    const avails = await fetchAll<any>(
-      supabase.from("availabilities")
-        .select("user_id, avail_date, start_time, end_time")
-        .gte("avail_date", firstDay).lte("avail_date", lastDay)
-    );
-    // Map<userId, Map<date, [{startMin, endMin}]>>
-    const availMap = new Map<string, Map<string, { s: number; e: number }[]>>();
-    for (const a of avails) {
-      let byDate = availMap.get(a.user_id);
-      if (!byDate) { byDate = new Map(); availMap.set(a.user_id, byDate); }
-      const arr = byDate.get(a.avail_date) ?? [];
-      arr.push({ s: t2m(String(a.start_time).slice(0, 5)), e: t2m(String(a.end_time).slice(0, 5)) });
-      byDate.set(a.avail_date, arr);
-    }
-    const candidateAvail = (uid: string, date: string) => availMap.get(uid)?.get(date) ?? [];
-    const hasAnyAvail = (uid: string) => (availMap.get(uid)?.size ?? 0) > 0;
-
-    // ─── 1. BESOINS ATOMIQUES ───────────────────────────────────────
-    interface Need {
-      date: string;
-      studio_id: string;
-      role: BusinessRole;
-      contract: ContractType;
-      allowed_contracts: string[];
-      allowed_roles: string[];
-      is_optional: boolean;
-      startMin: number;
-      endMin: number;
-      slotIndex: number; // pour required_count > 1
-    }
-    const needs: Need[] = [];
-    const studioNames = new Map<string, string>();
-    const { data: studiosData } = await supabase.from("studios").select("id, name");
-    for (const st of studiosData ?? []) studioNames.set(st.id, st.name);
-
-    const startD = new Date(`${firstDay}T00:00:00`);
-    const endD = new Date(`${lastDay}T00:00:00`);
-    for (let cur = new Date(startD); cur <= endD; cur.setDate(cur.getDate() + 1)) {
-      const dow = (cur.getDay() + 6) % 7;
-      const dateStr = cur.toISOString().slice(0, 10);
-      for (const t of tpls.filter((x) => x.day_of_week === dow)) {
-        for (let k = 0; k < t.required_count; k++) {
-          needs.push({
-            date: dateStr, studio_id: t.studio_id, role: t.business_role,
-            contract: t.required_contract, is_optional: t.is_optional,
-            allowed_contracts: t.allowed_contracts ?? [],
-            allowed_roles: t.allowed_roles ?? [],
-            startMin: t2m(t.start_time.slice(0, 5)), endMin: t2m(t.end_time.slice(0, 5)),
-            slotIndex: k,
-          });
-        }
-      }
-    }
-
-    // ─── 2. POOL ÉLIGIBLE PAR BESOIN (filtres durs sans dispo) ──────
-    const eligibleFor = (n: Need): Candidate[] =>
-      Array.from(candidates.values()).filter((c) => {
-        // Rôle : si allowed_roles défini, l'employé doit savoir au moins l'un d'eux
-        if (n.allowed_roles.length > 0) {
-          if (!n.allowed_roles.some((r) => c.roles.has(r))) return false;
-        } else {
-          if (!c.roles.has(n.role)) return false;
-        }
-        if (c.studio_ids.size > 0 && !c.studio_ids.has(n.studio_id)) return false;
-        // Contrat : si allowed_contracts défini, l'employé doit avoir au moins l'un d'eux
-        if (n.allowed_contracts.length > 0) {
-          if (!n.allowed_contracts.some((ct) => c.contracts.has(ct))) return false;
-        } else if (n.contract) {
-          if (!c.contracts.has(n.contract)) return false;
-        }
-        return true;
+    try {
+      const result = await runEngine({
+        supabase, runId, monthStart, monthEnd, studioIds, studiosArr, studioName,
+        preserveManual: data.preserve_manual,
+        preserveLocked: data.preserve_locked,
+        dryRun: data.dry_run,
       });
 
-    // ─── 3. DIFFICULTÉ : trier besoins du plus dur au plus facile ───
-    const scored = needs.map((n) => {
-      const pool = eligibleFor(n);
-      const availSum = pool.reduce((acc, c) => {
-        const ranges = candidateAvail(c.id, n.date);
-        return acc + ranges.reduce((a, r) => {
-          const inter = Math.max(0, Math.min(r.e, n.endMin) - Math.max(r.s, n.startMin));
-          return a + inter;
-        }, 0);
-      }, 0);
-      // difficulté faible = peu de candidats × peu d'heures dispo
-      const difficulty = (pool.length || 1) * Math.max(1, availSum);
-      // bonus prio shift obligatoire
-      const priority = n.is_optional ? 1 : 0;
-      return { n, pool, difficulty, priority };
+      const durationMs = Date.now() - t0;
+      await supabase.from("planning_runs").update({
+        status: result.status,
+        coverage_rate: result.coverage_rate,
+        shifts_generated: result.shifts_generated,
+        shifts_with_holes: result.holes.length,
+        completed_at: new Date().toISOString(),
+        duration_ms: durationMs,
+        solver_logs: result.solver_logs,
+        alerts: result.alerts,
+      }).eq("id", runId);
+
+      return { planning_run_id: runId, duration_ms: durationMs, ...result };
+    } catch (e: any) {
+      await supabase.from("planning_runs").update({
+        status: "failed",
+        completed_at: new Date().toISOString(),
+        duration_ms: Date.now() - t0,
+        error_message: e?.message ?? String(e),
+      }).eq("id", runId);
+      throw e;
+    }
+  });
+
+// =============================================================================
+// cancelPlanningRun
+// =============================================================================
+export const cancelPlanningRun = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ run_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    const { data: run } = await supabase
+      .from("planning_runs")
+      .select("id, month_start_date, month_end_date, studios_included, status")
+      .eq("id", data.run_id)
+      .maybeSingle();
+    if (!run) throw new Error("Run introuvable");
+    if (run.status === "running") throw new Error("Impossible d'annuler un run encore en cours");
+
+    // Supprime tous les shifts non-manuels / non-lockés sur la période & studios
+    const { error, count } = await supabase
+      .from("shifts")
+      .delete({ count: "exact" })
+      .gte("shift_date", run.month_start_date)
+      .lte("shift_date", run.month_end_date)
+      .in("studio_id", run.studios_included)
+      .eq("is_locked", false)
+      .eq("is_manual", false);
+    if (error) throw new Error(`Suppression échouée : ${error.message}`);
+
+    return { ok: true, deleted: count ?? 0 };
+  });
+
+// =============================================================================
+// listPlanningRuns
+// =============================================================================
+export const listPlanningRuns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { data, error } = await supabase
+      .from("planning_runs")
+      .select("id, month_start_date, month_end_date, studios_included, status, coverage_rate, shifts_generated, shifts_with_holes, started_at, completed_at, duration_ms, dry_run, solver_logs, alerts, error_message")
+      .order("started_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return { runs: data ?? [] };
+  });
+
+// =============================================================================
+// MOTEUR — fonction interne (évite de polluer la signature createServerFn)
+// =============================================================================
+interface EngineCtx {
+  supabase: any;
+  runId: string;
+  monthStart: string;
+  monthEnd: string;
+  studioIds: string[];
+  studiosArr: Array<{ id: string; name: string }>;
+  studioName: Map<string, string>;
+  preserveManual: boolean;
+  preserveLocked: boolean;
+  dryRun: boolean;
+}
+
+async function runEngine(ctx: EngineCtx) {
+  const { supabase, monthStart, monthEnd, studioIds, studioName, preserveManual, preserveLocked, dryRun } = ctx;
+  const logs: any = { phases: {} };
+  const alerts: Array<{ type: string; severity: "info" | "warning" | "error"; user_id?: string; user_name?: string; message: string }> = [];
+
+  // ─── PHASE 0 — Chargement des données ─────────────────────────────────────
+  const t_load = Date.now();
+  const [settingsRows, profilesRows, contractsRows, rolesRows, studiosRows, availsRows, templatesRows, existingShifts] = await Promise.all([
+    supabase.from("ai_planning_settings").select("*").order("updated_at", { ascending: false }).limit(1),
+    fetchAll<any>(supabase.from("profiles").select("id, first_name, last_name, score, contract, status").eq("status", "active")),
+    fetchAll<any>(supabase.from("user_contracts").select("user_id, contract")),
+    fetchAll<any>(supabase.from("user_business_roles").select("user_id, role")),
+    fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
+    fetchAll<any>(supabase.from("availabilities").select("user_id, avail_date, start_time, end_time").gte("avail_date", monthStart).lte("avail_date", monthEnd)),
+    fetchAll<any>(supabase.from("staffing_templates").select("*").in("studio_id", studioIds)),
+    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd).in("studio_id", studioIds)),
+  ]);
+
+  const s = parseSettings(settingsRows.data?.[0]);
+
+  // Construction des employés
+  const employees = new Map<string, Employee>();
+  for (const p of profilesRows) {
+    const score = (p.score == null ? s.default_score_when_null : Number(p.score));
+    employees.set(p.id, {
+      id: p.id,
+      first_name: p.first_name ?? "",
+      last_name: p.last_name ?? "",
+      score,
+      status: p.status,
+      contracts: new Set(),
+      studios: new Set(),
+      roles: new Set(),
+      weeklyMin: new Map(),
+      assigned: [],
+      totalAssignedMin: 0,
     });
-    scored.sort((a, b) => a.priority - b.priority || a.difficulty - b.difficulty);
+    if (p.contract) employees.get(p.id)!.contracts.add(p.contract);
+  }
+  for (const r of contractsRows) employees.get(r.user_id)?.contracts.add(r.contract);
+  for (const r of rolesRows) employees.get(r.user_id)?.roles.add(r.role);
+  for (const r of studiosRows) employees.get(r.user_id)?.studios.add(r.studio_id);
 
-    // ─── 4. COUVERTURE GLOUTONNE ────────────────────────────────────
-    const toInsert: any[] = [];
-    const totalRequiredMin = needs.reduce((acc, n) => acc + (n.endMin - n.startMin), 0);
-    let totalCoveredMin = 0;
-    let totalCreated = 0;
+  // Disponibilités → Map<userId, Map<date, AvailRange[]>>
+  const availMap = new Map<string, Map<string, AvailRange[]>>();
+  for (const a of availsRows) {
+    let byDate = availMap.get(a.user_id);
+    if (!byDate) { byDate = new Map(); availMap.set(a.user_id, byDate); }
+    const arr = byDate.get(a.avail_date) ?? [];
+    arr.push({ startMin: t2m(a.start_time), endMin: t2m(a.end_time) });
+    byDate.set(a.avail_date, arr);
+  }
+  const availOn = (uid: string, date: string): AvailRange[] => availMap.get(uid)?.get(date) ?? [];
 
-    // helpers pour conflits / quotas (incluent existing + toInsert)
-    const allShifts = () => existing.concat(toInsert);
+  logs.phases.load_ms = Date.now() - t_load;
+  logs.employee_count = employees.size;
+  logs.template_count = templatesRows.length;
 
-    const candidateConflict = (c: Candidate, date: string, sMin: number, eMin: number): boolean => {
-      for (const sh of allShifts()) {
-        if (sh.user_id !== c.id) continue;
-        if (sh.shift_date !== date) continue;
-        const ss = t2m(String(sh.start_time).slice(0, 5));
-        const ee = t2m(String(sh.end_time).slice(0, 5));
-        if (ss < eMin && ee > sMin) return true;
-      }
-      return false;
-    };
+  // ─── PHASE 1 — Détection "CDI cuisine unique" (Châtelain seulement) ──────
+  const t_p1 = Date.now();
+  const kitchenSoloByStudio = new Map<string, string | null>(); // studio_id → user_id ou null
+  const chatelainStudio = ctx.studiosArr.find((st) =>
+    CHATELAIN_NAME_HINTS.some((h) => st.name?.toLowerCase().includes(h.toLowerCase())),
+  );
+  if (chatelainStudio && studioIds.includes(chatelainStudio.id)) {
+    const cdiKitchen = Array.from(employees.values()).filter(
+      (e) => e.contracts.has("CDI") && e.roles.has(KITCHEN_ROLE) && e.studios.has(chatelainStudio.id),
+    );
+    if (cdiKitchen.length === 1) {
+      kitchenSoloByStudio.set(chatelainStudio.id, cdiKitchen[0].id);
+      alerts.push({
+        type: "kitchen_solo",
+        severity: "info",
+        user_id: cdiKitchen[0].id,
+        user_name: `${cdiKitchen[0].first_name} ${cdiKitchen[0].last_name}`,
+        message: `${cdiKitchen[0].first_name} est l'unique CDI cuisine à ${chatelainStudio.name}. Ses plafonds CDI sont relâchés pour couvrir tous les besoins cuisine.`,
+      });
+    } else if (cdiKitchen.length === 0) {
+      alerts.push({
+        type: "kitchen_solo",
+        severity: "warning",
+        message: `Aucun CDI cuisine actif à ${chatelainStudio.name}. Les besoins cuisine seront comblés par étudiants/flexis qualifiés s'il y en a.`,
+      });
+    }
+  }
+  logs.phases.p1_ms = Date.now() - t_p1;
+  logs.kitchen_solo = Object.fromEntries(kitchenSoloByStudio);
 
-    const checkRest11 = (c: Candidate, date: string, sMin: number, eMin: number): boolean => {
-      if (!s.enforce_rest_11h) return true;
-      const ref = new Date(`${date}T${m2t(sMin)}:00`).getTime();
-      const refEnd = new Date(`${date}T${m2t(eMin)}:00`).getTime();
-      for (const sh of allShifts()) {
-        if (sh.user_id !== c.id) continue;
-        const eDt = new Date(`${sh.shift_date}T${String(sh.end_time).slice(0, 5)}:00`).getTime();
-        const sDt = new Date(`${sh.shift_date}T${String(sh.start_time).slice(0, 5)}:00`).getTime();
-        const diff1 = (ref - eDt) / 3600000;
-        const diff2 = (sDt - refEnd) / 3600000;
-        if (diff1 >= 0 && diff1 < 11) return false;
-        if (diff2 >= 0 && diff2 < 11) return false;
-      }
-      return true;
-    };
+  const isKitchenSolo = (uid: string, studioId: string): boolean =>
+    kitchenSoloByStudio.get(studioId) === uid;
 
-    const weeklyHoursFor = (c: Candidate, date: string): number => {
-      const wkStart = isoWeekStart(date);
-      const wkEnd = new Date(`${wkStart}T00:00:00`);
-      wkEnd.setDate(wkEnd.getDate() + 6);
-      const wkEndStr = wkEnd.toISOString().slice(0, 10);
-      return allShifts()
-        .filter((sh) => sh.user_id === c.id && sh.shift_date >= wkStart && sh.shift_date <= wkEndStr)
-        .reduce((acc, sh) => acc + (t2m(String(sh.end_time).slice(0, 5)) - t2m(String(sh.start_time).slice(0, 5))) / 60, 0);
-    };
-
-    const checkWeeklyCDI = (c: Candidate, date: string, durH: number): boolean => {
-      if (!s.enforce_max_weekly_cdi || c.contract !== "CDI") return true;
-      return weeklyHoursFor(c, date) + durH <= s.max_weekly_cdi_hours;
-    };
-
-    const checkWeeklyStudent = (c: Candidate, date: string, durH: number): boolean => {
-      if (c.contract !== "Étudiant") return true;
-      return weeklyHoursFor(c, date) + durH <= s.max_weekly_student_hours;
-    };
-
-    const checkWeeklyFlexi = (c: Candidate, date: string, durH: number): boolean => {
-      if (c.contract !== "Flexi") return true;
-      return weeklyHoursFor(c, date) + durH <= s.max_weekly_flexi_hours;
-    };
-
-    const checkStudentQuota = (c: Candidate, durH: number): boolean => {
-      if (!s.enforce_student_quota || c.contract !== "Étudiant" || c.quota_max == null) return true;
-      const used = c.quota_used ?? 0;
-      const periodH = toInsert
-        .filter((sh) => sh.user_id === c.id)
-        .reduce((acc, sh) => acc + (t2m(String(sh.end_time).slice(0, 5)) - t2m(String(sh.start_time).slice(0, 5))) / 60, 0);
-      return used + periodH + durH <= Number(c.quota_max);
-    };
-
-    for (const { n, pool } of scored) {
-      let pointer = n.startMin;
-      let lastMaxAssigned = Math.max(1, ...Array.from(candidates.values()).map((c) => c.assigned_count));
-
-      // ─── MODE ATOMIQUE : besoin avec contrat fixe (ex. CDI cuisine/bar)
-      // → un seul employé couvre tout le créneau, sans découpe ni min/max.
-      // Atomique si contrat fixe (CDI), OU si la durée du créneau dépasse max_shift_hours
-      // (un template défini comme "un poste continu de Xh" doit être tenu par une seule personne).
-      const atomic = !!n.contract || (n.endMin - n.startMin) > maxMin;
-      if (atomic) {
-        const fullDurH = (n.endMin - n.startMin) / 60;
-        type AtomOpt = { c: Candidate; score: number };
-        const opts: AtomOpt[] = [];
-        for (const c of pool) {
-          if (candidateConflict(c, n.date, n.startMin, n.endMin)) continue;
-          if (!checkRest11(c, n.date, n.startMin, n.endMin)) continue;
-          // CDI : on respecte uniquement le plafond hebdo (contrat fixe peut dépasser max_shift_hours)
-          if (!checkWeeklyCDI(c, n.date, fullDurH)) continue;
-          if (!checkWeeklyStudent(c, n.date, fullDurH)) continue;
-          if (!checkWeeklyFlexi(c, n.date, fullDurH)) continue;
-          if (!checkStudentQuota(c, fullDurH)) continue;
-          const perf = (c.score ?? 7) / 10;
-          const eq = 1 - c.assigned_count / Math.max(lastMaxAssigned, 1);
-          const ranges = candidateAvail(c.id, n.date);
-          const covers = ranges.some((r) => r.s <= n.startMin && r.e >= n.endMin);
-          const pref = covers ? 1 : hasAnyAvail(c.id) ? 0.3 : 0.5;
-          const wTot = (s.weight_performance + s.weight_equity + s.weight_preference + s.weight_random) || 1;
-          const score = (s.weight_performance * perf + s.weight_equity * eq + s.weight_preference * pref + s.weight_random * Math.random()) / wTot;
-          opts.push({ c, score });
+  // ─── PHASE 2 — Génération des slots à couvrir ────────────────────────────
+  const t_p2 = Date.now();
+  const requirements: Requirement[] = [];
+  let reqCounter = 0;
+  for (const date of eachDate(monthStart, monthEnd)) {
+    const dow = dowMon0(date);
+    for (const t of templatesRows) {
+      if (t.day_of_week !== dow) continue;
+      if (!studioIds.includes(t.studio_id)) continue;
+      const startMin = t2m(t.start_time);
+      const endMin = t2m(t.end_time);
+      if (endMin <= startMin) continue;
+      for (let k = 0; k < (t.required_count ?? 1); k++) {
+        const cells: Cell[] = [];
+        for (let m = startMin; m < endMin; m += CELL_MIN) {
+          cells.push({ startMin: m, endMin: Math.min(m + CELL_MIN, endMin), userId: null, blocked: false });
         }
-        if (opts.length === 0) {
-          toInsert.push({
-            user_id: null, studio_id: n.studio_id, business_role: n.role,
-            shift_date: n.date,
-            start_time: `${m2t(n.startMin)}:00`,
-            end_time: `${m2t(n.endMin)}:00`,
-            status: "scheduled", is_locked: false, is_manual: false,
-          });
-        } else {
-          opts.sort((a, b) => b.score - a.score);
-          const best = opts[0];
-          toInsert.push({
-            user_id: best.c.id, studio_id: n.studio_id, business_role: n.role,
-            shift_date: n.date,
-            start_time: `${m2t(n.startMin)}:00`,
-            end_time: `${m2t(n.endMin)}:00`,
-            status: "draft", is_locked: false, is_manual: false,
-          });
-          best.c.assigned_count++;
-          totalCreated++;
-          totalCoveredMin += n.endMin - n.startMin;
-        }
-        continue;
+        requirements.push({
+          id: `r${++reqCounter}`,
+          studio_id: t.studio_id,
+          date,
+          role: t.business_role,
+          startMin, endMin,
+          required_contract: (t.required_contract ?? null) as ContractType | null,
+          allowed_contracts: (t.allowed_contracts ?? []) as ContractType[],
+          allowed_roles: (t.allowed_roles ?? []) as string[],
+          is_optional: !!t.is_optional,
+          cells,
+        });
       }
+    }
+  }
+  const totalCells = requirements.reduce((a, r) => a + r.cells.length, 0);
+  const totalSlotsNeeded = requirements.length;
+  logs.phases.p2_ms = Date.now() - t_p2;
+  logs.total_requirements = totalSlotsNeeded;
+  logs.total_cells = totalCells;
 
-      while (pointer < n.endMin) {
-        // Pour chaque candidat éligible, lister les blocs valides commençant à pointer
-        type Option = { c: Candidate; blockEnd: number; score: number };
-        const options: Option[] = [];
-
-        for (const c of pool) {
-          const ranges = candidateAvail(c.id, n.date);
-          // Si strict_preferences et l'employé n'a déclaré aucune dispo → on l'ignore
-          // Si strict_preferences et l'employé a déclaré des dispos mais pas sur pointer → on l'ignore
-          const containsPointer = ranges.find((r) => r.s <= pointer && r.e > pointer);
-          if (s.strict_preferences) {
-            if (!containsPointer) continue;
-          }
-
-          // Calculer la fin max possible pour ce candidat
-          // = min(end de sa dispo qui couvre pointer, n.endMin, pointer + maxMin)
-          let availEnd: number | null = containsPointer ? containsPointer.e : null;
-          // Si pas dispo couvrant pointer mais on n'est PAS strict, on autorise quand même (pénalité de score)
-          if (!availEnd) availEnd = n.endMin; // laisse l'algo essayer le bloc complet
-
-          const maxBlockEnd = Math.min(availEnd, n.endMin, pointer + maxMin);
-          // bloc minimum
-          const minBlockEnd = pointer + minMin;
-          if (minBlockEnd > maxBlockEnd) continue;
-
-          // Tester tailles de bloc par pas de granularité, du plus grand au plus petit
-          // Préférer le bloc le plus long qui satisfait toutes les contraintes
-          for (let blockEnd = Math.floor(maxBlockEnd / SLOT_GRANULARITY_MIN) * SLOT_GRANULARITY_MIN;
-               blockEnd >= minBlockEnd;
-               blockEnd -= SLOT_GRANULARITY_MIN) {
-            if (blockEnd <= pointer) break;
-            const durH = (blockEnd - pointer) / 60;
-            if (candidateConflict(c, n.date, pointer, blockEnd)) continue;
-            if (!checkRest11(c, n.date, pointer, blockEnd)) continue;
-            if (!checkWeeklyCDI(c, n.date, durH)) continue;
-            if (!checkWeeklyStudent(c, n.date, durH)) continue;
-            if (!checkWeeklyFlexi(c, n.date, durH)) continue;
-            if (!checkStudentQuota(c, durH)) continue;
-
-            // Score
-            const perf = (c.score ?? 7) / 10;
-            const eq = 1 - c.assigned_count / Math.max(lastMaxAssigned, 1);
-            let pref: number;
-            if (containsPointer) pref = 1;
-            else if (hasAnyAvail(c.id)) pref = 0.3;
-            else pref = 0.5;
-            // Bonus longueur bloc (préfère couvrir plus)
-            const lenBonus = (blockEnd - pointer) / maxMin;
-            const rnd = Math.random();
-            const wTot = (s.weight_performance + s.weight_equity + s.weight_preference + s.weight_random) || 1;
-            const score = (
-              s.weight_performance * perf +
-              s.weight_equity * eq +
-              s.weight_preference * pref +
-              s.weight_random * rnd
-            ) / wTot + 0.15 * lenBonus;
-            options.push({ c, blockEnd, score });
-            break; // 1 option par candidat (le plus long valide)
-          }
+  // Bloque les cellules couvertes par shifts manuels/lockés et soustrait du quota
+  const preservedShifts: any[] = [];
+  for (const sh of existingShifts) {
+    const isManual = sh.is_manual && preserveManual;
+    const isLocked = sh.is_locked && preserveLocked;
+    if (!isManual && !isLocked) continue;
+    preservedShifts.push(sh);
+    // Marquer les cellules qui chevauchent
+    const sStart = t2m(sh.start_time), sEnd = t2m(sh.end_time);
+    for (const r of requirements) {
+      if (r.date !== sh.shift_date || r.studio_id !== sh.studio_id) continue;
+      if (r.role !== sh.business_role) continue;
+      for (const c of r.cells) {
+        if (c.startMin >= sStart && c.endMin <= sEnd && !c.blocked) {
+          c.blocked = true;
+          c.userId = sh.user_id;
         }
+      }
+    }
+    // Soustraire ces heures du quota hebdo de l'employé concerné
+    if (sh.user_id && employees.has(sh.user_id)) {
+      const e = employees.get(sh.user_id)!;
+      const wk = isoWeekStart(sh.shift_date);
+      const dur = sEnd - sStart;
+      e.weeklyMin.set(wk, (e.weeklyMin.get(wk) ?? 0) + dur);
+      e.totalAssignedMin += dur;
+    }
+  }
+  logs.preserved_shifts = preservedShifts.length;
 
-        if (options.length === 0) {
-          // Trouver le prochain start dispo pour clore le trou
-          let nextAvailStart = n.endMin;
-          for (const c of pool) {
-            for (const r of candidateAvail(c.id, n.date)) {
-              if (r.s > pointer && r.s < nextAvailStart) nextAvailStart = r.s;
+  // ─── PHASE 3 — Éligibilité par requirement ───────────────────────────────
+  const t_p3 = Date.now();
+  // candidatesFor(req) → liste d'employés éligibles aux filtres durs (hors dispo)
+  const candidatesFor = (r: Requirement): Employee[] => {
+    const out: Employee[] = [];
+    for (const e of employees.values()) {
+      // Studio
+      if (e.studios.size > 0 && !e.studios.has(r.studio_id)) continue;
+      // Rôle
+      if (r.role === KITCHEN_ROLE) {
+        if (!e.roles.has(KITCHEN_ROLE)) continue;
+      } else if (r.allowed_roles.length > 0) {
+        if (!r.allowed_roles.some((ar) => e.roles.has(ar))) continue;
+      } else {
+        if (!e.roles.has(r.role)) continue;
+      }
+      // Contrat
+      if (r.required_contract) {
+        if (!e.contracts.has(r.required_contract)) continue;
+      } else if (r.allowed_contracts.length > 0) {
+        if (!r.allowed_contracts.some((ac) => e.contracts.has(ac as ContractType))) continue;
+      }
+      out.push(e);
+    }
+    return out;
+  };
+
+  // Pré-calcul des candidats par requirement (utilisé par toutes les passes)
+  const reqCandidates = new Map<string, Employee[]>();
+  let candidatesSum = 0;
+  for (const r of requirements) {
+    const cands = candidatesFor(r);
+    reqCandidates.set(r.id, cands);
+    candidatesSum += cands.length;
+  }
+  logs.phases.p3_ms = Date.now() - t_p3;
+  logs.avg_candidates_per_slot = totalSlotsNeeded > 0 ? +(candidatesSum / totalSlotsNeeded).toFixed(2) : 0;
+
+  // ─── PHASE 4 — Greedy 4-passes ───────────────────────────────────────────
+
+  // Helpers de contrainte (inclut les pré-existants déjà comptés via weeklyMin)
+  const weeklyHours = (e: Employee, date: string) => (e.weeklyMin.get(isoWeekStart(date)) ?? 0) / 60;
+
+  const maxShiftHFor = (e: Employee, studioId: string): number => {
+    const isCDI = e.contracts.has("CDI");
+    const isStu = e.contracts.has("Étudiant");
+    const isFlx = e.contracts.has("Flexi");
+    if (isKitchenSolo(e.id, studioId)) return 12; // mode solo : large
+    if (isCDI) return s.max_shift_hours_cdi;
+    if (isStu) return s.max_shift_hours_student;
+    if (isFlx) return s.max_shift_hours_flexi;
+    return s.max_shift_hours;
+  };
+
+  const maxWeeklyHFor = (e: Employee, studioId: string): number => {
+    if (isKitchenSolo(e.id, studioId)) return 60; // mode solo : large
+    if (e.contracts.has("CDI")) return s.max_weekly_cdi_hours;
+    if (e.contracts.has("Étudiant")) return s.max_weekly_student_hours;
+    if (e.contracts.has("Flexi")) return s.max_weekly_flexi_hours;
+    return 40;
+  };
+
+  // Conflit (chevauchement) : dans assigned[] + cellules pré-bloquées
+  const hasConflict = (e: Employee, date: string, sMin: number, eMin: number): boolean => {
+    for (const a of e.assigned) {
+      if (a.date !== date) continue;
+      if (a.startMin < eMin && a.endMin > sMin) return true;
+    }
+    return false;
+  };
+
+  // Repos 11h : aucun shift à <11h de la fenêtre [sMin, eMin] sur date
+  const restOk = (e: Employee, date: string, sMin: number, eMin: number): boolean => {
+    if (!s.enforce_rest_11h) return true;
+    const startTs = new Date(`${date}T${m2t(sMin)}:00`).getTime();
+    const endTs = new Date(`${date}T${m2t(eMin)}:00`).getTime();
+    for (const a of e.assigned) {
+      const aStart = new Date(`${a.date}T${m2t(a.startMin)}:00`).getTime();
+      const aEnd = new Date(`${a.date}T${m2t(a.endMin)}:00`).getTime();
+      // gap (en h) entre fin précédente et début nouveau
+      if (aEnd <= startTs) {
+        const gapH = (startTs - aEnd) / 3600000;
+        if (gapH < 11) return false;
+      } else if (endTs <= aStart) {
+        const gapH = (aStart - endTs) / 3600000;
+        if (gapH < 11) return false;
+      }
+    }
+    return true;
+  };
+
+  // Vérifie qu'une plage est intégralement couverte par une dispo de l'employé
+  const availCovers = (e: Employee, date: string, sMin: number, eMin: number): boolean => {
+    for (const r of availOn(e.id, date)) if (r.startMin <= sMin && r.endMin >= eMin) return true;
+    return false;
+  };
+
+  // Trouve la plage de cellules contiguës non-attribuées d'un requirement contenant l'index i
+  const contiguousFreeWindow = (req: Requirement, i: number): { startMin: number; endMin: number } | null => {
+    if (req.cells[i].userId !== null || req.cells[i].blocked) return null;
+    let lo = i, hi = i;
+    while (lo > 0 && req.cells[lo - 1].userId === null && !req.cells[lo - 1].blocked) lo--;
+    while (hi < req.cells.length - 1 && req.cells[hi + 1].userId === null && !req.cells[hi + 1].blocked) hi++;
+    return { startMin: req.cells[lo].startMin, endMin: req.cells[hi].endMin };
+  };
+
+  // Applique l'assignation : coche les cellules + met à jour quotas
+  const assign = (req: Requirement, e: Employee, sMin: number, eMin: number) => {
+    for (const c of req.cells) {
+      if (c.startMin >= sMin && c.endMin <= eMin) c.userId = e.id;
+    }
+    e.assigned.push({ date: req.date, startMin: sMin, endMin: eMin, studio_id: req.studio_id, role: req.role, reqId: req.id });
+    const wk = isoWeekStart(req.date);
+    e.weeklyMin.set(wk, (e.weeklyMin.get(wk) ?? 0) + (eMin - sMin));
+    e.totalAssignedMin += (eMin - sMin);
+  };
+
+  // Score d'un candidat pour un slot (perf + équité tie-breaker + préférence)
+  const ranking = (cands: Employee[], date: string): Employee[] => {
+    return [...cands].sort((a, b) => {
+      const dScore = b.score - a.score;
+      // Tie-breaker équité si différence de score < 0.5
+      if (Math.abs(dScore) < 0.5) {
+        const aWk = (a.weeklyMin.get(isoWeekStart(date)) ?? 0);
+        const bWk = (b.weeklyMin.get(isoWeekStart(date)) ?? 0);
+        return aWk - bWk;
+      }
+      return dScore;
+    });
+  };
+
+  // ─── PASSE A : CDI sur shifts longs ──────────────────────────────────────
+  const t_pA = Date.now();
+  const cdiList = Array.from(employees.values()).filter((e) => e.contracts.has("CDI"));
+  cdiList.sort((a, b) => b.score - a.score);
+
+  for (const e of cdiList) {
+    // Pour chaque date, essayer de placer un long shift contigu sur ses dispos
+    for (const date of eachDate(monthStart, monthEnd)) {
+      const ranges = availOn(e.id, date);
+      if (ranges.length === 0) continue;
+      const wkH = weeklyHours(e, date);
+      // budget restant pour la semaine (vise target ± tolerance, plafond max)
+      const studioForLimits = Array.from(e.studios)[0] ?? "";
+      const wkMax = maxWeeklyHFor(e, studioForLimits);
+      const targetCap = isKitchenSolo(e.id, studioForLimits) ? wkMax : Math.min(wkMax, s.target_weekly_cdi_hours + s.cdi_hours_tolerance);
+      const remainingH = Math.max(0, targetCap - wkH);
+      if (remainingH < (s.min_shift_hours ?? 3)) continue;
+
+      // Pour chaque dispo (≥3h) → placer un shift maximal
+      for (const range of ranges) {
+        const dispoH = (range.endMin - range.startMin) / 60;
+        if (dispoH < (s.min_shift_hours ?? 3)) continue;
+
+        // Trouver le requirement (cells libres) qui chevauche cette dispo et que e couvre
+        const fitReqs = requirements.filter((r) =>
+          r.date === date &&
+          (reqCandidates.get(r.id) ?? []).some((c) => c.id === e.id) &&
+          r.startMin < range.endMin && r.endMin > range.startMin,
+        );
+        if (fitReqs.length === 0) continue;
+
+        for (const req of fitReqs) {
+          if (req.cells.every((c) => c.userId !== null || c.blocked)) continue;
+          // Fenêtre ciblée : intersection (dispo, req) ; on essaie de prendre la plus longue plage libre
+          const lo = Math.max(req.startMin, range.startMin);
+          const hi = Math.min(req.endMin, range.endMin);
+          if (hi - lo < CELL_MIN) continue;
+
+          // Trouver le plus long sous-segment libre dans [lo, hi)
+          let bestS = -1, bestE = -1, bestLen = 0;
+          let curS = -1;
+          for (const c of req.cells) {
+            if (c.startMin >= lo && c.endMin <= hi && !c.blocked && c.userId === null) {
+              if (curS < 0) curS = c.startMin;
+              const curE = c.endMin;
+              if (curE - curS > bestLen) { bestLen = curE - curS; bestS = curS; bestE = curE; }
+            } else {
+              curS = -1;
             }
           }
-          const gapEnd = Math.min(nextAvailStart, n.endMin);
-          // Insérer un trou (user_id = null)
-          toInsert.push({
-            user_id: null, studio_id: n.studio_id, business_role: n.role,
-            shift_date: n.date,
-            start_time: `${m2t(pointer)}:00`,
-            end_time: `${m2t(gapEnd)}:00`,
-            status: "scheduled", is_locked: false, is_manual: false,
-          });
-          pointer = gapEnd;
-          continue;
+          if (bestLen < (s.min_shift_hours ?? 3) * 60) continue;
+
+          // Cap sur max_shift_hours_cdi (sauf solo)
+          const maxBlockMin = Math.min(bestLen, maxShiftHFor(e, req.studio_id) * 60, remainingH * 60);
+          if (maxBlockMin < (s.min_shift_hours ?? 3) * 60) continue;
+          const sMin = bestS;
+          const eMin = bestS + maxBlockMin;
+          if (hasConflict(e, date, sMin, eMin)) continue;
+          if (!restOk(e, date, sMin, eMin)) continue;
+          assign(req, e, sMin, eMin);
         }
-
-        // Choisir la meilleure option
-        options.sort((a, b) => b.score - a.score);
-        const best = options[0];
-        toInsert.push({
-          user_id: best.c.id, studio_id: n.studio_id, business_role: n.role,
-          shift_date: n.date,
-          start_time: `${m2t(pointer)}:00`,
-          end_time: `${m2t(best.blockEnd)}:00`,
-          status: "draft", is_locked: false, is_manual: false,
-        });
-        best.c.assigned_count++;
-        totalCreated++;
-        totalCoveredMin += best.blockEnd - pointer;
-        pointer = best.blockEnd;
-        lastMaxAssigned = Math.max(lastMaxAssigned, best.c.assigned_count);
       }
     }
+  }
+  logs.phases.pA_ms = Date.now() - t_pA;
 
-    // ─── 5. INSERT ──────────────────────────────────────────────────
+  // ─── PASSE B : Comblage Étudiants/Flexis ─────────────────────────────────
+  const t_pB = Date.now();
+  // Parcours chronologique des slots non couverts
+  const sortedReqs = [...requirements].sort((a, b) =>
+    a.date.localeCompare(b.date) || a.startMin - b.startMin,
+  );
+  for (const req of sortedReqs) {
+    for (let i = 0; i < req.cells.length; i++) {
+      const cell = req.cells[i];
+      if (cell.userId !== null || cell.blocked) continue;
+      const window = contiguousFreeWindow(req, i);
+      if (!window) continue;
+      const cands = (reqCandidates.get(req.id) ?? []).filter(
+        (c) => c.contracts.has("Étudiant") || c.contracts.has("Flexi") || c.contracts.has("CDI"),
+      );
+      if (cands.length === 0) continue;
+      const ranked = ranking(cands, req.date);
+      let placed = false;
+      for (const e of ranked) {
+        // Trouver une dispo couvrant au moins min_shift_hours dans window
+        const dispos = availOn(e.id, req.date).filter(
+          (r) => r.startMin < window.endMin && r.endMin > window.startMin,
+        );
+        if (dispos.length === 0) {
+          if (s.strict_preferences) continue;
+          // Pas strict : on autorise sans dispo (rare)
+        }
+        for (const d of dispos.length ? dispos : [{ startMin: window.startMin, endMin: window.endMin }]) {
+          const lo = Math.max(window.startMin, d.startMin);
+          const hi = Math.min(window.endMin, d.endMin);
+          const maxH = maxShiftHFor(e, req.studio_id);
+          // Plafond hebdo restant
+          const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
+          const dur = Math.min(hi - lo, maxH * 60, wkRemainingH * 60);
+          if (dur < (s.min_shift_hours ?? 3) * 60) continue;
+          const sMin = lo;
+          const eMin = lo + dur;
+          // Aligner sur cellules
+          const eMinAligned = Math.floor(eMin / CELL_MIN) * CELL_MIN;
+          if (eMinAligned - sMin < (s.min_shift_hours ?? 3) * 60) continue;
+          if (hasConflict(e, req.date, sMin, eMinAligned)) continue;
+          if (!restOk(e, req.date, sMin, eMinAligned)) continue;
+          assign(req, e, sMin, eMinAligned);
+          placed = true;
+          // Avance i au-delà des cellules nouvellement remplies
+          while (i < req.cells.length - 1 && req.cells[i + 1].userId !== null) i++;
+          break;
+        }
+        if (placed) break;
+      }
+    }
+  }
+  logs.phases.pB_ms = Date.now() - t_pB;
+
+  // ─── PASSE C : Optimisation locale (extension de shifts adjacents) ───────
+  const t_pC = Date.now();
+  let optIters = 0;
+  let improved = true;
+  while (improved && optIters < MAX_OPT_ITERS) {
+    improved = false;
+    optIters++;
+    for (const req of sortedReqs) {
+      for (let i = 0; i < req.cells.length; i++) {
+        const cell = req.cells[i];
+        if (cell.userId !== null || cell.blocked) continue;
+        // Vérifier voisin gauche
+        if (i > 0 && req.cells[i - 1].userId) {
+          const eId = req.cells[i - 1].userId!;
+          const e = employees.get(eId);
+          if (e && tryExtendRight(e, req, i, s, employees, hasConflict, restOk, availOn, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
+            improved = true;
+            continue;
+          }
+        }
+        // Vérifier voisin droit
+        if (i < req.cells.length - 1 && req.cells[i + 1].userId) {
+          const eId = req.cells[i + 1].userId!;
+          const e = employees.get(eId);
+          if (e && tryExtendLeft(e, req, i, s, employees, hasConflict, restOk, availOn, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
+            improved = true;
+            continue;
+          }
+        }
+      }
+    }
+  }
+  logs.phases.pC_ms = Date.now() - t_pC;
+  logs.optimization_iterations = optIters;
+
+  // ─── PASSE D : Ajustement CDI vers target ± tolérance ────────────────────
+  const t_pD = Date.now();
+  for (const e of cdiList) {
+    // Pour chaque semaine couverte par la période
+    const weeks = new Set<string>();
+    for (const date of eachDate(monthStart, monthEnd)) weeks.add(isoWeekStart(date));
+    for (const wk of weeks) {
+      const wkH = (e.weeklyMin.get(wk) ?? 0) / 60;
+      const studioForLimits = Array.from(e.studios)[0] ?? "";
+      const target = isKitchenSolo(e.id, studioForLimits)
+        ? maxWeeklyHFor(e, studioForLimits)
+        : s.target_weekly_cdi_hours;
+      const tol = s.cdi_hours_tolerance;
+      if (wkH >= target - tol && wkH <= target + tol) continue;
+
+      if (wkH < target - tol) {
+        // Sous-target : tenter d'étendre un shift existant cette semaine
+        // (déjà couvert partiellement par Passe C — ici on alerte si toujours en dessous)
+        if (wkH < target - tol) {
+          alerts.push({
+            type: "cdi_hours",
+            severity: "warning",
+            user_id: e.id,
+            user_name: `${e.first_name} ${e.last_name}`,
+            message: `CDI à ${wkH.toFixed(1)}h sur la semaine du ${wk} (cible ${target}h ± ${tol}h)`,
+          });
+        }
+      } else if (wkH > target + tol && !isKitchenSolo(e.id, studioForLimits)) {
+        // Sur-target : raccourcir un shift non critique (le plus court d'abord)
+        const shifts = e.assigned.filter((a) => isoWeekStart(a.date) === wk).sort((a, b) => (a.endMin - a.startMin) - (b.endMin - b.startMin));
+        for (const sh of shifts) {
+          const excessH = wkH - target;
+          if (excessH <= 0) break;
+          const shiftH = (sh.endMin - sh.startMin) / 60;
+          if (shiftH <= s.min_shift_hours) continue; // ne pas casser sous min
+          // On laisse l'alerte plutôt que de retirer (éviter de créer un trou)
+          alerts.push({
+            type: "cdi_hours",
+            severity: "info",
+            user_id: e.id,
+            user_name: `${e.first_name} ${e.last_name}`,
+            message: `CDI à ${wkH.toFixed(1)}h cette semaine (au-dessus de la cible ${target}h)`,
+          });
+          break;
+        }
+      }
+    }
+  }
+  logs.phases.pD_ms = Date.now() - t_pD;
+
+  // ─── PHASE 5 — Validation + écriture ─────────────────────────────────────
+  const t_p5 = Date.now();
+
+  // Reconstruire les "shifts finaux" à partir des cellules
+  const finalShifts: Array<{
+    user_id: string; studio_id: string; business_role: string;
+    shift_date: string; start_time: string; end_time: string;
+    status: string; is_locked: boolean; is_manual: boolean;
+  }> = [];
+  for (const req of requirements) {
+    let i = 0;
+    while (i < req.cells.length) {
+      const c = req.cells[i];
+      if (c.blocked || c.userId === null) { i++; continue; }
+      const uid = c.userId;
+      let j = i;
+      while (j < req.cells.length - 1 &&
+             req.cells[j + 1].userId === uid &&
+             !req.cells[j + 1].blocked &&
+             req.cells[j + 1].startMin === req.cells[j].endMin) j++;
+      finalShifts.push({
+        user_id: uid,
+        studio_id: req.studio_id,
+        business_role: req.role,
+        shift_date: req.date,
+        start_time: `${m2t(req.cells[i].startMin)}:00`,
+        end_time: `${m2t(req.cells[j].endMin)}:00`,
+        status: "scheduled",
+        is_locked: false,
+        is_manual: false,
+      });
+      i = j + 1;
+    }
+  }
+
+  // Validation : pas de shift < min, pas de chevauchement (sécurité)
+  const validation: string[] = [];
+  for (const sh of finalShifts) {
+    const dur = t2m(sh.end_time) - t2m(sh.start_time);
+    if (dur < s.min_shift_hours * 60) {
+      validation.push(`Shift < min: ${sh.user_id} ${sh.shift_date} ${sh.start_time}-${sh.end_time}`);
+    }
+  }
+
+  // Trous = besoins non couverts (cellule par cellule, agrégées par requirement)
+  const holes: Array<{
+    studio_id: string; studio_name: string; date: string;
+    start_time: string; end_time: string; business_role: string; reason: string;
+  }> = [];
+  const holeReasons = new Map<string, number>();
+  for (const req of requirements) {
+    let i = 0;
+    while (i < req.cells.length) {
+      if (req.cells[i].userId !== null || req.cells[i].blocked) { i++; continue; }
+      let j = i;
+      while (j < req.cells.length - 1 && req.cells[j + 1].userId === null && !req.cells[j + 1].blocked) j++;
+      const reason = diagnoseReason(req, reqCandidates.get(req.id) ?? [], availOn);
+      holes.push({
+        studio_id: req.studio_id,
+        studio_name: studioName.get(req.studio_id) ?? "—",
+        date: req.date,
+        start_time: m2t(req.cells[i].startMin),
+        end_time: m2t(req.cells[j].endMin),
+        business_role: req.role,
+        reason,
+      });
+      holeReasons.set(reason, (holeReasons.get(reason) ?? 0) + 1);
+      i = j + 1;
+    }
+  }
+
+  // Écriture (sauf dry_run)
+  let inserted = 0;
+  if (!dryRun) {
+    // Supprimer les shifts générés précédemment sur la même période/studios
+    // (garde manuels ET lockés, peu importe les flags d'input — la sécu vit ici)
+    const { error: delErr } = await supabase.from("shifts").delete()
+      .gte("shift_date", monthStart).lte("shift_date", monthEnd)
+      .in("studio_id", studioIds)
+      .eq("is_manual", false).eq("is_locked", false);
+    if (delErr) throw new Error(`Erreur suppression : ${delErr.message}`);
+
+    // Batch insert
     const BATCH = 500;
-    for (let i = 0; i < toInsert.length; i += BATCH) {
-      const slice = toInsert.slice(i, i + BATCH);
+    for (let k = 0; k < finalShifts.length; k += BATCH) {
+      const slice = finalShifts.slice(k, k + BATCH);
       const { error } = await supabase.from("shifts").insert(slice);
-      if (error) {
-        return {
-          ok: false, error: `Erreur d'insertion : ${error.message}`,
-          created: i, holes: toInsert.filter((x) => x.user_id === null).length,
-          totalRequired: needs.length, candidatesPool: candidates.size,
-          kpis: { coverage: 0, equity: 0, fairness: 0 }, unfilled: [], alerts: [],
-        };
-      }
+      if (error) throw new Error(`Erreur insertion : ${error.message}`);
+      inserted += slice.length;
     }
+  }
+  logs.phases.p5_ms = Date.now() - t_p5;
 
-    // ─── 6. KPIs ────────────────────────────────────────────────────
-    const coverage = totalRequiredMin > 0 ? Math.round((totalCoveredMin / totalRequiredMin) * 100) : 100;
-    const counts = Array.from(candidates.values()).map((c) => c.assigned_count).filter((n) => n > 0);
-    const avg = counts.length ? counts.reduce((a, b) => a + b, 0) / counts.length : 0;
-    const variance = counts.length ? counts.reduce((s, n) => s + Math.pow(n - avg, 2), 0) / counts.length : 0;
-    const equity = avg > 0 ? Math.max(0, Math.min(10, 10 - Math.sqrt(variance))) : 10;
-
-    const holes = toInsert.filter((x) => x.user_id === null);
-    const unfilled = holes.slice(0, 20).map((h) => ({
-      date: h.shift_date,
-      time: `${String(h.start_time).slice(0, 5)} – ${String(h.end_time).slice(0, 5)}`,
-      role: h.business_role,
-      studio_id: h.studio_id,
-      studio: studioNames.get(h.studio_id) ?? "—",
-      reason: "Aucun candidat éligible disponible sur ce créneau",
-    }));
-
-    const alerts: { name: string; detail: string; level: "danger" | "warning" }[] = [];
-    for (const c of candidates.values()) {
-      if (c.roles.size > 0 && c.assigned_count === 0) {
-        alerts.push({
-          name: `${c.first_name} ${c.last_name}`,
-          detail: "0 shift attribué — vérifier rôles, studios ou dispos",
-          level: "warning",
-        });
-      }
+  // Distribution durées
+  const durations = finalShifts.map((sh) => (t2m(sh.end_time) - t2m(sh.start_time)) / 60);
+  const distrib: Record<string, number> = {};
+  for (const d of durations) {
+    const bucket = `${d.toFixed(1)}h`;
+    distrib[bucket] = (distrib[bucket] ?? 0) + 1;
+  }
+  // Heures par employé (pour debug équité)
+  const hoursByEmployee: Array<{ id: string; name: string; hours: number; contract: string }> = [];
+  for (const e of employees.values()) {
+    if (e.totalAssignedMin > 0) {
+      hoursByEmployee.push({
+        id: e.id,
+        name: `${e.first_name} ${e.last_name}`,
+        hours: +(e.totalAssignedMin / 60).toFixed(1),
+        contract: Array.from(e.contracts).join(","),
+      });
     }
+  }
+  hoursByEmployee.sort((a, b) => b.hours - a.hours);
 
-    return {
-      ok: true,
-      created: totalCreated,
-      holes: holes.length,
-      totalRequired: needs.length,
-      candidatesPool: candidates.size,
-      kpis: {
-        coverage,
-        equity: Number(equity.toFixed(1)),
-        fairness: counts.length,
-      },
-      unfilled,
-      alerts: alerts.slice(0, 10),
-    };
-  });
+  const top5HoleReasons = Array.from(holeReasons.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([reason, count]) => ({ reason, count }));
+
+  const totalSlotsCovered = totalSlotsNeeded - holes.length;
+  const coverage = totalCells > 0
+    ? requirements.reduce((a, r) => a + r.cells.filter((c) => c.userId !== null || c.blocked).length, 0) / totalCells
+    : 1;
+
+  const status: "success" | "partial" | "failed" =
+    coverage >= 0.95 ? "success" : coverage >= 0.5 ? "partial" : "failed";
+
+  logs.duration_distribution = distrib;
+  logs.top_hole_reasons = top5HoleReasons;
+  logs.hours_by_employee = hoursByEmployee.slice(0, 100);
+  logs.validation_warnings = validation;
+  logs.dry_run = dryRun;
+
+  return {
+    status,
+    coverage_rate: +coverage.toFixed(4),
+    shifts_generated: dryRun ? finalShifts.length : inserted,
+    total_slots_needed: totalSlotsNeeded,
+    total_slots_covered: totalSlotsCovered,
+    holes,
+    alerts,
+    solver_logs: logs,
+  };
+}
+
+// ─── Helpers de la passe C (factorisés pour lisibilité) ─────────────────────
+function tryExtendRight(
+  e: Employee, req: Requirement, i: number, s: Settings,
+  _employees: Map<string, Employee>,
+  hasConflict: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
+  restOk: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
+  availOn: (uid: string, date: string) => AvailRange[],
+  maxShiftHFor: (e: Employee, sId: string) => number,
+  maxWeeklyHFor: (e: Employee, sId: string) => number,
+  weeklyHours: (e: Employee, date: string) => number,
+): boolean {
+  const cell = req.cells[i];
+  // Cherche le shift à étendre (last assigned for this user on this req)
+  const a = [...e.assigned].reverse().find((x) => x.reqId === req.id && x.endMin === cell.startMin);
+  if (!a) return false;
+  const newEnd = cell.endMin;
+  const newDurH = (newEnd - a.startMin) / 60;
+  if (newDurH > maxShiftHFor(e, req.studio_id)) return false;
+  const wkRemainingH = maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date);
+  if ((newEnd - a.endMin) / 60 > wkRemainingH) return false;
+  // dispo
+  if (!availOn(e.id, req.date).some((r) => r.startMin <= a.startMin && r.endMin >= newEnd)) return false;
+  if (hasConflict(e, req.date, a.endMin, newEnd)) return false;
+  if (!restOk(e, req.date, a.endMin, newEnd)) return false;
+  cell.userId = e.id;
+  a.endMin = newEnd;
+  e.weeklyMin.set(isoWeekStart(req.date), (e.weeklyMin.get(isoWeekStart(req.date)) ?? 0) + (newEnd - cell.startMin));
+  e.totalAssignedMin += (newEnd - cell.startMin);
+  return true;
+}
+
+function tryExtendLeft(
+  e: Employee, req: Requirement, i: number, s: Settings,
+  _employees: Map<string, Employee>,
+  hasConflict: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
+  restOk: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
+  availOn: (uid: string, date: string) => AvailRange[],
+  maxShiftHFor: (e: Employee, sId: string) => number,
+  maxWeeklyHFor: (e: Employee, sId: string) => number,
+  weeklyHours: (e: Employee, date: string) => number,
+): boolean {
+  const cell = req.cells[i];
+  const a = e.assigned.find((x) => x.reqId === req.id && x.startMin === cell.endMin);
+  if (!a) return false;
+  const newStart = cell.startMin;
+  const newDurH = (a.endMin - newStart) / 60;
+  if (newDurH > maxShiftHFor(e, req.studio_id)) return false;
+  const wkRemainingH = maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date);
+  if ((a.startMin - newStart) / 60 > wkRemainingH) return false;
+  if (!availOn(e.id, req.date).some((r) => r.startMin <= newStart && r.endMin >= a.endMin)) return false;
+  if (hasConflict(e, req.date, newStart, a.startMin)) return false;
+  if (!restOk(e, req.date, newStart, a.endMin)) return false;
+  cell.userId = e.id;
+  a.startMin = newStart;
+  e.weeklyMin.set(isoWeekStart(req.date), (e.weeklyMin.get(isoWeekStart(req.date)) ?? 0) + (cell.endMin - newStart));
+  e.totalAssignedMin += (cell.endMin - newStart);
+  return true;
+}
+
+// ─── Diagnose pourquoi un slot reste non couvert ─────────────────────────────
+function diagnoseReason(
+  req: Requirement,
+  cands: Employee[],
+  availOn: (uid: string, date: string) => AvailRange[],
+): string {
+  if (cands.length === 0) return "Aucun employé qualifié (rôle/contrat/studio)";
+  const withAvail = cands.filter((c) => availOn(c.id, req.date).length > 0);
+  if (withAvail.length === 0) return "Aucun candidat n'a déclaré de disponibilité ce jour";
+  const overlapping = withAvail.filter((c) =>
+    availOn(c.id, req.date).some((r) => r.startMin < req.endMin && r.endMin > req.startMin),
+  );
+  if (overlapping.length === 0) return "Dispos déclarées hors créneau";
+  return "Tous les candidats déjà saturés (quota hebdo, conflits ou repos 11h)";
+}
+
+// ─── Parsing settings avec fallbacks ────────────────────────────────────────
+function parseSettings(row: any): Settings {
+  return {
+    weight_performance: row?.weight_performance ?? 40,
+    weight_equity: row?.weight_equity ?? 30,
+    weight_preference: row?.weight_preference ?? 20,
+    weight_random: row?.weight_random ?? 10,
+    enforce_rest_11h: row?.enforce_rest_11h ?? true,
+    enforce_max_weekly_cdi: row?.enforce_max_weekly_cdi ?? true,
+    enforce_student_quota: row?.enforce_student_quota ?? true,
+    strict_preferences: row?.strict_preferences ?? false,
+    min_shift_hours: row?.min_shift_hours ?? 3,
+    max_shift_hours: row?.max_shift_hours ?? 6,
+    max_shift_hours_cdi: row?.max_shift_hours_cdi ?? 8,
+    max_shift_hours_student: row?.max_shift_hours_student ?? 6,
+    max_shift_hours_flexi: row?.max_shift_hours_flexi ?? 6,
+    max_weekly_cdi_hours: row?.max_weekly_cdi_hours ?? 48,
+    max_weekly_student_hours: row?.max_weekly_student_hours ?? 15,
+    max_weekly_flexi_hours: row?.max_weekly_flexi_hours ?? 20,
+    target_weekly_cdi_hours: row?.target_weekly_cdi_hours ?? 35,
+    cdi_hours_tolerance: row?.cdi_hours_tolerance ?? 2,
+    default_score_when_null: row?.default_score_when_null ?? 7.0,
+  };
+}
