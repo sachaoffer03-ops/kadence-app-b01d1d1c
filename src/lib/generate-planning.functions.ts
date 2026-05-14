@@ -342,6 +342,55 @@ export const generatePlanning = createServerFn({ method: "POST" })
       let pointer = n.startMin;
       let lastMaxAssigned = Math.max(1, ...Array.from(candidates.values()).map((c) => c.assigned_count));
 
+      // ─── MODE ATOMIQUE : besoin avec contrat fixe (ex. CDI cuisine/bar)
+      // → un seul employé couvre tout le créneau, sans découpe ni min/max.
+      const atomic = !!n.contract;
+      if (atomic) {
+        const fullDurH = (n.endMin - n.startMin) / 60;
+        type AtomOpt = { c: Candidate; score: number };
+        const opts: AtomOpt[] = [];
+        for (const c of pool) {
+          if (candidateConflict(c, n.date, n.startMin, n.endMin)) continue;
+          if (!checkRest11(c, n.date, n.startMin, n.endMin)) continue;
+          // CDI : on respecte uniquement le plafond hebdo (contrat fixe peut dépasser max_shift_hours)
+          if (!checkWeeklyCDI(c, n.date, fullDurH)) continue;
+          if (!checkWeeklyStudent(c, n.date, fullDurH)) continue;
+          if (!checkWeeklyFlexi(c, n.date, fullDurH)) continue;
+          if (!checkStudentQuota(c, fullDurH)) continue;
+          const perf = (c.score ?? 7) / 10;
+          const eq = 1 - c.assigned_count / Math.max(lastMaxAssigned, 1);
+          const ranges = candidateAvail(c.id, n.date);
+          const covers = ranges.some((r) => r.s <= n.startMin && r.e >= n.endMin);
+          const pref = covers ? 1 : hasAnyAvail(c.id) ? 0.3 : 0.5;
+          const wTot = (s.weight_performance + s.weight_equity + s.weight_preference + s.weight_random) || 1;
+          const score = (s.weight_performance * perf + s.weight_equity * eq + s.weight_preference * pref + s.weight_random * Math.random()) / wTot;
+          opts.push({ c, score });
+        }
+        if (opts.length === 0) {
+          toInsert.push({
+            user_id: null, studio_id: n.studio_id, business_role: n.role,
+            shift_date: n.date,
+            start_time: `${m2t(n.startMin)}:00`,
+            end_time: `${m2t(n.endMin)}:00`,
+            status: "scheduled", is_locked: false, is_manual: false,
+          });
+        } else {
+          opts.sort((a, b) => b.score - a.score);
+          const best = opts[0];
+          toInsert.push({
+            user_id: best.c.id, studio_id: n.studio_id, business_role: n.role,
+            shift_date: n.date,
+            start_time: `${m2t(n.startMin)}:00`,
+            end_time: `${m2t(n.endMin)}:00`,
+            status: "draft", is_locked: false, is_manual: false,
+          });
+          best.c.assigned_count++;
+          totalCreated++;
+          totalCoveredMin += n.endMin - n.startMin;
+        }
+        continue;
+      }
+
       while (pointer < n.endMin) {
         // Pour chaque candidat éligible, lister les blocs valides commençant à pointer
         type Option = { c: Candidate; blockEnd: number; score: number };
