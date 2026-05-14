@@ -1043,7 +1043,6 @@ function PlanningCalendarPage() {
                   );
                 })}
               </div>
-            </div>
           );
         })()}
       </div>
