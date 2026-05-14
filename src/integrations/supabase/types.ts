@@ -1154,6 +1154,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      merge_studio: { Args: { dst_id: string; src_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "manager" | "employee"
