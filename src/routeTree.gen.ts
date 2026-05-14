@@ -31,6 +31,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
+import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
 
 const TrousRoute = TrousRouteImport.update({
@@ -143,6 +144,11 @@ const PlanningGenerateRoute = PlanningGenerateRouteImport.update({
   path: '/generate',
   getParentRoute: () => PlanningRoute,
 } as any)
+const AdminSeederRoute = AdminSeederRouteImport.update({
+  id: '/admin/seeder',
+  path: '/admin/seeder',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminDataDiagnosticRoute = AdminDataDiagnosticRouteImport.update({
   id: '/admin/data-diagnostic',
   path: '/admin/data-diagnostic',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
+  '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
+  '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
+  '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
     | '/studios'
     | '/trous'
     | '/admin/data-diagnostic'
+    | '/admin/seeder'
     | '/planning/generate'
     | '/staff/$id'
     | '/staff/'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/studios'
     | '/trous'
     | '/admin/data-diagnostic'
+    | '/admin/seeder'
     | '/planning/generate'
     | '/staff/$id'
     | '/staff'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/studios'
     | '/trous'
     | '/admin/data-diagnostic'
+    | '/admin/seeder'
     | '/planning/generate'
     | '/staff/$id'
     | '/staff/'
@@ -322,6 +334,7 @@ export interface RootRouteChildren {
   StudiosRoute: typeof StudiosRoute
   TrousRoute: typeof TrousRoute
   AdminDataDiagnosticRoute: typeof AdminDataDiagnosticRoute
+  AdminSeederRoute: typeof AdminSeederRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -480,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanningGenerateRouteImport
       parentRoute: typeof PlanningRoute
     }
+    '/admin/seeder': {
+      id: '/admin/seeder'
+      path: '/admin/seeder'
+      fullPath: '/admin/seeder'
+      preLoaderRoute: typeof AdminSeederRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/data-diagnostic': {
       id: '/admin/data-diagnostic'
       path: '/admin/data-diagnostic'
@@ -535,6 +555,7 @@ const rootRouteChildren: RootRouteChildren = {
   StudiosRoute: StudiosRoute,
   TrousRoute: TrousRoute,
   AdminDataDiagnosticRoute: AdminDataDiagnosticRoute,
+  AdminSeederRoute: AdminSeederRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

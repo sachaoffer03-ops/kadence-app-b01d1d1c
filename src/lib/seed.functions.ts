@@ -61,7 +61,7 @@ async function cleanup(log: string[]) {
     "formation_completions", "shift_handoffs", "shift_reports",
   ];
   for (const t of tables) {
-    const { error, count } = await supabaseAdmin.from(t).delete({ count: "exact" }).in("user_id", deleteIds);
+    const { error, count } = await (supabaseAdmin.from(t as any) as any).delete({ count: "exact" }).in("user_id", deleteIds);
     if (error) console.warn(`[seed] cleanup ${t}:`, error.message);
     else linkedCount += count ?? 0;
   }
@@ -218,7 +218,7 @@ async function ensureStaffingTemplates(rhodeId: string, chatelainId: string, log
   }
 
   if (templates.length > 0) {
-    const { error } = await supabaseAdmin.from("staffing_templates").insert(templates);
+    const { error } = await supabaseAdmin.from("staffing_templates").insert(templates as any);
     if (error) throw new Error(`staffing_templates: ${error.message}`);
     created = templates.length;
     log.push(`${created} staffing_templates créés`);
