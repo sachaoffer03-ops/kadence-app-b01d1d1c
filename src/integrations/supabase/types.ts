@@ -16,16 +16,22 @@ export type Database = {
     Tables: {
       ai_planning_settings: {
         Row: {
+          cdi_hours_tolerance: number
+          default_score_when_null: number
           enforce_max_weekly_cdi: boolean
           enforce_rest_11h: boolean
           enforce_student_quota: boolean
           id: string
           max_shift_hours: number
+          max_shift_hours_cdi: number
+          max_shift_hours_flexi: number
+          max_shift_hours_student: number
           max_weekly_cdi_hours: number
           max_weekly_flexi_hours: number
           max_weekly_student_hours: number
           min_shift_hours: number
           strict_preferences: boolean
+          target_weekly_cdi_hours: number
           updated_at: string
           updated_by: string | null
           weight_equity: number
@@ -34,16 +40,22 @@ export type Database = {
           weight_random: number
         }
         Insert: {
+          cdi_hours_tolerance?: number
+          default_score_when_null?: number
           enforce_max_weekly_cdi?: boolean
           enforce_rest_11h?: boolean
           enforce_student_quota?: boolean
           id?: string
           max_shift_hours?: number
+          max_shift_hours_cdi?: number
+          max_shift_hours_flexi?: number
+          max_shift_hours_student?: number
           max_weekly_cdi_hours?: number
           max_weekly_flexi_hours?: number
           max_weekly_student_hours?: number
           min_shift_hours?: number
           strict_preferences?: boolean
+          target_weekly_cdi_hours?: number
           updated_at?: string
           updated_by?: string | null
           weight_equity?: number
@@ -52,16 +64,22 @@ export type Database = {
           weight_random?: number
         }
         Update: {
+          cdi_hours_tolerance?: number
+          default_score_when_null?: number
           enforce_max_weekly_cdi?: boolean
           enforce_rest_11h?: boolean
           enforce_student_quota?: boolean
           id?: string
           max_shift_hours?: number
+          max_shift_hours_cdi?: number
+          max_shift_hours_flexi?: number
+          max_shift_hours_student?: number
           max_weekly_cdi_hours?: number
           max_weekly_flexi_hours?: number
           max_weekly_student_hours?: number
           min_shift_hours?: number
           strict_preferences?: boolean
+          target_weekly_cdi_hours?: number
           updated_at?: string
           updated_by?: string | null
           weight_equity?: number
@@ -477,6 +495,77 @@ export type Database = {
           shifts_count?: number
         }
         Relationships: []
+      }
+      planning_runs: {
+        Row: {
+          alerts: Json | null
+          completed_at: string | null
+          coverage_rate: number | null
+          dry_run: boolean
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          month_end_date: string
+          month_start_date: string
+          preserve_locked: boolean
+          preserve_manual: boolean
+          shifts_generated: number
+          shifts_with_holes: number
+          solver_logs: Json | null
+          started_at: string
+          status: string
+          studios_included: string[]
+          triggered_by: string | null
+        }
+        Insert: {
+          alerts?: Json | null
+          completed_at?: string | null
+          coverage_rate?: number | null
+          dry_run?: boolean
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          month_end_date: string
+          month_start_date: string
+          preserve_locked?: boolean
+          preserve_manual?: boolean
+          shifts_generated?: number
+          shifts_with_holes?: number
+          solver_logs?: Json | null
+          started_at?: string
+          status: string
+          studios_included?: string[]
+          triggered_by?: string | null
+        }
+        Update: {
+          alerts?: Json | null
+          completed_at?: string | null
+          coverage_rate?: number | null
+          dry_run?: boolean
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          month_end_date?: string
+          month_start_date?: string
+          preserve_locked?: boolean
+          preserve_manual?: boolean
+          shifts_generated?: number
+          shifts_with_holes?: number
+          solver_logs?: Json | null
+          started_at?: string
+          status?: string
+          studios_included?: string[]
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_runs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
