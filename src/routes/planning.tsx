@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
@@ -439,6 +439,16 @@ function FillHoleModal({ shift, onClose, onFill }: { shift: PlanningShift; onClo
 const fmtTime = (s: string) => s.replace("h00", ":00").replace("h", ":");
 
 function PlanningPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  if (pathname !== "/planning") {
+    return <Outlet />;
+  }
+
+  return <PlanningCalendarPage />;
+}
+
+function PlanningCalendarPage() {
   const { names: roles } = useBusinessRoles({ onlyActive: true });
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
