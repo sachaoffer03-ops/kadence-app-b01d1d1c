@@ -20,6 +20,8 @@ export type Database = {
           enforce_rest_11h: boolean
           enforce_student_quota: boolean
           id: string
+          max_shift_hours: number
+          min_shift_hours: number
           strict_preferences: boolean
           updated_at: string
           updated_by: string | null
@@ -33,6 +35,8 @@ export type Database = {
           enforce_rest_11h?: boolean
           enforce_student_quota?: boolean
           id?: string
+          max_shift_hours?: number
+          min_shift_hours?: number
           strict_preferences?: boolean
           updated_at?: string
           updated_by?: string | null
@@ -46,6 +50,8 @@ export type Database = {
           enforce_rest_11h?: boolean
           enforce_student_quota?: boolean
           id?: string
+          max_shift_hours?: number
+          min_shift_hours?: number
           strict_preferences?: boolean
           updated_at?: string
           updated_by?: string | null
@@ -60,22 +66,25 @@ export type Database = {
         Row: {
           avail_date: string
           created_at: string
+          end_time: string
           id: string
-          slot: Database["public"]["Enums"]["availability_slot"]
+          start_time: string
           user_id: string
         }
         Insert: {
           avail_date: string
           created_at?: string
+          end_time: string
           id?: string
-          slot: Database["public"]["Enums"]["availability_slot"]
+          start_time: string
           user_id: string
         }
         Update: {
           avail_date?: string
           created_at?: string
+          end_time?: string
           id?: string
-          slot?: Database["public"]["Enums"]["availability_slot"]
+          start_time?: string
           user_id?: string
         }
         Relationships: []
@@ -780,6 +789,8 @@ export type Database = {
           day_of_week: number
           end_time: string
           id: string
+          is_optional: boolean
+          required_contract: Database["public"]["Enums"]["contract_type"] | null
           required_count: number
           start_time: string
           studio_id: string
@@ -791,6 +802,10 @@ export type Database = {
           day_of_week: number
           end_time: string
           id?: string
+          is_optional?: boolean
+          required_contract?:
+            | Database["public"]["Enums"]["contract_type"]
+            | null
           required_count?: number
           start_time: string
           studio_id: string
@@ -802,6 +817,10 @@ export type Database = {
           day_of_week?: number
           end_time?: string
           id?: string
+          is_optional?: boolean
+          required_contract?:
+            | Database["public"]["Enums"]["contract_type"]
+            | null
           required_count?: number
           start_time?: string
           studio_id?: string
