@@ -1,5 +1,5 @@
 import { useRouterState, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Plus, Menu } from "lucide-react";
+import { Bell, Search, Plus, Menu, LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import logo from "@/assets/kadence-logo.png";
 import { CreateShiftModal } from "@/components/CreateShiftModal";
