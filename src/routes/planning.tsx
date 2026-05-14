@@ -1053,9 +1053,22 @@ function PlanningCalendarPage() {
                       />
                     ))}
 
-                    {[...cellShifts].sort((a, b) => a.startHour.localeCompare(b.startHour)).map((shift) => {
+                    {sorted.map((shift) => {
                       const rc = roleColors[shift.role];
                       const sStr = String(shift.startTime).slice(0, 5);
+                      const eStr = String(shift.endTime).slice(0, 5);
+                      const top = topPx(sStr);
+                      const h = heightPx(sStr, eStr);
+                      const startLabel = shift.startHour.replace("h00", "h");
+                      const endLabel = shift.endHour.replace("h00", "h");
+                      const compact = h < 56;
+                      const lane = laneOf.get(shift.id) ?? 0;
+                      const lanes = clusterOf.get(shift.id)?.size ?? 1;
+                      // Each shift takes 1/lanes of the column width, with small gaps
+                      const gap = 2;
+                      const widthPct = 100 / lanes;
+                      const leftStyle = `calc(${lane * widthPct}% + ${gap}px)`;
+                      const widthStyle = `calc(${widthPct}% - ${gap * 2}px)`;
                       const eStr = String(shift.endTime).slice(0, 5);
                       const top = topPx(sStr);
                       const h = heightPx(sStr, eStr);
