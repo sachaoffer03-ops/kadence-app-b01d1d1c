@@ -5,6 +5,8 @@ import { ArrowLeft, Mail, Phone, MapPin, Star, Download, UserX, MessageSquare, A
 import { supabase } from "@/integrations/supabase/client";
 import { roleColors, type Role } from "@/lib/mock-data";
 import { useAuth } from "@/hooks/use-auth";
+import { computePunctuality, punctualityColor } from "@/lib/staff-helpers";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from "recharts";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -21,7 +23,7 @@ interface Profile {
   emergency_contact_relation: string | null;
   student_card_valid: boolean | null;
 }
-interface ShiftRow { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; status: string; }
+interface ShiftRow { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; status: string; clocked_in_at: string | null; clocked_out_at: string | null; }
 interface FB { id: string; rating: number; message: string | null; created_at: string; shift_id: string | null; author_id: string; }
 interface Sig { id: string; category: string; message: string; created_at: string; resolved: boolean; }
 interface AuthorMini { id: string; first_name: string; last_name: string; }
@@ -55,7 +57,7 @@ function EmployeeDetailPage() {
       supabase.from("studios").select("id,name"),
       supabase.from("user_studios").select("studio_id").eq("user_id", id),
       supabase.from("user_contracts").select("contract").eq("user_id", id),
-      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status").eq("user_id", id).order("shift_date", { ascending: false }).limit(20),
+      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status,clocked_in_at,clocked_out_at").eq("user_id", id).order("shift_date", { ascending: false }).limit(20),
       supabase.from("signalements").select("id,category,message,created_at,resolved").eq("author_id", id).order("created_at", { ascending: false }).limit(10),
     ]);
     setEmp(p as Profile | null);
@@ -254,6 +256,7 @@ function EmployeeDetailPage() {
 
         {/* RIGHT */}
         <div className="col-span-3 flex flex-col gap-4">
+          <PunctualityCard shifts={shifts} />
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
               Shifts récents ({shifts.length})
@@ -388,6 +391,75 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between py-1" style={{ fontSize: 12 }}>
       <span style={{ color: "var(--muted-foreground)" }}>{label}</span>
       <span style={{ fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+}
+
+function PunctualityCard({ shifts }: { shifts: ShiftRow[] }) {
+  // Du plus ancien au plus récent, uniquement les shifts pointés (in + out)
+  const data = shifts
+    .slice()
+    .reverse()
+    .map((s) => {
+      const pct = computePunctuality(s);
+      if (pct === null) return null;
+      return {
+        date: new Date(s.shift_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+        pct,
+      };
+    })
+    .filter((x): x is { date: string; pct: number } => x !== null);
+
+  const avg = data.length > 0 ? Math.round(data.reduce((a, b) => a + b.pct, 0) / data.length) : null;
+  const last = data.length > 0 ? data[data.length - 1].pct : null;
+  const trend = data.length >= 2 ? data[data.length - 1].pct - data[data.length - 2].pct : 0;
+
+  return (
+    <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+      <div className="flex items-center justify-between mb-3">
+        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Taux de pointage
+        </div>
+        <div className="flex items-baseline gap-3">
+          {avg !== null && (
+            <div>
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginRight: 4 }}>Moyenne</span>
+              <span style={{ fontSize: 18, fontWeight: 500, color: punctualityColor(avg) }}>{avg}%</span>
+            </div>
+          )}
+          {last !== null && (
+            <div>
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginRight: 4 }}>Dernier</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: punctualityColor(last) }}>
+                {last}%{data.length >= 2 && trend !== 0 && (
+                  <span style={{ fontSize: 10, color: trend > 0 ? "var(--success-text)" : "var(--danger-text)", marginLeft: 4 }}>
+                    {trend > 0 ? "+" : ""}{trend}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+      {data.length === 0 ? (
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift pointé pour le moment.</div>
+      ) : (
+        <div style={{ width: "100%", height: 140 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} ticks={[0, 50, 100]} />
+              <Tooltip
+                contentStyle={{ fontSize: 11, padding: "4px 8px", border: "0.5px solid var(--border)", borderRadius: 6, backgroundColor: "var(--card)" }}
+                labelStyle={{ fontSize: 10, color: "var(--muted-foreground)" }}
+                formatter={(v: number) => [`${v}%`, "Pointage"]}
+              />
+              <ReferenceLine y={100} stroke="var(--border)" strokeDasharray="2 2" />
+              <Line type="monotone" dataKey="pct" stroke="var(--coral)" strokeWidth={2} dot={{ r: 3, fill: "var(--coral)" }} activeDot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }

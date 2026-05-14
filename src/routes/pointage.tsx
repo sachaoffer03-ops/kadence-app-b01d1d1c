@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Clock, Check, Calendar, Search, X, LogIn, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getRoleStyle, hhmm, fullName } from "@/lib/staff-helpers";
+import { getRoleStyle, hhmm, fullName, computePunctuality, computePartialPunctuality, punctualityColor } from "@/lib/staff-helpers";
 
 export const Route = createFileRoute("/pointage")({
   component: PointagePage,
@@ -103,14 +103,14 @@ function PointagePage() {
         <table className="w-full" style={{ fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "0.5px solid var(--border)" }}>
-              {["Employé", "Shift prévu", "Studio", "IN", "OUT", "Statut", ""].map((h) => (
+              {["Employé", "Shift prévu", "Studio", "IN", "OUT", "Ponctualité", "Statut", ""].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5" style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift aujourd'hui.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift aujourd'hui.</td></tr>
             ) : filtered.map((entry) => {
               const profile = entry.user_id ? profiles.get(entry.user_id) : null;
               const status = getStatus(entry);
@@ -121,6 +121,12 @@ function PointagePage() {
                 : { bg: "var(--info-bg)", text: "var(--info-text)", label: "À venir" };
               const inT = entry.clocked_in_at ? new Date(entry.clocked_in_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
               const outT = entry.clocked_out_at ? new Date(entry.clocked_out_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
+              const punct = entry.clocked_out_at
+                ? computePunctuality(entry)
+                : entry.clocked_in_at
+                ? computePartialPunctuality(entry)
+                : null;
+              const punctIsFinal = !!entry.clocked_out_at;
 
               return (
                 <tr key={entry.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
@@ -134,6 +140,15 @@ function PointagePage() {
                   <td className="px-4 py-3" style={{ fontSize: 12 }}>{studioName}</td>
                   <td className="px-4 py-3" style={{ fontSize: 12, fontFamily: "monospace" }}>{inT}</td>
                   <td className="px-4 py-3" style={{ fontSize: 12, fontFamily: "monospace" }}>{outT}</td>
+                  <td className="px-4 py-3" style={{ fontSize: 12 }}>
+                    {punct === null ? (
+                      <span style={{ color: "var(--muted-foreground)" }}>—</span>
+                    ) : (
+                      <span style={{ fontWeight: 500, color: punctualityColor(punct) }}>
+                        {punct}%{!punctIsFinal && <span style={{ fontSize: 10, color: "var(--muted-foreground)", marginLeft: 4 }}>(IN)</span>}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: sty.bg, color: sty.text }}>{sty.label}</span></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
