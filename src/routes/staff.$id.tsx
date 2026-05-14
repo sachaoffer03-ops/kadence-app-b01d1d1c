@@ -256,6 +256,7 @@ function EmployeeDetailPage() {
 
         {/* RIGHT */}
         <div className="col-span-3 flex flex-col gap-4">
+          <PunctualityCard shifts={shifts} />
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
               Shifts récents ({shifts.length})
