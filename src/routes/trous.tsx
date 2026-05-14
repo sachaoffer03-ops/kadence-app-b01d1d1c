@@ -25,13 +25,22 @@ interface Proposal {
 
 function elapsed(sentAt: string): string {
   const ms = Date.now() - new Date(sentAt).getTime();
-  const m = Math.floor(ms / 60000);
-  if (m < 1) return "à l'instant";
-  if (m < 60) return `${m} min`;
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h${m % 60 ? ` ${m % 60}m` : ""}`;
+  if (h < 24) return `${h}h ${m % 60}m`;
   const d = Math.floor(h / 24);
   return `${d}j ${h % 24}h`;
+}
+
+// Couleur du chronomètre selon urgence
+function elapsedTone(sentAt: string): { bg: string; text: string } {
+  const h = (Date.now() - new Date(sentAt).getTime()) / 3600000;
+  if (h < 2) return { bg: "var(--success-bg)", text: "var(--success-text)" };
+  if (h < 12) return { bg: "var(--warning-bg)", text: "var(--warning-text)" };
+  return { bg: "var(--danger-bg)", text: "var(--danger-text)" };
 }
 
 function TrousPage() {
