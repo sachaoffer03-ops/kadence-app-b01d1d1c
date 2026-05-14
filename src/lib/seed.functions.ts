@@ -535,3 +535,132 @@ export const seedFakeData = createServerFn({ method: "POST" })
       log,
     };
   });
+
+// ============================================================================
+// addKitchenWeekendStaff
+// Ajoute uniquement Léa Bernardi (étudiante cuisine) + Karim El Amrani (flexi cuisine)
+// au studio Skult Châtelain — sans toucher aux autres données.
+// Idempotent : si un email existe déjà, on skip et on logge.
+// ============================================================================
+export const addKitchenWeekendStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId, supabase } = context;
+    const { data: roleCheck } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
+    if (!roleCheck) throw new Error("Réservé aux administrateurs");
+
+    const log: string[] = [];
+
+    // Récupérer studio Châtelain
+    const { data: chatStudio } = await supabaseAdmin.from("studios")
+      .select("id, name").ilike("name", "%châtelain%").maybeSingle();
+    if (!chatStudio) throw new Error("Studio Skult Châtelain introuvable");
+    const chatelainId = chatStudio.id as string;
+
+    type NewSpec = {
+      first: string; last: string; contract: "Étudiant" | "Flexi"; roles: string[];
+    };
+    const news: NewSpec[] = [
+      { first: "Léa", last: "Bernardi", contract: "Étudiant", roles: ["Cuisine"] },
+      { first: "Karim", last: "El Amrani", contract: "Flexi", roles: ["Cuisine", "Accueil"] },
+    ];
+
+    const created: Array<{ id: string; name: string; contract: string }> = [];
+    const skipped: string[] = [];
+
+    for (const n of news) {
+      const email = `${slug(n.first)}.${slug(n.last)}@fake-coffee.test`;
+      const { data: existing } = await supabaseAdmin.from("profiles")
+        .select("id").eq("email", email).maybeSingle();
+      if (existing) {
+        skipped.push(`${n.first} ${n.last} déjà présent (skip)`);
+        continue;
+      }
+
+      const password = `Test!${Math.random().toString(36).slice(2, 10)}A1`;
+      const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+        email, password, email_confirm: true,
+        user_metadata: { first_name: n.first, last_name: n.last },
+      });
+      if (authErr || !authUser?.user) throw new Error(`auth ${email}: ${authErr?.message}`);
+      const uid = authUser.user.id;
+
+      // Purger lignes auto du trigger
+      await supabaseAdmin.from("profiles").delete().eq("id", uid);
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", uid);
+      await supabaseAdmin.from("user_studios").delete().eq("user_id", uid);
+      await supabaseAdmin.from("user_contracts").delete().eq("user_id", uid);
+      await supabaseAdmin.from("user_business_roles").delete().eq("user_id", uid);
+
+      const isStudent = n.contract === "Étudiant";
+      await supabaseAdmin.from("profiles").insert({
+        id: uid, email, first_name: n.first, last_name: n.last,
+        phone: `+32 4${randInt(70, 99)} ${randInt(10, 99)} ${randInt(10, 99)} ${randInt(10, 99)}`,
+        birth_date: `${randInt(1990, 2003)}-${pad(randInt(1, 12))}-${pad(randInt(1, 28))}`,
+        nationality: rand(NATIONALITIES),
+        address: `${rand(STREETS)} ${randInt(1, 250)}`,
+        city: rand(CITIES),
+        niss: Array.from({ length: 11 }, () => randInt(0, 9)).join(""),
+        iban: "BE" + Array.from({ length: 14 }, () => randInt(0, 9)).join(""),
+        emergency_contact_name: `${rand(FIRST_NAMES)} ${rand(LAST_NAMES)}`,
+        emergency_contact_phone: `+32 4${randInt(70, 99)} ${randInt(10, 99)} ${randInt(10, 99)} ${randInt(10, 99)}`,
+        emergency_contact_relation: rand(["Parent", "Conjoint(e)", "Frère/Soeur", "Ami(e)"]),
+        hire_date: `${randInt(2024, 2026)}-${pad(randInt(1, 12))}-${pad(randInt(1, 28))}`,
+        status: "active",
+        score: Math.round((6.5 + Math.random() * 3) * 10) / 10,
+        student_card_valid: isStudent,
+        quota_max: isStudent ? 650 : null,
+        quota_used: 0,
+        contract: n.contract,
+        studio_id: chatelainId,
+        is_test: true,
+      });
+
+      await supabaseAdmin.from("user_contracts").insert({ user_id: uid, contract: n.contract });
+      await supabaseAdmin.from("user_studios").insert({ user_id: uid, studio_id: chatelainId });
+      await supabaseAdmin.from("user_business_roles").insert(
+        n.roles.map((r) => ({ user_id: uid, role: r })),
+      );
+      await supabaseAdmin.from("user_roles").insert({ user_id: uid, role: "employee" });
+
+      // Disponibilités sur 28 jours — focus week-end
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const availRows: any[] = [];
+      for (let dayOffset = 0; dayOffset < 28; dayOffset++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + dayOffset);
+        const dow = (date.getDay() + 6) % 7;
+        const isWeekend = dow >= 5;
+
+        let chance: number;
+        if (isStudent) chance = isWeekend ? 0.95 : 0.20;
+        else chance = isWeekend ? 0.95 : 0.40;
+        if (Math.random() > chance) continue;
+
+        let sH: number, eH: number;
+        if (isStudent) {
+          if (isWeekend) { sH = 8; eH = 16; } else { sH = 14; eH = 19; }
+        } else {
+          if (isWeekend) { sH = 8; eH = 17; } else { sH = 9 + Math.random() * 2; eH = 17 + Math.random() * 2; }
+        }
+        const snap = (h: number) => Math.round(h * 4) * 15;
+        const sM = snap(sH);
+        const eM = snap(eH);
+        if (eM - sM < 240) continue;
+        availRows.push({
+          user_id: uid,
+          avail_date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+          start_time: `${pad(Math.floor(sM / 60))}:${pad(sM % 60)}:00`,
+          end_time: `${pad(Math.floor(eM / 60))}:${pad(eM % 60)}:00`,
+        });
+      }
+      if (availRows.length > 0) {
+        await supabaseAdmin.from("availabilities").insert(availRows);
+      }
+
+      created.push({ id: uid, name: `${n.first} ${n.last}`, contract: n.contract });
+      log.push(`${n.first} ${n.last} (${n.contract}) créé avec ${availRows.length} dispos`);
+    }
+
+    return { created, skipped, log };
+  });
