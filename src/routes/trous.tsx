@@ -200,13 +200,27 @@ function TrousPage() {
                       <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
                       <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{studioName}</span>
                     </div>
-                    {pendingProps.length > 0 && (
-                      <div className="flex items-center gap-1.5 mt-1.5" style={{ fontSize: 11, color: "var(--coral-dark)" }}>
-                        <Send size={11} />
-                        {pendingProps.length} proposition{pendingProps.length > 1 ? "s" : ""} en attente
-                        <span style={{ color: "var(--muted-foreground)" }}>· la plus ancienne {elapsed(pendingProps[pendingProps.length - 1].sent_at)}</span>
-                      </div>
-                    )}
+                    {pendingProps.length > 0 && (() => {
+                      const oldest = pendingProps[pendingProps.length - 1];
+                      const tone = elapsedTone(oldest.sent_at);
+                      return (
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <span style={{ fontSize: 11, color: "var(--coral-dark)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <Send size={11} />
+                            {pendingProps.length} en attente
+                          </span>
+                          <span
+                            key={tick}
+                            className="rounded-full inline-flex items-center gap-1 px-2 py-0.5 tabular-nums"
+                            style={{ fontSize: 10, fontWeight: 500, backgroundColor: tone.bg, color: tone.text }}
+                            title={`Envoyée le ${new Date(oldest.sent_at).toLocaleString("fr-FR")}`}
+                          >
+                            <Clock size={10} />
+                            {elapsed(oldest.sent_at)}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                   {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
