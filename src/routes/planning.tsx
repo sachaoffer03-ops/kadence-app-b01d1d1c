@@ -925,7 +925,8 @@ function PlanningPage() {
           const DAY_START = 6;
           const DAY_END = 23;
           const HOUR_PX = 48;
-          const totalH = (DAY_END - DAY_START) * HOUR_PX;
+          const TIMELINE_HOURS = DAY_END - DAY_START + 1;
+          const totalH = TIMELINE_HOURS * HOUR_PX;
           const toMin = (t: string) => {
             const [h, m] = t.split(":").map(Number);
             return h * 60 + m;
@@ -935,21 +936,25 @@ function PlanningPage() {
           return (
             <div className="grid" style={{ gridTemplateColumns: gridCols }}>
               {/* Hour labels column */}
-              <div style={{ position: "relative", height: totalH, backgroundColor: "var(--muted)" }}>
-                {Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_START + i).map((h) => (
+              <div
+                style={{
+                  height: totalH,
+                  display: "grid",
+                  gridTemplateRows: `repeat(${TIMELINE_HOURS}, ${HOUR_PX}px)`,
+                  backgroundColor: "var(--muted)",
+                }}
+              >
+                {Array.from({ length: TIMELINE_HOURS }, (_, i) => DAY_START + i).map((h) => (
                   <div
                     key={h}
                     style={{
-                      position: "absolute",
-                      top: (h - DAY_START) * HOUR_PX,
-                      left: 0,
-                      right: 0,
-                      transform: "translateY(-50%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
                       paddingLeft: 12,
                       paddingRight: 8,
                       fontSize: 11,
                       lineHeight: 1,
-                      textAlign: "right",
                       color: "var(--muted-foreground)",
                     }}
                   >
@@ -983,7 +988,7 @@ function PlanningPage() {
                     }}
                   >
                     {/* Hour grid lines */}
-                    {Array.from({ length: DAY_END - DAY_START }, (_, i) => i + 1).map((i) => (
+                    {Array.from({ length: TIMELINE_HOURS - 1 }, (_, i) => i + 1).map((i) => (
                       <div
                         key={i}
                         style={{
