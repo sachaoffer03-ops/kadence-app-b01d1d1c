@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Info } from "lucide-react";
+import { Plus, Trash2, Info, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dropdown } from "@/components/Dropdown";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const ALL_CONTRACTS = ["CDI", "Étudiant", "Flexi"] as const;
 
 interface Studio { id: string; name: string }
 interface Template {
@@ -18,13 +19,13 @@ interface Template {
   required_count: number;
   is_optional: boolean;
   required_contract: "Étudiant" | "Flexi" | "CDI" | null;
+  allowed_contracts: string[] | null;
+  allowed_roles: string[] | null;
 }
 const CONTRACTS = ["Tous", "CDI", "Étudiant", "Flexi"] as const;
 
 interface Props {
-  /** Si fourni : verrouille la sélection sur ce studio (par nom). */
   lockedStudioName?: string;
-  /** Cache la bannière info "modifications enregistrées immédiatement". */
   hideHint?: boolean;
 }
 
@@ -34,6 +35,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [studioId, setStudioId] = useState<string>("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const reload = async () => {
     const [s, t] = await Promise.all([
@@ -42,7 +44,6 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
     ]);
     if (s.data) {
       setStudios(s.data);
-      // Sélection initiale : studio verrouillé si fourni, sinon premier
       if (s.data.length) {
         if (lockedStudioName) {
           const m = s.data.find((x) => x.name === lockedStudioName);
@@ -69,6 +70,8 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
       required_count: 1,
       is_optional: false,
       required_contract: null,
+      allowed_contracts: [],
+      allowed_roles: [],
     });
     if (error) return toast.error(error.message);
     reload();
@@ -76,7 +79,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
 
   const updateRow = async (id: string, patch: Partial<Template>) => {
     setTemplates((p) => p.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-    const { error } = await supabase.from("staffing_templates").update(patch).eq("id", id);
+    const { error } = await supabase.from("staffing_templates").update(patch as any).eq("id", id);
     if (error) toast.error(error.message);
   };
 
@@ -84,6 +87,20 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
     setTemplates((p) => p.filter((t) => t.id !== id));
     await supabase.from("staffing_templates").delete().eq("id", id);
     toast.success("Besoin supprimé");
+  };
+
+  const toggleExpanded = (id: string) => {
+    setExpanded((p) => {
+      const n = new Set(p);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  };
+
+  const toggleInArray = async (t: Template, field: "allowed_roles" | "allowed_contracts", value: string) => {
+    const cur = (t[field] ?? []) as string[];
+    const next = cur.includes(value) ? cur.filter((x) => x !== value) : [...cur, value];
+    await updateRow(t.id, { [field]: next } as Partial<Template>);
   };
 
   if (loading) return <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>;
@@ -136,6 +153,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
             <table className="w-full" style={{ fontSize: 12, borderCollapse: "separate", borderSpacing: "0 4px" }}>
               <thead>
                 <tr style={{ color: "var(--muted-foreground)", fontWeight: 500 }}>
+                  <th></th>
                   <th className="text-left px-2 py-1" style={{ fontSize: 10 }}>Jour</th>
                   <th className="text-left px-2 py-1" style={{ fontSize: 10 }}>Début</th>
                   <th className="text-left px-2 py-1" style={{ fontSize: 10 }}>Fin</th>
@@ -147,53 +165,123 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((t) => (
-                  <tr key={t.id}>
-                    <td className="px-2 py-1">
-                      <Dropdown value={DAYS[t.day_of_week]} options={DAYS} onChange={(v) => updateRow(t.id, { day_of_week: DAYS.indexOf(v) })} minWidth={120} />
-                    </td>
-                    <td className="px-2 py-1">
-                      <input type="time" value={t.start_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { start_time: e.target.value })}
-                        className="rounded-md px-2 py-1.5 outline-none"
-                        style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
-                    </td>
-                    <td className="px-2 py-1">
-                      <input type="time" value={t.end_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { end_time: e.target.value })}
-                        className="rounded-md px-2 py-1.5 outline-none"
-                        style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
-                    </td>
-                    <td className="px-2 py-1">
-                      <Dropdown value={t.business_role} options={[...ROLES]} onChange={(v) => updateRow(t.id, { business_role: v as typeof ROLES[number] })} minWidth={120} />
-                    </td>
-                    <td className="px-2 py-1">
-                      <Dropdown
-                        value={t.required_contract ?? "Tous"}
-                        options={[...CONTRACTS]}
-                        onChange={(v) => updateRow(t.id, { required_contract: v === "Tous" ? null : (v as "CDI" | "Étudiant" | "Flexi") })}
-                        minWidth={110}
-                      />
-                    </td>
-                    <td className="px-2 py-1">
-                      <Dropdown
-                        value={t.is_optional ? "Renfort" : "Obligatoire"}
-                        options={["Obligatoire", "Renfort"]}
-                        onChange={(v) => updateRow(t.id, { is_optional: v === "Renfort" })}
-                        minWidth={120}
-                      />
-                    </td>
-                    <td className="px-2 py-1">
-                      <input type="number" min={0} max={20} value={t.required_count} onChange={(e) => updateRow(t.id, { required_count: Math.max(0, Number(e.target.value)) })}
-                        className="rounded-md px-2 py-1.5 outline-none"
-                        style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 70 }} />
-                    </td>
-                    <td className="px-2 py-1 text-right">
-                      <button onClick={() => deleteRow(t.id)} className="rounded-md p-1.5 transition-colors"
-                        style={{ color: "var(--danger-text)" }}>
-                        <Trash2 size={13} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((t) => {
+                  const isOpen = expanded.has(t.id);
+                  const allowedRoles = t.allowed_roles ?? [];
+                  const allowedContracts = t.allowed_contracts ?? [];
+                  const hasAdvanced = allowedRoles.length > 0 || allowedContracts.length > 0;
+                  return (
+                    <>
+                      <tr key={t.id}>
+                        <td className="px-1">
+                          <button onClick={() => toggleExpanded(t.id)}
+                            className="rounded-md p-1 transition-colors"
+                            title="Polyvalence (rôles & contrats)"
+                            style={{ color: hasAdvanced ? "var(--coral-dark)" : "var(--muted-foreground)" }}>
+                            {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </button>
+                        </td>
+                        <td className="px-2 py-1">
+                          <Dropdown value={DAYS[t.day_of_week]} options={DAYS} onChange={(v) => updateRow(t.id, { day_of_week: DAYS.indexOf(v) })} minWidth={120} />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input type="time" value={t.start_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { start_time: e.target.value })}
+                            className="rounded-md px-2 py-1.5 outline-none"
+                            style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input type="time" value={t.end_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { end_time: e.target.value })}
+                            className="rounded-md px-2 py-1.5 outline-none"
+                            style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
+                        </td>
+                        <td className="px-2 py-1">
+                          <Dropdown value={t.business_role} options={[...ROLES]} onChange={(v) => updateRow(t.id, { business_role: v })} minWidth={120} />
+                        </td>
+                        <td className="px-2 py-1">
+                          <Dropdown
+                            value={t.required_contract ?? "Tous"}
+                            options={[...CONTRACTS]}
+                            onChange={(v) => updateRow(t.id, { required_contract: v === "Tous" ? null : (v as "CDI" | "Étudiant" | "Flexi") })}
+                            minWidth={110}
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <Dropdown
+                            value={t.is_optional ? "Renfort" : "Obligatoire"}
+                            options={["Obligatoire", "Renfort"]}
+                            onChange={(v) => updateRow(t.id, { is_optional: v === "Renfort" })}
+                            minWidth={120}
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input type="number" min={0} max={20} value={t.required_count} onChange={(e) => updateRow(t.id, { required_count: Math.max(0, Number(e.target.value)) })}
+                            className="rounded-md px-2 py-1.5 outline-none"
+                            style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 70 }} />
+                        </td>
+                        <td className="px-2 py-1 text-right">
+                          <button onClick={() => deleteRow(t.id)} className="rounded-md p-1.5 transition-colors"
+                            style={{ color: "var(--danger-text)" }}>
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr key={t.id + "-adv"}>
+                          <td></td>
+                          <td colSpan={8} className="px-2 py-2">
+                            <div className="rounded-lg p-3" style={{ backgroundColor: "var(--muted)" }}>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 8, lineHeight: 1.5 }}>
+                                Polyvalence — laisse vide pour utiliser le rôle et le contrat ci-dessus. Coche plusieurs options pour autoriser n'importe lequel.
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <div>
+                                  <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 4 }}>Rôles autorisés</div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {ROLES.map((r) => {
+                                      const on = allowedRoles.includes(r);
+                                      return (
+                                        <button key={r} onClick={() => toggleInArray(t, "allowed_roles", r)}
+                                          className="rounded-full px-2.5 py-1 transition-colors"
+                                          style={{
+                                            fontSize: 11,
+                                            border: "0.5px solid var(--border)",
+                                            backgroundColor: on ? "var(--foreground)" : "var(--background)",
+                                            color: on ? "var(--card)" : "var(--foreground)",
+                                          }}>
+                                          {r}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 4 }}>Contrats autorisés</div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {ALL_CONTRACTS.map((c) => {
+                                      const on = allowedContracts.includes(c);
+                                      return (
+                                        <button key={c} onClick={() => toggleInArray(t, "allowed_contracts", c)}
+                                          className="rounded-full px-2.5 py-1 transition-colors"
+                                          style={{
+                                            fontSize: 11,
+                                            border: "0.5px solid var(--border)",
+                                            backgroundColor: on ? "var(--foreground)" : "var(--background)",
+                                            color: on ? "var(--card)" : "var(--foreground)",
+                                          }}>
+                                          {c}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>

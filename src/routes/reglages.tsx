@@ -80,6 +80,7 @@ function AISettings() {
     strict_preferences: false,
   });
   const [bounds, setBounds] = useState({ min: 3, max: 6 });
+  const [weekly, setWeekly] = useState({ student: 15, flexi: 20, cdi: 48 });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -102,6 +103,11 @@ function AISettings() {
             strict_preferences: r.strict_preferences,
           });
           setBounds({ min: r.min_shift_hours ?? 3, max: r.max_shift_hours ?? 6 });
+          setWeekly({
+            student: r.max_weekly_student_hours ?? 15,
+            flexi: r.max_weekly_flexi_hours ?? 20,
+            cdi: r.max_weekly_cdi_hours ?? 48,
+          });
         }
         setLoading(false);
       });
@@ -120,6 +126,9 @@ function AISettings() {
       weight_random: weights.random,
       min_shift_hours: bounds.min,
       max_shift_hours: bounds.max,
+      max_weekly_student_hours: weekly.student,
+      max_weekly_flexi_hours: weekly.flexi,
+      max_weekly_cdi_hours: weekly.cdi,
       ...rules,
     };
     const { error } = id
@@ -164,7 +173,7 @@ function AISettings() {
         <div className="flex flex-col gap-3">
           <RuleToggle label="Quota 650h étudiants" description="Ne jamais dépasser le plafond légal" enabled={rules.enforce_student_quota} onChange={(v) => setRules((p) => ({ ...p, enforce_student_quota: v }))} />
           <RuleToggle label="Repos minimum 11h" description="11h de repos entre deux shifts (loi belge)" enabled={rules.enforce_rest_11h} onChange={(v) => setRules((p) => ({ ...p, enforce_rest_11h: v }))} />
-          <RuleToggle label="Maximum 38h/semaine (CDI)" description="Limite légale pour les CDI" enabled={rules.enforce_max_weekly_cdi} onChange={(v) => setRules((p) => ({ ...p, enforce_max_weekly_cdi: v }))} />
+          <RuleToggle label={`Maximum ${weekly.cdi}h/semaine (CDI)`} description="Limite légale pour les CDI" enabled={rules.enforce_max_weekly_cdi} onChange={(v) => setRules((p) => ({ ...p, enforce_max_weekly_cdi: v }))} />
           <RuleToggle label="Préférences strictes" description="Ne jamais assigner en dehors des préférences" enabled={rules.strict_preferences} onChange={(v) => setRules((p) => ({ ...p, strict_preferences: v }))} />
         </div>
       </div>
@@ -184,6 +193,34 @@ function AISettings() {
             Max
             <input type="number" min={bounds.min} max={12} value={bounds.max}
               onChange={(e) => setBounds((p) => ({ ...p, max: Math.max(bounds.min, Number(e.target.value)) }))}
+              className="rounded-md px-2 py-1 outline-none" style={{ width: 70, fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
+            h
+          </label>
+        </div>
+      </div>
+
+      <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Plafonds hebdomadaires par contrat</div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16 }}>Heures maximum qu'un employé peut faire par semaine selon son contrat.</div>
+        <div className="flex items-center gap-6 flex-wrap">
+          <label className="flex items-center gap-2" style={{ fontSize: 13 }}>
+            Étudiant
+            <input type="number" min={1} max={48} value={weekly.student}
+              onChange={(e) => setWeekly((p) => ({ ...p, student: Math.max(1, Number(e.target.value)) }))}
+              className="rounded-md px-2 py-1 outline-none" style={{ width: 70, fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
+            h
+          </label>
+          <label className="flex items-center gap-2" style={{ fontSize: 13 }}>
+            Flexi
+            <input type="number" min={1} max={48} value={weekly.flexi}
+              onChange={(e) => setWeekly((p) => ({ ...p, flexi: Math.max(1, Number(e.target.value)) }))}
+              className="rounded-md px-2 py-1 outline-none" style={{ width: 70, fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
+            h
+          </label>
+          <label className="flex items-center gap-2" style={{ fontSize: 13 }}>
+            CDI
+            <input type="number" min={1} max={60} value={weekly.cdi}
+              onChange={(e) => setWeekly((p) => ({ ...p, cdi: Math.max(1, Number(e.target.value)) }))}
               className="rounded-md px-2 py-1 outline-none" style={{ width: 70, fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
             h
           </label>

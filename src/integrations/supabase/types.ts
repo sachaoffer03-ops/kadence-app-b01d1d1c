@@ -21,6 +21,9 @@ export type Database = {
           enforce_student_quota: boolean
           id: string
           max_shift_hours: number
+          max_weekly_cdi_hours: number
+          max_weekly_flexi_hours: number
+          max_weekly_student_hours: number
           min_shift_hours: number
           strict_preferences: boolean
           updated_at: string
@@ -36,6 +39,9 @@ export type Database = {
           enforce_student_quota?: boolean
           id?: string
           max_shift_hours?: number
+          max_weekly_cdi_hours?: number
+          max_weekly_flexi_hours?: number
+          max_weekly_student_hours?: number
           min_shift_hours?: number
           strict_preferences?: boolean
           updated_at?: string
@@ -51,6 +57,9 @@ export type Database = {
           enforce_student_quota?: boolean
           id?: string
           max_shift_hours?: number
+          max_weekly_cdi_hours?: number
+          max_weekly_flexi_hours?: number
+          max_weekly_student_hours?: number
           min_shift_hours?: number
           strict_preferences?: boolean
           updated_at?: string
@@ -784,6 +793,8 @@ export type Database = {
       }
       staffing_templates: {
         Row: {
+          allowed_contracts: Database["public"]["Enums"]["contract_type"][]
+          allowed_roles: string[]
           business_role: string
           created_at: string
           day_of_week: number
@@ -797,6 +808,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allowed_contracts?: Database["public"]["Enums"]["contract_type"][]
+          allowed_roles?: string[]
           business_role: string
           created_at?: string
           day_of_week: number
@@ -812,6 +825,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allowed_contracts?: Database["public"]["Enums"]["contract_type"][]
+          allowed_roles?: string[]
           business_role?: string
           created_at?: string
           day_of_week?: number
