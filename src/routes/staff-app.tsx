@@ -432,6 +432,7 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
       <RequestModificationSheet open={reqOpen} onClose={() => { setReqOpen(false); setReqShiftId(null); }} userId={userId} shiftId={reqShiftId} />
       <MyRequestsSheet open={myReqOpen} onClose={() => setMyReqOpen(false)} userId={userId} />
       <DisposSheet open={disposOpen} onClose={() => setDisposOpen(false)} userId={userId} />
+      <ProposalsSheet open={proposalsOpen} onClose={() => setProposalsOpen(false)} userId={userId} studios={studios} />
     </div>
   );
 }
