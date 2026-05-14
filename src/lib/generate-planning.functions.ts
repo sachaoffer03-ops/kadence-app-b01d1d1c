@@ -370,13 +370,12 @@ async function runEngine(ctx: EngineCtx) {
       (e) => e.contracts.has("CDI") && e.roles.has(KITCHEN_ROLE) && e.studios.has(chatelainStudio.id),
     );
     if (cdiKitchen.length === 1) {
-      kitchenSoloByStudio.set(chatelainStudio.id, cdiKitchen[0].id);
       alerts.push({
         type: "kitchen_solo",
         severity: "info",
         user_id: cdiKitchen[0].id,
         user_name: `${cdiKitchen[0].first_name} ${cdiKitchen[0].last_name}`,
-        message: `${cdiKitchen[0].first_name} est l'unique CDI cuisine à ${chatelainStudio.name}. Ses plafonds CDI sont relâchés pour couvrir tous les besoins cuisine.`,
+        message: `${cdiKitchen[0].first_name} est l'unique CDI cuisine qualifié à ${chatelainStudio.name} (staffing fragile : aucun remplaçant CDI en cas d'absence).`,
       });
     } else if (cdiKitchen.length === 0) {
       alerts.push({
@@ -503,19 +502,17 @@ async function runEngine(ctx: EngineCtx) {
   // Helpers de contrainte (inclut les pré-existants déjà comptés via weeklyMin)
   const weeklyHours = (e: Employee, date: string) => (e.weeklyMin.get(isoWeekStart(date)) ?? 0) / 60;
 
-  const maxShiftHFor = (e: Employee, studioId: string): number => {
+  const maxShiftHFor = (e: Employee, _studioId: string): number => {
     const isCDI = e.contracts.has("CDI");
     const isStu = e.contracts.has("Étudiant");
     const isFlx = e.contracts.has("Flexi");
-    if (isKitchenSolo(e.id, studioId)) return 12; // mode solo : large
     if (isCDI) return s.max_shift_hours_cdi;
     if (isStu) return s.max_shift_hours_student;
     if (isFlx) return s.max_shift_hours_flexi;
     return s.max_shift_hours;
   };
 
-  const maxWeeklyHFor = (e: Employee, studioId: string): number => {
-    if (isKitchenSolo(e.id, studioId)) return 60; // mode solo : large
+  const maxWeeklyHFor = (e: Employee, _studioId: string): number => {
     if (e.contracts.has("CDI")) return s.max_weekly_cdi_hours;
     if (e.contracts.has("Étudiant")) return s.max_weekly_student_hours;
     if (e.contracts.has("Flexi")) return s.max_weekly_flexi_hours;
@@ -605,7 +602,8 @@ async function runEngine(ctx: EngineCtx) {
       // budget restant pour la semaine (vise target ± tolerance, plafond max)
       const studioForLimits = Array.from(e.studios)[0] ?? "";
       const wkMax = maxWeeklyHFor(e, studioForLimits);
-      const targetCap = isKitchenSolo(e.id, studioForLimits) ? wkMax : Math.min(wkMax, s.target_weekly_cdi_hours + s.cdi_hours_tolerance);
+      // Cible : target + tolérance ; plafond dur : max légal hebdo CDI (ex: 48h)
+      const targetCap = Math.min(wkMax, s.target_weekly_cdi_hours + s.cdi_hours_tolerance);
       const remainingH = Math.max(0, targetCap - wkH);
       if (remainingH < (s.min_shift_hours ?? 3)) continue;
 
@@ -755,9 +753,7 @@ async function runEngine(ctx: EngineCtx) {
     for (const wk of weeks) {
       const wkH = (e.weeklyMin.get(wk) ?? 0) / 60;
       const studioForLimits = Array.from(e.studios)[0] ?? "";
-      const target = isKitchenSolo(e.id, studioForLimits)
-        ? maxWeeklyHFor(e, studioForLimits)
-        : s.target_weekly_cdi_hours;
+      const target = s.target_weekly_cdi_hours;
       const tol = s.cdi_hours_tolerance;
       if (wkH >= target - tol && wkH <= target + tol) continue;
 
@@ -773,7 +769,7 @@ async function runEngine(ctx: EngineCtx) {
             message: `CDI à ${wkH.toFixed(1)}h sur la semaine du ${wk} (cible ${target}h ± ${tol}h)`,
           });
         }
-      } else if (wkH > target + tol && !isKitchenSolo(e.id, studioForLimits)) {
+      } else if (wkH > target + tol) {
         // Sur-target : raccourcir un shift non critique (le plus court d'abord)
         const shifts = e.assigned.filter((a) => isoWeekStart(a.date) === wk).sort((a, b) => (a.endMin - a.startMin) - (b.endMin - b.startMin));
         for (const sh of shifts) {

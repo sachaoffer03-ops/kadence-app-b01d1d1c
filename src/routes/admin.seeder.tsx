@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, ArrowLeft, Check, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
-import { seedFakeData } from "@/lib/seed.functions";
+import { Sparkles, ArrowLeft, Check, AlertTriangle, ArrowRight, Loader2, ChefHat } from "lucide-react";
+import { seedFakeData, addKitchenWeekendStaff } from "@/lib/seed.functions";
 
 export const Route = createFileRoute("/admin/seeder")({
   component: SeederPage,
@@ -12,9 +12,14 @@ export const Route = createFileRoute("/admin/seeder")({
 function SeederPage() {
   const navigate = useNavigate();
   const seed = useServerFn(seedFakeData);
+  const addKitchen = useServerFn(addKitchenWeekendStaff);
   const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle");
   const [result, setResult] = useState<any>(null);
   const [err, setErr] = useState("");
+
+  const [kitchenState, setKitchenState] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [kitchenResult, setKitchenResult] = useState<any>(null);
+  const [kitchenErr, setKitchenErr] = useState("");
 
   const handleClick = async () => {
     if (!confirm("Cela va SUPPRIMER tous les profils existants (sauf admin et sachaoffer@gmail.com) puis créer ~30 employés fictifs. Continuer ?")) return;
@@ -29,6 +34,19 @@ function SeederPage() {
     }
   };
 
+  const handleAddKitchen = async () => {
+    if (!confirm("Ajouter Léa Bernardi (étudiante cuisine) et Karim El Amrani (flexi cuisine) au studio Châtelain, avec dispos focus week-end ?")) return;
+    setKitchenState("running"); setKitchenErr(""); setKitchenResult(null);
+    try {
+      const r = await addKitchen();
+      setKitchenResult(r);
+      setKitchenState("done");
+    } catch (e: any) {
+      setKitchenErr(e?.message || "Erreur");
+      setKitchenState("error");
+    }
+  };
+
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
       <Link to="/planning/generate" className="flex items-center gap-1 mb-4" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
@@ -40,7 +58,7 @@ function SeederPage() {
 
       <h1 style={{ fontSize: 26, fontWeight: 500, marginBottom: 6 }}>Seeder de données fictives</h1>
       <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 24 }}>
-        Nettoie tous les profils non protégés puis crée 30 employés fictifs réalistes (8 CDI dont 1 cuisine unique, 15 étudiants, 7 flexis) avec disponibilités sur 4 semaines.
+        Nettoie tous les profils non protégés puis crée 30 employés fictifs réalistes avec disponibilités sur 4 semaines.
       </p>
 
       <div className="rounded-xl border p-4 mb-6" style={{ borderColor: "var(--warning-border, #f0c674)", backgroundColor: "var(--warning-bg, #fef9e7)" }}>
@@ -49,7 +67,7 @@ function SeederPage() {
           <div>
             <div style={{ fontWeight: 500, marginBottom: 4 }}>Action destructive</div>
             <div style={{ color: "var(--muted-foreground)" }}>
-              Tous les profils <strong>sauf</strong> les administrateurs et <code>sachaoffer@gmail.com</code> seront supprimés (avec leurs disponibilités, shifts, contrats, etc.). Idempotent : tu peux relancer plusieurs fois.
+              Tous les profils <strong>sauf</strong> les administrateurs et <code>sachaoffer@gmail.com</code> seront supprimés. Idempotent.
             </div>
           </div>
         </div>
@@ -68,7 +86,7 @@ function SeederPage() {
         }}
       >
         {state === "running" ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
-        {state === "running" ? "Génération en cours…" : "Générer les données fictives"}
+        {state === "running" ? "Génération en cours…" : "Générer les données fictives (reset complet)"}
       </button>
 
       {state === "error" && (
@@ -79,6 +97,60 @@ function SeederPage() {
       )}
 
       {state === "done" && result && <ResultPanel result={result} navigate={navigate} />}
+
+      {/* ─── Section ajout cuisine week-end ─── */}
+      <div className="mt-10 pt-8" style={{ borderTop: "0.5px solid var(--border)" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 500, marginBottom: 6 }}>Ajout ciblé — cuisine week-end</h2>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 16 }}>
+          Ajoute 2 profils qualifiés cuisine sans toucher au reste de la BDD : Léa Bernardi (étudiante, week-end) et Karim El Amrani (flexi, week-end + Accueil). Idempotent.
+        </p>
+
+        <button
+          onClick={handleAddKitchen}
+          disabled={kitchenState === "running"}
+          className="w-full rounded-xl px-6 py-4 flex items-center justify-center gap-3 transition"
+          style={{
+            fontSize: 14, fontWeight: 500,
+            backgroundColor: kitchenState === "running" ? "var(--muted)" : "var(--card)",
+            color: "var(--foreground)",
+            cursor: kitchenState === "running" ? "wait" : "pointer",
+            border: "0.5px solid var(--border)",
+          }}
+        >
+          {kitchenState === "running" ? <Loader2 size={18} className="animate-spin" /> : <ChefHat size={18} />}
+          {kitchenState === "running" ? "Ajout en cours…" : "Ajouter 2 profils cuisine week-end"}
+        </button>
+
+        {kitchenState === "error" && (
+          <div className="mt-4 rounded-xl border p-4" style={{ borderColor: "var(--danger-border, #ef4444)", backgroundColor: "var(--danger-bg, #fef2f2)", fontSize: 13 }}>
+            <div style={{ fontWeight: 500, marginBottom: 4 }}>Erreur</div>
+            <div style={{ color: "var(--danger-text, #b91c1c)", fontFamily: "monospace", fontSize: 12 }}>{kitchenErr}</div>
+          </div>
+        )}
+
+        {kitchenState === "done" && kitchenResult && (
+          <div className="mt-4 rounded-xl border p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)", fontSize: 13 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+              Résultat
+            </div>
+            {kitchenResult.created.map((c: any) => (
+              <div key={c.id} className="flex items-center gap-2" style={{ lineHeight: 1.9 }}>
+                <Check size={14} style={{ color: "var(--success-text, #16a34a)" }} /> <span>{c.name} ({c.contract}) créé</span>
+              </div>
+            ))}
+            {kitchenResult.skipped.map((s: string, i: number) => (
+              <div key={i} style={{ color: "var(--muted-foreground)", fontSize: 12, marginTop: 4 }}>· {s}</div>
+            ))}
+            <button
+              onClick={() => navigate({ to: "/planning/generate" })}
+              className="mt-4 rounded-xl px-4 py-2 flex items-center gap-2"
+              style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", border: "none" }}
+            >
+              Relancer une génération de planning <ArrowRight size={14} />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

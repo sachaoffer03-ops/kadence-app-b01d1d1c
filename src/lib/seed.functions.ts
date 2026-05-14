@@ -212,16 +212,20 @@ async function ensureStaffingTemplates(rhodeId: string, chatelainId: string, log
       templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "10:00:00", end_time: "15:00:00",
         business_role: "Host", allowed_roles: ["Host", "Accueil"] });
     }
-    // Cuisine
-    for (let d = 0; d <= 3; d++) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "07:00:00", end_time: "15:30:00",
+    // Cuisine — Lundi 7h-15h30 (8h30) | Mar/Mer/Jeu 7h-14h30 (7h30) | Ven 7h-16h30 (9h30) — CDI uniquement
+    templates.push({ studio_id: chatelainId, day_of_week: 0, start_time: "07:00:00", end_time: "15:30:00",
+      business_role: "Cuisine", allowed_roles: ["Cuisine"], required_contract: "CDI" });
+    for (const d of [1, 2, 3]) {
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "07:00:00", end_time: "14:30:00",
         business_role: "Cuisine", allowed_roles: ["Cuisine"], required_contract: "CDI" });
     }
     templates.push({ studio_id: chatelainId, day_of_week: 4, start_time: "07:00:00", end_time: "16:30:00",
       business_role: "Cuisine", allowed_roles: ["Cuisine"], required_contract: "CDI" });
+    // Sam/Dim 8h30-15h30 (7h chacun) — ouvert à CDI / Étudiant / Flexi
     for (const d of [5, 6]) {
       templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "08:30:00", end_time: "15:30:00",
-        business_role: "Cuisine", allowed_roles: ["Cuisine"], required_contract: "CDI" });
+        business_role: "Cuisine", allowed_roles: ["Cuisine"],
+        allowed_contracts: ["CDI", "Étudiant", "Flexi"] });
     }
   }
 
@@ -271,21 +275,25 @@ function buildEmployeeSpecs(): EmployeeSpec[] {
   specs.push({ contract: "CDI", roles: ["Accueil", "Barista", "Host"], studios: ["rhode"] });
   specs.push({ contract: "CDI", roles: ["Accueil", "Barista"], studios: ["rhode", "chatelain"] });
 
-  // 15 Étudiants — 6 Rhode, 7 Châtelain, 2 poly
+  // 15 Étudiants — 6 Rhode, 6 Châtelain polyvalents, 2 poly, 1 cuisine week-end (Léa Bernardi)
   for (let i = 0; i < 6; i++) {
     specs.push({ contract: "Étudiant", roles: i % 3 === 0 ? ["Accueil", "Barista", "Host"] : ["Accueil", "Barista"], studios: ["rhode"] });
   }
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 6; i++) {
     specs.push({ contract: "Étudiant", roles: i % 3 === 0 ? ["Accueil", "Barista", "Host"] : ["Accueil", "Barista"], studios: ["chatelain"] });
   }
   for (let i = 0; i < 2; i++) {
     specs.push({ contract: "Étudiant", roles: ["Accueil", "Barista"], studios: ["rhode", "chatelain"] });
   }
+  // Étudiante cuisine spécialisée week-end
+  specs.push({ contract: "Étudiant", roles: ["Cuisine"], studios: ["chatelain"], forcedName: { first: "Léa", last: "Bernardi" } });
 
-  // 7 Flexis — 3 Rhode, 3 Châtelain, 1 poly
+  // 7 Flexis — 3 Rhode, 2 Châtelain polyvalents, 1 poly, 1 cuisine week-end (Karim El Amrani)
   for (let i = 0; i < 3; i++) specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["rhode"] });
-  for (let i = 0; i < 3; i++) specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["chatelain"] });
+  for (let i = 0; i < 2; i++) specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["chatelain"] });
   specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["rhode", "chatelain"] });
+  // Flexi cuisine + accueil
+  specs.push({ contract: "Flexi", roles: ["Cuisine", "Accueil"], studios: ["chatelain"], forcedName: { first: "Karim", last: "El Amrani" } });
 
   return specs;
 }
@@ -407,10 +415,12 @@ function generateAvailabilities(employees: Array<{ id: string; spec: EmployeeSpe
       const dow = (date.getDay() + 6) % 7; // 0=lundi
       const isWeekend = dow >= 5;
 
-      // Jours de dispo selon contrat
+      // Jours de dispo selon contrat (cuisine non-CDI = focus week-end)
       let dispoChance = 0;
       if (isCDI && isCuisine) dispoChance = 0.85;
       else if (isCDI) dispoChance = 0.75;
+      else if (isStudent && isCuisine) dispoChance = isWeekend ? 0.95 : 0.20;
+      else if (isFlexi && isCuisine) dispoChance = isWeekend ? 0.95 : 0.40;
       else if (isStudent) dispoChance = isWeekend ? 0.65 : 0.45;
       else if (isFlexi) dispoChance = 0.65;
 
@@ -420,11 +430,18 @@ function generateAvailabilities(employees: Array<{ id: string; spec: EmployeeSpe
       let startH: number, endH: number;
       if (isCDI && isCuisine) {
         startH = 6.5; endH = 17;
+      } else if (isCuisine && isStudent) {
+        // étudiante cuisine : week-end 8h-16h ; semaine après-midi 14h-19h
+        if (isWeekend) { startH = 8; endH = 16; }
+        else { startH = 14; endH = 19; }
+      } else if (isCuisine && isFlexi) {
+        // flexi cuisine : week-end 8h-17h ; semaine variable
+        if (isWeekend) { startH = 8; endH = 17; }
+        else { startH = 9 + Math.random() * 2; endH = 17 + Math.random() * 2; }
       } else if (isCDI) {
         startH = 7 + (Math.random() < 0.3 ? 0 : Math.random() * 2);
         endH = 21;
       } else if (isStudent) {
-        // matin OU soir OU journée
         const slot = Math.random();
         if (slot < 0.35) { startH = 7; endH = 14; }
         else if (slot < 0.7) { startH = 15; endH = 22; }
@@ -517,4 +534,133 @@ export const seedFakeData = createServerFn({ method: "POST" })
       },
       log,
     };
+  });
+
+// ============================================================================
+// addKitchenWeekendStaff
+// Ajoute uniquement Léa Bernardi (étudiante cuisine) + Karim El Amrani (flexi cuisine)
+// au studio Skult Châtelain — sans toucher aux autres données.
+// Idempotent : si un email existe déjà, on skip et on logge.
+// ============================================================================
+export const addKitchenWeekendStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId, supabase } = context;
+    const { data: roleCheck } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
+    if (!roleCheck) throw new Error("Réservé aux administrateurs");
+
+    const log: string[] = [];
+
+    // Récupérer studio Châtelain
+    const { data: chatStudio } = await supabaseAdmin.from("studios")
+      .select("id, name").ilike("name", "%châtelain%").maybeSingle();
+    if (!chatStudio) throw new Error("Studio Skult Châtelain introuvable");
+    const chatelainId = chatStudio.id as string;
+
+    type NewSpec = {
+      first: string; last: string; contract: "Étudiant" | "Flexi"; roles: string[];
+    };
+    const news: NewSpec[] = [
+      { first: "Léa", last: "Bernardi", contract: "Étudiant", roles: ["Cuisine"] },
+      { first: "Karim", last: "El Amrani", contract: "Flexi", roles: ["Cuisine", "Accueil"] },
+    ];
+
+    const created: Array<{ id: string; name: string; contract: string }> = [];
+    const skipped: string[] = [];
+
+    for (const n of news) {
+      const email = `${slug(n.first)}.${slug(n.last)}@fake-coffee.test`;
+      const { data: existing } = await supabaseAdmin.from("profiles")
+        .select("id").eq("email", email).maybeSingle();
+      if (existing) {
+        skipped.push(`${n.first} ${n.last} déjà présent (skip)`);
+        continue;
+      }
+
+      const password = `Test!${Math.random().toString(36).slice(2, 10)}A1`;
+      const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+        email, password, email_confirm: true,
+        user_metadata: { first_name: n.first, last_name: n.last },
+      });
+      if (authErr || !authUser?.user) throw new Error(`auth ${email}: ${authErr?.message}`);
+      const uid = authUser.user.id;
+
+      // Purger lignes auto du trigger
+      await supabaseAdmin.from("profiles").delete().eq("id", uid);
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", uid);
+      await supabaseAdmin.from("user_studios").delete().eq("user_id", uid);
+      await supabaseAdmin.from("user_contracts").delete().eq("user_id", uid);
+      await supabaseAdmin.from("user_business_roles").delete().eq("user_id", uid);
+
+      const isStudent = n.contract === "Étudiant";
+      await supabaseAdmin.from("profiles").insert({
+        id: uid, email, first_name: n.first, last_name: n.last,
+        phone: `+32 4${randInt(70, 99)} ${randInt(10, 99)} ${randInt(10, 99)} ${randInt(10, 99)}`,
+        birth_date: `${randInt(1990, 2003)}-${pad(randInt(1, 12))}-${pad(randInt(1, 28))}`,
+        nationality: rand(NATIONALITIES),
+        address: `${rand(STREETS)} ${randInt(1, 250)}`,
+        city: rand(CITIES),
+        niss: Array.from({ length: 11 }, () => randInt(0, 9)).join(""),
+        iban: "BE" + Array.from({ length: 14 }, () => randInt(0, 9)).join(""),
+        emergency_contact_name: `${rand(FIRST_NAMES)} ${rand(LAST_NAMES)}`,
+        emergency_contact_phone: `+32 4${randInt(70, 99)} ${randInt(10, 99)} ${randInt(10, 99)} ${randInt(10, 99)}`,
+        emergency_contact_relation: rand(["Parent", "Conjoint(e)", "Frère/Soeur", "Ami(e)"]),
+        hire_date: `${randInt(2024, 2026)}-${pad(randInt(1, 12))}-${pad(randInt(1, 28))}`,
+        status: "active",
+        score: Math.round((6.5 + Math.random() * 3) * 10) / 10,
+        student_card_valid: isStudent,
+        quota_max: isStudent ? 650 : null,
+        quota_used: 0,
+        contract: n.contract,
+        studio_id: chatelainId,
+        is_test: true,
+      });
+
+      await supabaseAdmin.from("user_contracts").insert({ user_id: uid, contract: n.contract });
+      await supabaseAdmin.from("user_studios").insert({ user_id: uid, studio_id: chatelainId });
+      await supabaseAdmin.from("user_business_roles").insert(
+        n.roles.map((r) => ({ user_id: uid, role: r })),
+      );
+      await supabaseAdmin.from("user_roles").insert({ user_id: uid, role: "employee" });
+
+      // Disponibilités sur 28 jours — focus week-end
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const availRows: any[] = [];
+      for (let dayOffset = 0; dayOffset < 28; dayOffset++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + dayOffset);
+        const dow = (date.getDay() + 6) % 7;
+        const isWeekend = dow >= 5;
+
+        let chance: number;
+        if (isStudent) chance = isWeekend ? 0.95 : 0.20;
+        else chance = isWeekend ? 0.95 : 0.40;
+        if (Math.random() > chance) continue;
+
+        let sH: number, eH: number;
+        if (isStudent) {
+          if (isWeekend) { sH = 8; eH = 16; } else { sH = 14; eH = 19; }
+        } else {
+          if (isWeekend) { sH = 8; eH = 17; } else { sH = 9 + Math.random() * 2; eH = 17 + Math.random() * 2; }
+        }
+        const snap = (h: number) => Math.round(h * 4) * 15;
+        const sM = snap(sH);
+        const eM = snap(eH);
+        if (eM - sM < 240) continue;
+        availRows.push({
+          user_id: uid,
+          avail_date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+          start_time: `${pad(Math.floor(sM / 60))}:${pad(sM % 60)}:00`,
+          end_time: `${pad(Math.floor(eM / 60))}:${pad(eM % 60)}:00`,
+        });
+      }
+      if (availRows.length > 0) {
+        await supabaseAdmin.from("availabilities").insert(availRows);
+      }
+
+      created.push({ id: uid, name: `${n.first} ${n.last}`, contract: n.contract });
+      log.push(`${n.first} ${n.last} (${n.contract}) créé avec ${availRows.length} dispos`);
+    }
+
+    return { created, skipped, log };
   });
