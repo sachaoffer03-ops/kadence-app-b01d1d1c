@@ -23,7 +23,7 @@ interface Profile {
   emergency_contact_relation: string | null;
   student_card_valid: boolean | null;
 }
-interface ShiftRow { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; status: string; }
+interface ShiftRow { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; status: string; clocked_in_at: string | null; clocked_out_at: string | null; }
 interface FB { id: string; rating: number; message: string | null; created_at: string; shift_id: string | null; author_id: string; }
 interface Sig { id: string; category: string; message: string; created_at: string; resolved: boolean; }
 interface AuthorMini { id: string; first_name: string; last_name: string; }
