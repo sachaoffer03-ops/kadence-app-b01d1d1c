@@ -898,7 +898,7 @@ function PlanningCalendarPage() {
             if (h) return `${h}h`;
             return `${m}min`;
           };
-          const agendaCols = `repeat(${viewMode === "jour" ? 1 : 2}, minmax(0, 1fr))`;
+          const agendaCols = viewMode === "jour" ? "1fr" : "repeat(auto-fit, minmax(360px, 1fr))";
 
           return (
             <div className="grid" style={{ gridTemplateColumns: agendaCols }}>
@@ -959,7 +959,7 @@ function PlanningCalendarPage() {
                         </div>
                       </button>
 
-                      <div className="flex flex-col gap-2.5" style={{ padding: 12, minHeight: viewMode === "jour" ? 520 : 620 }}>
+                      <div className="flex flex-col gap-2.5" style={{ padding: 12, minHeight: viewMode === "jour" ? 420 : 0 }}>
                         {dayShifts.length === 0 ? (
                           <div className="rounded-md border" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)", padding: 14, fontSize: 12, color: "var(--muted-foreground)", textAlign: "center" }}>
                             Aucun shift
