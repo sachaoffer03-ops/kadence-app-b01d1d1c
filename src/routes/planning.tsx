@@ -882,7 +882,7 @@ function PlanningPage() {
       )}
 
       {/* Grid */}
-      <div className="rounded-xl border overflow-x-auto" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+      <div className="rounded-xl border" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         <div style={{ minWidth: viewMode === "jour" ? "auto" : 760 }}>
         {/* Day headers */}
         <div className="grid" style={{ gridTemplateColumns: gridCols, borderBottom: "0.5px solid var(--border)" }}>
