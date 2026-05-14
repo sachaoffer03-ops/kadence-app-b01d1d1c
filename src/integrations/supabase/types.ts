@@ -643,6 +643,7 @@ export type Database = {
       shift_proposals: {
         Row: {
           id: string
+          replacement_request_id: string | null
           responded_at: string | null
           sent_at: string
           sent_by: string | null
@@ -652,6 +653,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          replacement_request_id?: string | null
           responded_at?: string | null
           sent_at?: string
           sent_by?: string | null
@@ -661,6 +663,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          replacement_request_id?: string | null
           responded_at?: string | null
           sent_at?: string
           sent_by?: string | null
@@ -669,6 +672,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "shift_proposals_replacement_request_id_fkey"
+            columns: ["replacement_request_id"]
+            isOneToOne: false
+            referencedRelation: "modification_requests"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shift_proposals_shift_id_fkey"
             columns: ["shift_id"]
