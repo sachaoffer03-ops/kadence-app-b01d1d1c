@@ -944,12 +944,13 @@ function PlanningPage() {
                       top: (h - DAY_START) * HOUR_PX,
                       left: 0,
                       right: 0,
-                      height: HOUR_PX,
+                      transform: "translateY(-50%)",
                       paddingLeft: 12,
-                      paddingTop: 4,
+                      paddingRight: 8,
                       fontSize: 11,
+                      lineHeight: 1,
+                      textAlign: "right",
                       color: "var(--muted-foreground)",
-                      borderTop: h === DAY_START ? "none" : "0.5px solid var(--border)",
                     }}
                   >
                     {String(h).padStart(2, "0")}h
