@@ -458,11 +458,12 @@ function PlanningPage() {
 
 function PlanningCalendarPage() {
   const { names: roles } = useBusinessRoles({ onlyActive: true });
+  const { employees } = useEmployees();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedStudio, setSelectedStudio] = useState<Studio>("Skult Rhodes");
+  const [selectedStudio, setSelectedStudio] = useState<Studio>("");
   const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
   const [selectedShift, setSelectedShift] = useState<PlanningShift | null>(null);
   const [holeShift, setHoleShift] = useState<PlanningShift | null>(null);
@@ -471,6 +472,12 @@ function PlanningCalendarPage() {
   const weekDays = useMemo(() => getWeekDays(year, month, weekOffset), [year, month, weekOffset]);
   const [shifts, setShifts] = useState<PlanningShift[]>([]);
   const [studioMap, setStudioMap] = useState<Map<string, string>>(new Map());
+  // Liste de noms de studios chargée depuis la DB (remplace l'ancien tableau hardcodé).
+  const studios = useMemo<Studio[]>(() => Array.from(studioMap.values()), [studioMap]);
+  // Sélection automatique du premier studio dès que la liste est chargée.
+  useEffect(() => {
+    if (!selectedStudio && studios.length > 0) setSelectedStudio(studios[0]);
+  }, [studios, selectedStudio]);
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = () => setRefreshKey((k) => k + 1);
 
