@@ -351,8 +351,8 @@ function HardcodingAuditPage() {
             Reste à nettoyer
           </h2>
           <ol style={{ paddingLeft: 20, fontSize: 14, lineHeight: 1.8 }}>
-            <li><strong>Refactor studios.tsx</strong> — la page reste un mock UI 2100 lignes ; à reconstruire en CRUD branché sur la table studios.</li>
-            <li><strong>Trim mock-data.ts</strong> — supprimer le tableau <code>employees</code> et tous ses dérivés (todayShifts, holeShifts, feedbacks, checklistTemplates, studioExceptions) une fois studios.tsx migré.</li>
+            <li><strong>studios.tsx migré</strong> ✓ — onglets Informations, Besoins en staff et Exceptions branchés sur les tables <code>studios</code>, <code>studio_business_roles</code>, <code>staffing_templates</code>, <code>studio_exceptions</code>.</li>
+            <li><strong>Trim mock-data.ts</strong> — supprimer le tableau <code>employees</code> et tous ses dérivés (todayShifts, holeShifts, feedbacks, checklistTemplates) une fois les pages dépendantes migrées. <code>studioExceptions</code> est déjà supprimé.</li>
             <li><strong>Migrer le préfixe "Skult "</strong> — utiliser studios.short_name au lieu de <code>.replace("Skult ", "")</code> dans les pages d'affichage.</li>
           </ol>
         </div>
