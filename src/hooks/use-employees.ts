@@ -30,7 +30,7 @@ export function useEmployees() {
         supabase
           .from("profiles")
           .select("id,first_name,last_name,contract,studio_id,score,quota_used,quota_max")
-          .neq("status", "archived"),
+          .in("status", ["active", "invited"]),
         supabase.from("user_business_roles").select("user_id,role"),
       ]);
       if (cancelled) return;
