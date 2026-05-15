@@ -478,8 +478,8 @@ async function runEngine(ctx: EngineCtx) {
       // Studio
       if (e.studios.size > 0 && !e.studios.has(r.studio_id)) continue;
       // Rôle
-      if (r.role === KITCHEN_ROLE) {
-        if (!e.roles.has(KITCHEN_ROLE)) continue;
+      if (isKitchenRole(r.role)) {
+        if (!Array.from(e.roles).some((er) => isKitchenRole(er))) continue;
       } else if (r.allowed_roles.length > 0) {
         if (!r.allowed_roles.some((ar) => e.roles.has(ar))) continue;
       } else {
