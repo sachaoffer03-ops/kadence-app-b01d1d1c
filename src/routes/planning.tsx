@@ -752,6 +752,32 @@ function PlanningCalendarPage() {
     }
   };
 
+  const handleMoveShiftPrecise = async (shiftId: string, newDay: number, newStartMinRaw: number) => {
+    const original = studioShifts.find((s) => s.id === shiftId);
+    if (!original) return;
+    const date = weekDays[newDay];
+    const shiftDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const toMin = (t: string) => {
+      const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+      return h * 60 + m;
+    };
+    const dur = Math.max(15, toMin(original.endTime) - toMin(original.startTime));
+    // Snap to 15 min, clamp to [0, 24h - dur]
+    const snap = Math.round(newStartMinRaw / 15) * 15;
+    const startMin = Math.max(0, Math.min(snap, 24 * 60 - dur));
+    const endMin = startMin + dur;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const startTime = `${pad(Math.floor(startMin / 60))}:${pad(startMin % 60)}:00`;
+    const endTime = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}:00`;
+    try {
+      await updateShiftFn({ data: { shiftId, shiftDate, startTime, endTime } });
+      toast.success("Shift déplacé");
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    }
+  };
+
   const handleUnlockShift = async (id: string) => {
     try {
       await updateShiftFn({ data: { shiftId: id, unlock: true, markManual: false } });
