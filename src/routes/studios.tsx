@@ -537,7 +537,10 @@ const editableFields: { key: keyof StudioInfo; label: string; icon: React.Elemen
 
 function InformationsTab({
   info,
+  hasKitchen,
+  onKitchenChange,
   onChange,
+  onCommit,
   activeRoles,
   onToggleRole,
   customRoles,
@@ -546,7 +549,10 @@ function InformationsTab({
   onRequestDelete,
 }: {
   info: StudioInfo;
+  hasKitchen: boolean;
+  onKitchenChange: (v: boolean) => void;
   onChange: (patch: Partial<StudioInfo>) => void;
+  onCommit: () => void;
   activeRoles: Role[];
   onToggleRole: (r: Role) => void;
   customRoles: string[];
@@ -566,6 +572,13 @@ function InformationsTab({
     setNewRole("");
   };
 
+  const toggleEditing = () => {
+    setEditing((e) => {
+      if (e) onCommit();
+      return !e;
+    });
+  };
+
   return (
     <>
     <div className="grid grid-cols-3 gap-4">
@@ -581,7 +594,7 @@ function InformationsTab({
             </div>
           </div>
           <button
-            onClick={() => setEditing((e) => !e)}
+            onClick={toggleEditing}
             className="rounded-md flex items-center gap-1.5 px-3 py-1.5"
             style={{
               fontSize: 12,
