@@ -181,5 +181,5 @@ export const runDiagnostic = createServerFn({ method: "POST" })
     // S7 — settings IA
     const { data: settings } = await sb.from("ai_planning_settings").select("*").limit(1).maybeSingle();
 
-    return { s1, s2, s3, s4, s5, s6, settings };
+    return { s1, s2, s3, s4, s5, s6, settings, cdi_cuisine_employee: cdiCuisineEmployee, period: { start: periodStart, end: periodEnd } };
   });
