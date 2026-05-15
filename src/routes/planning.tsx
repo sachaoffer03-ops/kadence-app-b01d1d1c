@@ -11,6 +11,7 @@ import { Dropdown } from "@/components/Dropdown";
 import { supabase } from "@/integrations/supabase/client";
 import { createShift, updateShift, deleteShift as deleteShiftFn, publishPlanning } from "@/lib/shifts.functions";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
+import { EditShiftModal } from "@/components/EditShiftModal";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
@@ -132,7 +133,7 @@ function TimeBar({ leftPct, widthPct, color }: { leftPct: number; widthPct: numb
 }
 
 // ── Shift Detail Modal ─────────────────────────────────────
-function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, onConfirm, onUnlock }: { shift: PlanningShift; employee?: Employee; onClose: () => void; onDelete: () => void; onUpdateSlot: (slot: number) => void; onConfirm: () => void; onUnlock?: () => void }) {
+function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, onConfirm, onUnlock, onEdit }: { shift: PlanningShift; employee?: Employee; onClose: () => void; onDelete: () => void; onUpdateSlot: (slot: number) => void; onConfirm: () => void; onUnlock?: () => void; onEdit: () => void }) {
   const [editing, setEditing] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.3)" }} onClick={onClose}>
@@ -296,10 +297,17 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, on
           </Link>
           <button
             onClick={() => setEditing((v) => !v)}
+            className="rounded-md px-3 py-2 transition-colors"
+            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
+          >
+            {editing ? "Terminer" : "Slot rapide"}
+          </button>
+          <button
+            onClick={onEdit}
             className="flex-1 rounded-md px-3 py-2 transition-colors"
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
           >
-            {editing ? "Terminer" : "Modifier"}
+            Édition complète
           </button>
         </div>
       </div>
@@ -458,6 +466,7 @@ function PlanningCalendarPage() {
   const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
   const [selectedShift, setSelectedShift] = useState<PlanningShift | null>(null);
   const [holeShift, setHoleShift] = useState<PlanningShift | null>(null);
+  const [editShift, setEditShift] = useState<PlanningShift | null>(null);
 
   const weekDays = useMemo(() => getWeekDays(year, month, weekOffset), [year, month, weekOffset]);
   const [shifts, setShifts] = useState<PlanningShift[]>([]);
@@ -708,11 +717,22 @@ function PlanningCalendarPage() {
     const original = studioShifts.find((s) => s.id === shiftId);
     const slotStart = `${def.start.replace("h", ":")}:00`;
     const slotEnd = `${def.end.replace("h", ":")}:00`;
+    // Par défaut : on conserve la durée d'origine en alignant le début sur le slot cible.
     let startTime = slotStart;
     let endTime = slotEnd;
-    // Les horaires doivent suivre les besoins définis par l'admin (staffing_templates)
-    // pour le studio, le jour et le poste cibles. Si un template matche le créneau,
-    // on utilise SES horaires (durée = celle configurée), pas la durée d'origine.
+    if (original?.startTime && original?.endTime) {
+      const toMin = (t: string) => {
+        const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+        return h * 60 + m;
+      };
+      const dur = Math.max(15, toMin(original.endTime) - toMin(original.startTime));
+      const startMin = toMin(slotStart);
+      const endMin = startMin + dur;
+      const pad = (n: number) => String(n).padStart(2, "0");
+      startTime = `${pad(Math.floor(startMin / 60))}:${pad(startMin % 60)}:00`;
+      endTime = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}:00`;
+    }
+    // Si un staffing_template du studio/jour/poste matche le slot cible, on l'utilise (priorité).
     if (original?.studioId && original.role) {
       const dow = (date.getDay() + 6) % 7; // 0 = Lundi
       const { data: tpls } = await supabase
@@ -725,7 +745,6 @@ function PlanningCalendarPage() {
         s: String(t.start_time).slice(0, 8),
         e: String(t.end_time).slice(0, 8),
       }));
-      // Match prioritaire : template dont le début tombe dans le slot cible.
       const inSlot = list.find((t) => t.s >= slotStart && t.s < slotEnd)
         ?? list.find((t) => t.s === slotStart);
       if (inSlot) {
@@ -1111,6 +1130,22 @@ function PlanningCalendarPage() {
           onUpdateSlot={(slot) => handleUpdateSlot(selectedShift.id, slot)}
           onConfirm={() => handleConfirmShift(selectedShift.id)}
           onUnlock={() => { handleUnlockShift(selectedShift.id); setSelectedShift(null); }}
+          onEdit={() => { setEditShift(selectedShift); setSelectedShift(null); }}
+        />
+      )}
+      {editShift && (
+        <EditShiftModal
+          shift={{
+            id: editShift.id,
+            employeeId: editShift.employeeId,
+            role: editShift.role,
+            studioId: editShift.studioId,
+            shiftDate: editShift.shiftDate,
+            startTime: editShift.startTime,
+            endTime: editShift.endTime,
+          }}
+          onClose={() => setEditShift(null)}
+          onSaved={refresh}
         />
       )}
       {holeShift && (

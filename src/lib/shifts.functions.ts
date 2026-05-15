@@ -69,7 +69,7 @@ export const updateShift = createServerFn({ method: "POST" })
 
     const { data: current, error: eCur } = await supabase
       .from("shifts")
-      .select("user_id, shift_date, start_time, end_time")
+      .select("user_id, shift_date, start_time, end_time, published_at")
       .eq("id", data.shiftId)
       .single();
     if (eCur) throw new Error(eCur.message);
@@ -79,6 +79,13 @@ export const updateShift = createServerFn({ method: "POST" })
     const nextStart = data.startTime ?? current.start_time;
     const nextEnd = data.endTime ?? current.end_time;
     await assertNoOverlap(supabase, nextUserId, nextDate, nextStart, nextEnd, data.shiftId);
+
+    const wasPublished = !!current.published_at;
+    const userChanged = data.userId !== undefined && data.userId !== current.user_id;
+    const timeChanged =
+      (data.shiftDate && data.shiftDate !== current.shift_date) ||
+      (data.startTime && data.startTime !== String(current.start_time).slice(0, 8)) ||
+      (data.endTime && data.endTime !== String(current.end_time).slice(0, 8));
 
     const patch: any = { updated_at: new Date().toISOString() };
     if (data.markManual !== false) patch.is_manual = true;
@@ -97,6 +104,42 @@ export const updateShift = createServerFn({ method: "POST" })
 
     const { error } = await supabase.from("shifts").update(patch).eq("id", data.shiftId);
     if (error) throw new Error(error.message);
+
+    // Notifications quand on modifie un shift déjà publié
+    if (wasPublished) {
+      const fmtRange = `${nextDate} ${String(nextStart).slice(0,5)}–${String(nextEnd).slice(0,5)}`;
+      const notifs: any[] = [];
+      if (userChanged) {
+        if (current.user_id) {
+          notifs.push({
+            user_id: current.user_id,
+            type: "shift_removed",
+            title: "Shift retiré",
+            body: `Le shift du ${current.shift_date} ${String(current.start_time).slice(0,5)} a été réassigné.`,
+            link: "/staff-app",
+          });
+        }
+        if (nextUserId) {
+          notifs.push({
+            user_id: nextUserId,
+            type: "shift_added",
+            title: "Nouveau shift",
+            body: fmtRange,
+            link: "/staff-app",
+          });
+        }
+      } else if (timeChanged && nextUserId) {
+        notifs.push({
+          user_id: nextUserId,
+          type: "shift_updated",
+          title: "Shift modifié",
+          body: fmtRange,
+          link: "/staff-app",
+        });
+      }
+      if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
+    }
+
     return { ok: true };
   });
 
@@ -163,8 +206,22 @@ export const deleteShift = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+    const { data: cur } = await supabase
+      .from("shifts")
+      .select("user_id, shift_date, start_time, published_at")
+      .eq("id", data.shiftId)
+      .single();
     const { error } = await supabase.from("shifts").delete().eq("id", data.shiftId);
     if (error) throw new Error(error.message);
+    if (cur?.published_at && cur.user_id) {
+      await supabase.from("notifications").insert({
+        user_id: cur.user_id,
+        type: "shift_removed",
+        title: "Shift annulé",
+        body: `${cur.shift_date} ${String(cur.start_time).slice(0,5)}`,
+        link: "/staff-app",
+      });
+    }
     return { ok: true };
   });
 
