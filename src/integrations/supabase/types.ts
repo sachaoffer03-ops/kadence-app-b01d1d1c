@@ -152,32 +152,275 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_submission_items: {
+        Row: {
+          checked_at: string | null
+          id: string
+          is_checked: boolean
+          submission_id: string
+          template_item_id: string
+        }
+        Insert: {
+          checked_at?: string | null
+          id?: string
+          is_checked?: boolean
+          submission_id: string
+          template_item_id: string
+        }
+        Update: {
+          checked_at?: string | null
+          id?: string
+          is_checked?: boolean
+          submission_id?: string
+          template_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_submission_items_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_submission_items_template_item_id_fkey"
+            columns: ["template_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_template_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_submission_photos: {
+        Row: {
+          ai_validated_at: string | null
+          ai_validation_message: string | null
+          ai_validation_status: string | null
+          id: string
+          photo_url: string | null
+          submission_id: string
+          template_photo_id: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          ai_validated_at?: string | null
+          ai_validation_message?: string | null
+          ai_validation_status?: string | null
+          id?: string
+          photo_url?: string | null
+          submission_id: string
+          template_photo_id: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          ai_validated_at?: string | null
+          ai_validation_message?: string | null
+          ai_validation_status?: string | null
+          id?: string
+          photo_url?: string | null
+          submission_id?: string
+          template_photo_id?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_submission_photos_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_submission_photos_template_photo_id_fkey"
+            columns: ["template_photo_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_template_photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_submissions: {
+        Row: {
+          admin_feedback: string | null
+          created_at: string
+          employee_note: string | null
+          id: string
+          reviewed_by_admin_at: string | null
+          reviewed_by_admin_id: string | null
+          shift_id: string
+          status: string
+          submitted_at: string | null
+          template_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_feedback?: string | null
+          created_at?: string
+          employee_note?: string | null
+          id?: string
+          reviewed_by_admin_at?: string | null
+          reviewed_by_admin_id?: string | null
+          shift_id: string
+          status?: string
+          submitted_at?: string | null
+          template_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_feedback?: string | null
+          created_at?: string
+          employee_note?: string | null
+          id?: string
+          reviewed_by_admin_at?: string | null
+          reviewed_by_admin_id?: string | null
+          shift_id?: string
+          status?: string
+          submitted_at?: string | null
+          template_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_submissions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_template_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_required: boolean
+          label: string
+          order_index: number
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          label: string
+          order_index?: number
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          label?: string
+          order_index?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_template_photos: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_required: boolean
+          label: string
+          order_index: number
+          reference_photo_url: string | null
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          label: string
+          order_index?: number
+          reference_photo_url?: string | null
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          label?: string
+          order_index?: number
+          reference_photo_url?: string | null
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_photos_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_templates: {
         Row: {
-          business_role: string
+          business_role_id: string | null
           created_at: string
+          description: string | null
           id: string
-          items: Json
+          is_active: boolean
+          is_blocking: boolean
+          name: string
           studio_id: string | null
           updated_at: string
         }
         Insert: {
-          business_role: string
+          business_role_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
-          items?: Json
+          is_active?: boolean
+          is_blocking?: boolean
+          name: string
           studio_id?: string | null
           updated_at?: string
         }
         Update: {
-          business_role?: string
+          business_role_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
-          items?: Json
+          is_active?: boolean
+          is_blocking?: boolean
+          name?: string
           studio_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "checklist_templates_business_role_id_fkey"
+            columns: ["business_role_id"]
+            isOneToOne: false
+            referencedRelation: "business_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_templates_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feedbacks: {
         Row: {
@@ -712,44 +955,6 @@ export type Database = {
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "studios"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      shift_checklist_items: {
-        Row: {
-          checked_at: string | null
-          created_at: string
-          id: string
-          label: string
-          photo_url: string | null
-          position: number
-          shift_id: string
-        }
-        Insert: {
-          checked_at?: string | null
-          created_at?: string
-          id?: string
-          label: string
-          photo_url?: string | null
-          position: number
-          shift_id: string
-        }
-        Update: {
-          checked_at?: string | null
-          created_at?: string
-          id?: string
-          label?: string
-          photo_url?: string | null
-          position?: number
-          shift_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shift_checklist_items_shift_id_fkey"
-            columns: ["shift_id"]
-            isOneToOne: false
-            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
         ]
