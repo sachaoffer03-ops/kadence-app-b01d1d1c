@@ -179,7 +179,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
     }
 
     // ── Studios cibles
-    const { data: allStudios } = await supabase.from("studios").select("id, name, has_kitchen");
+    const { data: allStudios } = await supabase.from("studios").select("id, name, has_kitchen").is("deleted_at", null);
     const studiosArr = (allStudios ?? []) as Array<{ id: string; name: string; has_kitchen: boolean }>;
     const studioIds = data.studio_ids?.length
       ? studiosArr.filter((s) => data.studio_ids!.includes(s.id)).map((s) => s.id)
