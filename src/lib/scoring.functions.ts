@@ -98,39 +98,44 @@ export const getScoreBreakdown = createServerFn({ method: "POST" })
       if (den > 0) punct = num / den;
     }
 
-    // 4. Checklist
+    // 4. Checklist (nouvelle structure : checklist_submissions + items)
     let checklist = defaultScore;
     let checklistCount = 0;
     if (ids.length > 0) {
-      const { data: items } = await supabase
-        .from("shift_checklist_items")
-        .select("shift_id, checked_at")
+      const { data: subs } = await supabase
+        .from("checklist_submissions")
+        .select("id, shift_id")
         .in("shift_id", ids);
-      const grouped = new Map<string, { total: number; done: number }>();
-      for (const it of items ?? []) {
-        const g = grouped.get(it.shift_id) ?? { total: 0, done: 0 };
-        g.total++;
-        if (it.checked_at) g.done++;
-        grouped.set(it.shift_id, g);
+      const subIds = (subs ?? []).map((s) => s.id);
+      const subToShift = new Map<string, string>((subs ?? []).map((s) => [s.id, s.shift_id]));
+
+      if (subIds.length > 0) {
+        const { data: items } = await supabase
+          .from("checklist_submission_items")
+          .select("submission_id, is_checked")
+          .in("submission_id", subIds);
+        const grouped = new Map<string, { total: number; done: number }>();
+        for (const it of items ?? []) {
+          const sid = subToShift.get(it.submission_id);
+          if (!sid) continue;
+          const g = grouped.get(sid) ?? { total: 0, done: 0 };
+          g.total++;
+          if (it.is_checked) g.done++;
+          grouped.set(sid, g);
+        }
+        const dateById = Object.fromEntries((shifts ?? []).map((s: any) => [s.id, s.shift_date]));
+        let num = 0, den = 0;
+        for (const [sid, g] of grouped) {
+          const d = dateById[sid];
+          if (!d) continue;
+          const days = Math.max(0, (Date.parse(today) - Date.parse(d)) / dayMs);
+          const w = Math.exp(-lambda * days);
+          num += (g.done / g.total) * 10 * w;
+          den += w;
+          checklistCount++;
+        }
+        if (den > 0) checklist = num / den;
       }
-      const dateById = Object.fromEntries((shifts ?? []).map((s: any) => [s.id, s.shift_date]));
-      // We need dates: refetch
-      const { data: dates } = await supabase
-        .from("shifts")
-        .select("id, shift_date")
-        .in("id", Array.from(grouped.keys()));
-      const dmap = Object.fromEntries((dates ?? []).map((s: any) => [s.id, s.shift_date]));
-      let num = 0, den = 0;
-      for (const [sid, g] of grouped) {
-        const d = dmap[sid] ?? dateById[sid];
-        if (!d) continue;
-        const days = Math.max(0, (Date.parse(today) - Date.parse(d)) / dayMs);
-        const w = Math.exp(-lambda * days);
-        num += (g.done / g.total) * 10 * w;
-        den += w;
-        checklistCount++;
-      }
-      if (den > 0) checklist = num / den;
     }
 
     const final = (manager + punct + checklist) / 3;
