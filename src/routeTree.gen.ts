@@ -37,6 +37,7 @@ import { Route as AdminHardcodingAuditRouteImport } from './routes/admin.hardcod
 import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
 import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as StaffChecklistShiftIdRouteImport } from './routes/staff.checklist.$shiftId'
 
 const TrousRoute = TrousRouteImport.update({
   id: '/trous',
@@ -178,6 +179,11 @@ const AdminAuditRoute = AdminAuditRouteImport.update({
   path: '/admin/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffChecklistShiftIdRoute = StaffChecklistShiftIdRouteImport.update({
+  id: '/checklist/$shiftId',
+  path: '/checklist/$shiftId',
+  getParentRoute: () => StaffRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
+  '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
+  '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
+  '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/planning/generate'
     | '/staff/$id'
     | '/staff/'
+    | '/staff/checklist/$shiftId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/planning/generate'
     | '/staff/$id'
     | '/staff'
+    | '/staff/checklist/$shiftId'
   id:
     | '__root__'
     | '/'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/planning/generate'
     | '/staff/$id'
     | '/staff/'
+    | '/staff/checklist/$shiftId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -587,6 +599,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff/checklist/$shiftId': {
+      id: '/staff/checklist/$shiftId'
+      path: '/checklist/$shiftId'
+      fullPath: '/staff/checklist/$shiftId'
+      preLoaderRoute: typeof StaffChecklistShiftIdRouteImport
+      parentRoute: typeof StaffRoute
+    }
   }
 }
 
@@ -605,11 +624,13 @@ const PlanningRouteWithChildren = PlanningRoute._addFileChildren(
 interface StaffRouteChildren {
   StaffIdRoute: typeof StaffIdRoute
   StaffIndexRoute: typeof StaffIndexRoute
+  StaffChecklistShiftIdRoute: typeof StaffChecklistShiftIdRoute
 }
 
 const StaffRouteChildren: StaffRouteChildren = {
   StaffIdRoute: StaffIdRoute,
   StaffIndexRoute: StaffIndexRoute,
+  StaffChecklistShiftIdRoute: StaffChecklistShiftIdRoute,
 }
 
 const StaffRouteWithChildren = StaffRoute._addFileChildren(StaffRouteChildren)
