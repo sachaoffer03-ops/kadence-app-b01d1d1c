@@ -33,6 +33,7 @@ import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-studios'
+import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
 import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
 
 const TrousRoute = TrousRouteImport.update({
@@ -155,6 +156,11 @@ const AdminMigrateStudiosRoute = AdminMigrateStudiosRouteImport.update({
   path: '/admin/migrate-studios',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDiagnosticRoute = AdminDiagnosticRouteImport.update({
+  id: '/admin/diagnostic',
+  path: '/admin/diagnostic',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminDataDiagnosticRoute = AdminDataDiagnosticRouteImport.update({
   id: '/admin/data-diagnostic',
   path: '/admin/data-diagnostic',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
+  '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
+  '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -236,6 +244,7 @@ export interface FileRoutesById {
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
+  '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
     | '/studios'
     | '/trous'
     | '/admin/data-diagnostic'
+    | '/admin/diagnostic'
     | '/admin/migrate-studios'
     | '/admin/seeder'
     | '/planning/generate'
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/studios'
     | '/trous'
     | '/admin/data-diagnostic'
+    | '/admin/diagnostic'
     | '/admin/migrate-studios'
     | '/admin/seeder'
     | '/planning/generate'
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
     | '/studios'
     | '/trous'
     | '/admin/data-diagnostic'
+    | '/admin/diagnostic'
     | '/admin/migrate-studios'
     | '/admin/seeder'
     | '/planning/generate'
@@ -346,6 +358,7 @@ export interface RootRouteChildren {
   StudiosRoute: typeof StudiosRoute
   TrousRoute: typeof TrousRoute
   AdminDataDiagnosticRoute: typeof AdminDataDiagnosticRoute
+  AdminDiagnosticRoute: typeof AdminDiagnosticRoute
   AdminMigrateStudiosRoute: typeof AdminMigrateStudiosRoute
   AdminSeederRoute: typeof AdminSeederRoute
 }
@@ -520,6 +533,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMigrateStudiosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/diagnostic': {
+      id: '/admin/diagnostic'
+      path: '/admin/diagnostic'
+      fullPath: '/admin/diagnostic'
+      preLoaderRoute: typeof AdminDiagnosticRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/data-diagnostic': {
       id: '/admin/data-diagnostic'
       path: '/admin/data-diagnostic'
@@ -575,6 +595,7 @@ const rootRouteChildren: RootRouteChildren = {
   StudiosRoute: StudiosRoute,
   TrousRoute: TrousRoute,
   AdminDataDiagnosticRoute: AdminDataDiagnosticRoute,
+  AdminDiagnosticRoute: AdminDiagnosticRoute,
   AdminMigrateStudiosRoute: AdminMigrateStudiosRoute,
   AdminSeederRoute: AdminSeederRoute,
 }
