@@ -133,8 +133,13 @@ function TimeBar({ leftPct, widthPct, color }: { leftPct: number; widthPct: numb
 }
 
 // ── Shift Detail Modal ─────────────────────────────────────
-function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, onConfirm, onUnlock, onEdit }: { shift: PlanningShift; employee?: EmployeeLite; onClose: () => void; onDelete: () => void; onUpdateSlot: (slot: number) => void; onConfirm: () => void; onUnlock?: () => void; onEdit: () => void }) {
-  const [editing, setEditing] = useState(false);
+function ShiftDetailModal({ shift, employee, onClose, onDelete, onConfirm, onUnlock, onEdit }: { shift: PlanningShift; employee?: EmployeeLite; onClose: () => void; onDelete: () => void; onConfirm: () => void; onUnlock?: () => void; onEdit: () => void }) {
+  const durationH = useMemo(() => {
+    const [sh, sm] = String(shift.startTime).slice(0, 5).split(":").map(Number);
+    const [eh, em] = String(shift.endTime).slice(0, 5).split(":").map(Number);
+    const mins = (eh * 60 + em) - (sh * 60 + sm);
+    return Math.round((mins / 60) * 10) / 10;
+  }, [shift.startTime, shift.endTime]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.3)" }} onClick={onClose}>
       <div
@@ -167,22 +172,8 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, on
           <div className="flex items-center gap-3">
             <Clock size={14} style={{ color: "var(--muted-foreground)" }} />
             <div className="flex-1">
-              {editing ? (
-                <Dropdown
-                  value={timeSlotDefs[shift.slot].time}
-                  options={timeSlotDefs.map(s => s.time)}
-                  onChange={(v) => {
-                    const idx = timeSlotDefs.findIndex(s => s.time === v);
-                    if (idx >= 0) onUpdateSlot(idx);
-                  }}
-                  minWidth={180}
-                />
-              ) : (
-                <>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{shift.time}</div>
-                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>5 heures</div>
-                </>
-              )}
+              <div style={{ fontSize: 13, fontWeight: 500 }}>{shift.time}</div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{durationH}h</div>
             </div>
           </div>
 
@@ -296,18 +287,11 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, on
             Profil
           </Link>
           <button
-            onClick={() => setEditing((v) => !v)}
-            className="rounded-md px-3 py-2 transition-colors"
-            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
-          >
-            {editing ? "Terminer" : "Slot rapide"}
-          </button>
-          <button
             onClick={onEdit}
             className="flex-1 rounded-md px-3 py-2 transition-colors"
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
           >
-            Édition complète
+            Modifier
           </button>
         </div>
       </div>
@@ -1134,7 +1118,6 @@ function PlanningCalendarPage() {
           employee={employees.find((e) => e.id === selectedShift.employeeId)}
           onClose={() => setSelectedShift(null)}
           onDelete={() => handleDeleteShift(selectedShift.id)}
-          onUpdateSlot={(slot) => handleUpdateSlot(selectedShift.id, slot)}
           onConfirm={() => handleConfirmShift(selectedShift.id)}
           onUnlock={() => { handleUnlockShift(selectedShift.id); setSelectedShift(null); }}
           onEdit={() => { setEditShift(selectedShift); setSelectedShift(null); }}

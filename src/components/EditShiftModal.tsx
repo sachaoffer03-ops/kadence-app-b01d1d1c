@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { updateShift } from "@/lib/shifts.functions";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 type EmployeeOpt = {
   id: string;
@@ -31,10 +32,13 @@ const toHHMM = (t: string) => String(t).slice(0, 5);
 
 export function EditShiftModal({ shift, onClose, onSaved }: Props) {
   const updateShiftFn = useServerFn(updateShift);
+  const { roles: allRoles } = useBusinessRoles({ onlyActive: true });
   const [date, setDate] = useState(shift.shiftDate);
   const [start, setStart] = useState(toHHMM(shift.startTime));
   const [end, setEnd] = useState(toHHMM(shift.endTime));
   const [userId, setUserId] = useState<string>(shift.employeeId || "");
+  const [role, setRole] = useState<string>(shift.role);
+  const [studioRoleNames, setStudioRoleNames] = useState<string[] | null>(null);
   const [employees, setEmployees] = useState<EmployeeOpt[]>([]);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
@@ -72,17 +76,37 @@ export function EditShiftModal({ shift, onClose, onSaved }: Props) {
     })();
   }, []);
 
+  // Charge les rôles autorisés pour ce studio (table studio_business_roles).
+  // Si vide, fallback sur tous les rôles métier actifs.
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("studio_business_roles")
+        .select("role")
+        .eq("studio_id", shift.studioId);
+      const list = (data ?? []).map((r: any) => r.role);
+      setStudioRoleNames(list.length > 0 ? list : null);
+    })();
+  }, [shift.studioId]);
+
+  const availableRoles = useMemo(() => {
+    const names = allRoles.map((r) => r.name);
+    if (!studioRoleNames) return names;
+    const set = new Set(studioRoleNames);
+    return names.filter((n) => set.has(n));
+  }, [allRoles, studioRoleNames]);
+
   const eligible = useMemo(() => {
     return employees
       .filter((e) =>
-        (e.roles.length === 0 || e.roles.includes(shift.role)) &&
+        (e.roles.length === 0 || e.roles.includes(role)) &&
         (e.studio_ids.length === 0 || e.studio_ids.includes(shift.studioId)),
       )
       .filter((e) =>
         search === "" ||
         `${e.first_name} ${e.last_name}`.toLowerCase().includes(search.toLowerCase()),
       );
-  }, [employees, search, shift.role, shift.studioId]);
+  }, [employees, search, role, shift.studioId]);
 
   const durationMin = useMemo(() => {
     const [sh, sm] = start.split(":").map(Number);
@@ -108,6 +132,7 @@ export function EditShiftModal({ shift, onClose, onSaved }: Props) {
           startTime: `${start}:00`,
           endTime: `${end}:00`,
           userId: userId === "" ? null : userId,
+          businessRole: role,
         },
       });
       toast.success("Shift modifié");
@@ -133,9 +158,9 @@ export function EditShiftModal({ shift, onClose, onSaved }: Props) {
       >
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "0.5px solid var(--border)" }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Édition complète</div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Modifier le shift</div>
             <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
-              {shift.role} · {Math.round((durationMin / 60) * 10) / 10}h
+              {role} · {Math.round((durationMin / 60) * 10) / 10}h
             </div>
           </div>
           <button onClick={onClose} className="rounded-md p-1" style={{ color: "var(--muted-foreground)" }}>
@@ -179,6 +204,21 @@ export function EditShiftModal({ shift, onClose, onSaved }: Props) {
               />
             </label>
           </div>
+
+          <label className="flex flex-col gap-1">
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Rôle</span>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="rounded-md px-3 py-2 outline-none"
+              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
+            >
+              {!availableRoles.includes(role) && <option value={role}>{role}</option>}
+              {availableRoles.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </label>
 
           <div className="flex flex-col gap-1">
             <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Employé assigné</span>
