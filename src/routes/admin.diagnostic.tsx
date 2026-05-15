@@ -133,21 +133,21 @@ function DiagnosticPage() {
 
       {/* S3 */}
       <Card>
-        <Title>3. Dispos Marco — semaine 1er juin 2026</Title>
-        {data.s3.length === 0 ? <Empty>Aucune dispo Marco</Empty> :
+        <Title>3. Dispos {data.cdi_cuisine_employee?.nom ?? "(aucun CDI cuisine trouvé)"} — {data.period?.start} → {data.period?.end}</Title>
+        {data.s3.length === 0 ? <Empty>Aucune dispo</Empty> :
           <Table headers={["Date", "Jour", "Début", "Fin", "Durée"]} rows={data.s3.map((a: any) => [a.avail_date, a.jour, a.start_time, a.end_time, `${a.duree}h`])} />}
       </Card>
 
       {/* S4 */}
       <Card>
-        <Title>4. Dispos Léa & Karim — semaine 1er juin 2026</Title>
-        {data.s4.length === 0 ? <Empty>Aucune dispo trouvée pour Léa et Karim sur cette semaine</Empty> :
+        <Title>4. Dispos cuisine non-CDI le week-end — {data.period?.start} → {data.period?.end}</Title>
+        {data.s4.length === 0 ? <Empty>Aucune dispo cuisine non-CDI le week-end</Empty> :
           <Table headers={["Nom", "Date", "Jour", "Début", "Fin"]} rows={data.s4.map((a: any) => [a.nom, a.avail_date, a.jour, a.start_time, a.end_time])} />}
       </Card>
 
       {/* S5 */}
       <Card>
-        <Title>5. Shifts Marco écrits (1-7 juin)</Title>
+        <Title>5. Shifts {data.cdi_cuisine_employee?.nom ?? "(CDI cuisine)"} sur la période</Title>
         {data.s5.length === 0 ? <Empty>Aucun shift écrit (probablement dry_run uniquement)</Empty> :
           <Table headers={["Date", "Jour", "Début", "Fin", "Rôle", "Studio", "Durée"]} rows={data.s5.map((s: any) => [s.shift_date, s.jour, s.start_time, s.end_time, s.business_role, s.studio, `${s.duree}h`])} />}
       </Card>
