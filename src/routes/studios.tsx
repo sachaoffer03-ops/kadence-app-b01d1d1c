@@ -24,8 +24,15 @@ import {
   type Role,
   type Studio,
   checklistTemplates,
-  studioExceptions,
 } from "@/lib/mock-data";
+import {
+  useStudioExceptions,
+  createException,
+  updateException,
+  deleteException,
+  type StudioException,
+  type ExceptionType as DbExceptionType,
+} from "@/hooks/use-studio-exceptions";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
 import {
   useStudios,
