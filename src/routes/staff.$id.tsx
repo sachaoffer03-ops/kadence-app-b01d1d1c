@@ -7,6 +7,8 @@ import { roleColors, type Role } from "@/lib/mock-data";
 import { useAuth } from "@/hooks/use-auth";
 import { computePunctuality, punctualityColor } from "@/lib/staff-helpers";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from "recharts";
+import { useServerFn } from "@tanstack/react-start";
+import { getScoreBreakdown } from "@/lib/scoring.functions";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -49,6 +51,8 @@ function EmployeeDetailPage() {
   const [rateValue, setRateValue] = useState(5);
   const [rateMsg, setRateMsg] = useState("");
   const [saving, setSaving] = useState(false);
+  const [breakdown, setBreakdown] = useState<Awaited<ReturnType<typeof getScoreBreakdown>> | null>(null);
+  const fetchBreakdown = useServerFn(getScoreBreakdown);
 
   const load = async () => {
     const [{ data: p }, { data: br }, { data: sts }, { data: us }, { data: uc }, { data: sh }, { data: sg }] = await Promise.all([
@@ -90,6 +94,9 @@ function EmployeeDetailPage() {
   };
 
   useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    fetchBreakdown({ data: { userId: id } }).then(setBreakdown).catch(() => setBreakdown(null));
+  }, [id]);
 
   const submitRating = async (shiftId: string) => {
     if (!user) return;
@@ -217,10 +224,43 @@ function EmployeeDetailPage() {
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Performance</div>
             <div className="flex items-center justify-between mb-3">
               <span style={{ fontSize: 13 }}>Score global</span>
-              <span style={{ fontSize: 18, fontWeight: 500, color: scoreColor }}>{score || "—"}{score ? "/10" : ""}</span>
+              <span style={{ fontSize: 22, fontWeight: 500, color: scoreColor }}>{score ? score.toFixed(1) : "—"}{score ? "/10" : ""}</span>
             </div>
+            {breakdown && (
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {[
+                  { label: "Manager", val: breakdown.manager, n: breakdown.counts.manager },
+                  { label: "Ponctualité", val: breakdown.punctuality, n: breakdown.counts.punctuality },
+                  { label: "Checklists", val: breakdown.checklist, n: breakdown.counts.checklist },
+                ].map((c) => (
+                  <div key={c.label} className="rounded-md p-2" style={{ backgroundColor: "var(--background)" }}>
+                    <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{c.label}</div>
+                    <div style={{ fontSize: 15, fontWeight: 500 }}>{c.val.toFixed(1)}</div>
+                    <div style={{ fontSize: 10, color: "var(--muted-foreground)" }}>{c.n === 0 ? "défaut" : `${c.n} éval.`}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {breakdown && breakdown.evolution.length > 0 && (
+              <div style={{ height: 80, marginTop: 8 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={breakdown.evolution}>
+                    <YAxis domain={[0, 10]} hide />
+                    <XAxis dataKey="date" hide />
+                    <Tooltip
+                      contentStyle={{ fontSize: 11, padding: "4px 8px", borderRadius: 6 }}
+                      labelFormatter={(d) => new Date(d as string).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                      formatter={(v) => [`${(v as number).toFixed(1)}/10`, "Score"]}
+                    />
+                    <ReferenceLine y={7} stroke="var(--border)" strokeDasharray="2 2" />
+                    <Line type="monotone" dataKey="score" stroke="var(--coral)" strokeWidth={1.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+                <div style={{ fontSize: 10, color: "var(--muted-foreground)", textAlign: "center", marginTop: 2 }}>Évolution sur 90 jours</div>
+              </div>
+            )}
             {used !== null && max !== null && max > 0 && (
-              <>
+              <div className="mt-4 pt-3" style={{ borderTop: "0.5px solid var(--border)" }}>
                 <div className="flex items-center justify-between mb-2">
                   <span style={{ fontSize: 13 }}>Contingent</span>
                   <span style={{ fontSize: 13, fontWeight: 500, color: quotaColor }}>{used}/{max}h</span>
@@ -228,7 +268,7 @@ function EmployeeDetailPage() {
                 <div style={{ width: "100%", height: 6, borderRadius: 3, backgroundColor: "var(--muted)" }}>
                   <div style={{ width: `${Math.min(quotaPct, 100)}%`, height: "100%", borderRadius: 3, backgroundColor: quotaColor }} />
                 </div>
-              </>
+              </div>
             )}
           </div>
 

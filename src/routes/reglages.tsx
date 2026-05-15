@@ -244,20 +244,49 @@ function AISettings() {
         </label>
       </div>
 
-      <button
-        onClick={save}
-        disabled={saving || total !== 100}
-        className="self-start rounded-md px-4 py-2 flex items-center gap-2 transition-colors"
-        style={{
-          fontSize: 13, fontWeight: 500,
-          backgroundColor: total === 100 ? "var(--foreground)" : "var(--muted)",
-          color: total === 100 ? "var(--card)" : "var(--muted-foreground)",
-          cursor: total === 100 && !saving ? "pointer" : "not-allowed",
-        }}
-      >
-        <Save size={14} /> {saving ? "Enregistrement…" : "Enregistrer les réglages"}
-      </button>
+      <div className="flex items-center gap-2 self-start flex-wrap">
+        <button
+          onClick={save}
+          disabled={saving || total !== 100}
+          className="rounded-md px-4 py-2 flex items-center gap-2 transition-colors"
+          style={{
+            fontSize: 13, fontWeight: 500,
+            backgroundColor: total === 100 ? "var(--foreground)" : "var(--muted)",
+            color: total === 100 ? "var(--card)" : "var(--muted-foreground)",
+            cursor: total === 100 && !saving ? "pointer" : "not-allowed",
+          }}
+        >
+          <Save size={14} /> {saving ? "Enregistrement…" : "Enregistrer les réglages"}
+        </button>
+        <RecalcScoresButton />
+      </div>
     </div>
+  );
+}
+
+function RecalcScoresButton() {
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const { recalculateAllScores } = await import("@/lib/scoring.functions");
+      const res = await recalculateAllScores();
+      toast.success(`${res.count} score${res.count > 1 ? "s" : ""} recalculé${res.count > 1 ? "s" : ""}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur recalcul");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      onClick={run}
+      disabled={busy}
+      className="rounded-md px-4 py-2 flex items-center gap-2"
+      style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)", color: "var(--foreground)" }}
+    >
+      <Sparkles size={14} /> {busy ? "Recalcul en cours…" : "Recalculer tous les scores"}
+    </button>
   );
 }
 
