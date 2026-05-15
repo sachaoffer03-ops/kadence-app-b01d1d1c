@@ -205,6 +205,21 @@ export function EditShiftModal({ shift, onClose, onSaved }: Props) {
             </label>
           </div>
 
+          <label className="flex flex-col gap-1">
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Rôle</span>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="rounded-md px-3 py-2 outline-none"
+              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
+            >
+              {!availableRoles.includes(role) && <option value={role}>{role}</option>}
+              {availableRoles.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </label>
+
           <div className="flex flex-col gap-1">
             <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Employé assigné</span>
             <input
