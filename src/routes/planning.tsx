@@ -1158,6 +1158,7 @@ function PlanningCalendarPage() {
       {holeShift && (
         <FillHoleModal
           shift={holeShift}
+          employees={employees}
           onClose={() => setHoleShift(null)}
           onFill={(empId) => handleFillHole(holeShift.id, empId)}
         />
@@ -1165,6 +1166,7 @@ function PlanningCalendarPage() {
       {showAdd && (
         <AddShiftModal
           studio={selectedStudio}
+          employees={employees}
           onClose={() => setShowAdd(false)}
           onAdd={handleAddShift}
         />
