@@ -94,6 +94,9 @@ function EmployeeDetailPage() {
   };
 
   useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    fetchBreakdown({ data: { userId: id } }).then(setBreakdown).catch(() => setBreakdown(null));
+  }, [id]);
 
   const submitRating = async (shiftId: string) => {
     if (!user) return;
