@@ -1203,7 +1203,7 @@ function PlanningCalendarPage() {
 }
 
 // ── Add Shift Modal ────────────────────────────────────────
-function AddShiftModal({ studio, onClose, onAdd }: { studio: Studio; onClose: () => void; onAdd: (empId: string, day: number, slot: number, role: Role) => void }) {
+function AddShiftModal({ studio, employees, onClose, onAdd }: { studio: Studio; employees: EmployeeLite[]; onClose: () => void; onAdd: (empId: string, day: number, slot: number, role: Role) => void }) {
   const { names: roles } = useBusinessRoles({ onlyActive: true });
   const [day, setDay] = useState(0);
   const [slot, setSlot] = useState(0);
@@ -1211,7 +1211,7 @@ function AddShiftModal({ studio, onClose, onAdd }: { studio: Studio; onClose: ()
   const [empId, setEmpId] = useState("");
   useEffect(() => { if (!role && roles.length) setRole(roles[0]); }, [roles.join(",")]);
 
-  const eligible = useMemo(() => employees.filter((e) => e.roles.includes(role)), [role]);
+  const eligible = useMemo(() => employees.filter((e) => e.roles.includes(role)), [employees, role]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.3)" }} onClick={onClose}>
