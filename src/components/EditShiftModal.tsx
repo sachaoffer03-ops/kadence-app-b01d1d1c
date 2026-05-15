@@ -158,9 +158,9 @@ export function EditShiftModal({ shift, onClose, onSaved }: Props) {
       >
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "0.5px solid var(--border)" }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Édition complète</div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Modifier le shift</div>
             <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
-              {shift.role} · {Math.round((durationMin / 60) * 10) / 10}h
+              {role} · {Math.round((durationMin / 60) * 10) / 10}h
             </div>
           </div>
           <button onClick={onClose} className="rounded-md p-1" style={{ color: "var(--muted-foreground)" }}>
