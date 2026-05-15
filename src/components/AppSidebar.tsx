@@ -38,25 +38,25 @@ const navSections: NavSection[] = [
     items: [
       { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
       { label: "Planning", to: "/planning", icon: CalendarDays },
-      { label: "Staff", to: "/staff", icon: Users, badge: 3 },
-      { label: "Trous à combler", to: "/trous", icon: AlertTriangle, badge: 4, badgeType: "danger" },
+      { label: "Staff", to: "/staff", icon: Users },
+      { label: "Trous à combler", to: "/trous", icon: AlertTriangle },
     ],
   },
   {
     title: "Opérations",
     items: [
-      { label: "Demandes modif", to: "/demandes", icon: FileEdit, badge: 3, badgeType: "danger" },
-      { label: "Signalements", to: "/signalements", icon: PackageSearch, badge: 5, badgeType: "danger" },
+      { label: "Demandes modif", to: "/demandes", icon: FileEdit },
+      { label: "Signalements", to: "/signalements", icon: PackageSearch },
       { label: "Pointage", to: "/pointage", icon: Clock },
       { label: "Checklists", to: "/checklists", icon: ClipboardCheck },
-      { label: "Feedbacks", to: "/feedbacks", icon: MessageSquare, badge: 5 },
+      { label: "Feedbacks", to: "/feedbacks", icon: MessageSquare },
       { label: "Formation", to: "/formation", icon: GraduationCap },
     ],
   },
   {
     title: "Conformité",
     items: [
-      { label: "Dimona", to: "/dimona", icon: FileText, badge: 2, badgeType: "danger" },
+      { label: "Dimona", to: "/dimona", icon: FileText },
       { label: "Quotas étudiants", to: "/contingents", icon: BarChart3 },
     ],
   },
