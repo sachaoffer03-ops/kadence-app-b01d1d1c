@@ -35,6 +35,7 @@ import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-studios'
 import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
 import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
+import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 
 const TrousRoute = TrousRouteImport.update({
   id: '/trous',
@@ -166,6 +167,11 @@ const AdminDataDiagnosticRoute = AdminDataDiagnosticRouteImport.update({
   path: '/admin/data-diagnostic',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/admin/audit',
+  path: '/admin/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
+  '/admin/audit': typeof AdminAuditRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
+  '/admin/audit': typeof AdminAuditRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
+  '/admin/audit': typeof AdminAuditRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
@@ -273,6 +282,7 @@ export interface FileRouteTypes {
     | '/staff-app'
     | '/studios'
     | '/trous'
+    | '/admin/audit'
     | '/admin/data-diagnostic'
     | '/admin/diagnostic'
     | '/admin/migrate-studios'
@@ -300,6 +310,7 @@ export interface FileRouteTypes {
     | '/staff-app'
     | '/studios'
     | '/trous'
+    | '/admin/audit'
     | '/admin/data-diagnostic'
     | '/admin/diagnostic'
     | '/admin/migrate-studios'
@@ -328,6 +339,7 @@ export interface FileRouteTypes {
     | '/staff-app'
     | '/studios'
     | '/trous'
+    | '/admin/audit'
     | '/admin/data-diagnostic'
     | '/admin/diagnostic'
     | '/admin/migrate-studios'
@@ -357,6 +369,7 @@ export interface RootRouteChildren {
   StaffAppRoute: typeof StaffAppRoute
   StudiosRoute: typeof StudiosRoute
   TrousRoute: typeof TrousRoute
+  AdminAuditRoute: typeof AdminAuditRoute
   AdminDataDiagnosticRoute: typeof AdminDataDiagnosticRoute
   AdminDiagnosticRoute: typeof AdminDiagnosticRoute
   AdminMigrateStudiosRoute: typeof AdminMigrateStudiosRoute
@@ -547,6 +560,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDataDiagnosticRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/audit': {
+      id: '/admin/audit'
+      path: '/admin/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -594,6 +614,7 @@ const rootRouteChildren: RootRouteChildren = {
   StaffAppRoute: StaffAppRoute,
   StudiosRoute: StudiosRoute,
   TrousRoute: TrousRoute,
+  AdminAuditRoute: AdminAuditRoute,
   AdminDataDiagnosticRoute: AdminDataDiagnosticRoute,
   AdminDiagnosticRoute: AdminDiagnosticRoute,
   AdminMigrateStudiosRoute: AdminMigrateStudiosRoute,
