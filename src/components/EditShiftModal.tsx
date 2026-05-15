@@ -132,6 +132,7 @@ export function EditShiftModal({ shift, onClose, onSaved }: Props) {
           startTime: `${start}:00`,
           endTime: `${end}:00`,
           userId: userId === "" ? null : userId,
+          businessRole: role,
         },
       });
       toast.success("Shift modifié");
