@@ -271,13 +271,13 @@ function StudiosPage() {
     const name = newStudioName.trim();
     if (!name) return;
     try {
-      const created = await dbCreateStudio(name);
+      const created = await dbCreateStudio(name, newStudioKitchen);
       setNewStudioName("");
+      setNewStudioKitchen(false);
       setShowNewModal(false);
       await reload();
       if (created) {
-        // Sélectionne le nouveau studio (créé en dernier dans la liste)
-        setActiveStudio(studios.length); // approximatif, sera corrigé par effet
+        setActiveStudio(studios.length);
       }
     } catch (e: any) {
       toast.error("Création impossible", { description: e?.message ?? "" });
