@@ -33,6 +33,7 @@ import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-studios'
+import { Route as AdminHardcodingAuditRouteImport } from './routes/admin.hardcoding-audit'
 import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
 import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
@@ -157,6 +158,11 @@ const AdminMigrateStudiosRoute = AdminMigrateStudiosRouteImport.update({
   path: '/admin/migrate-studios',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminHardcodingAuditRoute = AdminHardcodingAuditRouteImport.update({
+  id: '/admin/hardcoding-audit',
+  path: '/admin/hardcoding-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminDiagnosticRoute = AdminDiagnosticRouteImport.update({
   id: '/admin/diagnostic',
   path: '/admin/diagnostic',
@@ -196,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/admin/audit': typeof AdminAuditRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
+  '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/admin/audit': typeof AdminAuditRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
+  '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/admin/audit': typeof AdminAuditRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
+  '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/data-diagnostic'
     | '/admin/diagnostic'
+    | '/admin/hardcoding-audit'
     | '/admin/migrate-studios'
     | '/admin/seeder'
     | '/planning/generate'
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/data-diagnostic'
     | '/admin/diagnostic'
+    | '/admin/hardcoding-audit'
     | '/admin/migrate-studios'
     | '/admin/seeder'
     | '/planning/generate'
@@ -342,6 +353,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/data-diagnostic'
     | '/admin/diagnostic'
+    | '/admin/hardcoding-audit'
     | '/admin/migrate-studios'
     | '/admin/seeder'
     | '/planning/generate'
@@ -372,6 +384,7 @@ export interface RootRouteChildren {
   AdminAuditRoute: typeof AdminAuditRoute
   AdminDataDiagnosticRoute: typeof AdminDataDiagnosticRoute
   AdminDiagnosticRoute: typeof AdminDiagnosticRoute
+  AdminHardcodingAuditRoute: typeof AdminHardcodingAuditRoute
   AdminMigrateStudiosRoute: typeof AdminMigrateStudiosRoute
   AdminSeederRoute: typeof AdminSeederRoute
 }
@@ -546,6 +559,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMigrateStudiosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/hardcoding-audit': {
+      id: '/admin/hardcoding-audit'
+      path: '/admin/hardcoding-audit'
+      fullPath: '/admin/hardcoding-audit'
+      preLoaderRoute: typeof AdminHardcodingAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/diagnostic': {
       id: '/admin/diagnostic'
       path: '/admin/diagnostic'
@@ -617,6 +637,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAuditRoute: AdminAuditRoute,
   AdminDataDiagnosticRoute: AdminDataDiagnosticRoute,
   AdminDiagnosticRoute: AdminDiagnosticRoute,
+  AdminHardcodingAuditRoute: AdminHardcodingAuditRoute,
   AdminMigrateStudiosRoute: AdminMigrateStudiosRoute,
   AdminSeederRoute: AdminSeederRoute,
 }
