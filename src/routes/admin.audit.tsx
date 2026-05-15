@@ -6,7 +6,7 @@ import { ArrowLeft, Loader2, Copy, Download, CheckCircle2, AlertTriangle, XCircl
 import { runAudit } from "@/lib/audit.functions";
 
 export const Route = createFileRoute("/admin/audit")({
-  component: AuditPage,
+  component: () => (<DevOnly label="L'audit production"><AuditPage /></DevOnly>),
   head: () => ({ meta: [{ title: "Audit production — Kadence" }] }),
 });
 

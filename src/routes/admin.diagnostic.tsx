@@ -6,7 +6,7 @@ import { ArrowLeft, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide
 import { runDiagnostic } from "@/lib/diagnostic.functions";
 
 export const Route = createFileRoute("/admin/diagnostic")({
-  component: DiagnosticPage,
+  component: () => (<DevOnly label="Le diagnostic planning"><DiagnosticPage /></DevOnly>),
   head: () => ({ meta: [{ title: "Diagnostic — Kadence" }] }),
 });
 

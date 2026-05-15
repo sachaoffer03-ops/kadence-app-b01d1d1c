@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/admin/migrate-studios")({
-  component: MigrateStudiosPage,
+  component: () => (<DevOnly label="L'outil de migration des studios"><MigrateStudiosPage /></DevOnly>),
 });
 
 function MigrateStudiosPage() {

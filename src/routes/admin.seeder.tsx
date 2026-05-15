@@ -6,7 +6,7 @@ import { Sparkles, ArrowLeft, Check, AlertTriangle, ArrowRight, Loader2, ChefHat
 import { seedFakeData, addKitchenWeekendStaff } from "@/lib/seed.functions";
 
 export const Route = createFileRoute("/admin/seeder")({
-  component: SeederPage,
+  component: () => (<DevOnly label="Le seeder de données fictives"><SeederPage /></DevOnly>),
   head: () => ({ meta: [{ title: "Seeder données fictives — Kadence" }] }),
 });
 

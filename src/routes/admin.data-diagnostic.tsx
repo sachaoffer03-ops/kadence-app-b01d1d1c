@@ -6,7 +6,7 @@ import { ArrowLeft, RefreshCw } from "lucide-react";
 import { runDataDiagnostic } from "@/lib/data-diagnostic.functions";
 
 export const Route = createFileRoute("/admin/data-diagnostic")({
-  component: DataDiagnosticPage,
+  component: () => (<DevOnly label="Le diagnostic de données"><DataDiagnosticPage /></DevOnly>),
   head: () => ({ meta: [{ title: "Diagnostic données — Kadence" }] }),
 });
 
