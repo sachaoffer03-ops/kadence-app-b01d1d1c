@@ -71,10 +71,12 @@ export const publishPlanning = createServerFn({ method: "POST" })
 
     const nowIso = new Date().toISOString();
 
-    // Met à jour les shifts du run (sur la période + studios, hors manuels)
+    // Met à jour les shifts du run (sur la période + studios, hors manuels).
+    // L'enum shift_status n'a pas "confirmed" : on marque la publication via
+    // published_at (≠ null) + is_locked = true, et on garde status = "scheduled".
     const { data: updatedShifts, error: e1 } = await supabase
       .from("shifts")
-      .update({ status: "confirmed", published_at: nowIso, is_locked: true })
+      .update({ status: "scheduled", published_at: nowIso, is_locked: true })
       .gte("shift_date", run.month_start_date)
       .lte("shift_date", run.month_end_date)
       .in("studio_id", run.studios_included)
