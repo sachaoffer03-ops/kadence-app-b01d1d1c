@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       ai_planning_settings: {
         Row: {
+          availability_deadline_day: number | null
           cdi_hours_tolerance: number
           default_score_when_null: number
           enforce_max_weekly_cdi: boolean
@@ -40,6 +41,7 @@ export type Database = {
           weight_random: number
         }
         Insert: {
+          availability_deadline_day?: number | null
           cdi_hours_tolerance?: number
           default_score_when_null?: number
           enforce_max_weekly_cdi?: boolean
@@ -64,6 +66,7 @@ export type Database = {
           weight_random?: number
         }
         Update: {
+          availability_deadline_day?: number | null
           cdi_hours_tolerance?: number
           default_score_when_null?: number
           enforce_max_weekly_cdi?: boolean
@@ -505,10 +508,14 @@ export type Database = {
           duration_ms: number | null
           error_message: string | null
           id: string
+          marked_review_at: string | null
+          marked_review_by: string | null
           month_end_date: string
           month_start_date: string
           preserve_locked: boolean
           preserve_manual: boolean
+          published_at: string | null
+          published_by: string | null
           shifts_generated: number
           shifts_with_holes: number
           solver_logs: Json | null
@@ -516,6 +523,10 @@ export type Database = {
           status: string
           studios_included: string[]
           triggered_by: string | null
+          unpublished_at: string | null
+          unpublished_by: string | null
+          unpublished_reason: string | null
+          workflow_status: string | null
         }
         Insert: {
           alerts?: Json | null
@@ -525,10 +536,14 @@ export type Database = {
           duration_ms?: number | null
           error_message?: string | null
           id?: string
+          marked_review_at?: string | null
+          marked_review_by?: string | null
           month_end_date: string
           month_start_date: string
           preserve_locked?: boolean
           preserve_manual?: boolean
+          published_at?: string | null
+          published_by?: string | null
           shifts_generated?: number
           shifts_with_holes?: number
           solver_logs?: Json | null
@@ -536,6 +551,10 @@ export type Database = {
           status: string
           studios_included?: string[]
           triggered_by?: string | null
+          unpublished_at?: string | null
+          unpublished_by?: string | null
+          unpublished_reason?: string | null
+          workflow_status?: string | null
         }
         Update: {
           alerts?: Json | null
@@ -545,10 +564,14 @@ export type Database = {
           duration_ms?: number | null
           error_message?: string | null
           id?: string
+          marked_review_at?: string | null
+          marked_review_by?: string | null
           month_end_date?: string
           month_start_date?: string
           preserve_locked?: boolean
           preserve_manual?: boolean
+          published_at?: string | null
+          published_by?: string | null
           shifts_generated?: number
           shifts_with_holes?: number
           solver_logs?: Json | null
@@ -556,11 +579,36 @@ export type Database = {
           status?: string
           studios_included?: string[]
           triggered_by?: string | null
+          unpublished_at?: string | null
+          unpublished_by?: string | null
+          unpublished_reason?: string | null
+          workflow_status?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "planning_runs_marked_review_by_fkey"
+            columns: ["marked_review_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_runs_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "planning_runs_triggered_by_fkey"
             columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_runs_unpublished_by_fkey"
+            columns: ["unpublished_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

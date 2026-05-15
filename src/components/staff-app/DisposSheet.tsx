@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sheet, PrimaryButton } from "./shared";
-import { CheckCircle2, Plus, X } from "lucide-react";
+import { CheckCircle2, Plus, X, Lock } from "lucide-react";
+import { createAvailability, updateAvailability, deleteAvailability, getAvailabilityDeadline } from "@/lib/availabilities.functions";
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
@@ -40,6 +42,12 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [ranges, setRanges] = useState<Record<number, Range[]>>({});
   const [loading, setLoading] = useState(true);
   const [validated, setValidated] = useState(false);
+  const [deadline, setDeadline] = useState<{ days_left: number; passed: boolean; deadline_day: number } | null>(null);
+
+  const createFn = useServerFn(createAvailability);
+  const updateFn = useServerFn(updateAvailability);
+  const deleteFn = useServerFn(deleteAvailability);
+  const deadlineFn = useServerFn(getAvailabilityDeadline);
 
   const dateISO = (day: number) =>
     `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -48,6 +56,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     if (!open) return;
     const flag = typeof window !== "undefined" ? localStorage.getItem(disposKey(userId, year, month)) : null;
     setValidated(!!flag);
+    deadlineFn().then((d: any) => setDeadline(d)).catch(() => {});
     (async () => {
       setLoading(true);
       const start = dateISO(1);
@@ -73,48 +82,43 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     })();
   }, [open, userId, year, month, daysInMonth]);
 
+  const locked = validated || (deadline?.passed ?? false);
+
   const addRange = async (day: number) => {
-    if (validated) return;
-    // Plage par défaut : 9h-13h (modifiable)
+    if (locked) return;
+    // Plage par défaut : 9h-13h (4h, conforme à la durée minimale)
     const newRange: Range = { start: "09:00", end: "13:00" };
-    const { data, error } = await supabase
-      .from("availabilities")
-      .insert({ user_id: userId, avail_date: dateISO(day), start_time: newRange.start, end_time: newRange.end })
-      .select("id")
-      .single();
-    if (error || !data) {
-      toast.error("Erreur de sauvegarde");
-      return;
+    try {
+      const res: any = await createFn({ data: { avail_date: dateISO(day), start_time: newRange.start, end_time: newRange.end } });
+      setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...newRange, id: res.id }] }));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erreur de sauvegarde");
     }
-    setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...newRange, id: data.id }] }));
   };
 
   const updateRange = async (day: number, idx: number, patch: Partial<Range>) => {
-    if (validated) return;
+    if (locked) return;
     const list = ranges[day] ?? [];
     const updated = { ...list[idx], ...patch };
-    if (updated.start >= updated.end) {
-      toast.error("L'heure de fin doit être après le début");
-      return;
-    }
-    setRanges((p) => ({ ...p, [day]: list.map((r, i) => (i === idx ? updated : r)) }));
-    if (updated.id) {
-      const { error } = await supabase
-        .from("availabilities")
-        .update({ start_time: updated.start, end_time: updated.end })
-        .eq("id", updated.id);
-      if (error) toast.error("Erreur de sauvegarde");
+    if (!updated.id) return;
+    try {
+      await updateFn({ data: { id: updated.id, start_time: updated.start, end_time: updated.end } });
+      setRanges((p) => ({ ...p, [day]: list.map((r, i) => (i === idx ? updated : r)) }));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erreur");
     }
   };
 
   const removeRange = async (day: number, idx: number) => {
-    if (validated) return;
+    if (locked) return;
     const list = ranges[day] ?? [];
     const target = list[idx];
-    setRanges((p) => ({ ...p, [day]: list.filter((_, i) => i !== idx) }));
-    if (target.id) {
-      const { error } = await supabase.from("availabilities").delete().eq("id", target.id);
-      if (error) toast.error("Erreur de sauvegarde");
+    if (!target.id) return;
+    try {
+      await deleteFn({ data: { id: target.id } });
+      setRanges((p) => ({ ...p, [day]: list.filter((_, i) => i !== idx) }));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erreur");
     }
   };
 

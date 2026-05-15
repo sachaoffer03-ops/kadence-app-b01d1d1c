@@ -278,7 +278,7 @@ export const listPlanningRuns = createServerFn({ method: "GET" })
     await assertAdmin(supabase, userId);
     const { data, error } = await supabase
       .from("planning_runs")
-      .select("id, month_start_date, month_end_date, studios_included, status, coverage_rate, shifts_generated, shifts_with_holes, started_at, completed_at, duration_ms, dry_run, solver_logs, alerts, error_message")
+      .select("id, month_start_date, month_end_date, studios_included, status, workflow_status, coverage_rate, shifts_generated, shifts_with_holes, started_at, completed_at, duration_ms, dry_run, solver_logs, alerts, error_message, published_at")
       .order("started_at", { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);

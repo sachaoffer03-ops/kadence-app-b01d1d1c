@@ -472,8 +472,9 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at")
         .eq("user_id", userId)
+        .not("published_at", "is", null)
         .gte("shift_date", days[0].iso).lte("shift_date", days[days.length - 1].iso)
         .order("shift_date").order("start_time");
       if (data) setShifts(data);
@@ -493,19 +494,32 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
 
   const hasAnyShift = shifts.length > 0;
 
+  const latestPub = shifts.reduce<string | null>((acc, s: any) => {
+    const p = s.published_at as string | null;
+    if (!p) return acc;
+    return !acc || p > acc ? p : acc;
+  }, null);
+
   return (
     <div className="px-5 pt-6">
       <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 4 }}>Mon planning</div>
-      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16, textTransform: "capitalize" }}>{monthLabel}</div>
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <span style={{ fontSize: 12, color: "var(--muted-foreground)", textTransform: "capitalize" }}>{monthLabel}</span>
+        {latestPub && (
+          <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>
+            Publié le {new Date(latestPub).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
+          </span>
+        )}
+      </div>
 
       {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : !hasAnyShift ? (
         <div className="rounded-xl px-5 py-6 flex flex-col items-center text-center gap-2" style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)" }}>
           <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, backgroundColor: "var(--coral-light)" }}>
             <Sparkles size={20} style={{ color: "var(--coral-dark)" }} />
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>Planning en préparation</div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>Aucun planning publié</div>
           <div style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, maxWidth: 280 }}>
-            Tes shifts s'afficheront ici dès que l'admin aura généré le planning du mois à partir des dispos de toute l'équipe.
+            Tes shifts s'afficheront ici dès que l'admin aura publié le planning du mois.
           </div>
         </div>
       ) : (
