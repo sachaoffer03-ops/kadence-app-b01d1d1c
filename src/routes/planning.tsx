@@ -1130,6 +1130,22 @@ function PlanningCalendarPage() {
           onUpdateSlot={(slot) => handleUpdateSlot(selectedShift.id, slot)}
           onConfirm={() => handleConfirmShift(selectedShift.id)}
           onUnlock={() => { handleUnlockShift(selectedShift.id); setSelectedShift(null); }}
+          onEdit={() => { setEditShift(selectedShift); setSelectedShift(null); }}
+        />
+      )}
+      {editShift && (
+        <EditShiftModal
+          shift={{
+            id: editShift.id,
+            employeeId: editShift.employeeId,
+            role: editShift.role,
+            studioId: editShift.studioId,
+            shiftDate: editShift.shiftDate,
+            startTime: editShift.startTime,
+            endTime: editShift.endTime,
+          }}
+          onClose={() => setEditShift(null)}
+          onSaved={refresh}
         />
       )}
       {holeShift && (
