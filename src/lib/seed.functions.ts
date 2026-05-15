@@ -293,7 +293,7 @@ function buildEmployeeSpecs(): EmployeeSpec[] {
   for (let i = 0; i < 2; i++) specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["chatelain"] });
   specs.push({ contract: "Flexi", roles: ["Accueil", "Barista"], studios: ["rhode", "chatelain"] });
   // Flexi cuisine + accueil
-  specs.push({ contract: "Flexi", roles: ["Cuisine", "Accueil"], studios: ["chatelain"], forcedName: { first: "Karim", last: "El Amrani" } });
+  specs.push({ contract: "Flexi", roles: ["Cuisine"], studios: ["chatelain"], forcedName: { first: "Karim", last: "El Amrani" } });
 
   return specs;
 }
@@ -563,7 +563,7 @@ export const addKitchenWeekendStaff = createServerFn({ method: "POST" })
     };
     const news: NewSpec[] = [
       { first: "Léa", last: "Bernardi", contract: "Étudiant", roles: ["Cuisine"] },
-      { first: "Karim", last: "El Amrani", contract: "Flexi", roles: ["Cuisine", "Accueil"] },
+      { first: "Karim", last: "El Amrani", contract: "Flexi", roles: ["Cuisine"] },
     ];
 
     const created: Array<{ id: string; name: string; contract: string }> = [];
