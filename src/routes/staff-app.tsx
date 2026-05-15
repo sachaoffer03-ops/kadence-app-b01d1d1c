@@ -125,6 +125,18 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
   const [disposValidated, setDisposValidated] = useState(false);
   const [proposalsOpen, setProposalsOpen] = useState(false);
   const { proposals } = useProposals(userId);
+  const navigate = useNavigate();
+
+  async function handleEndShift(s: ShiftRow) {
+    try {
+      const tpl = await findApplicableTemplate({ studioId: s.studio_id ?? null, businessRole: s.business_role });
+      if (tpl) {
+        navigate({ to: "/staff/checklist/$shiftId", params: { shiftId: s.id } });
+        return;
+      }
+    } catch {}
+    setEndShift(s);
+  }
 
   // Mois suivant
   const nextMonth = useMemo(() => {
