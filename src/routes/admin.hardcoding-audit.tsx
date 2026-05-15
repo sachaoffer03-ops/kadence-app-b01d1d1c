@@ -99,12 +99,10 @@ const SECTIONS: Section[] = [
         recommendation: "La liste des studios est désormais dérivée dynamiquement de studioMap (issu de la DB). Plus aucun fallback en dur.",
       },
       {
-        severity: "warn",
+        severity: "ok",
         file: "src/routes/studios.tsx",
-        line: "36, 65-200+",
-        snippet: `const baseStudioTabs: Studio[] = ["Skult Rhodes", "Skult Châtelain"];\n"Skult Rhodes": { name, address, manager, ... }`,
-        verdict: "🟠 À refactorer (UI mock)",
-        recommendation: "La page /studios reste un mock UI 2100 lignes. À reconstruire en CRUD branché sur la table studios (phase dédiée).",
+        verdict: "🟢 Résolu",
+        recommendation: "La page /studios est désormais branchée sur la table studios via useStudios(). Plus de baseStudioTabs ni d'objets propriétés en dur — tabs, infos, postes, besoins et exceptions viennent tous de la DB.",
       },
       {
         severity: "info",
