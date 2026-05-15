@@ -873,6 +873,7 @@ export type Database = {
           id: string
           is_locked: boolean
           is_manual: boolean
+          minutes_late: number | null
           notes: string | null
           published_at: string | null
           shift_date: string
@@ -891,6 +892,7 @@ export type Database = {
           id?: string
           is_locked?: boolean
           is_manual?: boolean
+          minutes_late?: number | null
           notes?: string | null
           published_at?: string | null
           shift_date: string
@@ -909,6 +911,7 @@ export type Database = {
           id?: string
           is_locked?: boolean
           is_manual?: boolean
+          minutes_late?: number | null
           notes?: string | null
           published_at?: string | null
           shift_date?: string
@@ -1183,6 +1186,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_profile_score: {
+        Args: { target_user_id: string }
+        Returns: number
+      }
       can_see_handoff: {
         Args: { _from_shift_id: string; _user_id: string }
         Returns: boolean
@@ -1207,6 +1214,7 @@ export type Database = {
         Args: { caller_id: string; pairs: Json }
         Returns: Json
       }
+      recalculate_all_scores: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "manager" | "employee"
