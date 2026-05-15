@@ -345,26 +345,21 @@ function HardcodingAuditPage() {
       })}
 
       {/* Plan d'action */}
-      {totals.critical > 0 && (
-        <div style={{ marginTop: 32, padding: 20, background: "#fef2f2", borderRadius: 8 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 500, marginBottom: 12, color: "#b91c1c" }}>
-            Plan d'action avant passage prod
+      {totals.warn > 0 && (
+        <div style={{ marginTop: 32, padding: 20, background: "#fffbeb", borderRadius: 8 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 500, marginBottom: 12, color: "#b45309" }}>
+            Reste à nettoyer
           </h2>
           <ol style={{ paddingLeft: 20, fontSize: 14, lineHeight: 1.8 }}>
-            <li><strong>Refactor planning.tsx</strong> — supprimer l'import de <code>employees</code> depuis mock-data, brancher sur la table profiles.</li>
-            <li><strong>Refactor studios.tsx</strong> — charger la liste, adresses, managers, horaires depuis la table studios.</li>
-            <li><strong>Charger la liste des studios dynamiquement</strong> dans planning.tsx au lieu de la constante <code>["Skult Rhodes", "Skult Châtelain"]</code>.</li>
-            <li><strong>Remplacer CHATELAIN_NAME_HINTS</strong> dans generate-planning.functions.ts par un flag <code>has_kitchen</code> sur la table studios.</li>
-            <li><strong>Externaliser sachaoffer@gmail.com</strong> en variable d'env ou flag <code>is_protected</code> sur profiles.</li>
-            <li><strong>Supprimer ou flagger DEV</strong> les routes /admin/seeder, /admin/diagnostic, /admin/migrate-studios.</li>
-            <li><strong>Migrer mock-data.ts</strong> — déplacer roleColors vers src/styles.css, supprimer le tableau employees.</li>
-            <li><strong>Migrer le préfixe "Skult "</strong> — soit l'inclure dans un short_name DB, soit le supprimer en base.</li>
+            <li><strong>Refactor studios.tsx</strong> — la page reste un mock UI 2100 lignes ; à reconstruire en CRUD branché sur la table studios.</li>
+            <li><strong>Trim mock-data.ts</strong> — supprimer le tableau <code>employees</code> et tous ses dérivés (todayShifts, holeShifts, feedbacks, checklistTemplates, studioExceptions) une fois studios.tsx migré.</li>
+            <li><strong>Migrer le préfixe "Skult "</strong> — utiliser studios.short_name au lieu de <code>.replace("Skult ", "")</code> dans les pages d'affichage.</li>
           </ol>
         </div>
       )}
 
       <p style={{ marginTop: 24, fontSize: 11, color: "var(--muted-foreground)", textAlign: "center" }}>
-        Audit statique généré le 15 mai 2026 — basé sur scan ripgrep du dossier src/.
+        Audit statique mis à jour le 15 mai 2026 — score recalculé après refactor (Phases 1–7).
       </p>
     </div>
   );
