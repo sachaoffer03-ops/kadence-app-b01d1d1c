@@ -483,7 +483,7 @@ function PlanningCalendarPage() {
 
   // Load studios once for id ↔ name mapping
   useEffect(() => {
-    supabase.from("studios").select("id, name").then(({ data }) => {
+    supabase.from("studios").select("id, name").is("deleted_at", null).then(({ data }) => {
       if (data) setStudioMap(new Map(data.map((s: any) => [s.id, s.name])));
     });
   }, []);

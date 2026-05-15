@@ -59,7 +59,7 @@ function StaffAppPage() {
           "first_name,last_name,email,phone,birth_date,address,city,contract,studio_id,hire_date,niss,iban,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,nationality,quota_used,quota_max,score"
         ).eq("id", user.id).maybeSingle(),
         supabase.from("user_business_roles").select("role").eq("user_id", user.id),
-        supabase.from("studios").select("id,name"),
+        supabase.from("studios").select("id,name").is("deleted_at", null),
         supabase.rpc("get_default_admin").maybeSingle(),
       ]);
       if (p) setProfile(p as ProfileRow);

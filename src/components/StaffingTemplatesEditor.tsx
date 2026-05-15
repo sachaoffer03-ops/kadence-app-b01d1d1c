@@ -39,7 +39,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
 
   const reload = async () => {
     const [s, t] = await Promise.all([
-      supabase.from("studios").select("id, name").order("name"),
+      supabase.from("studios").select("id, name").is("deleted_at", null).order("name"),
       supabase.from("staffing_templates").select("*").order("day_of_week").order("start_time"),
     ]);
     if (s.data) {

@@ -35,7 +35,7 @@ export function CreateShiftModal({ open, onClose, defaultUserId, onCreated }: Pr
     if (!open) return;
     setUserId(defaultUserId || "");
     Promise.all([
-      supabase.from("studios").select("id, name"),
+      supabase.from("studios").select("id, name").is("deleted_at", null),
       supabase.from("profiles").select("id, first_name, last_name, studio_id").order("first_name"),
     ]).then(([s, e]) => {
       if (s.data) {

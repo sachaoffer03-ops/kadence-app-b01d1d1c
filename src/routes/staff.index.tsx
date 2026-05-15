@@ -39,7 +39,7 @@ function StaffPage() {
       const [{ data: ps }, { data: br }, { data: sts }, { data: shifts }] = await Promise.all([
         supabase.from("profiles").select("id,first_name,last_name,email,phone,contract,studio_id,status,score,quota_used,quota_max"),
         supabase.from("user_business_roles").select("user_id,role"),
-        supabase.from("studios").select("id,name").order("name"),
+        supabase.from("studios").select("id,name").is("deleted_at", null).order("name"),
         supabase.from("shifts").select("user_id,shift_date").gte("shift_date", new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)),
       ]);
       setProfiles(ps || []);

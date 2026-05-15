@@ -65,7 +65,7 @@ function GeneratePlanningPage() {
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
-    supabase.from("studios").select("id, name").order("name").then(({ data }) => {
+    supabase.from("studios").select("id, name").is("deleted_at", null).order("name").then(({ data }) => {
       const arr = (data ?? []) as Array<{ id: string; name: string }>;
       setStudios(arr);
       setSelectedStudios(new Set(arr.map((s) => s.id)));

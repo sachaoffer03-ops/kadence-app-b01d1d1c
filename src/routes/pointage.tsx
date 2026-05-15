@@ -30,7 +30,7 @@ function PointagePage() {
     const [{ data: s }, { data: p }, { data: st }] = await Promise.all([
       supabase.from("shifts").select("*").eq("shift_date", today).order("start_time"),
       supabase.from("profiles").select("id,first_name,last_name"),
-      supabase.from("studios").select("id,name"),
+      supabase.from("studios").select("id,name").is("deleted_at", null),
     ]);
     setShifts((s || []) as Shift[]);
     setProfiles(new Map((p || []).map((x) => [x.id, x])));

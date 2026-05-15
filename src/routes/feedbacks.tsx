@@ -41,7 +41,7 @@ function FeedbacksPage() {
         supabase.from("feedbacks").select("*").order("created_at", { ascending: false }),
         supabase.from("profiles").select("id,first_name,last_name"),
         supabase.from("shifts").select("id,shift_date,business_role,studio_id"),
-        supabase.from("studios").select("id,name"),
+        supabase.from("studios").select("id,name").is("deleted_at", null),
       ]);
       if (fbs) setItems(fbs as FB[]);
       if (ps) setProfiles(Object.fromEntries(ps.map(p => [p.id, p as ProfileLite])));

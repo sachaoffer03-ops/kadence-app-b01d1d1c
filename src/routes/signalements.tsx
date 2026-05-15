@@ -44,7 +44,7 @@ function SignalementsPage() {
       const [{ data: rows }, { data: ps }, { data: sts }] = await Promise.all([
         supabase.from("signalements").select("*").order("created_at", { ascending: false }),
         supabase.from("profiles").select("id,first_name,last_name"),
-        supabase.from("studios").select("id,name"),
+        supabase.from("studios").select("id,name").is("deleted_at", null),
       ]);
       if (rows) setItems(rows as Row[]);
       if (ps) setProfiles(Object.fromEntries(ps.map((p) => [p.id, p as ProfileLite])));

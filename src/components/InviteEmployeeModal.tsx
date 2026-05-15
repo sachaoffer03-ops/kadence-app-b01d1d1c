@@ -34,7 +34,7 @@ export function InviteEmployeeModal({ open, onClose, onCreated }: Props) {
 
   useEffect(() => {
     if (open) {
-      supabase.from("studios").select("id, name").then(({ data }) => {
+      supabase.from("studios").select("id, name").is("deleted_at", null).then(({ data }) => {
         if (data) {
           setStudios(data);
           setStudioIds((prev) => (prev.size === 0 && data.length ? new Set([data[0].id]) : prev));

@@ -58,7 +58,7 @@ function EmployeeDetailPage() {
     const [{ data: p }, { data: br }, { data: sts }, { data: us }, { data: uc }, { data: sh }, { data: sg }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
       supabase.from("user_business_roles").select("role").eq("user_id", id),
-      supabase.from("studios").select("id,name"),
+      supabase.from("studios").select("id,name").is("deleted_at", null),
       supabase.from("user_studios").select("studio_id").eq("user_id", id),
       supabase.from("user_contracts").select("contract").eq("user_id", id),
       supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status,clocked_in_at,clocked_out_at").eq("user_id", id).order("shift_date", { ascending: false }).limit(20),

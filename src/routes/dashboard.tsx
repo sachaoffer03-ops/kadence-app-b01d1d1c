@@ -56,7 +56,7 @@ function DashboardPage() {
         supabase.from("shifts").select("*").eq("shift_date", today).order("start_time"),
         supabase.from("shifts").select("start_time,end_time").gte("shift_date", weekAgo),
         supabase.from("shifts").select("user_id,shift_date").gte("shift_date", monthStart).lte("shift_date", monthEnd),
-        supabase.from("studios").select("id,name"),
+        supabase.from("studios").select("id,name").is("deleted_at", null),
         supabase.from("profiles").select("id,first_name,last_name"),
         supabase.from("modification_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("signalements").select("id", { count: "exact", head: true }).eq("resolved", false),

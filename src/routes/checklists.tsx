@@ -31,7 +31,7 @@ function ChecklistsPage() {
   useEffect(() => {
     const load = async () => {
       const [{ data: sts }, { data: tps }] = await Promise.all([
-        supabase.from("studios").select("id,name").order("name"),
+        supabase.from("studios").select("id,name").is("deleted_at", null).order("name"),
         supabase.from("checklist_templates").select("*").order("created_at"),
       ]);
       setStudios(sts || []);

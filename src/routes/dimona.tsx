@@ -35,7 +35,7 @@ function DimonaPage() {
       const [{ data: s }, { data: p }, { data: st }] = await Promise.all([
         supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,user_id,studio_id,notes").gte("shift_date", today).lte("shift_date", in7).not("user_id", "is", null).order("shift_date").order("start_time"),
         supabase.from("profiles").select("id,first_name,last_name,niss"),
-        supabase.from("studios").select("id,name"),
+        supabase.from("studios").select("id,name").is("deleted_at", null),
       ]);
       setShifts((s || []) as DShift[]);
       setProfiles(new Map((p || []).map((x) => [x.id, x as ProfileRow])));
