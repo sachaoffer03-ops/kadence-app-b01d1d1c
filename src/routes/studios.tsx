@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Dropdown } from "@/components/Dropdown";
 import { StaffingTemplatesEditor } from "@/components/StaffingTemplatesEditor";
 import {
@@ -27,25 +27,33 @@ import {
   studioExceptions,
 } from "@/lib/mock-data";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
+import {
+  useStudios,
+  useStudioBusinessRoles,
+  createStudio as dbCreateStudio,
+  updateStudio as dbUpdateStudio,
+  softDeleteStudio,
+  addRoleToStudio,
+  removeRoleFromStudio,
+  type StudioRow,
+  type DayHours,
+  type RoleSchedule,
+} from "@/hooks/use-studios";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/studios")({
   component: StudiosPage,
   head: () => ({ meta: [{ title: "Studios & postes — Kadence" }] }),
 });
 
-const baseStudioTabs: Studio[] = ["Skult Rhodes", "Skult Châtelain"];
 const subTabs = [
   "Informations",
   "Besoins en staff",
   "Exceptions",
 ] as const;
 
-// Fallback statique (utilisé pour seed mock data uniquement) ; les listes UI
-// utilisent useBusinessRoles() pour rester en phase avec la table business_roles.
-const allRoles: Role[] = ["Barista", "Accueil", "Host", "Cuisine"];
-
 /* ------------------------------------------------------------------ */
-/* Mock data                                                            */
+/* Types UI (conservés tels quels pour ne pas casser les sous-comp.)  */
 /* ------------------------------------------------------------------ */
 
 interface StudioInfo {
@@ -61,88 +69,6 @@ interface StudioInfo {
   notes: string;
 }
 
-const initialInfos: Record<Studio, StudioInfo> = {
-  "Skult Rhodes": {
-    name: "Skult Rhodes",
-    address: "Avenue de Rhodes 12",
-    postalCity: "1180 Uccle, Bruxelles",
-    phone: "+32 2 374 12 34",
-    email: "rhodes@skultstudios.be",
-    manager: "Sacha",
-    capacity: 48,
-    surface: "120 m²",
-    opened: "Mars 2023",
-    notes:
-      "Studio principal — espace lumineux avec terrasse arrière. Cuisine équipée four à pain. Brunchs servis jusqu'à 15h le weekend.",
-  },
-  "Skult Châtelain": {
-    name: "Skult Châtelain",
-    address: "Place du Châtelain 8",
-    postalCity: "1050 Ixelles, Bruxelles",
-    phone: "+32 2 538 56 78",
-    email: "chatelain@skultstudios.be",
-    manager: "Sacha",
-    capacity: 36,
-    surface: "85 m²",
-    opened: "Septembre 2024",
-    notes:
-      "Quartier vivant — forte affluence le mercredi (marché) et en soirée. Petite cuisine, carte simplifiée. Service jazz live le samedi soir.",
-  },
-};
-
-interface DayHours {
-  day: string;
-  open: string;
-  close: string;
-  closed: boolean;
-}
-
-const initialWeek: Record<Studio, DayHours[]> = {
-  "Skult Rhodes": [
-    { day: "Lundi", open: "07h00", close: "18h00", closed: false },
-    { day: "Mardi", open: "07h00", close: "18h00", closed: false },
-    { day: "Mercredi", open: "07h00", close: "18h00", closed: false },
-    { day: "Jeudi", open: "07h00", close: "18h00", closed: false },
-    { day: "Vendredi", open: "07h00", close: "23h00", closed: false },
-    { day: "Samedi", open: "08h00", close: "23h00", closed: false },
-    { day: "Dimanche", open: "08h00", close: "17h00", closed: false },
-  ],
-  "Skult Châtelain": [
-    { day: "Lundi", open: "08h00", close: "18h00", closed: true },
-    { day: "Mardi", open: "08h00", close: "18h00", closed: false },
-    { day: "Mercredi", open: "08h00", close: "22h00", closed: false },
-    { day: "Jeudi", open: "08h00", close: "18h00", closed: false },
-    { day: "Vendredi", open: "08h00", close: "23h00", closed: false },
-    { day: "Samedi", open: "09h00", close: "23h00", closed: false },
-    { day: "Dimanche", open: "09h00", close: "16h00", closed: false },
-  ],
-};
-
-interface RoleSchedule {
-  open: string;
-  close: string;
-}
-
-const initialRoleHours: Record<Studio, Partial<Record<Role, RoleSchedule>>> = {
-  "Skult Rhodes": {
-    Barista: { open: "07h00", close: "18h00" },
-    Accueil: { open: "08h00", close: "18h00" },
-    Host: { open: "11h00", close: "23h00" },
-    Cuisine: { open: "08h00", close: "16h00" },
-  },
-  "Skult Châtelain": {
-    Barista: { open: "08h00", close: "23h00" },
-    Accueil: { open: "08h00", close: "22h00" },
-    Host: { open: "17h00", close: "23h00" },
-    Cuisine: { open: "09h00", close: "16h00" },
-  },
-};
-
-const initialActive: Record<Studio, Role[]> = {
-  "Skult Rhodes": ["Barista", "Accueil", "Host", "Cuisine"],
-  "Skult Châtelain": ["Barista", "Accueil", "Host", "Cuisine"],
-};
-
 interface ShiftNeeds {
   id: string;
   label: string;
@@ -151,115 +77,198 @@ interface ShiftNeeds {
   needs: Record<Role, number>;
 }
 
-const initialNeeds: Record<Studio, ShiftNeeds[]> = {
-  "Skult Rhodes": [
-    { id: "s1", label: "Matin", start: "07h00", end: "12h00", needs: { Barista: 2, Accueil: 1, Host: 0, Cuisine: 1 } },
-    { id: "s2", label: "Midi", start: "12h00", end: "17h00", needs: { Barista: 2, Accueil: 1, Host: 1, Cuisine: 1 } },
-    { id: "s3", label: "Soir", start: "17h00", end: "23h00", needs: { Barista: 2, Accueil: 1, Host: 1, Cuisine: 1 } },
-  ],
-  "Skult Châtelain": [
-    { id: "s1", label: "Matin", start: "08h00", end: "13h00", needs: { Barista: 1, Accueil: 1, Host: 0, Cuisine: 1 } },
-    { id: "s2", label: "Après-midi", start: "13h00", end: "18h00", needs: { Barista: 2, Accueil: 1, Host: 0, Cuisine: 1 } },
-    { id: "s3", label: "Soir", start: "18h00", end: "23h00", needs: { Barista: 2, Accueil: 1, Host: 1, Cuisine: 1 } },
-  ],
-};
+/* ------------------------------------------------------------------ */
+/* Helpers de mapping DB <-> UI                                        */
+/* ------------------------------------------------------------------ */
+
+const MONTHS_FR = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+
+function formatOpenedAt(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return `${MONTHS_FR[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function rowToInfo(row: StudioRow): StudioInfo {
+  return {
+    name: row.name,
+    address: row.address ?? "",
+    postalCity: [row.postal_code, row.city].filter(Boolean).join(" "),
+    phone: row.phone ?? "",
+    email: row.email ?? "",
+    manager: row.manager_name ?? "",
+    capacity: row.capacity ?? 0,
+    surface: row.surface_m2 ? `${row.surface_m2} m²` : "",
+    opened: formatOpenedAt(row.opened_at),
+    notes: row.internal_notes ?? "",
+  };
+}
+
+function infoPatchToRowPatch(patch: Partial<StudioInfo>): Partial<StudioRow> {
+  const out: Partial<StudioRow> = {};
+  if ("address" in patch) out.address = patch.address ?? null;
+  if ("postalCity" in patch) {
+    const v = (patch.postalCity ?? "").trim();
+    if (!v) {
+      out.postal_code = null;
+      out.city = null;
+    } else {
+      const m = v.match(/^(\S+)\s*(.*)$/);
+      out.postal_code = m?.[1] ?? null;
+      out.city = m?.[2]?.trim() || null;
+    }
+  }
+  if ("phone" in patch) out.phone = patch.phone ?? null;
+  if ("email" in patch) out.email = patch.email ?? null;
+  if ("manager" in patch) out.manager_name = patch.manager ?? null;
+  if ("capacity" in patch) out.capacity = patch.capacity ? Number(patch.capacity) : null;
+  if ("surface" in patch) {
+    const m = String(patch.surface ?? "").match(/(\d+)/);
+    out.surface_m2 = m ? Number(m[1]) : null;
+  }
+  if ("notes" in patch) out.internal_notes = patch.notes ?? null;
+  return out;
+}
 
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 
 function StudiosPage() {
+  const { studios, loading, reload } = useStudios();
   const [activeStudio, setActiveStudio] = useState(0);
   const [activeSubTab, setActiveSubTab] = useState(0);
 
-  const [extraStudios, setExtraStudios] = useState<Studio[]>([]);
-  const [deletedBase, setDeletedBase] = useState<Studio[]>([]);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newStudioName, setNewStudioName] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState<Studio | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<StudioRow | null>(null);
 
-  const studioTabs = useMemo(
-    () => [...baseStudioTabs.filter((s) => !deletedBase.includes(s)), ...extraStudios],
-    [extraStudios, deletedBase]
+  // Garde l'index dans les bornes quand la liste change
+  useEffect(() => {
+    if (activeStudio >= studios.length && studios.length > 0) {
+      setActiveStudio(studios.length - 1);
+    }
+  }, [studios.length, activeStudio]);
+
+  const currentRow: StudioRow | undefined = studios[activeStudio];
+  const studio = (currentRow?.name ?? "") as Studio;
+
+  // Persistance debouncée des champs Informations
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingPatchRef = useRef<Partial<StudioRow>>({});
+
+  const flushPatch = useCallback(async (id: string) => {
+    const patch = pendingPatchRef.current;
+    pendingPatchRef.current = {};
+    if (Object.keys(patch).length === 0) return;
+    try {
+      await dbUpdateStudio(id, patch);
+    } catch (e: any) {
+      toast.error("Sauvegarde impossible", { description: e?.message ?? "" });
+    }
+  }, []);
+
+  const queueInfoPatch = useCallback((id: string, infoPatch: Partial<StudioInfo>) => {
+    pendingPatchRef.current = { ...pendingPatchRef.current, ...infoPatchToRowPatch(infoPatch) };
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => flushPatch(id), 400);
+  }, [flushPatch]);
+
+  // Postes actifs (depuis studio_business_roles)
+  const { roles: studioRoles, reload: reloadRoles } = useStudioBusinessRoles(currentRow?.id ?? null);
+  const { names: dbBusinessRoleNames } = useBusinessRoles({ onlyActive: true });
+  const builtinSet = useMemo(() => new Set(dbBusinessRoleNames), [dbBusinessRoleNames]);
+  const activeRoles = useMemo(
+    () => studioRoles.filter((r) => builtinSet.has(r)) as Role[],
+    [studioRoles, builtinSet],
+  );
+  const customRoles = useMemo(
+    () => studioRoles.filter((r) => !builtinSet.has(r)),
+    [studioRoles, builtinSet],
   );
 
-  const [infos, setInfos] = useState<Record<Studio, StudioInfo>>(initialInfos);
-  const [activeRoles, setActiveRoles] = useState<Record<Studio, Role[]>>(initialActive);
-  const [customRoles, setCustomRoles] = useState<Record<Studio, string[]>>({
-    "Skult Rhodes": [],
-    "Skult Châtelain": [],
-  });
-  const [week, setWeek] = useState<Record<Studio, DayHours[]>>(initialWeek);
-  const [roleHours, setRoleHours] = useState<Record<Studio, Partial<Record<Role, RoleSchedule>>>>(initialRoleHours);
-  const [needs, setNeeds] = useState<Record<Studio, ShiftNeeds[]>>(initialNeeds);
+  const onToggleRole = async (role: string) => {
+    if (!currentRow) return;
+    try {
+      if (studioRoles.includes(role)) {
+        await removeRoleFromStudio(currentRow.id, role);
+      } else {
+        await addRoleToStudio(currentRow.id, role);
+      }
+      reloadRoles();
+    } catch (e: any) {
+      toast.error("Action impossible", { description: e?.message ?? "" });
+    }
+  };
 
-  const studio = studioTabs[activeStudio] as Studio;
+  const onAddCustomRole = async (name: string) => {
+    if (!currentRow) return;
+    try {
+      await addRoleToStudio(currentRow.id, name);
+      reloadRoles();
+    } catch (e: any) {
+      toast.error("Ajout impossible", { description: e?.message ?? "" });
+    }
+  };
 
-  const createStudio = () => {
-    const name = newStudioName.trim() as Studio;
+  const onRemoveCustomRole = async (name: string) => {
+    if (!currentRow) return;
+    try {
+      await removeRoleFromStudio(currentRow.id, name);
+      reloadRoles();
+    } catch (e: any) {
+      toast.error("Suppression impossible", { description: e?.message ?? "" });
+    }
+  };
+
+  const createStudioAction = async () => {
+    const name = newStudioName.trim();
     if (!name) return;
-    if (studioTabs.includes(name)) {
+    try {
+      const created = await dbCreateStudio(name);
       setNewStudioName("");
-      return;
+      setShowNewModal(false);
+      await reload();
+      if (created) {
+        // Sélectionne le nouveau studio (créé en dernier dans la liste)
+        setActiveStudio(studios.length); // approximatif, sera corrigé par effet
+      }
+    } catch (e: any) {
+      toast.error("Création impossible", { description: e?.message ?? "" });
     }
-    setExtraStudios((p) => [...p, name]);
-    setInfos((p) => ({
-      ...p,
-      [name]: {
-        name,
-        address: "",
-        postalCity: "",
-        phone: "",
-        email: "",
-        manager: "",
-        capacity: 0,
-        surface: "",
-        opened: new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" }),
-        notes: "",
-      },
-    }));
-    setActiveRoles((p) => ({ ...p, [name]: ["Barista", "Accueil"] }));
-    setCustomRoles((p) => ({ ...p, [name]: [] }));
-    setWeek((p) => ({
-      ...p,
-      [name]: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"].map((d) => ({
-        day: d,
-        open: "08h00",
-        close: "18h00",
-        closed: false,
-      })),
-    }));
-    setRoleHours((p) => ({
-      ...p,
-      [name]: {
-        Barista: { open: "08h00", close: "18h00" },
-        Accueil: { open: "08h00", close: "18h00" },
-      },
-    }));
-    setNeeds((p) => ({
-      ...p,
-      [name]: [
-        { id: "s1", label: "Matin", start: "08h00", end: "13h00", needs: { Barista: 1, Accueil: 1, Host: 0, Cuisine: 0 } },
-        { id: "s2", label: "Après-midi", start: "13h00", end: "18h00", needs: { Barista: 1, Accueil: 1, Host: 0, Cuisine: 0 } },
-      ],
-    }));
-    setActiveStudio(studioTabs.length);
-    setNewStudioName("");
-    setShowNewModal(false);
   };
 
-  const deleteStudio = (name: Studio) => {
-    const idx = studioTabs.indexOf(name);
-    if (baseStudioTabs.includes(name)) {
-      setDeletedBase((p) => (p.includes(name) ? p : [...p, name]));
-    } else {
-      setExtraStudios((p) => p.filter((s) => s !== name));
+  const deleteStudioAction = async (row: StudioRow) => {
+    try {
+      const res = await softDeleteStudio(row.id);
+      if (!res.ok) {
+        const b = res.blockers ?? {};
+        const parts: string[] = [];
+        if (b.shifts) parts.push(`${b.shifts} shift(s)`);
+        if (b.staffing_templates) parts.push(`${b.staffing_templates} besoin(s)`);
+        if (b.profiles) parts.push(`${b.profiles} profil(s)`);
+        if (b.user_studios) parts.push(`${b.user_studios} affectation(s)`);
+        if (b.checklist_templates) parts.push(`${b.checklist_templates} checklist(s)`);
+        if (b.signalements) parts.push(`${b.signalements} signalement(s)`);
+        toast.error("Suppression impossible", {
+          description: `Ce studio est encore lié à : ${parts.join(", ")}.`,
+        });
+        setConfirmDelete(null);
+        return;
+      }
+      setConfirmDelete(null);
+      setActiveStudio((i) => Math.max(0, i - 1));
+      await reload();
+    } catch (e: any) {
+      toast.error("Suppression impossible", { description: e?.message ?? "" });
     }
-    if (idx >= 0 && activeStudio >= idx) {
-      setActiveStudio(Math.max(0, activeStudio - 1));
-    }
-    setConfirmDelete(null);
   };
+
+  const studioTabs = studios.map((s) => s.name);
 
   return (
     <div className="p-4 md:p-6">
@@ -271,7 +280,7 @@ function StudiosPage() {
           const isActive = activeStudio === i;
           return (
             <button
-              key={tab}
+              key={studios[i].id}
               onClick={() => setActiveStudio(i)}
               className="px-4 py-2 transition-colors"
               style={{
@@ -320,7 +329,7 @@ function StudiosPage() {
               value={newStudioName}
               onChange={(e) => setNewStudioName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") createStudio();
+                if (e.key === "Enter") createStudioAction();
                 if (e.key === "Escape") setShowNewModal(false);
               }}
               placeholder="Ex. Skult Sablon"
@@ -344,7 +353,7 @@ function StudiosPage() {
                 Annuler
               </button>
               <button
-                onClick={createStudio}
+                onClick={createStudioAction}
                 disabled={!newStudioName.trim()}
                 className="rounded-md px-3 py-1.5"
                 style={{
@@ -380,47 +389,30 @@ function StudiosPage() {
         ))}
       </div>
 
-      {studioTabs.length === 0 ? (
+      {studios.length === 0 ? (
         <div
           className="rounded-xl border p-10 text-center"
           style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
         >
-          <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 6 }}>Aucun studio</div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 6 }}>
+            {loading ? "Chargement…" : "Aucun studio"}
+          </div>
           <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-            Crée ton premier studio avec le bouton "+ Nouveau studio".
+            {loading ? "" : "Crée ton premier studio avec le bouton \"+ Nouveau studio\"."}
           </div>
         </div>
-      ) : (
+      ) : currentRow ? (
         <>
           {activeSubTab === 0 && (
             <InformationsTab
-              info={infos[studio]}
-              onChange={(patch) =>
-                setInfos((p) => ({ ...p, [studio]: { ...p[studio], ...patch } }))
-              }
-              activeRoles={activeRoles[studio]}
-              onToggleRole={(role) =>
-                setActiveRoles((p) => ({
-                  ...p,
-                  [studio]: p[studio].includes(role)
-                    ? p[studio].filter((r) => r !== role)
-                    : [...p[studio], role],
-                }))
-              }
-              customRoles={customRoles[studio]}
-              onAddCustomRole={(name) =>
-                setCustomRoles((p) => ({
-                  ...p,
-                  [studio]: p[studio].includes(name) ? p[studio] : [...p[studio], name],
-                }))
-              }
-              onRemoveCustomRole={(name) =>
-                setCustomRoles((p) => ({
-                  ...p,
-                  [studio]: p[studio].filter((r) => r !== name),
-                }))
-              }
-              onRequestDelete={() => setConfirmDelete(studio)}
+              info={rowToInfo(currentRow)}
+              onChange={(patch) => queueInfoPatch(currentRow.id, patch)}
+              activeRoles={activeRoles}
+              onToggleRole={(role) => onToggleRole(role)}
+              customRoles={customRoles}
+              onAddCustomRole={onAddCustomRole}
+              onRemoveCustomRole={onRemoveCustomRole}
+              onRequestDelete={() => setConfirmDelete(currentRow)}
             />
           )}
           {activeSubTab === 1 && (
@@ -428,7 +420,7 @@ function StudiosPage() {
           )}
           {activeSubTab === 2 && <ExceptionsTab studio={studio} />}
         </>
-      )}
+      ) : null}
 
       {confirmDelete && (
         <div
@@ -445,7 +437,7 @@ function StudiosPage() {
               Supprimer ce studio ?
             </div>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16, lineHeight: 1.5 }}>
-              <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{confirmDelete}</span> sera supprimé,
+              <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{confirmDelete.name}</span> sera supprimé,
               avec ses horaires, ses besoins en staff et ses checklists. Cette action est définitive.
             </div>
             <div className="flex items-center justify-end gap-2">
@@ -457,7 +449,7 @@ function StudiosPage() {
                 Annuler
               </button>
               <button
-                onClick={() => deleteStudio(confirmDelete)}
+                onClick={() => deleteStudioAction(confirmDelete)}
                 className="rounded-md px-3 py-1.5"
                 style={{
                   fontSize: 12,
