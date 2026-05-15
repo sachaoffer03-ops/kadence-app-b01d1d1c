@@ -1069,9 +1069,11 @@ export type Database = {
       studio_exceptions: {
         Row: {
           created_at: string
+          date_label: string | null
           description: string | null
           exception_date: string
           exception_type: string
+          hours_adjust: string | null
           id: string
           staff_adjustments: Json
           studio_id: string
@@ -1080,9 +1082,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          date_label?: string | null
           description?: string | null
           exception_date: string
           exception_type: string
+          hours_adjust?: string | null
           id?: string
           staff_adjustments?: Json
           studio_id: string
@@ -1091,9 +1095,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          date_label?: string | null
           description?: string | null
           exception_date?: string
           exception_type?: string
+          hours_adjust?: string | null
           id?: string
           staff_adjustments?: Json
           studio_id?: string
