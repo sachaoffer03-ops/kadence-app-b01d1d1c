@@ -82,7 +82,7 @@ export function useStudios() {
   return { studios, loading, reload };
 }
 
-export async function createStudio(name: string): Promise<StudioRow | null> {
+export async function createStudio(name: string, hasKitchen: boolean = false): Promise<StudioRow | null> {
   const trimmed = name.trim();
   if (!trimmed) return null;
   const short = trimmed.replace(/^Skult\s+/i, "");
@@ -91,6 +91,7 @@ export async function createStudio(name: string): Promise<StudioRow | null> {
     .insert({
       name: trimmed,
       short_name: short || trimmed,
+      has_kitchen: hasKitchen,
       opened_at: new Date().toISOString().slice(0, 10),
       opening_hours: DEFAULT_WEEK as any,
       role_hours: {} as any,

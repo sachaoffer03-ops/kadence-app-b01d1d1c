@@ -152,6 +152,7 @@ function StudiosPage() {
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [newStudioName, setNewStudioName] = useState("");
+  const [newStudioKitchen, setNewStudioKitchen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<StudioRow | null>(null);
 
   // Garde l'index dans les bornes quand la liste change
@@ -169,21 +170,48 @@ function StudiosPage() {
   const pendingPatchRef = useRef<Partial<StudioRow>>({});
 
   const flushPatch = useCallback(async (id: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
     const patch = pendingPatchRef.current;
     pendingPatchRef.current = {};
     if (Object.keys(patch).length === 0) return;
     try {
       await dbUpdateStudio(id, patch);
+      await reload();
     } catch (e: any) {
       toast.error("Sauvegarde impossible", { description: e?.message ?? "" });
     }
-  }, []);
+  }, [reload]);
 
   const queueInfoPatch = useCallback((id: string, infoPatch: Partial<StudioInfo>) => {
     pendingPatchRef.current = { ...pendingPatchRef.current, ...infoPatchToRowPatch(infoPatch) };
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => flushPatch(id), 400);
   }, [flushPatch]);
+
+  // Flush quand on change de studio ou qu'on quitte la page
+  const prevStudioIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevStudioIdRef.current;
+    if (prev && prev !== currentRow?.id) {
+      flushPatch(prev);
+    }
+    prevStudioIdRef.current = currentRow?.id ?? null;
+  }, [currentRow?.id, flushPatch]);
+  useEffect(() => () => {
+    if (prevStudioIdRef.current) flushPatch(prevStudioIdRef.current);
+  }, [flushPatch]);
+
+  const updateKitchen = useCallback(async (id: string, value: boolean) => {
+    try {
+      await dbUpdateStudio(id, { has_kitchen: value });
+      await reload();
+    } catch (e: any) {
+      toast.error("Sauvegarde impossible", { description: e?.message ?? "" });
+    }
+  }, [reload]);
 
   // Postes actifs (depuis studio_business_roles)
   const { roles: studioRoles, reload: reloadRoles } = useStudioBusinessRoles(currentRow?.id ?? null);
@@ -200,8 +228,15 @@ function StudiosPage() {
 
   const onToggleRole = async (role: string) => {
     if (!currentRow) return;
+    const isAdding = !studioRoles.includes(role);
+    if (isAdding && /cuisine/i.test(role) && !currentRow.has_kitchen) {
+      toast.error("Ce studio n'a pas de cuisine", {
+        description: "Active la cuisine dans les informations avant d'ajouter un poste Cuisine.",
+      });
+      return;
+    }
     try {
-      if (studioRoles.includes(role)) {
+      if (!isAdding) {
         await removeRoleFromStudio(currentRow.id, role);
       } else {
         await addRoleToStudio(currentRow.id, role);
@@ -236,13 +271,13 @@ function StudiosPage() {
     const name = newStudioName.trim();
     if (!name) return;
     try {
-      const created = await dbCreateStudio(name);
+      const created = await dbCreateStudio(name, newStudioKitchen);
       setNewStudioName("");
+      setNewStudioKitchen(false);
       setShowNewModal(false);
       await reload();
       if (created) {
-        // Sélectionne le nouveau studio (créé en dernier dans la liste)
-        setActiveStudio(studios.length); // approximatif, sera corrigé par effet
+        setActiveStudio(studios.length);
       }
     } catch (e: any) {
       toast.error("Création impossible", { description: e?.message ?? "" });
@@ -347,6 +382,14 @@ function StudiosPage() {
                 backgroundColor: "var(--background)",
               }}
             />
+            <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={newStudioKitchen}
+                onChange={(e) => setNewStudioKitchen(e.target.checked)}
+              />
+              <span style={{ fontSize: 13 }}>Ce studio a une cuisine</span>
+            </label>
             <div className="flex items-center justify-end gap-2">
               <button
                 onClick={() => setShowNewModal(false)}
@@ -413,7 +456,10 @@ function StudiosPage() {
           {activeSubTab === 0 && (
             <InformationsTab
               info={rowToInfo(currentRow)}
+              hasKitchen={currentRow.has_kitchen}
+              onKitchenChange={(v) => updateKitchen(currentRow.id, v)}
               onChange={(patch) => queueInfoPatch(currentRow.id, patch)}
+              onCommit={() => flushPatch(currentRow.id)}
               activeRoles={activeRoles}
               onToggleRole={(role) => onToggleRole(role)}
               customRoles={customRoles}
@@ -491,7 +537,10 @@ const editableFields: { key: keyof StudioInfo; label: string; icon: React.Elemen
 
 function InformationsTab({
   info,
+  hasKitchen,
+  onKitchenChange,
   onChange,
+  onCommit,
   activeRoles,
   onToggleRole,
   customRoles,
@@ -500,7 +549,10 @@ function InformationsTab({
   onRequestDelete,
 }: {
   info: StudioInfo;
+  hasKitchen: boolean;
+  onKitchenChange: (v: boolean) => void;
   onChange: (patch: Partial<StudioInfo>) => void;
+  onCommit: () => void;
   activeRoles: Role[];
   onToggleRole: (r: Role) => void;
   customRoles: string[];
@@ -520,6 +572,13 @@ function InformationsTab({
     setNewRole("");
   };
 
+  const toggleEditing = () => {
+    setEditing((e) => {
+      if (e) onCommit();
+      return !e;
+    });
+  };
+
   return (
     <>
     <div className="grid grid-cols-3 gap-4">
@@ -535,7 +594,7 @@ function InformationsTab({
             </div>
           </div>
           <button
-            onClick={() => setEditing((e) => !e)}
+            onClick={toggleEditing}
             className="rounded-md flex items-center gap-1.5 px-3 py-1.5"
             style={{
               fontSize: 12,
@@ -565,6 +624,36 @@ function InformationsTab({
               }
             />
           ))}
+        </div>
+
+        <div className="mt-5 pt-4 flex items-center justify-between" style={{ borderTop: "0.5px solid var(--border)" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Cuisine</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+              Active si ce studio dispose d'une cuisine. L'algo de planning et le poste Cuisine en dépendent.
+            </div>
+          </div>
+          <button
+            onClick={() => onKitchenChange(!hasKitchen)}
+            className="rounded-full transition-colors"
+            style={{
+              width: 38, height: 22, padding: 2,
+              backgroundColor: hasKitchen ? "var(--coral)" : "var(--muted)",
+              border: "0.5px solid var(--border)",
+            }}
+            aria-pressed={hasKitchen}
+            title={hasKitchen ? "Désactiver la cuisine" : "Activer la cuisine"}
+          >
+            <span
+              className="block rounded-full"
+              style={{
+                width: 16, height: 16,
+                backgroundColor: "var(--card)",
+                transform: hasKitchen ? "translateX(16px)" : "translateX(0)",
+                transition: "transform 0.15s ease",
+              }}
+            />
+          </button>
         </div>
 
         <div className="mt-5 pt-4" style={{ borderTop: "0.5px solid var(--border)" }}>
