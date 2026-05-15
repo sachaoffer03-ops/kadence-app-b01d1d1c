@@ -137,7 +137,7 @@ async function ensureBaseConfig(log: string[]) {
   // ai_planning_settings
   const { data: existingSettings } = await supabaseAdmin.from("ai_planning_settings").select("id").limit(1);
   if (!existingSettings || existingSettings.length === 0) {
-    await supabaseAdmin.from("ai_planning_settings").insert({});
+    await supabaseAdmin.from("ai_planning_settings").insert({ max_shift_hours_cdi: 9.5 });
     log.push("ai_planning_settings initialisé");
   }
 
