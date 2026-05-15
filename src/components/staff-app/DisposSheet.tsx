@@ -152,6 +152,37 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
           <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12, lineHeight: 1.5 }}>
             Indique tes plages horaires de disponibilité pour <span style={{ textTransform: "capitalize" }}>{monthLabel}</span>. Tu peux ajouter plusieurs plages par jour.
           </div>
+          {deadline && (
+            <div
+              className="rounded-xl px-3 py-2 mb-2 flex items-center gap-2"
+              style={{
+                backgroundColor: deadline.passed
+                  ? "var(--danger-bg)"
+                  : deadline.days_left <= 3
+                  ? "var(--warning-bg)"
+                  : "var(--muted)",
+              }}
+            >
+              {(deadline.passed || deadline.days_left <= 3) && <Lock size={12} style={{ color: deadline.passed ? "var(--danger-text)" : "var(--warning-text)" }} />}
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: deadline.passed
+                    ? "var(--danger-text)"
+                    : deadline.days_left <= 3
+                    ? "var(--warning-text)"
+                    : "var(--muted-foreground)",
+                }}
+              >
+                {deadline.passed
+                  ? `Deadline dépassée (le ${deadline.deadline_day} du mois). Édition verrouillée.`
+                  : deadline.days_left === 0
+                  ? `Dernier jour pour valider (deadline aujourd'hui)`
+                  : `Plus que ${deadline.days_left} jour${deadline.days_left > 1 ? "s" : ""} avant la deadline (le ${deadline.deadline_day} du mois)`}
+              </span>
+            </div>
+          )}
           <div className="rounded-xl px-3 py-2 mb-3" style={{ backgroundColor: configured >= 10 ? "var(--success-bg)" : "var(--warning-bg)" }}>
             <span style={{ fontSize: 12, fontWeight: 500, color: configured >= 10 ? "var(--success-text)" : "var(--warning-text)" }}>
               {configured} / {daysInMonth} jours configurés
