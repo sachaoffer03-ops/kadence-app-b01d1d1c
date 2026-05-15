@@ -50,6 +50,7 @@ function EmployeeDetailPage() {
   const [rateShiftId, setRateShiftId] = useState<string | null>(null);
   const [rateValue, setRateValue] = useState(5);
   const [rateMsg, setRateMsg] = useState("");
+  const [saving, setSaving] = useState(false);
   const [breakdown, setBreakdown] = useState<Awaited<ReturnType<typeof getScoreBreakdown>> | null>(null);
   const fetchBreakdown = useServerFn(getScoreBreakdown);
 
