@@ -32,10 +32,13 @@ const toHHMM = (t: string) => String(t).slice(0, 5);
 
 export function EditShiftModal({ shift, onClose, onSaved }: Props) {
   const updateShiftFn = useServerFn(updateShift);
+  const { roles: allRoles } = useBusinessRoles({ onlyActive: true });
   const [date, setDate] = useState(shift.shiftDate);
   const [start, setStart] = useState(toHHMM(shift.startTime));
   const [end, setEnd] = useState(toHHMM(shift.endTime));
   const [userId, setUserId] = useState<string>(shift.employeeId || "");
+  const [role, setRole] = useState<string>(shift.role);
+  const [studioRoleNames, setStudioRoleNames] = useState<string[] | null>(null);
   const [employees, setEmployees] = useState<EmployeeOpt[]>([]);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
