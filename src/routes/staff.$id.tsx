@@ -7,6 +7,8 @@ import { roleColors, type Role } from "@/lib/mock-data";
 import { useAuth } from "@/hooks/use-auth";
 import { computePunctuality, punctualityColor } from "@/lib/staff-helpers";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from "recharts";
+import { useServerFn } from "@tanstack/react-start";
+import { getScoreBreakdown } from "@/lib/scoring.functions";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
