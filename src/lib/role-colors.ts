@@ -4,4 +4,4 @@
 // applicatives n'importent plus jamais directement "mock-data".
 
 export { roleColors, getQuotaStatus } from "./mock-data";
-export type { Role, ContractType } from "./mock-data";
+export type { Role, ContractType, Studio } from "./mock-data";
