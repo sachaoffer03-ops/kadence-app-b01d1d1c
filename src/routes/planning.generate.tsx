@@ -327,7 +327,9 @@ function ResultView({ r, onClose, navigate }: { r: GenerateResult; onClose: () =
         </div>
       )}
 
-      <div className="flex items-center gap-3 flex-wrap">
+      <WorkflowPanel runId={r.planning_run_id} />
+
+      <div className="flex items-center gap-3 flex-wrap mt-5">
         <button onClick={() => navigate({ to: "/planning" })}
           className="rounded-md px-6 py-3 flex items-center gap-2"
           style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
@@ -346,6 +348,149 @@ function ResultView({ r, onClose, navigate }: { r: GenerateResult; onClose: () =
       </div>
     </div>
   );
+}
+
+// ─── Panneau workflow publication ──────────────────────────────────────────
+function WorkflowPanel({ runId }: { runId: string }) {
+  const fetchRun = useServerFn(getPlanningRun);
+  const markReview = useServerFn(markPlanningForReview);
+  const publish = useServerFn(publishPlanning);
+  const unpublish = useServerFn(unpublishPlanning);
+  const revert = useServerFn(revertPlanningToDraft);
+
+  const [data, setData] = useState<{ run: any; names: Record<string, string> } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [showUnpub, setShowUnpub] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const reload = async () => {
+    try {
+      const res: any = await fetchRun({ data: { planning_run_id: runId } });
+      setData(res);
+    } catch (e: any) { toast.error(e?.message ?? "Erreur"); }
+  };
+  useEffect(() => { reload(); }, [runId]);
+
+  if (!data) return null;
+  const ws = (data.run.workflow_status ?? "draft") as "draft" | "review" | "published" | "unpublished";
+  const fmtDate = (iso?: string | null) => iso ? new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+
+  const wrap = async (fn: () => Promise<any>, okMsg: string) => {
+    setBusy(true);
+    try { await fn(); toast.success(okMsg); await reload(); }
+    catch (e: any) { toast.error(e?.message ?? "Erreur"); }
+    finally { setBusy(false); }
+  };
+
+  const badge = (
+    <WorkflowBadge status={ws} />
+  );
+
+  return (
+    <div className="rounded-xl border p-5 mb-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+      <div className="flex items-center gap-2 mb-3">
+        <span style={{ fontSize: 13, fontWeight: 500 }}>Statut publication</span>
+        {badge}
+      </div>
+
+      {ws === "published" && (
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 10 }}>
+          Publié le {fmtDate(data.run.published_at)}{data.names[data.run.published_by] ? ` par ${data.names[data.run.published_by]}` : ""}.
+        </div>
+      )}
+      {ws === "unpublished" && (
+        <div className="rounded-lg p-3 mb-3" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning-text)", fontSize: 12 }}>
+          Dépublié le {fmtDate(data.run.unpublished_at)}. Raison : {data.run.unpublished_reason || "—"}
+        </div>
+      )}
+      {ws === "review" && data.run.marked_review_at && (
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 10 }}>
+          Marqué pour validation le {fmtDate(data.run.marked_review_at)}.
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {ws === "draft" && (
+          <button disabled={busy} onClick={() => wrap(() => markReview({ data: { planning_run_id: runId } }), "Marqué pour validation")}
+            className="rounded-md px-4 py-2 flex items-center gap-2"
+            style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}>
+            <Send size={14} /> Marquer pour validation
+          </button>
+        )}
+        {ws === "review" && (
+          <>
+            <button disabled={busy} onClick={() => wrap(() => publish({ data: { planning_run_id: runId } }), "Planning publié")}
+              className="rounded-md px-4 py-2 flex items-center gap-2"
+              style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--success-text)", color: "#fff" }}>
+              <Globe size={14} /> Publier
+            </button>
+            <button disabled={busy} onClick={() => wrap(() => revert({ data: { planning_run_id: runId } }), "Retour en brouillon")}
+              className="rounded-md px-4 py-2 flex items-center gap-2"
+              style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+              <Undo2 size={14} /> Retour en brouillon
+            </button>
+          </>
+        )}
+        {ws === "published" && (
+          <button disabled={busy} onClick={() => setShowUnpub(true)}
+            className="rounded-md px-4 py-2 flex items-center gap-2"
+            style={{ fontSize: 13, fontWeight: 500, color: "var(--danger-text)", border: "0.5px solid var(--danger-text)" }}>
+            <ShieldAlert size={14} /> Dépublier
+          </button>
+        )}
+        {ws === "unpublished" && (
+          <>
+            <button disabled={busy} onClick={() => wrap(() => markReview({ data: { planning_run_id: runId } }), "Re-soumis à validation")}
+              className="rounded-md px-4 py-2 flex items-center gap-2"
+              style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}>
+              <Send size={14} /> Re-soumettre à validation
+            </button>
+            <button disabled={busy} onClick={() => wrap(() => revert({ data: { planning_run_id: runId } }), "Retour en brouillon")}
+              className="rounded-md px-4 py-2 flex items-center gap-2"
+              style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+              <Undo2 size={14} /> Retour brouillon
+            </button>
+          </>
+        )}
+      </div>
+
+      {showUnpub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} onClick={() => setShowUnpub(false)}>
+          <div className="rounded-xl bg-white p-5 w-full" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Dépublier le planning</div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12 }}>
+              Les shifts seront déverrouillés et repasseront en brouillon. L'historique de publication est conservé.
+            </div>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Raison de la dépublication (obligatoire)"
+              className="w-full rounded-md p-2" style={{ fontSize: 13, border: "0.5px solid var(--border)", minHeight: 80 }} />
+            <div className="flex gap-2 mt-3 justify-end">
+              <button onClick={() => setShowUnpub(false)} className="rounded-md px-3 py-2" style={{ fontSize: 13, border: "0.5px solid var(--border)" }}>Annuler</button>
+              <button disabled={busy || reason.trim().length < 3}
+                onClick={async () => {
+                  await wrap(() => unpublish({ data: { planning_run_id: runId, reason: reason.trim() } }), "Planning dépublié");
+                  setShowUnpub(false); setReason("");
+                }}
+                className="rounded-md px-3 py-2 disabled:opacity-50"
+                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--danger-text)", color: "#fff" }}>
+                Confirmer la dépublication
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkflowBadge({ status }: { status: "draft" | "review" | "published" | "unpublished" }) {
+  const map = {
+    draft:        { label: "Brouillon",   bg: "var(--muted)",      fg: "var(--muted-foreground)" },
+    review:       { label: "À valider",   bg: "var(--info-bg)",    fg: "var(--info-text)" },
+    published:    { label: "Publié",      bg: "var(--success-bg)", fg: "var(--success-text)" },
+    unpublished:  { label: "Dépublié",    bg: "var(--warning-bg)", fg: "var(--warning-text)" },
+  } as const;
+  const { label, bg, fg } = map[status];
+  return <span className="rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: bg, color: fg }}>{label}</span>;
 }
 
 // ─── Modal historique ───────────────────────────────────────────────────────
