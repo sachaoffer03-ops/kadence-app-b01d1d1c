@@ -295,7 +295,7 @@ interface EngineCtx {
   monthStart: string;
   monthEnd: string;
   studioIds: string[];
-  studiosArr: Array<{ id: string; name: string }>;
+  studiosArr: Array<{ id: string; name: string; has_kitchen: boolean }>;
   studioName: Map<string, string>;
   preserveManual: boolean;
   preserveLocked: boolean;
