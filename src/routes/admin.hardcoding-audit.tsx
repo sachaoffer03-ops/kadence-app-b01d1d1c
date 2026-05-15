@@ -163,10 +163,10 @@ const SECTIONS: Section[] = [
         recommendation: "Seeder accessible uniquement via /admin/seeder, désormais verrouillée derrière import.meta.env.DEV.",
       },
       {
-        severity: "warn",
+        severity: "ok",
         file: "src/lib/mock-data.ts",
-        verdict: "🟠 Réduire au minimum",
-        recommendation: "Toujours exporté pour roleColors/Role (proxy dynamique → business_roles). Le tableau employees n'est plus utilisé par les pages applicatives. Peut être trimé après refactor de studios.tsx.",
+        verdict: "🟢 Trimé au minimum",
+        recommendation: "Réduit aux types partagés (Role, ContractType, Studio, ShiftStatus, ChecklistTemplate), au Proxy dynamique roleColors et au helper getQuotaStatus. Plus aucune donnée fictive en runtime.",
       },
       {
         severity: "ok",
