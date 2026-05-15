@@ -23,9 +23,8 @@ export const Route = createFileRoute("/planning")({
     s.add ? { add: true } : {},
 });
 
-// Studios par défaut (UI filtres). Les vraies données viennent de la DB.
+// Les studios sont chargés depuis la DB (table `studios`).
 // Les rôles métier sont chargés dynamiquement via useBusinessRoles().
-const studios: Studio[] = ["Skult Rhodes", "Skult Châtelain"];
 
 type ViewMode = "semaine" | "jour";
 type ShiftConfirmation = "confirmé" | "en-attente" | "refusé";
