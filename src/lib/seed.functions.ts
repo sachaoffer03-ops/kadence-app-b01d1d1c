@@ -563,7 +563,7 @@ export const addKitchenWeekendStaff = createServerFn({ method: "POST" })
     };
     const news: NewSpec[] = [
       { first: "Léa", last: "Bernardi", contract: "Étudiant", roles: ["Cuisine"] },
-      { first: "Karim", last: "El Amrani", contract: "Flexi", roles: ["Cuisine", "Accueil"] },
+      { first: "Karim", last: "El Amrani", contract: "Flexi", roles: ["Cuisine"] },
     ];
 
     const created: Array<{ id: string; name: string; contract: string }> = [];
