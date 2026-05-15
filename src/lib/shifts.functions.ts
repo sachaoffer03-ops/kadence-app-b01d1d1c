@@ -206,8 +206,22 @@ export const deleteShift = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+    const { data: cur } = await supabase
+      .from("shifts")
+      .select("user_id, shift_date, start_time, published_at")
+      .eq("id", data.shiftId)
+      .single();
     const { error } = await supabase.from("shifts").delete().eq("id", data.shiftId);
     if (error) throw new Error(error.message);
+    if (cur?.published_at && cur.user_id) {
+      await supabase.from("notifications").insert({
+        user_id: cur.user_id,
+        type: "shift_removed",
+        title: "Shift annulé",
+        body: `${cur.shift_date} ${String(cur.start_time).slice(0,5)}`,
+        link: "/staff-app",
+      });
+    }
     return { ok: true };
   });
 
