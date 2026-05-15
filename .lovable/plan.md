@@ -1,97 +1,52 @@
-## État actuel constaté
+# Refonte `/formation` — Plateforme de formation interne
 
-**Bonne nouvelle** : 
-- `StaffingTemplatesEditor` (onglet Besoins en staff) est **déjà DB-backed** — il fait un lookup `studios.name → id` puis lit/écrit `staffing_templates`. Rien à faire ici.
-- `Studio` est déjà `type Studio = string` (pas une union stricte), ce qui évite une cascade de typecheck.
+Gros chantier (DB + admin UI + employé UI + tracking). Je vais le découper en **3 sous-tours** pour livrer proprement sans tout casser, comme suggéré dans ton prompt.
 
-**Ce qui reste hardcodé** dans `src/routes/studios.tsx` (2095 lignes) :
-1. `baseStudioTabs = ["Skult Rhodes", "Skult Châtelain"]` — liste de tabs (devrait venir de `studios`).
-2. `initialInfos` — adresses, téléphones, manager, capacité, surface, ouverture, notes (state-local).
-3. `initialWeek` — horaires d'ouverture par jour (state-local).
-4. `initialRoleHours` — horaires par rôle (state-local).
-5. `initialActive` + `customRoles` — rôles actifs par studio (state-local).
-6. `initialNeeds` — non utilisé visuellement (StaffingTemplatesEditor a remplacé) mais toujours dans le state.
-7. `ExceptionsTab` — mock `studioExceptions` de mock-data.ts.
-8. Création / suppression studio = pur state-local (rien en DB).
+## Sous-tour 1 — Fondations (DB + types + data layer)
 
-## Migrations SQL nécessaires
+1. **Migration SQL** : 4 tables (`training_folders`, `training_steps`, `training_resources`, `training_progress`) + index + RLS policies (lecture authenticated, écriture admin, progression scopée user).
+2. **Storage** : bucket `training-resources` (privé, lecture authenticated, upload admin via policies sur `storage.objects`).
+3. **Types** : `src/types/training.ts` (Folder, Step, Resource, Progress, ResourceType union).
+4. **Server functions** : `src/lib/training.functions.ts` avec toutes les fonctions listées (lecture, CRUD admin, tracking employé), toutes via `requireSupabaseAuth`.
+5. **Hooks TanStack Query** : `src/hooks/use-training.ts` (useFolders, useFolderDetail, useMyProgress, useAllProgress + mutations avec invalidation).
 
-### A. Compléter `studios` 
-```
-ALTER TABLE studios ADD COLUMN IF NOT EXISTS email text;
-ALTER TABLE studios ADD COLUMN IF NOT EXISTS surface_m2 integer;
-ALTER TABLE studios ADD COLUMN IF NOT EXISTS opened_at date;
-ALTER TABLE studios ADD COLUMN IF NOT EXISTS internal_notes text;
-ALTER TABLE studios ADD COLUMN IF NOT EXISTS opening_hours jsonb DEFAULT '[]'::jsonb;
-ALTER TABLE studios ADD COLUMN IF NOT EXISTS role_hours jsonb DEFAULT '{}'::jsonb;
-```
-`address`, `postal_code`, `city`, `phone`, `capacity`, `manager_id`, `has_kitchen`, `short_name` existent déjà.
+## Sous-tour 2 — Admin UI
 
-`opening_hours` = `[{day:"Lundi", open:"07h00", close:"18h00", closed:false}, ...]` (7 entrées). Stocker en JSONB plutôt qu'une table `studio_opening_hours` parce que c'est toujours 7 lignes par studio, lues/écrites en bloc, jamais filtrées en SQL.
+6. **Page `/formation`** refonte complète : layout 2 colonnes (sidebar dossiers + zone principale), tabs Contenu/Progression.
+7. **Sidebar** : liste dossiers avec drag&drop (@dnd-kit), badge "Requis", menu kebab.
+8. **Modals** : 
+   - FolderModal (nom, desc, icône Lucide picker, palette 8 couleurs, multi-select rôles requis)
+   - StepModal (titre, description)
+   - ResourceModal (2 étapes : choix type → form selon type vidéo/PDF/note/lien, avec preview, upload Supabase Storage pour PDF, validation URL pour vidéo)
+9. **Zone Contenu** : header dossier + liste étapes avec drag&drop + ressources réordonnables.
+10. **Zone Progression** : filtres (studio/rôle/contrat), tableau employés × dossiers avec heatmap couleur, drawer détail, export CSV, stats globales.
 
-`role_hours` = `{"Barista":{"open":"07h00","close":"18h00"}, ...}`. Idem, JSONB suffit.
+## Sous-tour 3 — Employé UI + polish
 
-### B. Nouvelle table `studio_business_roles` (liaison rôles ↔ studio)
-```
-CREATE TABLE studio_business_roles (
-  studio_id uuid NOT NULL REFERENCES studios(id) ON DELETE CASCADE,
-  role text NOT NULL,                    -- nom du rôle (Barista, Cuisine, ou custom)
-  PRIMARY KEY (studio_id, role)
-);
-```
-+ RLS admin-only ALL, SELECT pour authentifiés.
+11. **Page `/staff/formation`** : liste dossiers avec tri intelligent (obligatoires non commencés en premier), badges OBLIGATOIRE/Optionnel, barres de progression.
+12. **Vue détail `/staff/formation/$folderId`** : étapes + ressources avec status visuel.
+13. **Vue consommation `/staff/formation/$folderId/$resourceId`** : 
+    - Vidéo : embed YouTube/Vimeo/Drive
+    - PDF : viewer iframe + download
+    - Note : rendu markdown
+    - Lien : bouton ouvrir
+    - Bouton "Marquer terminé" sticky bottom mobile
+    - Navigation Précédent/Suivant
+14. **Tracking** : mutation `markResourceCompleted`, animation checkmark, auto-nav vers ressource suivante, modal félicitations à 100%.
+15. **Responsive mobile** : sidebar admin → drawer, vue employé optimisée tactile.
 
-### C. Nouvelle table `studio_exceptions`
-```
-CREATE TABLE studio_exceptions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  studio_id uuid NOT NULL REFERENCES studios(id) ON DELETE CASCADE,
-  exception_date date NOT NULL,
-  exception_type text NOT NULL,          -- 'fermeture' | 'evenement' | 'ajustement'
-  title text NOT NULL,
-  description text,
-  staff_adjustments jsonb DEFAULT '[]'::jsonb,  -- [{role:"Host", delta:+2}, ...]
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-```
-+ RLS admin/manager ALL, SELECT authentifiés.
+## Détails techniques
 
-### D. Déjà fait dans une migration précédente : `studios.deleted_at`. Ajouter si absent.
+- **Pas de hardcoding** : icônes/couleurs définies dans un constant `src/lib/training-presets.ts` (palette 8 couleurs cohérente design system, ~20 icônes Lucide), mais tout contenu vient de la DB.
+- **Permissions** : route admin gardée par `has_role('admin')`, route employé accessible à tout user authentifié.
+- **Cascade DB** : ON DELETE CASCADE sur folder→steps→resources, progression conservée.
+- **Soft delete** dossiers via `deleted_at`.
+- **QueryKeys** : `['training','folders']`, `['training','folder',id]`, `['training','progress','me']`, `['training','progress','all']`.
+- **Rich text note** : utilisera un éditeur léger (textarea + preview markdown via `react-markdown` déjà compatible, sans ajouter Tiptap pour rester léger). Si tu veux du WYSIWYG complet je peux ajouter Tiptap au sous-tour 2.
+- **Coexistence avec l'existant** : les tables actuelles `training_paths`/`formations`/`formation_completions` restent en place (utilisées par `/staff-app` FormationPanel). Je les laisse intactes pour ne rien casser, et je construis le nouveau système en parallèle. À terme tu pourras supprimer l'ancien.
 
-## Server functions à créer
+## Question avant de démarrer
 
-`src/lib/studios.functions.ts` — `getStudios`, `getStudioById`, `createStudio`, `updateStudio`, `softDeleteStudio` (avec vérif blockers via `studio_blockers`), `addBusinessRoleToStudio`, `removeBusinessRoleFromStudio`.
+Une seule clarif rapide : **rich text des notes** → tu veux un vrai WYSIWYG (Tiptap, ~80kb) ou markdown simple avec preview (zéro deps) ? Par défaut je pars sur **markdown simple** pour rester léger, sauf si tu préfères Tiptap.
 
-`src/lib/studio-exceptions.functions.ts` — CRUD complet.
-
-(`staffing-templates.functions.ts` non nécessaire : `StaffingTemplatesEditor` fait déjà ses propres calls Supabase.)
-
-## Refactor de `studios.tsx`
-
-**Stratégie** : remplacer le state-local par des hooks DB-backed, **sans toucher au JSX**.
-
-- `studioTabs` ← `useStudios()` (query getStudios + realtime).
-- `infos[studio]` ← lookup dans la liste DB par nom (le studio sélectionné a un `id` qu'on garde dans le state local).
-- `week`, `roleHours`, `infos.*` ← tous lus depuis l'objet studio courant. Les `setX` deviennent des appels `updateStudio({id, ...patch})` + invalidation.
-- `activeRoles` + `customRoles` ← merge depuis `studio_business_roles` ; toggles = `addBusinessRoleToStudio` / `removeBusinessRoleFromStudio`.
-- `ExceptionsTab` ← `useExceptions(studio_id)` + CRUD.
-- `createStudio` UI → server fn `createStudio({name})` (short_name = name.replace(/^Skult /, "")).
-- `deleteStudio` UI → server fn `softDeleteStudio(id)` (set `deleted_at = now()`).
-- `getStudios` filtre `WHERE deleted_at IS NULL`. Mêmes filtres ajoutés dans `use-employees`, `planning.tsx`, `generate-planning.functions.ts` (3 endroits).
-
-Le **JSX reste inchangé à 100 %** : tabs, sous-tabs, modal nouveau studio, modal confirmation suppression, cards, classes Tailwind, libellés français — rien ne bouge.
-
-## Plan d'exécution en 3 sous-tours
-
-1. **Sous-tour 1** : Migrations SQL (A+B+C+D) + `src/lib/studios.functions.ts` + `src/lib/studio-exceptions.functions.ts` + `src/hooks/use-studios.ts` + filtrer `deleted_at IS NULL` dans `use-employees`, `planning.tsx`, `generate-planning.functions.ts`.
-2. **Sous-tour 2** : Refactor `studios.tsx` → onglet **Informations** (incl. edit modal, postes actifs, suppression studio, modal nouveau studio) en gardant le JSX intact.
-3. **Sous-tour 3** : Refactor `ExceptionsTab` (toujours dans `studios.tsx`) + suppression `studioExceptions` de mock-data.ts + mise à jour audit hardcoding + rapport final.
-
-## Décisions à valider avant de coder
-
-1. **`opening_hours` et `role_hours` en JSONB** sur `studios` plutôt que tables dédiées — OK pour toi ?
-2. **`studio_business_roles`** stocke le `role` par **nom** (string), pas par FK vers `business_roles.id`, pour rester aligné avec la convention déjà en place dans `user_business_roles` (qui utilise aussi `role text`). OK ?
-3. **Suppression studio** = soft delete (`deleted_at`), refusée si shifts/templates/profils encore liés (via fonction RPC `studio_blockers` qui existe déjà). OK ?
-4. **Le bouton "Modifier"** : actuellement il existe dans l'UI et les champs sont déjà éditables inline (state local). Je conserve l'édition inline et persiste à chaque blur/change (debounced 400ms). Pas de modal supplémentaire. OK ?
-
-Si tu valides ces 4 points (ou que tu réponds "go" tout court), j'enchaîne le sous-tour 1.
+Si tu valides ce plan, je démarre par le **sous-tour 1** (migration + data layer) et je reviens te montrer avant de continuer.

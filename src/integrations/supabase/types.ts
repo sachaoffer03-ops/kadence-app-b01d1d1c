@@ -1188,6 +1188,45 @@ export type Database = {
         }
         Relationships: []
       }
+      training_folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          order_index: number
+          required_for_roles: string[]
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          order_index?: number
+          required_for_roles?: string[]
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          order_index?: number
+          required_for_roles?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       training_paths: {
         Row: {
           created_at: string
@@ -1220,6 +1259,133 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      training_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          resource_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          resource_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          resource_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_progress_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "training_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_resources: {
+        Row: {
+          content: string
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          order_index: number
+          step_id: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          order_index?: number
+          step_id: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          order_index?: number
+          step_id?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_resources_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "training_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_steps: {
+        Row: {
+          created_at: string
+          description: string | null
+          folder_id: string
+          id: string
+          order_index: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          folder_id: string
+          id?: string
+          order_index?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          folder_id?: string
+          id?: string
+          order_index?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_steps_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "training_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_business_roles: {
         Row: {
