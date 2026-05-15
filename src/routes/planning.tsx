@@ -6,11 +6,12 @@ import {
   Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit
 } from "lucide-react";
 import { toast } from "sonner";
-import { employees, roleColors, type Role, type Studio, type Employee } from "@/lib/mock-data";
+import { roleColors, type Role, type Studio } from "@/lib/mock-data";
 import { Dropdown } from "@/components/Dropdown";
 import { supabase } from "@/integrations/supabase/client";
 import { createShift, updateShift, deleteShift as deleteShiftFn, publishPlanning } from "@/lib/shifts.functions";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
+import { useEmployees, type EmployeeLite } from "@/hooks/use-employees";
 import { EditShiftModal } from "@/components/EditShiftModal";
 
 export const Route = createFileRoute("/planning")({
@@ -22,9 +23,8 @@ export const Route = createFileRoute("/planning")({
     s.add ? { add: true } : {},
 });
 
-// Studios par défaut (UI filtres). Les vraies données viennent de la DB.
+// Les studios sont chargés depuis la DB (table `studios`).
 // Les rôles métier sont chargés dynamiquement via useBusinessRoles().
-const studios: Studio[] = ["Skult Rhodes", "Skult Châtelain"];
 
 type ViewMode = "semaine" | "jour";
 type ShiftConfirmation = "confirmé" | "en-attente" | "refusé";
@@ -133,7 +133,7 @@ function TimeBar({ leftPct, widthPct, color }: { leftPct: number; widthPct: numb
 }
 
 // ── Shift Detail Modal ─────────────────────────────────────
-function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, onConfirm, onUnlock, onEdit }: { shift: PlanningShift; employee?: Employee; onClose: () => void; onDelete: () => void; onUpdateSlot: (slot: number) => void; onConfirm: () => void; onUnlock?: () => void; onEdit: () => void }) {
+function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, onConfirm, onUnlock, onEdit }: { shift: PlanningShift; employee?: EmployeeLite; onClose: () => void; onDelete: () => void; onUpdateSlot: (slot: number) => void; onConfirm: () => void; onUnlock?: () => void; onEdit: () => void }) {
   const [editing, setEditing] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.3)" }} onClick={onClose}>
@@ -316,7 +316,7 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, on
 }
 
 // ── Fill Hole Modal ────────────────────────────────────────
-function FillHoleModal({ shift, onClose, onFill }: { shift: PlanningShift; onClose: () => void; onFill: (empId: string) => void }) {
+function FillHoleModal({ shift, employees, onClose, onFill }: { shift: PlanningShift; employees: EmployeeLite[]; onClose: () => void; onFill: (empId: string) => void }) {
   const [search, setSearch] = useState("");
 
   // Find eligible employees for this role
@@ -458,11 +458,12 @@ function PlanningPage() {
 
 function PlanningCalendarPage() {
   const { names: roles } = useBusinessRoles({ onlyActive: true });
+  const { employees } = useEmployees();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedStudio, setSelectedStudio] = useState<Studio>("Skult Rhodes");
+  const [selectedStudio, setSelectedStudio] = useState<Studio>("");
   const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
   const [selectedShift, setSelectedShift] = useState<PlanningShift | null>(null);
   const [holeShift, setHoleShift] = useState<PlanningShift | null>(null);
@@ -471,6 +472,12 @@ function PlanningCalendarPage() {
   const weekDays = useMemo(() => getWeekDays(year, month, weekOffset), [year, month, weekOffset]);
   const [shifts, setShifts] = useState<PlanningShift[]>([]);
   const [studioMap, setStudioMap] = useState<Map<string, string>>(new Map());
+  // Liste de noms de studios chargée depuis la DB (remplace l'ancien tableau hardcodé).
+  const studios = useMemo<Studio[]>(() => Array.from(studioMap.values()), [studioMap]);
+  // Sélection automatique du premier studio dès que la liste est chargée.
+  useEffect(() => {
+    if (!selectedStudio && studios.length > 0) setSelectedStudio(studios[0]);
+  }, [studios, selectedStudio]);
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = () => setRefreshKey((k) => k + 1);
 
@@ -520,7 +527,7 @@ function PlanningCalendarPage() {
         const startH = parseInt(String(row.start_time).slice(0, 2), 10);
         const slot = startH < 9 ? 0 : startH < 13 ? 1 : startH < 16 ? 2 : 3;
         const fmt = (t: string) => `${t.slice(0, 2)}h${t.slice(3, 5)}`;
-        const studioName = (studioMap.get(row.studio_id) as Studio) ?? "Skult Rhodes";
+        const studioName = (studioMap.get(row.studio_id) as Studio) ?? "";
         const fn = row.profiles?.first_name ?? "";
         const ln = row.profiles?.last_name ?? "";
         const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
@@ -1151,6 +1158,7 @@ function PlanningCalendarPage() {
       {holeShift && (
         <FillHoleModal
           shift={holeShift}
+          employees={employees}
           onClose={() => setHoleShift(null)}
           onFill={(empId) => handleFillHole(holeShift.id, empId)}
         />
@@ -1158,6 +1166,7 @@ function PlanningCalendarPage() {
       {showAdd && (
         <AddShiftModal
           studio={selectedStudio}
+          employees={employees}
           onClose={() => setShowAdd(false)}
           onAdd={handleAddShift}
         />
@@ -1194,7 +1203,7 @@ function PlanningCalendarPage() {
 }
 
 // ── Add Shift Modal ────────────────────────────────────────
-function AddShiftModal({ studio, onClose, onAdd }: { studio: Studio; onClose: () => void; onAdd: (empId: string, day: number, slot: number, role: Role) => void }) {
+function AddShiftModal({ studio, employees, onClose, onAdd }: { studio: Studio; employees: EmployeeLite[]; onClose: () => void; onAdd: (empId: string, day: number, slot: number, role: Role) => void }) {
   const { names: roles } = useBusinessRoles({ onlyActive: true });
   const [day, setDay] = useState(0);
   const [slot, setSlot] = useState(0);
@@ -1202,7 +1211,7 @@ function AddShiftModal({ studio, onClose, onAdd }: { studio: Studio; onClose: ()
   const [empId, setEmpId] = useState("");
   useEffect(() => { if (!role && roles.length) setRole(roles[0]); }, [roles.join(",")]);
 
-  const eligible = useMemo(() => employees.filter((e) => e.roles.includes(role)), [role]);
+  const eligible = useMemo(() => employees.filter((e) => e.roles.includes(role)), [employees, role]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.3)" }} onClick={onClose}>
