@@ -708,11 +708,22 @@ function PlanningCalendarPage() {
     const original = studioShifts.find((s) => s.id === shiftId);
     const slotStart = `${def.start.replace("h", ":")}:00`;
     const slotEnd = `${def.end.replace("h", ":")}:00`;
+    // Par défaut : on conserve la durée d'origine en alignant le début sur le slot cible.
     let startTime = slotStart;
     let endTime = slotEnd;
-    // Les horaires doivent suivre les besoins définis par l'admin (staffing_templates)
-    // pour le studio, le jour et le poste cibles. Si un template matche le créneau,
-    // on utilise SES horaires (durée = celle configurée), pas la durée d'origine.
+    if (original?.startTime && original?.endTime) {
+      const toMin = (t: string) => {
+        const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+        return h * 60 + m;
+      };
+      const dur = Math.max(15, toMin(original.endTime) - toMin(original.startTime));
+      const startMin = toMin(slotStart);
+      const endMin = startMin + dur;
+      const pad = (n: number) => String(n).padStart(2, "0");
+      startTime = `${pad(Math.floor(startMin / 60))}:${pad(startMin % 60)}:00`;
+      endTime = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}:00`;
+    }
+    // Si un staffing_template du studio/jour/poste matche le slot cible, on l'utilise (priorité).
     if (original?.studioId && original.role) {
       const dow = (date.getDay() + 6) % 7; // 0 = Lundi
       const { data: tpls } = await supabase
@@ -725,7 +736,6 @@ function PlanningCalendarPage() {
         s: String(t.start_time).slice(0, 8),
         e: String(t.end_time).slice(0, 8),
       }));
-      // Match prioritaire : template dont le début tombe dans le slot cible.
       const inSlot = list.find((t) => t.s >= slotStart && t.s < slotEnd)
         ?? list.find((t) => t.s === slotStart);
       if (inSlot) {
