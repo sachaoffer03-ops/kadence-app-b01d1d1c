@@ -170,21 +170,48 @@ function StudiosPage() {
   const pendingPatchRef = useRef<Partial<StudioRow>>({});
 
   const flushPatch = useCallback(async (id: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
     const patch = pendingPatchRef.current;
     pendingPatchRef.current = {};
     if (Object.keys(patch).length === 0) return;
     try {
       await dbUpdateStudio(id, patch);
+      await reload();
     } catch (e: any) {
       toast.error("Sauvegarde impossible", { description: e?.message ?? "" });
     }
-  }, []);
+  }, [reload]);
 
   const queueInfoPatch = useCallback((id: string, infoPatch: Partial<StudioInfo>) => {
     pendingPatchRef.current = { ...pendingPatchRef.current, ...infoPatchToRowPatch(infoPatch) };
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => flushPatch(id), 400);
   }, [flushPatch]);
+
+  // Flush quand on change de studio ou qu'on quitte la page
+  const prevStudioIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevStudioIdRef.current;
+    if (prev && prev !== currentRow?.id) {
+      flushPatch(prev);
+    }
+    prevStudioIdRef.current = currentRow?.id ?? null;
+  }, [currentRow?.id, flushPatch]);
+  useEffect(() => () => {
+    if (prevStudioIdRef.current) flushPatch(prevStudioIdRef.current);
+  }, [flushPatch]);
+
+  const updateKitchen = useCallback(async (id: string, value: boolean) => {
+    try {
+      await dbUpdateStudio(id, { has_kitchen: value });
+      await reload();
+    } catch (e: any) {
+      toast.error("Sauvegarde impossible", { description: e?.message ?? "" });
+    }
+  }, [reload]);
 
   // Postes actifs (depuis studio_business_roles)
   const { roles: studioRoles, reload: reloadRoles } = useStudioBusinessRoles(currentRow?.id ?? null);
