@@ -297,10 +297,17 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onUpdateSlot, on
           </Link>
           <button
             onClick={() => setEditing((v) => !v)}
+            className="rounded-md px-3 py-2 transition-colors"
+            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
+          >
+            {editing ? "Terminer" : "Slot rapide"}
+          </button>
+          <button
+            onClick={onEdit}
             className="flex-1 rounded-md px-3 py-2 transition-colors"
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
           >
-            {editing ? "Terminer" : "Modifier"}
+            Édition complète
           </button>
         </div>
       </div>
