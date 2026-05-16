@@ -557,12 +557,22 @@ function QuickLink({ icon, label, sub, onClick }: { icon: React.ReactNode; label
 
 /* ─── PLANNING ─── */
 function PlanningTab({ studios, userId }: { studios: Record<string, string>; userId: string }) {
+  const navigate = useNavigate();
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [shiftDetail, setShiftDetail] = useState<ShiftRow | null>(null);
   const [endShift, setEndShift] = useState<ShiftRow | null>(null);
   const [reqOpen, setReqOpen] = useState(false);
   const [reqShiftId, setReqShiftId] = useState<string | null>(null);
+
+  async function handleEndShift(s: ShiftRow) {
+    if (s.clocked_out_at) { toast.info("Ce shift est déjà clôturé"); return; }
+    try {
+      const tpl = await findApplicableTemplate({ studioId: s.studio_id ?? null, businessRole: s.business_role });
+      if (tpl) { navigate({ to: "/staff/checklist/$shiftId", params: { shiftId: s.id } }); return; }
+    } catch {}
+    setEndShift(s);
+  }
 
   const days = useMemo(() => {
     const arr: { iso: string; label: string }[] = [];
