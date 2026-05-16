@@ -41,13 +41,14 @@ function LoginPage() {
       const isEmployeeSpace = currentMode === "employee";
 
       if (isEmployeeSpace && !hasEmployee) {
-        toast.error("Cet espace est réservé aux employés. Connectez-vous sur admin.shyft.flashsite.fr");
+        toast.error("Ce compte est administrateur. Utilisez un compte employé pour app.shyft.flashsite.fr");
         await supabase.auth.signOut();
         return;
       }
       if (!isEmployeeSpace && !hasAdminOrManager) {
-        toast.error("Cet espace est réservé aux administrateurs. Connectez-vous sur app.shyft.flashsite.fr");
+        toast.error("Ce compte est employé. Connectez-vous sur app.shyft.flashsite.fr");
         await supabase.auth.signOut();
+        window.location.replace("https://app.shyft.flashsite.fr/login");
         return;
       }
       // Redirection pleine page + cache-buster : évite les anciens chunks JS
