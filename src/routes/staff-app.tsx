@@ -130,6 +130,7 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
   const [disposValidated, setDisposValidated] = useState(false);
   const [proposalsOpen, setProposalsOpen] = useState(false);
   const { proposals, reload: reloadProposals } = useProposals(userId);
+  const navigate = useNavigate();
 
   async function handleEndShift(s: ShiftRow) {
     try {
