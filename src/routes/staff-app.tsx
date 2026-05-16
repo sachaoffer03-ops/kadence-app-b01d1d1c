@@ -492,20 +492,21 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
       {shifts.slice(1).map((s) => {
         const role = s.business_role as Role;
         const rc = roleColors[role];
-        const active = s.shift_date === today;
-        const dateLabel = active ? "Aujourd'hui" : new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric" });
+        const active = s.shift_date === today && !s.clocked_out_at;
+        const dateLabel = s.shift_date === today ? "Aujourd'hui" : new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric" });
         const studioName = (s.studio_id && studios[s.studio_id]) || "—";
+        const done = !!s.clocked_out_at;
         return (
-          <button key={s.id} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3.5 flex items-center gap-3 mb-2 text-left" style={{ backgroundColor: active ? "var(--coral-light)" : "#fff", borderColor: active ? "var(--coral)" : "rgba(0,0,0,0.08)" }}>
+          <button key={s.id} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3.5 flex items-center gap-3 mb-2 text-left" style={{ backgroundColor: active ? "var(--coral-light)" : "#fff", borderColor: active ? "var(--coral)" : "rgba(0,0,0,0.08)", opacity: done ? 0.7 : 1 }}>
             <div className="rounded-lg flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: rc?.bg }}>
               <Clock size={16} style={{ color: rc?.text }} />
             </div>
             <div className="flex-1">
               <div style={{ fontSize: 13, fontWeight: 500 }}>{dateLabel} · {fmtTime(s.start_time)} — {fmtTime(s.end_time)}</div>
-              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{role} · {studioName.replace("Skult ", "")}</div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{role} · {studioName.replace("Skult ", "")}{done ? " · terminé" : ""}</div>
             </div>
             {active && (
-              <span onClick={(e) => { e.stopPropagation(); setEndShift(s); }} className="rounded-md px-3 py-1.5 flex items-center gap-1 cursor-pointer" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "#fff" }}>
+              <span onClick={(e) => { e.stopPropagation(); handleEndShift(s); }} className="rounded-md px-3 py-1.5 flex items-center gap-1 cursor-pointer" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "#fff" }}>
                 <CheckSquare size={12} /> Fin de shift
               </span>
             )}
