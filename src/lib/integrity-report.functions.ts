@@ -41,7 +41,7 @@ export const collectIntegrityStats = createServerFn({ method: "GET" }).handler(a
   await Promise.all(
     ALL_TABLES.map(async (t) => {
       try {
-        const { count, error } = await supabaseAdmin
+        const { count, error } = await (supabaseAdmin as any)
           .from(t)
           .select("*", { head: true, count: "exact" });
         tableCounts[t] = error ? `ERR: ${error.message}` : (count ?? 0);
@@ -51,14 +51,7 @@ export const collectIntegrityStats = createServerFn({ method: "GET" }).handler(a
     }),
   );
 
-  // Triggers présents
-  const { data: triggers } = await supabaseAdmin
-    .rpc("pg_meta_triggers" as any, {})
-    .then((r) => ({ data: r.data as any[] }))
-    .catch(async () => {
-      // fallback : via REST n'est pas dispo, on inspecte autrement
-      return { data: null };
-    });
+  const triggers: any = null;
 
   // On valide les triggers et fonctions via une approche heuristique :
   // si la fonction calculate_profile_score est appelable, on considère OK.

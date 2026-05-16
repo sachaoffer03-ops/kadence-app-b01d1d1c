@@ -34,6 +34,7 @@ import { Route as PlanningGenerateRouteImport } from './routes/planning.generate
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminQaTestSuiteRouteImport } from './routes/admin.qa-test-suite'
 import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-studios'
+import { Route as AdminIntegrityReportRouteImport } from './routes/admin.integrity-report'
 import { Route as AdminHardcodingAuditRouteImport } from './routes/admin.hardcoding-audit'
 import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
 import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
@@ -165,6 +166,11 @@ const AdminMigrateStudiosRoute = AdminMigrateStudiosRouteImport.update({
   path: '/admin/migrate-studios',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIntegrityReportRoute = AdminIntegrityReportRouteImport.update({
+  id: '/admin/integrity-report',
+  path: '/admin/integrity-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminHardcodingAuditRoute = AdminHardcodingAuditRouteImport.update({
   id: '/admin/hardcoding-audit',
   path: '/admin/hardcoding-audit',
@@ -215,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
+  '/admin/integrity-report': typeof AdminIntegrityReportRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seeder': typeof AdminSeederRoute
@@ -246,6 +253,7 @@ export interface FileRoutesByTo {
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
+  '/admin/integrity-report': typeof AdminIntegrityReportRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seeder': typeof AdminSeederRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
+  '/admin/integrity-report': typeof AdminIntegrityReportRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seeder': typeof AdminSeederRoute
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | '/admin/data-diagnostic'
     | '/admin/diagnostic'
     | '/admin/hardcoding-audit'
+    | '/admin/integrity-report'
     | '/admin/migrate-studios'
     | '/admin/qa-test-suite'
     | '/admin/seeder'
@@ -344,6 +354,7 @@ export interface FileRouteTypes {
     | '/admin/data-diagnostic'
     | '/admin/diagnostic'
     | '/admin/hardcoding-audit'
+    | '/admin/integrity-report'
     | '/admin/migrate-studios'
     | '/admin/qa-test-suite'
     | '/admin/seeder'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
     | '/admin/data-diagnostic'
     | '/admin/diagnostic'
     | '/admin/hardcoding-audit'
+    | '/admin/integrity-report'
     | '/admin/migrate-studios'
     | '/admin/qa-test-suite'
     | '/admin/seeder'
@@ -409,6 +421,7 @@ export interface RootRouteChildren {
   AdminDataDiagnosticRoute: typeof AdminDataDiagnosticRoute
   AdminDiagnosticRoute: typeof AdminDiagnosticRoute
   AdminHardcodingAuditRoute: typeof AdminHardcodingAuditRoute
+  AdminIntegrityReportRoute: typeof AdminIntegrityReportRoute
   AdminMigrateStudiosRoute: typeof AdminMigrateStudiosRoute
   AdminQaTestSuiteRoute: typeof AdminQaTestSuiteRoute
   AdminSeederRoute: typeof AdminSeederRoute
@@ -591,6 +604,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMigrateStudiosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/integrity-report': {
+      id: '/admin/integrity-report'
+      path: '/admin/integrity-report'
+      fullPath: '/admin/integrity-report'
+      preLoaderRoute: typeof AdminIntegrityReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/hardcoding-audit': {
       id: '/admin/hardcoding-audit'
       path: '/admin/hardcoding-audit'
@@ -679,6 +699,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDataDiagnosticRoute: AdminDataDiagnosticRoute,
   AdminDiagnosticRoute: AdminDiagnosticRoute,
   AdminHardcodingAuditRoute: AdminHardcodingAuditRoute,
+  AdminIntegrityReportRoute: AdminIntegrityReportRoute,
   AdminMigrateStudiosRoute: AdminMigrateStudiosRoute,
   AdminQaTestSuiteRoute: AdminQaTestSuiteRoute,
   AdminSeederRoute: AdminSeederRoute,
