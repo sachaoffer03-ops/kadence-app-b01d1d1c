@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { DevOnly } from "@/components/DevOnly";
+import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Beaker, Check, X, Loader2, Play, Trash2, Sparkles, RotateCw, Download, ChevronRight, AlertTriangle } from "lucide-react";
@@ -12,7 +12,7 @@ import {
 const LS_KEY = "kadence_qa_last_run";
 
 export const Route = createFileRoute("/admin/qa-test-suite")({
-  component: () => (<DevOnly label="La QA Test Suite"><QAPage /></DevOnly>),
+  component: AdminGate,
   head: () => ({ meta: [{ title: "QA Test Suite — Kadence" }] }),
 });
 
