@@ -32,6 +32,7 @@ import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
+import { Route as AdminQaTestSuiteRouteImport } from './routes/admin.qa-test-suite'
 import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-studios'
 import { Route as AdminHardcodingAuditRouteImport } from './routes/admin.hardcoding-audit'
 import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
@@ -154,6 +155,11 @@ const AdminSeederRoute = AdminSeederRouteImport.update({
   path: '/admin/seeder',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminQaTestSuiteRoute = AdminQaTestSuiteRouteImport.update({
+  id: '/admin/qa-test-suite',
+  path: '/admin/qa-test-suite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminMigrateStudiosRoute = AdminMigrateStudiosRouteImport.update({
   id: '/admin/migrate-studios',
   path: '/admin/migrate-studios',
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
+  '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
@@ -240,6 +247,7 @@ export interface FileRoutesByTo {
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
+  '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
+  '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
@@ -305,6 +314,7 @@ export interface FileRouteTypes {
     | '/admin/diagnostic'
     | '/admin/hardcoding-audit'
     | '/admin/migrate-studios'
+    | '/admin/qa-test-suite'
     | '/admin/seeder'
     | '/planning/generate'
     | '/staff/$id'
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/admin/diagnostic'
     | '/admin/hardcoding-audit'
     | '/admin/migrate-studios'
+    | '/admin/qa-test-suite'
     | '/admin/seeder'
     | '/planning/generate'
     | '/staff/$id'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/admin/diagnostic'
     | '/admin/hardcoding-audit'
     | '/admin/migrate-studios'
+    | '/admin/qa-test-suite'
     | '/admin/seeder'
     | '/planning/generate'
     | '/staff/$id'
@@ -398,6 +410,7 @@ export interface RootRouteChildren {
   AdminDiagnosticRoute: typeof AdminDiagnosticRoute
   AdminHardcodingAuditRoute: typeof AdminHardcodingAuditRoute
   AdminMigrateStudiosRoute: typeof AdminMigrateStudiosRoute
+  AdminQaTestSuiteRoute: typeof AdminQaTestSuiteRoute
   AdminSeederRoute: typeof AdminSeederRoute
 }
 
@@ -564,6 +577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSeederRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/qa-test-suite': {
+      id: '/admin/qa-test-suite'
+      path: '/admin/qa-test-suite'
+      fullPath: '/admin/qa-test-suite'
+      preLoaderRoute: typeof AdminQaTestSuiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/migrate-studios': {
       id: '/admin/migrate-studios'
       path: '/admin/migrate-studios'
@@ -660,6 +680,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDiagnosticRoute: AdminDiagnosticRoute,
   AdminHardcodingAuditRoute: AdminHardcodingAuditRoute,
   AdminMigrateStudiosRoute: AdminMigrateStudiosRoute,
+  AdminQaTestSuiteRoute: AdminQaTestSuiteRoute,
   AdminSeederRoute: AdminSeederRoute,
 }
 export const routeTree = rootRouteImport
