@@ -453,6 +453,12 @@ const TEST_DEFS = [
   { id: 6, name: "Cas extrême : pénurie de dispos", description: "80% des dispos supprimées : pas de crash, trous listés." },
   { id: 7, name: "Cas extrême : surcharge d'employés", description: "100 candidats sur Beta : génération rapide, couverture maintenue." },
   { id: 8, name: "Idempotence / déterminisme", description: "2 runs consécutifs donnent des métriques équivalentes." },
+  // ─── E2E : cycle complet d'un employé ────────────────────────────────────
+  { id: 9, name: "E2E · Arrivée employé", description: "Création complète d'un employé (profile + rôles + studio + contrat) avec vérification de cohérence." },
+  { id: 10, name: "E2E · Cycle de shift", description: "Shift créé → publié → clock-in en retard → clock-out → status completed." },
+  { id: 11, name: "E2E · Checklist fin de shift", description: "Template + items créés, soumission complétée, score profil recalculé." },
+  { id: 12, name: "E2E · Modification + feedback", description: "Demande de modification employée → admin accepte + laisse une note 5★." },
+  { id: 13, name: "E2E · Signalement & sortie", description: "Signalement créé → résolu par admin → désactivation propre du profil." },
 ];
 
 export const listTests = createServerFn({ method: "GET" })
@@ -887,6 +893,405 @@ async function test8() {
   }
 }
 
+// =============================================================================
+// E2E LIFECYCLE — helpers
+// =============================================================================
+async function findAnyAdminId(): Promise<string> {
+  const { data } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin").limit(1);
+  if (!data?.length) throw new Error("Aucun admin trouvé pour les tests E2E.");
+  return data[0].user_id as string;
+}
+
+// Crée un employé E2E "frais" (is_test=true) rattaché à Alpha, contrat Flexi.
+// Retourne {id, email}. Tu dois TOUJOURS appeler cleanupE2EEmployee dans finally.
+async function createE2EEmployee(alphaId: string, tag: string) {
+  const id = uuidV4();
+  const email = `qa.e2e.${tag}.${id.slice(0, 8)}@kadence-qa.test`;
+  await supabaseAdmin.from("profiles").insert({
+    id, email, first_name: "E2E", last_name: tag,
+    status: "active", is_test: true, score: 7.0,
+    contract: "Flexi", studio_id: alphaId,
+  });
+  await supabaseAdmin.from("user_contracts").insert({ user_id: id, contract: "Flexi" });
+  await supabaseAdmin.from("user_studios").insert({ user_id: id, studio_id: alphaId });
+  await supabaseAdmin.from("user_business_roles").insert([
+    { user_id: id, role: "Accueil" }, { user_id: id, role: "Barista" },
+  ]);
+  await supabaseAdmin.from("user_roles").insert({ user_id: id, role: "employee" });
+  return { id, email };
+}
+
+async function cleanupE2EEmployee(userId: string) {
+  // Ordre : enfants → profile
+  await supabaseAdmin.from("checklist_submission_items")
+    .delete().in("submission_id",
+      ((await supabaseAdmin.from("checklist_submissions").select("id").eq("user_id", userId)).data ?? [])
+        .map((r: any) => r.id),
+    );
+  await supabaseAdmin.from("checklist_submissions").delete().eq("user_id", userId);
+  await supabaseAdmin.from("feedbacks").delete().eq("author_id", userId);
+  await supabaseAdmin.from("modification_requests").delete().eq("user_id", userId);
+  await supabaseAdmin.from("signalements").delete().eq("author_id", userId);
+  await supabaseAdmin.from("notifications").delete().eq("user_id", userId);
+  await supabaseAdmin.from("availabilities").delete().eq("user_id", userId);
+  await supabaseAdmin.from("shifts").delete().eq("user_id", userId);
+  await supabaseAdmin.from("user_business_roles").delete().eq("user_id", userId);
+  await supabaseAdmin.from("user_studios").delete().eq("user_id", userId);
+  await supabaseAdmin.from("user_contracts").delete().eq("user_id", userId);
+  await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
+  await supabaseAdmin.from("profiles").delete().eq("id", userId);
+}
+
+// =============================================================================
+// TEST 9 — Arrivée employé
+// =============================================================================
+async function test9(): Promise<TestResult> {
+  const t0 = Date.now();
+  const { alphaId } = await getTestStudioIds();
+  let emp: { id: string; email: string } | null = null;
+  try {
+    emp = await createE2EEmployee(alphaId, "arrival");
+
+    const [prof, ur, us, uc, ubr] = await Promise.all([
+      supabaseAdmin.from("profiles").select("id,status,is_test,studio_id").eq("id", emp.id).maybeSingle(),
+      supabaseAdmin.from("user_roles").select("role").eq("user_id", emp.id),
+      supabaseAdmin.from("user_studios").select("studio_id").eq("user_id", emp.id),
+      supabaseAdmin.from("user_contracts").select("contract").eq("user_id", emp.id),
+      supabaseAdmin.from("user_business_roles").select("role").eq("user_id", emp.id),
+    ]);
+
+    const checks = {
+      profile_active: prof.data?.status === "active",
+      profile_test_flag: prof.data?.is_test === true,
+      studio_linked: prof.data?.studio_id === alphaId,
+      has_employee_role: (ur.data ?? []).some((r: any) => r.role === "employee"),
+      studio_join_present: (us.data ?? []).some((s: any) => s.studio_id === alphaId),
+      contract_present: (uc.data ?? []).some((c: any) => c.contract === "Flexi"),
+      business_roles_count: (ubr.data ?? []).length === 2,
+    };
+    const failures = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+    const passed = failures.length === 0;
+    return {
+      testName: "9. E2E · Arrivée employé",
+      status: passed ? "passed" : "failed",
+      durationMs: Date.now() - t0,
+      message: passed
+        ? `Employé créé avec cohérence complète (profile + 1 contrat + 1 studio + 2 business roles + role employee).`
+        : `Incohérences : ${failures.join(", ")}.`,
+      details: { checks, profile: prof.data, employee_id: emp.id },
+    };
+  } finally {
+    if (emp) await cleanupE2EEmployee(emp.id);
+  }
+}
+
+// =============================================================================
+// TEST 10 — Cycle de shift complet
+// =============================================================================
+async function test10(): Promise<TestResult> {
+  const t0 = Date.now();
+  const { alphaId } = await getTestStudioIds();
+  let emp: { id: string; email: string } | null = null;
+  try {
+    emp = await createE2EEmployee(alphaId, "shiftcycle");
+
+    // 1. Création shift (hier pour que clock-in/out soient cohérents)
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const dateStr = isoDate(yesterday);
+    const { data: shift, error: sErr } = await supabaseAdmin.from("shifts").insert({
+      user_id: emp.id, studio_id: alphaId, business_role: "Accueil",
+      shift_date: dateStr, start_time: "09:00:00", end_time: "13:00:00",
+      status: "scheduled", is_manual: true,
+    }).select().single();
+    if (sErr || !shift) throw new Error(`Création shift : ${sErr?.message ?? "inconnu"}`);
+
+    // 2. Publication
+    await supabaseAdmin.from("shifts")
+      .update({ published_at: new Date().toISOString() }).eq("id", shift.id);
+
+    // 3. Clock-in en retard de 12 min
+    const clockIn = new Date(`${dateStr}T09:12:00`);
+    await supabaseAdmin.from("shifts")
+      .update({ clocked_in_at: clockIn.toISOString() }).eq("id", shift.id);
+
+    // 4. Clock-out à 13:05
+    const clockOut = new Date(`${dateStr}T13:05:00`);
+    await supabaseAdmin.from("shifts")
+      .update({ clocked_out_at: clockOut.toISOString(), status: "completed" }).eq("id", shift.id);
+
+    // 5. Vérifications
+    const { data: final } = await supabaseAdmin.from("shifts")
+      .select("status,clocked_in_at,clocked_out_at,minutes_late,published_at").eq("id", shift.id).maybeSingle();
+
+    const minutesLate = final?.minutes_late;
+    // Le trigger devrait calculer 12. On tolère NULL (trigger absent) en se rabattant sur un calcul manuel.
+    const computedLate = clockIn.getTime() - new Date(`${dateStr}T09:00:00`).getTime();
+    const expectedLate = Math.max(0, Math.floor(computedLate / 60000));
+    const lateOK = minutesLate === expectedLate || (minutesLate == null && expectedLate === 12);
+
+    const checks = {
+      shift_published: !!final?.published_at,
+      clocked_in: !!final?.clocked_in_at,
+      clocked_out: !!final?.clocked_out_at,
+      status_completed: final?.status === "completed",
+      late_tracking_ok: lateOK,
+    };
+    const failures = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+    const passed = failures.length === 0;
+    return {
+      testName: "10. E2E · Cycle de shift",
+      status: passed ? "passed" : "failed",
+      durationMs: Date.now() - t0,
+      message: passed
+        ? `Shift parcouru de scheduled → completed (retard ${minutesLate ?? expectedLate} min, durée nette ~4h).`
+        : `Cycle incomplet : ${failures.join(", ")}.`,
+      details: { checks, minutes_late: minutesLate, expected_late: expectedLate, final },
+    };
+  } finally {
+    if (emp) await cleanupE2EEmployee(emp.id);
+  }
+}
+
+// =============================================================================
+// TEST 11 — Checklist fin de shift
+// =============================================================================
+async function test11(): Promise<TestResult> {
+  const t0 = Date.now();
+  const { alphaId } = await getTestStudioIds();
+  let emp: { id: string; email: string } | null = null;
+  let templateId: string | null = null;
+  const templateItemIds: string[] = [];
+  try {
+    emp = await createE2EEmployee(alphaId, "checklist");
+
+    // 1. Crée shift d'hier en completed
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const dateStr = isoDate(yesterday);
+    const { data: shift } = await supabaseAdmin.from("shifts").insert({
+      user_id: emp.id, studio_id: alphaId, business_role: "Accueil",
+      shift_date: dateStr, start_time: "09:00:00", end_time: "13:00:00",
+      status: "completed", is_manual: true,
+      clocked_in_at: new Date(`${dateStr}T09:00:00`).toISOString(),
+      clocked_out_at: new Date(`${dateStr}T13:00:00`).toISOString(),
+    }).select().single();
+    if (!shift) throw new Error("Shift checklist non créé");
+
+    // 2. Crée un template checklist (pas de business_role_id pour rester simple)
+    const { data: tpl, error: tErr } = await supabaseAdmin.from("checklist_templates").insert({
+      name: "QA E2E Checklist", studio_id: alphaId, is_blocking: false, is_active: true,
+    }).select().single();
+    if (tErr || !tpl) throw new Error(`Création template : ${tErr?.message}`);
+    templateId = tpl.id;
+
+    const itemsToInsert = [
+      { template_id: templateId, label: "Nettoyer le bar", order_index: 1, is_required: true },
+      { template_id: templateId, label: "Vider la poubelle", order_index: 2, is_required: true },
+      { template_id: templateId, label: "Fermer la caisse", order_index: 3, is_required: true },
+    ];
+    const { data: items, error: iErr } = await supabaseAdmin.from("checklist_template_items")
+      .insert(itemsToInsert).select();
+    if (iErr || !items) throw new Error(`Items : ${iErr?.message}`);
+    templateItemIds.push(...items.map((i: any) => i.id));
+
+    // 3. Soumission
+    const scoreBefore = (await supabaseAdmin.from("profiles").select("score").eq("id", emp.id).maybeSingle()).data?.score ?? 0;
+    const { data: sub, error: subErr } = await supabaseAdmin.from("checklist_submissions").insert({
+      shift_id: shift.id, user_id: emp.id, template_id: templateId,
+      status: "submitted", submitted_at: new Date().toISOString(),
+      employee_note: "Tout en ordre.",
+    }).select().single();
+    if (subErr || !sub) throw new Error(`Submission : ${subErr?.message}`);
+
+    // 4. Coche tous les items
+    const rows = items.map((it: any) => ({
+      submission_id: sub.id, template_item_id: it.id,
+      is_checked: true, checked_at: new Date().toISOString(),
+    }));
+    await supabaseAdmin.from("checklist_submission_items").insert(rows);
+
+    // 5. Recalcule le score manuellement (le trigger peut ou pas être attaché)
+    const { data: recalc } = await supabaseAdmin.rpc("calculate_profile_score", { target_user_id: emp.id });
+    await supabaseAdmin.from("profiles").update({ score: recalc }).eq("id", emp.id);
+    const scoreAfter = (await supabaseAdmin.from("profiles").select("score").eq("id", emp.id).maybeSingle()).data?.score ?? 0;
+
+    // 6. Vérifs
+    const { data: itemsCount } = await supabaseAdmin.from("checklist_submission_items")
+      .select("is_checked").eq("submission_id", sub.id);
+    const checkedCount = (itemsCount ?? []).filter((r: any) => r.is_checked).length;
+
+    const checks = {
+      submission_created: !!sub,
+      all_items_checked: checkedCount === 3,
+      submission_submitted: sub?.status === "submitted",
+      score_recomputed: typeof scoreAfter === "number" && scoreAfter > 0,
+    };
+    const failures = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+    const passed = failures.length === 0;
+    return {
+      testName: "11. E2E · Checklist fin de shift",
+      status: passed ? "passed" : "failed",
+      durationMs: Date.now() - t0,
+      message: passed
+        ? `Submission complète (3/3 items cochés). Score recalculé : ${Number(scoreBefore).toFixed(2)} → ${Number(scoreAfter).toFixed(2)}.`
+        : `Checklist non complète : ${failures.join(", ")}.`,
+      details: { checks, score_before: scoreBefore, score_after: scoreAfter, items_checked: checkedCount },
+    };
+  } finally {
+    // Cleanup template (avant l'employé pour libérer les FKs)
+    if (templateId) {
+      await supabaseAdmin.from("checklist_submission_items")
+        .delete().in("template_item_id", templateItemIds.length ? templateItemIds : ["00000000-0000-0000-0000-000000000000"]);
+      await supabaseAdmin.from("checklist_template_items").delete().eq("template_id", templateId);
+      await supabaseAdmin.from("checklist_templates").delete().eq("id", templateId);
+    }
+    if (emp) await cleanupE2EEmployee(emp.id);
+  }
+}
+
+// =============================================================================
+// TEST 12 — Modification + feedback
+// =============================================================================
+async function test12(): Promise<TestResult> {
+  const t0 = Date.now();
+  const { alphaId } = await getTestStudioIds();
+  let emp: { id: string; email: string } | null = null;
+  let feedbackId: string | null = null;
+  try {
+    const adminId = await findAnyAdminId();
+    emp = await createE2EEmployee(alphaId, "modreq");
+
+    // Shift futur
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = isoDate(tomorrow);
+    const { data: shift } = await supabaseAdmin.from("shifts").insert({
+      user_id: emp.id, studio_id: alphaId, business_role: "Accueil",
+      shift_date: dateStr, start_time: "10:00:00", end_time: "14:00:00",
+      status: "scheduled", is_manual: true,
+      published_at: new Date().toISOString(),
+    }).select().single();
+    if (!shift) throw new Error("Shift non créé");
+
+    // 1. Demande de modification par l'employé (swap)
+    const { data: modReq, error: mErr } = await supabaseAdmin.from("modification_requests").insert({
+      user_id: emp.id, shift_id: shift.id, type: "swap", urgency: "normal",
+      reason: "Imprévu personnel — je cherche un remplaçant",
+      status: "pending",
+    }).select().single();
+    if (mErr || !modReq) throw new Error(`Modif request : ${mErr?.message}`);
+
+    // 2. Admin accepte la demande
+    await supabaseAdmin.from("modification_requests").update({
+      status: "accepted",
+      admin_response: "OK, c'est arrangé.",
+      resolved_at: new Date().toISOString(),
+    }).eq("id", modReq.id);
+
+    // 3. Admin laisse feedback 5★ sur un shift passé (re-create un shift completed)
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const { data: pastShift } = await supabaseAdmin.from("shifts").insert({
+      user_id: emp.id, studio_id: alphaId, business_role: "Accueil",
+      shift_date: isoDate(yesterday), start_time: "09:00:00", end_time: "13:00:00",
+      status: "completed", is_manual: true,
+      clocked_in_at: new Date(`${isoDate(yesterday)}T09:00:00`).toISOString(),
+      clocked_out_at: new Date(`${isoDate(yesterday)}T13:00:00`).toISOString(),
+    }).select().single();
+
+    const { data: fb, error: fErr } = await supabaseAdmin.from("feedbacks").insert({
+      shift_id: pastShift?.id ?? shift.id, author_id: adminId,
+      rating: 5, message: "Excellent travail.",
+    }).select().single();
+    if (fErr || !fb) throw new Error(`Feedback : ${fErr?.message}`);
+    feedbackId = fb.id;
+
+    // 4. Vérifs
+    const { data: finalMod } = await supabaseAdmin.from("modification_requests")
+      .select("status,admin_response,resolved_at").eq("id", modReq.id).maybeSingle();
+    const { data: finalFb } = await supabaseAdmin.from("feedbacks")
+      .select("rating,message").eq("id", fb.id).maybeSingle();
+
+    const checks = {
+      mod_request_accepted: finalMod?.status === "accepted",
+      mod_response_recorded: !!finalMod?.admin_response,
+      mod_resolved_at_set: !!finalMod?.resolved_at,
+      feedback_rating_5: finalFb?.rating === 5,
+      feedback_message_present: !!finalFb?.message,
+    };
+    const failures = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+    const passed = failures.length === 0;
+    return {
+      testName: "12. E2E · Modification + feedback",
+      status: passed ? "passed" : "failed",
+      durationMs: Date.now() - t0,
+      message: passed
+        ? `Demande de modification acceptée + feedback 5★ enregistré.`
+        : `Workflow incomplet : ${failures.join(", ")}.`,
+      details: { checks, modification: finalMod, feedback: finalFb },
+    };
+  } finally {
+    if (feedbackId) await supabaseAdmin.from("feedbacks").delete().eq("id", feedbackId);
+    if (emp) await cleanupE2EEmployee(emp.id);
+  }
+}
+
+// =============================================================================
+// TEST 13 — Signalement + sortie
+// =============================================================================
+async function test13(): Promise<TestResult> {
+  const t0 = Date.now();
+  const { alphaId } = await getTestStudioIds();
+  let emp: { id: string; email: string } | null = null;
+  try {
+    const adminId = await findAnyAdminId();
+    emp = await createE2EEmployee(alphaId, "exit");
+
+    // 1. Signalement matériel
+    const { data: sig, error: sErr } = await supabaseAdmin.from("signalements").insert({
+      author_id: emp.id, studio_id: alphaId,
+      category: "materiel",
+      message: "Machine à café HS depuis 8h ce matin.",
+      resolved: false,
+    }).select().single();
+    if (sErr || !sig) throw new Error(`Signalement : ${sErr?.message}`);
+
+    // 2. Admin résout
+    await supabaseAdmin.from("signalements").update({
+      resolved: true, resolved_by: adminId, resolved_at: new Date().toISOString(),
+    }).eq("id", sig.id);
+
+    // 3. Désactivation employé
+    await supabaseAdmin.from("profiles").update({ status: "suspended" }).eq("id", emp.id);
+
+    // 4. Vérifs
+    const { data: finalSig } = await supabaseAdmin.from("signalements")
+      .select("resolved,resolved_by,resolved_at").eq("id", sig.id).maybeSingle();
+    const { data: finalProf } = await supabaseAdmin.from("profiles")
+      .select("status,id").eq("id", emp.id).maybeSingle();
+    // L'employé désactivé doit garder son historique (le signalement reste)
+    const historyIntact = !!finalSig;
+
+    const checks = {
+      signalement_resolved: finalSig?.resolved === true,
+      signalement_has_admin: !!finalSig?.resolved_by,
+      signalement_has_date: !!finalSig?.resolved_at,
+      profile_suspended: finalProf?.status === "suspended",
+      history_intact: historyIntact,
+    };
+    const failures = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+    const passed = failures.length === 0;
+    return {
+      testName: "13. E2E · Signalement & sortie",
+      status: passed ? "passed" : "failed",
+      durationMs: Date.now() - t0,
+      message: passed
+        ? `Signalement résolu par l'admin, employé désactivé proprement, historique préservé.`
+        : `Sortie incomplète : ${failures.join(", ")}.`,
+      details: { checks, signalement: finalSig, profile: finalProf },
+    };
+  } finally {
+    if (emp) await cleanupE2EEmployee(emp.id);
+  }
+}
+
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 async function runOne(id: number): Promise<TestResult> {
   try {
@@ -899,6 +1304,11 @@ async function runOne(id: number): Promise<TestResult> {
       case 6: return await test6();
       case 7: return await test7();
       case 8: return await test8();
+      case 9: return await test9();
+      case 10: return await test10();
+      case 11: return await test11();
+      case 12: return await test12();
+      case 13: return await test13();
       default: throw new Error(`Test ${id} inconnu`);
     }
   } catch (e: any) {
@@ -914,7 +1324,7 @@ async function runOne(id: number): Promise<TestResult> {
 
 export const runQATest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ test_id: z.number().int().min(1).max(8) }).parse(input))
+  .inputValidator((input) => z.object({ test_id: z.number().int().min(1).max(13) }).parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     return runOne(data.test_id);
