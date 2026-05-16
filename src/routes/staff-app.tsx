@@ -162,7 +162,7 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
     const weekEnd = in7.toISOString().slice(0, 10);
     const load = async () => {
       const { data: next } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
         .eq("user_id", userId).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
       if (next) setShifts(next);
 
