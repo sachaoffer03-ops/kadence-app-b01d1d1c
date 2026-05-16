@@ -53,6 +53,17 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
 
+  const forceReload = () => {
+    if (typeof window === "undefined") {
+      router.invalidate();
+      reset();
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("r", String(Date.now()));
+    window.location.replace(url.toString());
+  };
+
   // Auto-recovery : erreur d'import de chunk périmé (post-déploiement).
   // On recharge une seule fois, en bypassant le cache.
   useEffect(() => {
@@ -67,7 +78,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     const last = Number(sessionStorage.getItem(KEY) || 0);
     if (Date.now() - last < 10_000) return; // évite la boucle
     sessionStorage.setItem(KEY, String(Date.now()));
-    window.location.reload();
+    forceReload();
   }, [error]);
 
   return (
@@ -79,10 +90,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         </p>
         <div className="mt-6 flex justify-center gap-2">
           <button
-            onClick={() => {
-              if (typeof window !== "undefined") window.location.reload();
-              else { router.invalidate(); reset(); }
-            }}
+            onClick={forceReload}
             className="inline-flex items-center justify-center rounded-md px-4 py-2"
             style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
           >
@@ -186,13 +194,14 @@ function AppShell() {
 
       // Mauvais espace pour ce rôle → déconnexion + message
       if (isEmployeeSpace && !userIsEmployee) {
-        toast.error("Cet espace est réservé aux employés. Connectez-vous sur admin.shyft.flashsite.fr");
+        toast.error("Ce compte est administrateur. Utilisez un compte employé pour app.shyft.flashsite.fr");
         supabase.auth.signOut();
         return;
       }
       if (!isEmployeeSpace && userIsEmployee) {
-        toast.error("Cet espace est réservé aux administrateurs. Connectez-vous sur app.shyft.flashsite.fr");
+        toast.error("Ce compte est employé. Redirection vers l'espace employé…");
         supabase.auth.signOut();
+        if (typeof window !== "undefined") window.location.replace("https://app.shyft.flashsite.fr/login");
         return;
       }
 

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,7 +16,6 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { mode: searchMode } = Route.useSearch();
-  const navigate = useNavigate();
   const { session, appRole, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,24 +37,28 @@ function LoginPage() {
       const roles = (data ?? []).map((r) => r.role as "admin" | "manager" | "employee");
       const hasEmployee = roles.includes("employee");
       const hasAdminOrManager = roles.includes("admin") || roles.includes("manager");
-      const isEmployeeSpace = appMode === "employee";
+      const currentMode = getAppMode();
+      const isEmployeeSpace = currentMode === "employee";
 
       if (isEmployeeSpace && !hasEmployee) {
-        toast.error("Cet espace est réservé aux employés. Connectez-vous sur admin.shyft.flashsite.fr");
+        toast.error("Ce compte est administrateur. Utilisez un compte employé pour app.shyft.flashsite.fr");
         await supabase.auth.signOut();
         return;
       }
       if (!isEmployeeSpace && !hasAdminOrManager) {
-        toast.error("Cet espace est réservé aux administrateurs. Connectez-vous sur app.shyft.flashsite.fr");
+        toast.error("Ce compte est employé. Connectez-vous sur app.shyft.flashsite.fr");
         await supabase.auth.signOut();
+        window.location.replace("https://app.shyft.flashsite.fr/login");
         return;
       }
-      // Redirection pleine page après login : évite les erreurs de chunks périmés
-      // sur Safari mobile quand le bundle a changé entre l'écran login et l'espace employé.
-      window.location.replace(isEmployeeSpace ? "/staff-app" : "/dashboard");
+      // Redirection pleine page + cache-buster : évite les anciens chunks JS
+      // conservés par Safari/mobile après une publication.
+      const target = new URL(isEmployeeSpace ? "/staff-app" : "/dashboard", window.location.origin);
+      target.searchParams.set("r", String(Date.now()));
+      window.location.replace(target.toString());
     };
     checkAccess();
-  }, [authLoading, session, appMode, navigate]);
+  }, [authLoading, session, appMode]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
