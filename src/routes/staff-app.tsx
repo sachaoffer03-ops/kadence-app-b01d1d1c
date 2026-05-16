@@ -672,7 +672,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
       <ShiftDetailSheet
         open={!!shiftDetail} onClose={() => setShiftDetail(null)}
         shift={shiftDetail} studios={studios}
-        onEndShift={() => { if (shiftDetail) { setEndShift(shiftDetail); setShiftDetail(null); } }}
+        onEndShift={() => { if (shiftDetail) { const s = shiftDetail; setShiftDetail(null); handleEndShift(s); } }}
         onRequestModif={() => { if (shiftDetail) { setReqShiftId(shiftDetail.id); setShiftDetail(null); setReqOpen(true); } }}
       />
       <EndShiftSheet open={!!endShift} onClose={() => setEndShift(null)} shift={endShift} userId={userId} />
