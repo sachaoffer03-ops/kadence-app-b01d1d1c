@@ -1097,7 +1097,7 @@ async function test11(): Promise<TestResult> {
     const scoreBefore = (await supabaseAdmin.from("profiles").select("score").eq("id", emp.id).maybeSingle()).data?.score ?? 0;
     const { data: sub, error: subErr } = await supabaseAdmin.from("checklist_submissions").insert({
       shift_id: shift.id, user_id: emp.id, template_id: templateId,
-      status: "submitted", submitted_at: new Date().toISOString(),
+      status: "completed", submitted_at: new Date().toISOString(),
       employee_note: "Tout en ordre.",
     }).select().single();
     if (subErr || !sub) throw new Error(`Submission : ${subErr?.message}`);
@@ -1122,7 +1122,7 @@ async function test11(): Promise<TestResult> {
     const checks = {
       submission_created: !!sub,
       all_items_checked: checkedCount === 3,
-      submission_submitted: sub?.status === "submitted",
+      submission_submitted: sub?.status === "completed",
       score_recomputed: typeof scoreAfter === "number" && scoreAfter > 0,
     };
     const failures = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
