@@ -275,6 +275,14 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
         let bigLine = "Aucun shift planifié";
         let subLine: string | null = null;
         let isToday = false;
+        // États : B = à venir, C = en service, D = terminé
+        type CardState = "none" | "future" | "today_before" | "in_service" | "done";
+        let state: CardState = next ? "future" : "none";
+        let lateMinAtStart = 0;
+        let liveLateMin = 0;
+        let serviceElapsedMs = 0;
+        let plannedDurMin = 0;
+        let workedMin = 0;
         if (next) {
           const role = next.business_role as Role;
           const studioName = (next.studio_id && studios[next.studio_id]) || "—";
@@ -283,14 +291,57 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
           const diffDays = Math.round((d.getTime() - t0.getTime()) / 86400000);
           isToday = diffDays === 0;
           const when = diffDays === 0 ? "Aujourd'hui" : diffDays === 1 ? "Demain" : d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-          kicker = isToday ? "Shift en cours" : "Prochain shift";
-          bigLine = `${when} · ${fmtTime(next.start_time)}`;
-          subLine = `${fmtTime(next.start_time)} — ${fmtTime(next.end_time)} · ${role} · ${studioName.replace("Skult ", "")}`;
+          const [sh, sm] = next.start_time.split(":").map(Number);
+          const [eh, em] = next.end_time.split(":").map(Number);
+          plannedDurMin = (eh * 60 + em) - (sh * 60 + sm);
+          const startDt = new Date(next.shift_date + "T" + next.start_time);
+          if (isToday) {
+            if (next.clocked_out_at) {
+              state = "done";
+              const ci = next.clocked_in_at ? new Date(next.clocked_in_at) : startDt;
+              const co = new Date(next.clocked_out_at);
+              workedMin = Math.max(0, Math.round((co.getTime() - ci.getTime()) / 60000));
+              lateMinAtStart = next.minutes_late ?? 0;
+            } else if (next.clocked_in_at) {
+              state = "in_service";
+              const ci = new Date(next.clocked_in_at);
+              serviceElapsedMs = Math.max(0, nowTs - ci.getTime());
+              lateMinAtStart = next.minutes_late ?? Math.max(0, Math.round((ci.getTime() - startDt.getTime()) / 60000));
+            } else {
+              state = "today_before";
+              liveLateMin = Math.max(0, Math.round((nowTs - startDt.getTime()) / 60000));
+            }
+          }
+          if (state === "in_service") {
+            kicker = "En service";
+            const ci = new Date(next.clocked_in_at!);
+            bigLine = `Arrivé à ${ci.toTimeString().slice(0, 5).replace(":", "h")}${lateMinAtStart > 0 ? ` (+${lateMinAtStart} min)` : ""}`;
+            const totS = Math.floor(serviceElapsedMs / 1000);
+            const hh = String(Math.floor(totS / 3600)).padStart(2, "0");
+            const mm = String(Math.floor((totS % 3600) / 60)).padStart(2, "0");
+            const ss = String(totS % 60).padStart(2, "0");
+            subLine = `${hh}:${mm}:${ss} en service · fin prévue ${fmtTime(next.end_time)} · ${role} · ${studioName.replace("Skult ", "")}`;
+          } else if (state === "done") {
+            kicker = "Shift terminé";
+            const ci = next.clocked_in_at ? new Date(next.clocked_in_at) : startDt;
+            const co = new Date(next.clocked_out_at!);
+            bigLine = `${ci.toTimeString().slice(0, 5).replace(":", "h")} → ${co.toTimeString().slice(0, 5).replace(":", "h")}`;
+            const h = Math.floor(workedMin / 60); const m = workedMin % 60;
+            subLine = `${h}h${String(m).padStart(2, "0")} net${lateMinAtStart > 0 ? ` · +${lateMinAtStart} min de retard` : ""} · ${role} · ${studioName.replace("Skult ", "")}`;
+          } else {
+            kicker = isToday ? "Aujourd'hui" : "Prochain shift";
+            bigLine = `${when} · ${fmtTime(next.start_time)}`;
+            subLine = `${fmtTime(next.start_time)} — ${fmtTime(next.end_time)} · ${role} · ${studioName.replace("Skult ", "")}`;
+          }
         }
+        const cardBg =
+          state === "in_service" ? "linear-gradient(135deg, #3A1F12, #5C2E18)" :
+          state === "done" ? "linear-gradient(135deg, #1F1F1F, #2E2E2E)" :
+          "linear-gradient(135deg, #1A1614, #2A2624)";
         return (
           <div
             className="relative overflow-hidden rounded-3xl p-6 mb-5"
-            style={{ background: "linear-gradient(135deg, #1A1614, #2A2624)" }}
+            style={{ background: cardBg }}
           >
             <div
               style={{
@@ -326,16 +377,29 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
                 </div>
               )}
 
-              {next && isToday && (
+              {state === "today_before" && next && (
+                <button
+                  onClick={() => handleClockIn(next)}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
+                  style={{
+                    fontSize: 12, fontWeight: 500,
+                    backgroundColor: liveLateMin > 0 ? "#E07A3E" : "var(--coral)",
+                    color: "#1A1614",
+                  }}
+                >
+                  <Clock size={13} /> {liveLateMin > 0 ? `Pointer mon arrivée — en retard de ${liveLateMin} min` : "Pointer mon arrivée"}
+                </button>
+              )}
+              {state === "in_service" && next && (
                 <button
                   onClick={() => handleEndShift(next)}
                   className="mt-4 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
-                  style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#1A1614" }}
+                  style={{ fontSize: 12, fontWeight: 500, backgroundColor: "#E04E3E", color: "#fff" }}
                 >
-                  <CheckSquare size={13} /> Terminer le shift
+                  <CheckSquare size={13} /> Pointer ma sortie
                 </button>
               )}
-              {next && !isToday && (
+              {state === "future" && next && !isToday && (
                 <button
                   onClick={() => setShiftDetail(next)}
                   className="mt-4 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
