@@ -53,6 +53,23 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
 
+  // Auto-recovery : erreur d'import de chunk périmé (post-déploiement).
+  // On recharge une seule fois, en bypassant le cache.
+  useEffect(() => {
+    const msg = String(error?.message || "");
+    const isChunkError =
+      /Importing a module script failed/i.test(msg) ||
+      /Failed to fetch dynamically imported module/i.test(msg) ||
+      /Loading chunk \d+ failed/i.test(msg) ||
+      /error loading dynamically imported module/i.test(msg);
+    if (!isChunkError || typeof window === "undefined") return;
+    const KEY = "kadence_chunk_reload_at";
+    const last = Number(sessionStorage.getItem(KEY) || 0);
+    if (Date.now() - last < 10_000) return; // évite la boucle
+    sessionStorage.setItem(KEY, String(Date.now()));
+    window.location.reload();
+  }, [error]);
+
   return (
     <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
       <div className="max-w-md text-center">
