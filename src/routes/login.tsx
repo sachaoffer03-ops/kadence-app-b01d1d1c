@@ -50,7 +50,9 @@ function LoginPage() {
         await supabase.auth.signOut();
         return;
       }
-      navigate({ to: isEmployeeSpace ? "/staff-app" : "/dashboard" });
+      // Redirection pleine page après login : évite les erreurs de chunks périmés
+      // sur Safari mobile quand le bundle a changé entre l'écran login et l'espace employé.
+      window.location.replace(isEmployeeSpace ? "/staff-app" : "/dashboard");
     };
     checkAccess();
   }, [authLoading, session, appMode, navigate]);
