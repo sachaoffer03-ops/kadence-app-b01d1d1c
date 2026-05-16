@@ -43,7 +43,8 @@ function fmtTime(t: string) { return t.slice(0, 5).replace(":", "h"); }
 function todayISO() { return new Date().toISOString().slice(0, 10); }
 
 function StaffAppPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("accueil");
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [businessRoles, setBusinessRoles] = useState<Role[]>([]);
@@ -75,7 +76,11 @@ function StaffAppPage() {
     })();
   }, [user]);
 
-  if (!user) return <div className="p-8" style={{ fontSize: 13 }}>Chargement…</div>;
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/login" });
+  }, [loading, user, navigate]);
+
+  if (loading || !user) return <div className="p-8" style={{ fontSize: 13 }}>Chargement…</div>;
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#FAF8F4", maxWidth: 430, margin: "0 auto", position: "relative" }}>
@@ -124,7 +129,7 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
   const [disposOpen, setDisposOpen] = useState(false);
   const [disposValidated, setDisposValidated] = useState(false);
   const [proposalsOpen, setProposalsOpen] = useState(false);
-  const { proposals } = useProposals(userId);
+  const { proposals, reload: reloadProposals } = useProposals(userId);
   const navigate = useNavigate();
 
   async function handleEndShift(s: ShiftRow) {
@@ -445,7 +450,13 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
       <RequestModificationSheet open={reqOpen} onClose={() => { setReqOpen(false); setReqShiftId(null); }} userId={userId} shiftId={reqShiftId} />
       <MyRequestsSheet open={myReqOpen} onClose={() => setMyReqOpen(false)} userId={userId} />
       <DisposSheet open={disposOpen} onClose={() => setDisposOpen(false)} userId={userId} />
-      <ProposalsSheet open={proposalsOpen} onClose={() => setProposalsOpen(false)} userId={userId} studios={studios} />
+      <ProposalsSheet
+        open={proposalsOpen}
+        onClose={() => setProposalsOpen(false)}
+        studios={studios}
+        proposals={proposals}
+        reload={reloadProposals}
+      />
     </div>
   );
 }

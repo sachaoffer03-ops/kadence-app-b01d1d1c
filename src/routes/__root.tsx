@@ -195,6 +195,10 @@ function AppShell() {
       // Mauvais espace pour ce rôle → déconnexion + message
       if (isEmployeeSpace && !userIsEmployee) {
         toast.error("Ce compte est administrateur. Utilisez un compte employé pour app.shyft.flashsite.fr");
+        if (isStaffApp) {
+          navigate({ to: "/dashboard" });
+          return;
+        }
         supabase.auth.signOut();
         return;
       }

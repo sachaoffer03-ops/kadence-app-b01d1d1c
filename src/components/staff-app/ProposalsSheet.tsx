@@ -50,7 +50,7 @@ export function useProposals(userId: string) {
   useEffect(() => {
     load();
     const ch = supabase
-      .channel(`proposals-${userId}`)
+      .channel(`proposals-${userId}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shift_proposals", filter: `user_id=eq.${userId}` }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -59,13 +59,13 @@ export function useProposals(userId: string) {
   return { proposals, reload: load };
 }
 
-export function ProposalsSheet({ open, onClose, userId, studios }: {
-  open: boolean; onClose: () => void; userId: string; studios: Record<string, string>;
+export function ProposalsSheet({ open, onClose, studios, proposals, reload }: {
+  open: boolean; onClose: () => void; studios: Record<string, string>;
+  proposals: ProposalView[]; reload: () => Promise<void>;
 }) {
   const acceptFn = useServerFn(acceptProposal);
   const acceptReplFn = useServerFn(acceptReplacementProposal);
   const declineFn = useServerFn(declineProposal);
-  const { proposals, reload } = useProposals(userId);
   const [busy, setBusy] = useState<string | null>(null);
 
   const accept = async (p: ProposalView) => {
