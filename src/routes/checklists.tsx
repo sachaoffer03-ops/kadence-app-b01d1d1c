@@ -138,7 +138,7 @@ function TemplatesView() {
 // TEMPLATE EDITOR
 // ============================================================
 
-function TemplateEditor({ templateId }: { templateId: string }) {
+function TemplateEditor({ templateId, onDeleted }: { templateId: string; onDeleted?: () => void }) {
   const { data, loading } = useTemplateWithContent(templateId);
   const { roles } = useBusinessRoles({ onlyActive: true });
   const { studios } = useStudios();
