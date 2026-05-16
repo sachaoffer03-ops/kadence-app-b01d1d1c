@@ -488,6 +488,7 @@ function TemplateSettings({ template }: { template: { id: string; name: string; 
     try {
       await deleteTemplate(template.id);
       toast.success("Modèle supprimé");
+      onDeleted?.();
     } catch (e: any) { toast.error(e.message); }
   }
 
