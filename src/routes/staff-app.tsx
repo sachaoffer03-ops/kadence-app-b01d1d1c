@@ -43,7 +43,8 @@ function fmtTime(t: string) { return t.slice(0, 5).replace(":", "h"); }
 function todayISO() { return new Date().toISOString().slice(0, 10); }
 
 function StaffAppPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("accueil");
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [businessRoles, setBusinessRoles] = useState<Role[]>([]);
@@ -75,7 +76,11 @@ function StaffAppPage() {
     })();
   }, [user]);
 
-  if (!user) return <div className="p-8" style={{ fontSize: 13 }}>Chargement…</div>;
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/login" });
+  }, [loading, user, navigate]);
+
+  if (loading || !user) return <div className="p-8" style={{ fontSize: 13 }}>Chargement…</div>;
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#FAF8F4", maxWidth: 430, margin: "0 auto", position: "relative" }}>
