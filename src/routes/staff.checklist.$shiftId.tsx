@@ -39,6 +39,7 @@ function StaffChecklistPage() {
   const [note, setNote] = useState("");
   const [studioName, setStudioName] = useState<string>("");
   const [phase, setPhase] = useState<Phase>("checklist");
+  const [photoIdx, setPhotoIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -246,22 +247,59 @@ function StaffChecklistPage() {
         </Section>
       )}
 
-      {/* Photos */}
-      {photos.length > 0 && (
-        <Section title="Photos de validation" subtitle={`${photosDoneCount} / ${photos.length}`}>
-          <div className="flex flex-col gap-3">
-            {photos.map((p) => (
-              <PhotoCapture key={p.id} photo={p} userId={user.id} submissionId={submissionId}
-                current={photoSubs.get(p.id) ?? null}
-                onUploaded={(spRow) => {
-                  const next = new Map(photoSubs);
-                  next.set(p.id, spRow);
-                  setPhotoSubs(next);
-                }} />
-            ))}
-          </div>
-        </Section>
-      )}
+      {/* Photos — one at a time */}
+      {photos.length > 0 && (() => {
+        const safeIdx = Math.min(photoIdx, photos.length - 1);
+        const current = photos[safeIdx];
+        const isDone = !!photoSubs.get(current.id)?.photo_url;
+        return (
+          <Section title="Photos à envoyer" subtitle={`${photosDoneCount} / ${photos.length}`}>
+            {/* Progress dots */}
+            <div className="flex items-center justify-center gap-1.5 mb-3">
+              {photos.map((p, i) => {
+                const done = !!photoSubs.get(p.id)?.photo_url;
+                const active = i === safeIdx;
+                return (
+                  <button key={p.id} onClick={() => setPhotoIdx(i)}
+                    className="rounded-full transition-all"
+                    style={{
+                      width: active ? 22 : 8, height: 8,
+                      backgroundColor: done ? "var(--coral)" : active ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.15)",
+                    }}
+                    aria-label={`Photo ${i + 1}`} />
+                );
+              })}
+            </div>
+
+            <PhotoCapture key={current.id} photo={current} userId={user.id} submissionId={submissionId}
+              current={photoSubs.get(current.id) ?? null}
+              onUploaded={(spRow) => {
+                const next = new Map(photoSubs);
+                next.set(current.id, spRow);
+                setPhotoSubs(next);
+                // auto-advance to next missing
+                const nextMissing = photos.findIndex((pp, i) => i > safeIdx && !next.get(pp.id)?.photo_url);
+                if (nextMissing !== -1) setTimeout(() => setPhotoIdx(nextMissing), 400);
+              }} />
+
+            <div className="flex items-center justify-between gap-2 mt-3">
+              <button onClick={() => setPhotoIdx(Math.max(0, safeIdx - 1))} disabled={safeIdx === 0}
+                className="rounded-lg px-3 py-2 flex items-center gap-1.5 disabled:opacity-30"
+                style={{ fontSize: 12, fontWeight: 500, border: "1px solid rgba(0,0,0,0.08)", backgroundColor: "#fff" }}>
+                <ArrowLeft size={13} /> Précédente
+              </button>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                {safeIdx + 1} / {photos.length}{isDone && " ✓"}
+              </div>
+              <button onClick={() => setPhotoIdx(Math.min(photos.length - 1, safeIdx + 1))} disabled={safeIdx === photos.length - 1}
+                className="rounded-lg px-3 py-2 flex items-center gap-1.5 disabled:opacity-30"
+                style={{ fontSize: 12, fontWeight: 500, border: "1px solid rgba(0,0,0,0.08)", backgroundColor: "#fff" }}>
+                Suivante <ArrowRight size={13} />
+              </button>
+            </div>
+          </Section>
+        );
+      })()}
 
       {/* Note */}
       <Section title="Note libre (optionnel)">
