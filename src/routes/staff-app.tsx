@@ -23,7 +23,7 @@ export const Route = createFileRoute("/staff-app")({
   component: StaffAppPage,
 });
 
-type Tab = "accueil" | "planning" | "formation" | "chat" | "profil";
+type Tab = "accueil" | "planning" | "pointage" | "formation" | "chat" | "profil";
 
 interface ProfileRow {
   first_name: string; last_name: string; email: string; phone: string | null;
@@ -37,6 +37,7 @@ interface ProfileRow {
 interface ShiftRow {
   id: string; shift_date: string; start_time: string; end_time: string;
   business_role: string; studio_id: string | null; notes?: string | null;
+  clocked_in_at?: string | null; clocked_out_at?: string | null; minutes_late?: number | null;
 }
 
 function fmtTime(t: string) { return t.slice(0, 5).replace(":", "h"); }
@@ -90,6 +91,7 @@ function StaffAppPage() {
       <div className="flex-1 overflow-y-auto pb-20">
         {tab === "accueil" && <AccueilTab profile={profile} studios={studios} userId={user.id} onOpenNotifs={() => setNotifOpen(true)} />}
         {tab === "planning" && <PlanningTab studios={studios} userId={user.id} />}
+        {tab === "pointage" && <PointageTab studios={studios} userId={user.id} />}
         {tab === "formation" && <FormationPanel userId={user.id} />}
         {tab === "chat" && <ChatPanel meId={user.id} peerId={adminId} peerName={adminName} />}
         {tab === "profil" && <ProfilTab profile={profile} businessRoles={businessRoles} studios={studios} onNavigate={setTab} />}
@@ -102,13 +104,14 @@ function StaffAppPage() {
         {([
           { id: "accueil" as Tab, label: "Accueil", icon: Home },
           { id: "planning" as Tab, label: "Planning", icon: Calendar },
+          { id: "pointage" as Tab, label: "Pointage", icon: Clock },
           { id: "formation" as Tab, label: "Formation", icon: GraduationCap },
           { id: "chat" as Tab, label: "Chat", icon: MessageCircle },
           { id: "profil" as Tab, label: "Profil", icon: User },
         ]).map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-2 px-2">
-            <t.icon size={20} strokeWidth={1.6} style={{ color: tab === t.id ? "var(--coral)" : "var(--muted-foreground)" }} />
-            <span style={{ fontSize: 10, fontWeight: tab === t.id ? 500 : 400, color: tab === t.id ? "var(--coral-dark)" : "var(--muted-foreground)" }}>{t.label}</span>
+          <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-2 px-1">
+            <t.icon size={18} strokeWidth={1.6} style={{ color: tab === t.id ? "var(--coral)" : "var(--muted-foreground)" }} />
+            <span style={{ fontSize: 9, fontWeight: tab === t.id ? 500 : 400, color: tab === t.id ? "var(--coral-dark)" : "var(--muted-foreground)" }}>{t.label}</span>
           </button>
         ))}
       </div>
@@ -131,6 +134,22 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
   const [proposalsOpen, setProposalsOpen] = useState(false);
   const { proposals, reload: reloadProposals } = useProposals(userId);
   const navigate = useNavigate();
+
+  // tick toutes les 1s pour le timer "en service"
+  const [nowTs, setNowTs] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function handleClockIn(s: ShiftRow) {
+    const nowIso = new Date().toISOString();
+    const { error } = await supabase.from("shifts")
+      .update({ clocked_in_at: nowIso })
+      .eq("id", s.id);
+    if (error) { toast.error("Impossible de pointer", { description: error.message }); return; }
+    toast.success("Arrivée enregistrée");
+  }
 
   async function handleEndShift(s: ShiftRow) {
     try {
@@ -161,7 +180,7 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
     const weekEnd = in7.toISOString().slice(0, 10);
     const load = async () => {
       const { data: next } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
         .eq("user_id", userId).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
       if (next) setShifts(next);
 
@@ -258,6 +277,14 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
         let bigLine = "Aucun shift planifié";
         let subLine: string | null = null;
         let isToday = false;
+        // États : B = à venir, C = en service, D = terminé
+        type CardState = "none" | "future" | "today_before" | "in_service" | "done";
+        let state: CardState = next ? "future" : "none";
+        let lateMinAtStart = 0;
+        let liveLateMin = 0;
+        let serviceElapsedMs = 0;
+        let plannedDurMin = 0;
+        let workedMin = 0;
         if (next) {
           const role = next.business_role as Role;
           const studioName = (next.studio_id && studios[next.studio_id]) || "—";
@@ -266,14 +293,57 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
           const diffDays = Math.round((d.getTime() - t0.getTime()) / 86400000);
           isToday = diffDays === 0;
           const when = diffDays === 0 ? "Aujourd'hui" : diffDays === 1 ? "Demain" : d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-          kicker = isToday ? "Shift en cours" : "Prochain shift";
-          bigLine = `${when} · ${fmtTime(next.start_time)}`;
-          subLine = `${fmtTime(next.start_time)} — ${fmtTime(next.end_time)} · ${role} · ${studioName.replace("Skult ", "")}`;
+          const [sh, sm] = next.start_time.split(":").map(Number);
+          const [eh, em] = next.end_time.split(":").map(Number);
+          plannedDurMin = (eh * 60 + em) - (sh * 60 + sm);
+          const startDt = new Date(next.shift_date + "T" + next.start_time);
+          if (isToday) {
+            if (next.clocked_out_at) {
+              state = "done";
+              const ci = next.clocked_in_at ? new Date(next.clocked_in_at) : startDt;
+              const co = new Date(next.clocked_out_at);
+              workedMin = Math.max(0, Math.round((co.getTime() - ci.getTime()) / 60000));
+              lateMinAtStart = next.minutes_late ?? 0;
+            } else if (next.clocked_in_at) {
+              state = "in_service";
+              const ci = new Date(next.clocked_in_at);
+              serviceElapsedMs = Math.max(0, nowTs - ci.getTime());
+              lateMinAtStart = next.minutes_late ?? Math.max(0, Math.round((ci.getTime() - startDt.getTime()) / 60000));
+            } else {
+              state = "today_before";
+              liveLateMin = Math.max(0, Math.round((nowTs - startDt.getTime()) / 60000));
+            }
+          }
+          if (state === "in_service") {
+            kicker = "En service";
+            const ci = new Date(next.clocked_in_at!);
+            bigLine = `Arrivé à ${ci.toTimeString().slice(0, 5).replace(":", "h")}${lateMinAtStart > 0 ? ` (+${lateMinAtStart} min)` : ""}`;
+            const totS = Math.floor(serviceElapsedMs / 1000);
+            const hh = String(Math.floor(totS / 3600)).padStart(2, "0");
+            const mm = String(Math.floor((totS % 3600) / 60)).padStart(2, "0");
+            const ss = String(totS % 60).padStart(2, "0");
+            subLine = `${hh}:${mm}:${ss} en service · fin prévue ${fmtTime(next.end_time)} · ${role} · ${studioName.replace("Skult ", "")}`;
+          } else if (state === "done") {
+            kicker = "Shift terminé";
+            const ci = next.clocked_in_at ? new Date(next.clocked_in_at) : startDt;
+            const co = new Date(next.clocked_out_at!);
+            bigLine = `${ci.toTimeString().slice(0, 5).replace(":", "h")} → ${co.toTimeString().slice(0, 5).replace(":", "h")}`;
+            const h = Math.floor(workedMin / 60); const m = workedMin % 60;
+            subLine = `${h}h${String(m).padStart(2, "0")} net${lateMinAtStart > 0 ? ` · +${lateMinAtStart} min de retard` : ""} · ${role} · ${studioName.replace("Skult ", "")}`;
+          } else {
+            kicker = isToday ? "Aujourd'hui" : "Prochain shift";
+            bigLine = `${when} · ${fmtTime(next.start_time)}`;
+            subLine = `${fmtTime(next.start_time)} — ${fmtTime(next.end_time)} · ${role} · ${studioName.replace("Skult ", "")}`;
+          }
         }
+        const cardBg =
+          state === "in_service" ? "linear-gradient(135deg, #3A1F12, #5C2E18)" :
+          state === "done" ? "linear-gradient(135deg, #1F1F1F, #2E2E2E)" :
+          "linear-gradient(135deg, #1A1614, #2A2624)";
         return (
           <div
             className="relative overflow-hidden rounded-3xl p-6 mb-5"
-            style={{ background: "linear-gradient(135deg, #1A1614, #2A2624)" }}
+            style={{ background: cardBg }}
           >
             <div
               style={{
@@ -309,16 +379,29 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
                 </div>
               )}
 
-              {next && isToday && (
+              {state === "today_before" && next && (
+                <button
+                  onClick={() => handleClockIn(next)}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
+                  style={{
+                    fontSize: 12, fontWeight: 500,
+                    backgroundColor: liveLateMin > 0 ? "#E07A3E" : "var(--coral)",
+                    color: "#1A1614",
+                  }}
+                >
+                  <Clock size={13} /> {liveLateMin > 0 ? `Pointer mon arrivée — en retard de ${liveLateMin} min` : "Pointer mon arrivée"}
+                </button>
+              )}
+              {state === "in_service" && next && (
                 <button
                   onClick={() => handleEndShift(next)}
                   className="mt-4 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
-                  style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#1A1614" }}
+                  style={{ fontSize: 12, fontWeight: 500, backgroundColor: "#E04E3E", color: "#fff" }}
                 >
-                  <CheckSquare size={13} /> Terminer le shift
+                  <CheckSquare size={13} /> Pointer ma sortie
                 </button>
               )}
-              {next && !isToday && (
+              {state === "future" && next && !isToday && (
                 <button
                   onClick={() => setShiftDetail(next)}
                   className="mt-4 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
@@ -732,5 +815,189 @@ function BellButton({ userId, onOpen }: { userId: string; onOpen: () => void }) 
         }}>{unread > 9 ? "9+" : unread}</span>
       )}
     </button>
+  );
+}
+
+/* ─── POINTAGE ─── */
+interface PointageShiftRow extends ShiftRow {
+  checklist_status?: string | null;
+}
+function PointageTab({ studios, userId }: { studios: Record<string, string>; userId: string }) {
+  const [todayShift, setTodayShift] = useState<PointageShiftRow | null>(null);
+  const [last, setLast] = useState<PointageShiftRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [endShift, setEndShift] = useState<ShiftRow | null>(null);
+  const [nowTs, setNowTs] = useState(Date.now());
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const t = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const load = async () => {
+    const today = todayISO();
+    const [{ data: t }, { data: history }] = await Promise.all([
+      supabase.from("shifts")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
+        .eq("user_id", userId).eq("shift_date", today)
+        .order("start_time").limit(1),
+      supabase.from("shifts")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
+        .eq("user_id", userId).lt("shift_date", today)
+        .order("shift_date", { ascending: false }).limit(10),
+    ]);
+    setTodayShift((t && t[0]) as PointageShiftRow | null ?? null);
+    const hist = (history || []) as PointageShiftRow[];
+    if (hist.length) {
+      const ids = hist.map(s => s.id);
+      const { data: subs } = await supabase.from("checklist_submissions")
+        .select("shift_id,status").in("shift_id", ids);
+      const map = new Map((subs || []).map((s: any) => [s.shift_id, s.status]));
+      hist.forEach(s => { s.checklist_status = map.get(s.id) ?? null; });
+    }
+    setLast(hist);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    const ch = supabase.channel(`pointage-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  async function clockIn(s: ShiftRow) {
+    const { error } = await supabase.from("shifts").update({ clocked_in_at: new Date().toISOString() }).eq("id", s.id);
+    if (error) toast.error("Impossible de pointer", { description: error.message });
+    else toast.success("Arrivée enregistrée");
+  }
+
+  async function clockOut(s: ShiftRow) {
+    try {
+      const tpl = await findApplicableTemplate({ studioId: s.studio_id ?? null, businessRole: s.business_role });
+      if (tpl) { navigate({ to: "/staff/checklist/$shiftId", params: { shiftId: s.id } }); return; }
+    } catch {}
+    setEndShift(s);
+  }
+
+  const fmtHHMM = (iso: string) => new Date(iso).toTimeString().slice(0, 5).replace(":", "h");
+  const checklistBadge = (status: string | null | undefined) => {
+    if (!status) return <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>—</span>;
+    if (status === "submitted" || status === "reviewed")
+      return <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>✓</span>;
+    return <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>!</span>;
+  };
+
+  return (
+    <div className="px-5 pt-6">
+      <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 12 }}>Pointage</div>
+
+      <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Aujourd'hui</div>
+      {loading ? (
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
+      ) : !todayShift ? (
+        <div className="rounded-xl border px-4 py-5 text-center" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)", fontSize: 13, color: "var(--muted-foreground)" }}>
+          Aucun shift aujourd'hui.
+        </div>
+      ) : (() => {
+        const s = todayShift;
+        const studioName = (s.studio_id && studios[s.studio_id]) || "—";
+        const startDt = new Date(s.shift_date + "T" + s.start_time);
+        let state: "before" | "in" | "done" = "before";
+        if (s.clocked_out_at) state = "done";
+        else if (s.clocked_in_at) state = "in";
+        const liveLate = Math.max(0, Math.round((nowTs - startDt.getTime()) / 60000));
+        let timer = "";
+        if (state === "in" && s.clocked_in_at) {
+          const el = Math.max(0, nowTs - new Date(s.clocked_in_at).getTime());
+          const totS = Math.floor(el / 1000);
+          timer = `${String(Math.floor(totS / 3600)).padStart(2, "0")}:${String(Math.floor((totS % 3600) / 60)).padStart(2, "0")}:${String(totS % 60).padStart(2, "0")}`;
+        }
+        return (
+          <div className="rounded-xl border p-4" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{s.business_role} · {studioName.replace("Skult ", "")}</div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+              Prévu {fmtTime(s.start_time)} → {fmtTime(s.end_time)}
+            </div>
+            {state === "in" && (
+              <div className="mt-3 rounded-md px-3 py-2" style={{ backgroundColor: "var(--coral-light)", fontSize: 12, color: "var(--coral-dark)" }}>
+                ⏱ {timer} en service {s.minutes_late ? `· +${s.minutes_late} min retard` : ""}
+              </div>
+            )}
+            {state === "done" && s.clocked_in_at && s.clocked_out_at && (
+              <div className="mt-3 rounded-md px-3 py-2" style={{ backgroundColor: "var(--muted)", fontSize: 12 }}>
+                {fmtHHMM(s.clocked_in_at)} → {fmtHHMM(s.clocked_out_at)} {s.minutes_late ? `· +${s.minutes_late} min retard` : ""}
+              </div>
+            )}
+            <div className="mt-3">
+              {state === "before" && (
+                <button onClick={() => clockIn(s)}
+                  className="rounded-md px-4 py-2"
+                  style={{ fontSize: 13, fontWeight: 500, backgroundColor: liveLate > 0 ? "#E07A3E" : "var(--coral)", color: "#1A1614" }}>
+                  Pointer mon arrivée {liveLate > 0 ? `· en retard de ${liveLate} min` : ""}
+                </button>
+              )}
+              {state === "in" && (
+                <button onClick={() => clockOut(s)}
+                  className="rounded-md px-4 py-2"
+                  style={{ fontSize: 13, fontWeight: 500, backgroundColor: "#E04E3E", color: "#fff" }}>
+                  Pointer ma sortie
+                </button>
+              )}
+              {state === "done" && (
+                <div style={{ fontSize: 12, color: "var(--success-text)", fontWeight: 500 }}>✓ Shift terminé</div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 20, marginBottom: 8 }}>Mes derniers shifts</div>
+      {last.length === 0 ? (
+        <div className="rounded-xl border px-4 py-5 text-center" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)", fontSize: 12, color: "var(--muted-foreground)" }}>
+          Aucun historique pour le moment.
+        </div>
+      ) : (
+        <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
+          <table className="w-full" style={{ fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
+                <th className="text-left px-3 py-2" style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)" }}>Date</th>
+                <th className="text-left px-2 py-2" style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)" }}>Arr.</th>
+                <th className="text-left px-2 py-2" style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)" }}>Retard</th>
+                <th className="text-left px-2 py-2" style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)" }}>Durée</th>
+                <th className="text-left px-2 py-2" style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)" }}>Check</th>
+              </tr>
+            </thead>
+            <tbody>
+              {last.map(s => {
+                const arr = s.clocked_in_at ? fmtHHMM(s.clocked_in_at) : "—";
+                const late = s.minutes_late ?? 0;
+                const lateColor = late === 0 ? "var(--success-text)" : late <= 15 ? "var(--warning-text)" : "var(--danger-text)";
+                let dur = "—";
+                if (s.clocked_in_at && s.clocked_out_at) {
+                  const m = Math.round((new Date(s.clocked_out_at).getTime() - new Date(s.clocked_in_at).getTime()) / 60000);
+                  dur = `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
+                }
+                return (
+                  <tr key={s.id} style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
+                    <td className="px-3 py-2">{new Date(s.shift_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</td>
+                    <td className="px-2 py-2">{arr}</td>
+                    <td className="px-2 py-2" style={{ color: lateColor, fontWeight: 500 }}>{s.clocked_in_at ? `+${late}` : "—"}</td>
+                    <td className="px-2 py-2">{dur}</td>
+                    <td className="px-2 py-2">{checklistBadge(s.checklist_status)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <EndShiftSheet open={!!endShift} onClose={() => setEndShift(null)} shift={endShift} userId={userId} />
+    </div>
   );
 }

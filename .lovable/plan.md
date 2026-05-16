@@ -1,55 +1,71 @@
-# QA Test Suite — Moteur de planning
+# Plan — Flow employé complet A→Z
 
-## Fichiers à créer
+Gros chantier. Je le livre **en 2 sous-tours** comme tu l'autorises, sinon je risque de tout casser.
 
-1. **`src/lib/qa-test-suite.functions.ts`** — server functions (admin-guard via `requireSupabaseAuth` + check `user_roles.role='admin'`, utilise `supabaseAdmin`)
-   - `prepareTestDataset()` → crée Studio Alpha + Beta, 30 employés `is_test=true`, 52 staffing templates, ~600 dispos sur 4 semaines
-   - `cleanupTestDataset()` → supprime tout `is_test=true` + studios `name LIKE 'Test Studio %'` + leurs auth.users, shifts, dispos, templates, planning_runs liés
-   - `resetTestDataset()` → cleanup puis prepare
-   - `runTest1_CoverageStandard` … `runTest8_Idempotence` → chacun retourne `TestResult { testName, status, durationMs, message, details?, error? }`
-   - Chaque test : appel direct du handler de `generatePlanning` via une fonction interne partagée (pas via fetch), assertions sur le résultat
-   - Tests 6 & 7 sauvegardent/restaurent l'état (dispos / employés temporaires) en `try/finally`
+## Sous-tour 1 — Données + côté employé
 
-2. **`src/routes/admin.qa-test-suite.tsx`** — route TanStack wrappée dans `<DevOnly label="La QA Test Suite">`
-   - **Section 1 — Setup** : 3 boutons (Préparer / Nettoyer avec confirm / Reset) avec `useMutation` + toast + affichage du résultat
-   - **Section 2 — Suite de tests** : liste 8 cartes (nom, description, bouton "Lancer", badge statut) + gros bouton "Lancer TOUS les tests" (séquentiel)
-   - **Section 3 — Résultats** : tableau récap avec ✅/❌, durée par test, total, bouton "Voir détails" → Sheet avec inputs/output/diff/stack, bouton "Exporter le rapport" (download JSON + Markdown)
-   - État local React + persistance `localStorage` du dernier run pour comparaison cross-session
+### 1. Migrations SQL (parties 2A / 2B / 2C, adaptées au schéma réel)
 
-## Détails techniques
+Le schéma actuel diffère de ton SQL — je vais corriger :
+- `shifts.business_role` est un `text` (pas `business_role_id`)
+- `notifications` n'a pas de colonne `is_read` (c'est `read_at timestamptz`)
+- `shifts.status` enum n'a pas `'published'` — on utilise `published_at IS NOT NULL` à la place, status reste `'scheduled'`
+- `feedbacks` n'a pas de `target_user_id` (la cible se déduit via `shift_id → shifts.user_id`)
 
-**Dataset déterministe** (seed RNG fixe pour reproductibilité) :
-- Studios : "Test Studio Alpha" (has_kitchen=true), "Test Studio Beta" (has_kitchen=false)
-- Business roles : vérifie/crée Accueil, Barista, Host, Cuisine
-- Templates : 40 sur Alpha (incl. 5 cuisine Lun-Ven CDI), 12 sur Beta
-- Employés : pools de prénoms/noms fournis, distribution exacte (8 CDI / 15 Étudiants / 7 Flexis), dispos générées 4-6/sem sur 4 semaines
+Migration unique qui :
+- crée le shift Tom du jour 10h→16h (idempotent, `is_manual=true`, `published_at=now()`)
+- insère 2 notifs (`planning_published`, `shift_reminder`) si absentes < 1h
+- crée le template `Fin de shift test — Flow complet` + 4 items + 2 photos Unsplash
 
-**Cleanup safe** : double check `is_test=true` ET `name LIKE 'Test Studio %'` ; jamais d'admin supprimé ; supprime aussi `availabilities`, `shifts`, `staffing_templates`, `planning_runs`, `studio_business_roles`, `user_studios`, `user_contracts`, `user_business_roles`, `user_roles` liés via `user_id IN (...)` ou `studio_id IN (...)`.
+### 2. Card "Prochain shift" dynamique (4 états) — `src/routes/staff.index.tsx`
 
-**Tests** :
-- Période de test = lundi prochain (déterministe)
-- T1 : genère sur Alpha, assert `coverage_rate >= 0.90`
-- T2 : 2 semaines, scan shifts par user, vérifie plafonds par contrat
-- T3 : scan tous shifts par user, détecte chevauchements + paires consécutives < 11h
-- T4 : filtre shifts cuisine Lun-Ven, vérifie assignation = CDI cuisine
-- T5 : variance heures par contrat-type
-- T6 : delete 80% des dispos, génère, restore — assert no throw + couverture < 50% + alerts non vide
-- T7 : crée 70 employés temp `is_test=true` flag spécial, génère sur Beta, mesure durée, supprime
-- T8 : 2 runs consécutifs, compare assignations (≥ 95% identiques)
+Composant `ShiftStatusCard` :
+- **A** Pas de shift aujourd'hui → garder existant
+- **B** Shift prévu, pas commencé → bouton vert "Pointer mon arrivée" (orange + "en retard de X min" si dépassé)
+- **C** En service → fond accent, timer live `useEffect(setInterval, 1000)` depuis `clocked_in_at`, bouton rouge "Pointer ma sortie"
+- **D** Terminé → fond grisé, résumé heures + retard + statut checklist
 
-**Sécurité / contraintes** :
-- Route DevOnly (cachée en prod)
-- Toutes les server fns vérifient role admin
-- Cleanup avec double filtre `is_test=true` + `name LIKE 'Test%'`
-- Tests séquentiels, jamais en parallèle
-- Aucune modification du moteur (`generate-planning.functions.ts` non touché)
+Boutons clock-in/out écrivent directement dans `shifts` (`clocked_in_at` / `clocked_out_at`). Le clock-out ouvre la `EndShiftSheet` existante (qui gère déjà la checklist) au lieu d'écrire directement → respecte le `is_blocking`.
 
-## Hors scope
+### 3. Onglet "Pointage" dans bottom nav staff-app
 
-- Pas de migration SQL (`is_test` existe déjà sur `profiles`)
-- Pas de modification du moteur même si tests fail (rapport seulement, l'utilisateur décide ensuite)
-- Pas de modification des autres routes admin
+- Nouvelle route `src/routes/staff.pointage.tsx`
+- Section "Aujourd'hui" : réutilise `ShiftStatusCard`
+- Section "Mes 10 derniers shifts" : table simple (date, prévu, arrivée, retard, durée, checklist OK)
+- Ajout entrée bottom nav dans `src/routes/staff.tsx` (icône Timer entre Planning et Formation)
 
-## Livrables finaux
+## Sous-tour 2 — Côté admin + notifs chat + cleanup
 
-Liste des fichiers créés, confirmation DevOnly, description UI, et — après ton "go" — une première run pour le verdict X/8 tests.
+### 4. Page `/pointage` admin avec Realtime
+- Tableau "Shifts du jour" avec channel realtime sur `shifts` (filter `shift_date=eq.${today}`)
+- Statuts dérivés temps réel + timer live "en service depuis Xh"
+- Click ligne → drawer détail
+
+### 5. Drawer checklist amélioré
+- 3 onglets : Checklist / Photos / Note
+- Photos côte à côte (référence vs employé, placeholder rouge si manquante)
+- Badge gris "IA Vision — V2"
+- Zone feedback sticky avec toggle "Notifier" → insert dans `notifications` (`type='feedback_received'`)
+
+### 6. Fiche employé `/staff/:id` — sections
+- Activité récente (dernier shift + score breakdown)
+- Historique pointages (10 derniers, code couleur retard)
+- 5 dernières checklists
+
+### 7. Notif sur chat admin → employé
+- Dans `ChatPanel.tsx`/`ChatSheet.tsx` send message → si sender est admin/manager, insert notif `type='new_message'`
+- La cloche `useStaffNotifications` consomme déjà la table `messages` directement — j'ajoute la notif explicite en plus pour cohérence avec ton flow
+
+### 8. Bouton "🗑️ Nettoyer données flow test" sur `/admin/qa-test-suite`
+- Nouvelle server function `cleanupFlowTest` qui exécute le DELETE en cascade (corrigé pour le schéma réel : pas de `target_user_id` sur feedbacks)
+
+## Ce que je ne touche pas
+- Les 15 tests QA existants (vérifiés après chaque sous-tour)
+- `client.ts`, `types.ts`, RLS existantes
+- La logique `EndShiftSheet` actuelle (réutilisée telle quelle)
+
+## Risques identifiés
+- Le score recalc "live" dépend des triggers DB existants (`trg_recalculate_score`) — je vérifie qu'ils sont bien attachés ; sinon je les ajoute dans la même migration.
+- `is_read` n'existe pas sur `notifications` → j'utilise `read_at` partout (toi tu l'as écrit `is_read` dans le SQL, c'est faux pour ce projet).
+
+**Tu valides ce plan et je commence par le sous-tour 1 ?** (migrations + card employé + onglet Pointage)
