@@ -69,7 +69,7 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
 // ============================================================
 
 function TemplatesView() {
-  const { templates, loading } = useChecklistTemplates();
+  const { templates, loading, reload } = useChecklistTemplates();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
