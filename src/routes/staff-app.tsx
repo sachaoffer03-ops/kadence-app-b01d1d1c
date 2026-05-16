@@ -124,7 +124,7 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
   const [disposOpen, setDisposOpen] = useState(false);
   const [disposValidated, setDisposValidated] = useState(false);
   const [proposalsOpen, setProposalsOpen] = useState(false);
-  const { proposals } = useProposals(userId);
+  const { proposals, reload: reloadProposals } = useProposals(userId);
   const navigate = useNavigate();
 
   async function handleEndShift(s: ShiftRow) {
@@ -445,7 +445,14 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
       <RequestModificationSheet open={reqOpen} onClose={() => { setReqOpen(false); setReqShiftId(null); }} userId={userId} shiftId={reqShiftId} />
       <MyRequestsSheet open={myReqOpen} onClose={() => setMyReqOpen(false)} userId={userId} />
       <DisposSheet open={disposOpen} onClose={() => setDisposOpen(false)} userId={userId} />
-      <ProposalsSheet open={proposalsOpen} onClose={() => setProposalsOpen(false)} userId={userId} studios={studios} />
+      <ProposalsSheet
+        open={proposalsOpen}
+        onClose={() => setProposalsOpen(false)}
+        userId={userId}
+        studios={studios}
+        proposals={proposals}
+        reload={reloadProposals}
+      />
     </div>
   );
 }
