@@ -1259,7 +1259,7 @@ async function test13(): Promise<TestResult> {
     }).eq("id", sig.id);
 
     // 3. Désactivation employé
-    await supabaseAdmin.from("profiles").update({ status: "inactive" }).eq("id", emp.id);
+    await supabaseAdmin.from("profiles").update({ status: "suspended" }).eq("id", emp.id);
 
     // 4. Vérifs
     const { data: finalSig } = await supabaseAdmin.from("signalements")
@@ -1273,7 +1273,7 @@ async function test13(): Promise<TestResult> {
       signalement_resolved: finalSig?.resolved === true,
       signalement_has_admin: !!finalSig?.resolved_by,
       signalement_has_date: !!finalSig?.resolved_at,
-      profile_inactive: finalProf?.status === "inactive",
+      profile_suspended: finalProf?.status === "suspended",
       history_intact: historyIntact,
     };
     const failures = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
