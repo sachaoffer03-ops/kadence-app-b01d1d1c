@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { findApplicableTemplate } from "@/lib/checklists.helpers";
 import { toast } from "sonner";
@@ -134,7 +134,6 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
   const [proposalsOpen, setProposalsOpen] = useState(false);
   const { proposals, reload: reloadProposals } = useProposals(userId);
   const navigate = useNavigate();
-
   // tick toutes les 1s pour le timer "en service"
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
@@ -879,7 +878,6 @@ function PointageTab({ studios, userId }: { studios: Record<string, string>; use
   const [endShift, setEndShift] = useState<ShiftRow | null>(null);
   const [nowTs, setNowTs] = useState(Date.now());
   const navigate = useNavigate();
-
   useEffect(() => {
     const t = setInterval(() => setNowTs(Date.now()), 1000);
     return () => clearInterval(t);

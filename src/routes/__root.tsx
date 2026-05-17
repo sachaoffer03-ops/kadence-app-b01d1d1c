@@ -170,7 +170,7 @@ function AppShell() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isPublic = currentPath === "/" || PUBLIC_ROUTES.some((p) => currentPath.startsWith(p));
-  const isStaffApp = currentPath.startsWith("/staff-app");
+  const isStaffApp = currentPath.startsWith("/staff-app") || currentPath.startsWith("/staff/checklist");
   // Allow admins to view the activation page in preview mode (?preview=...)
   const isActivationPreview =
     currentPath.startsWith("/activation") &&
