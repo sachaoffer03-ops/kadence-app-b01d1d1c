@@ -273,6 +273,27 @@ export async function uploadTrainingPdf(file: File, folderId: string, stepId: st
   return path;
 }
 
+export async function uploadTrainingVideo(
+  file: File,
+  folderId: string,
+  stepId: string,
+  onProgress?: (pct: number) => void,
+): Promise<string> {
+  const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
+  const path = `${folderId}/${stepId}/${crypto.randomUUID()}.${ext}`;
+  // Supabase JS v2 does not expose upload progress; emit start/end events for UX.
+  onProgress?.(1);
+  const { error } = await supabase.storage.from("training-resources")
+    .upload(path, file, {
+      contentType: file.type || "video/mp4",
+      cacheControl: "3600",
+      upsert: false,
+    });
+  if (error) throw error;
+  onProgress?.(100);
+  return path;
+}
+
 export async function getTrainingFileUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from("training-resources")
     .createSignedUrl(path, 3600);
