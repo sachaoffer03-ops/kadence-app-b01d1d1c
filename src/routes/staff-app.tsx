@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -132,8 +132,6 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
   const [disposValidated, setDisposValidated] = useState(false);
   const [proposalsOpen, setProposalsOpen] = useState(false);
   const { proposals, reload: reloadProposals } = useProposals(userId);
-  const navigate = useNavigate();
-
   // tick toutes les 1s pour le timer "en service"
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
@@ -562,7 +560,6 @@ function QuickLink({ icon, label, sub, onClick }: { icon: React.ReactNode; label
 
 /* ─── PLANNING ─── */
 function PlanningTab({ studios, userId }: { studios: Record<string, string>; userId: string }) {
-  const navigate = useNavigate();
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [shiftDetail, setShiftDetail] = useState<ShiftRow | null>(null);
@@ -866,8 +863,6 @@ function PointageTab({ studios, userId }: { studios: Record<string, string>; use
   const [loading, setLoading] = useState(true);
   const [endShift, setEndShift] = useState<ShiftRow | null>(null);
   const [nowTs, setNowTs] = useState(Date.now());
-  const navigate = useNavigate();
-
   useEffect(() => {
     const t = setInterval(() => setNowTs(Date.now()), 1000);
     return () => clearInterval(t);
