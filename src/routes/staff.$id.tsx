@@ -24,6 +24,7 @@ interface Profile {
   emergency_contact_name: string | null; emergency_contact_phone: string | null;
   emergency_contact_relation: string | null;
   student_card_valid: boolean | null;
+  avatar_url: string | null;
 }
 interface ShiftRow { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; status: string; clocked_in_at: string | null; clocked_out_at: string | null; }
 interface FB { id: string; rating: number; message: string | null; created_at: string; shift_id: string | null; author_id: string; }
