@@ -49,7 +49,7 @@ export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
     }
     const { error: subUpdateError } = await supabaseAdmin
       .from("checklist_submissions")
-      .update({ status: "submitted", submitted_at: new Date().toISOString() })
+      .update({ status: "completed", submitted_at: new Date().toISOString() })
       .eq("id", input.submissionId);
     if (subUpdateError) throw new Error(subUpdateError.message);
   }
