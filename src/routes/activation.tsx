@@ -610,6 +610,17 @@ function ActivationPage() {
             )}
 
             {step === 3 && (
+              <PhotoStep
+                firstName={invitation.first_name}
+                lastName={invitation.last_name}
+                photoFile={photoFile}
+                setPhotoFile={setPhotoFile}
+                photoPreview={photoPreview}
+                setPhotoPreview={setPhotoPreview}
+              />
+            )}
+
+            {step === 4 && (
               <Address
                 city={city}
                 setCity={setCity}
@@ -618,11 +629,11 @@ function ActivationPage() {
               />
             )}
 
-            {step === 4 && (
+            {step === 5 && (
               <RhStep niss={niss} setNiss={setNiss} iban={iban} setIban={setIban} />
             )}
 
-            {step === 5 && (
+            {step === 6 && (
               <Emergency
                 emName={emName}
                 setEmName={setEmName}
@@ -633,7 +644,7 @@ function ActivationPage() {
               />
             )}
 
-            {step === 6 && (
+            {step === 7 && (
               <Review
                 invitation={invitation}
                 studentValid={studentValid}
