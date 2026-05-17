@@ -1692,6 +1692,19 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_worked_hours: {
+        Args: {
+          period_end?: string
+          period_start?: string
+          target_user_id: string
+        }
+        Returns: {
+          avg_minutes_late: number
+          shift_count: number
+          total_hours: number
+          total_minutes: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
