@@ -1818,12 +1818,14 @@ async function test22(): Promise<TestResult> {
       shift_date: yesterdayISO(), start_time: "10:00:00", end_time: "14:00:00",
       status: "completed", is_manual: true,
     }).select("id").single();
-    shiftId = shift?.id ?? null;
+    if (!shift) throw new Error("Shift non créé");
+    shiftId = shift.id;
 
     const { data: tpl } = await supabaseAdmin.from("checklist_templates").insert({
       name: "QA RLS Test", is_blocking: false, is_active: true,
     }).select("id").single();
-    tplId = tpl?.id ?? null;
+    if (!tpl) throw new Error("Template non créé");
+    tplId = tpl.id;
 
     const { data: sub } = await supabaseAdmin.from("checklist_submissions").insert({
       shift_id: shiftId, user_id: emp.id, template_id: tplId, status: "completed",
