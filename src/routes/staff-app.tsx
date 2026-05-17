@@ -656,13 +656,21 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
                 ) : dayShifts.map((s) => {
                   const rc = roleColors[s.business_role as Role];
                   const studioName = (s.studio_id && studios[s.studio_id]) || "";
+                  const done = !!s.clocked_out_at;
+                  const inService = !done && !!s.clocked_in_at;
                   return (
-                    <button key={s.id} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3 flex items-center gap-3 mb-1 text-left" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
-                      <span className="rounded-full" style={{ width: 8, height: 8, backgroundColor: rc?.dot }} />
+                    <button key={s.id} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3 flex items-center gap-3 mb-1 text-left" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)", opacity: done ? 0.65 : 1 }}>
+                      <span className="rounded-full" style={{ width: 8, height: 8, backgroundColor: done ? "rgba(0,0,0,0.25)" : rc?.dot }} />
                       <div className="flex-1">
-                        <span style={{ fontSize: 13, fontWeight: 500 }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, textDecoration: done ? "line-through" : "none" }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)}</span>
                         <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginLeft: 8 }}>{s.business_role} · {studioName.replace("Skult ", "")}</span>
                       </div>
+                      {done && (
+                        <span className="rounded-md px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>Effectué</span>
+                      )}
+                      {inService && (
+                        <span className="rounded-md px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>En cours</span>
+                      )}
                       <ChevronRight size={14} style={{ color: "var(--muted-foreground)" }} />
                     </button>
                   );
@@ -676,6 +684,13 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
       <ShiftDetailSheet
         open={!!shiftDetail} onClose={() => setShiftDetail(null)}
         shift={shiftDetail} studios={studios}
+        onClockIn={async () => {
+          if (!shiftDetail) return;
+          const s = shiftDetail; setShiftDetail(null);
+          const { error } = await supabase.from("shifts").update({ clocked_in_at: new Date().toISOString() }).eq("id", s.id);
+          if (error) toast.error("Impossible de pointer", { description: error.message });
+          else toast.success("Arrivée enregistrée");
+        }}
         onEndShift={() => { if (shiftDetail) { const s = shiftDetail; setShiftDetail(null); handleEndShift(s); } }}
         onRequestModif={() => { if (shiftDetail) { setReqShiftId(shiftDetail.id); setShiftDetail(null); setReqOpen(true); } }}
       />
