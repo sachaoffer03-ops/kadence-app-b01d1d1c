@@ -1771,11 +1771,11 @@ async function test21(): Promise<TestResult> {
     if (!step) throw new Error("Step non créé");
     stepId = step.id;
 
-    const { data: resource } = await supabaseAdmin.from("training_resources").insert({
-      step_id: stepId, title: "Ressource QA", type: "text",
+    const { data: resource, error: rErr } = await supabaseAdmin.from("training_resources").insert({
+      step_id: stepId, title: "Ressource QA", type: "note",
       content: "Contenu de test", order_index: 0,
     }).select("id").single();
-    if (!resource) throw new Error("Resource non créée");
+    if (rErr || !resource) throw new Error(`Resource non créée : ${rErr?.message}`);
     resourceId = resource.id;
 
     const { data: progress, error } = await supabaseAdmin.from("training_progress").insert({
@@ -2149,18 +2149,20 @@ async function test28(): Promise<TestResult> {
         if (fb) feedbackIds.push(fb.id);
       }
     };
-    for (let i = 2; i <= 4; i++) await createWithFb(empRecent.id, i);
-    for (let i = 0; i < 3; i++) await createWithFb(empOld.id, 100 + i);
+    for (let i = 1; i <= 8; i++) await createWithFb(empRecent.id, i);
+    for (let i = 0; i < 8; i++) await createWithFb(empOld.id, 150 + i);
 
-    await sleep(700);
+    await sleep(1000);
     const [{ data: pR }, { data: pO }] = await Promise.all([
       supabaseAdmin.from("profiles").select("score").eq("id", empRecent.id).single(),
       supabaseAdmin.from("profiles").select("score").eq("id", empOld.id).single(),
     ]);
     const sR = Number(pR?.score ?? 0);
     const sO = Number(pO?.score ?? 0);
+    const diff = sR - sO;
     const checks = {
       recent_score_higher: sR > sO,
+      decay_difference_significant: diff > 0.3,
       both_scores_valid: sR >= 0 && sR <= 10 && sO >= 0 && sO <= 10,
     };
     const passed = Object.values(checks).every(Boolean);
@@ -2168,8 +2170,8 @@ async function test28(): Promise<TestResult> {
       testName: "28. Score : decay exponentiel récent > ancien",
       status: passed ? "passed" : "failed",
       durationMs: Date.now() - t0,
-      message: passed ? `Récent ${sR.toFixed(2)} > Ancien ${sO.toFixed(2)}` : `Récent ${sR.toFixed(2)}, Ancien ${sO.toFixed(2)}`,
-      details: { checks, score_recent: sR, score_old: sO },
+      message: passed ? `Récent ${sR.toFixed(2)} > Ancien ${sO.toFixed(2)} (Δ=${diff.toFixed(2)})` : `Récent ${sR.toFixed(2)}, Ancien ${sO.toFixed(2)} (Δ=${diff.toFixed(2)})`,
+      details: { checks, score_recent: sR, score_old: sO, decay_difference: diff },
     };
   } finally {
     if (feedbackIds.length) await supabaseAdmin.from("feedbacks").delete().in("id", feedbackIds);
