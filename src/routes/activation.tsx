@@ -452,10 +452,11 @@ function ActivationPage() {
                 { n: 1, label: "Bienvenue" },
                 { n: 2, label: "Mot de passe" },
                 { n: 3, label: "Identité" },
-                { n: 4, label: "Adresse" },
-                { n: 5, label: "RH" },
-                { n: 6, label: "Urgence" },
-                { n: 7, label: "Validation" },
+                { n: 4, label: "Photo" },
+                { n: 5, label: "Adresse" },
+                { n: 6, label: "RH" },
+                { n: 7, label: "Urgence" },
+                { n: 8, label: "Validation" },
               ].map((s, i) => {
                 const active = !done && i === step;
                 return (
