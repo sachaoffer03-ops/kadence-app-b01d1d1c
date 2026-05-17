@@ -827,6 +827,27 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
       </button>
 
       <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} />
+      <EditProfileSheet
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        userId={userId}
+        profile={{
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          phone: profile.phone,
+          birth_date: profile.birth_date,
+          address: profile.address,
+          city: profile.city,
+          nationality: profile.nationality,
+          niss: profile.niss,
+          iban: profile.iban,
+          emergency_contact_name: profile.emergency_contact_name,
+          emergency_contact_phone: profile.emergency_contact_phone,
+          emergency_contact_relation: profile.emergency_contact_relation,
+          avatar_url: profile.avatar_url,
+        }}
+        onSaved={(patch) => onProfileChange(patch)}
+      />
     </div>
   );
 }
