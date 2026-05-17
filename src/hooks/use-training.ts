@@ -216,6 +216,7 @@ export async function createResource(stepId: string, input: ResourceInput): Prom
     title: input.title.trim(),
     content: input.content,
     duration_seconds: input.duration_seconds ?? null,
+    is_uploaded_video: input.is_uploaded_video ?? false,
     order_index: nextOrder,
   } as any).select("*").single();
   if (error) throw error;
@@ -269,6 +270,27 @@ export async function uploadTrainingPdf(file: File, folderId: string, stepId: st
   const { error } = await supabase.storage.from("training-resources")
     .upload(path, file, { contentType: file.type || "application/pdf" });
   if (error) throw error;
+  return path;
+}
+
+export async function uploadTrainingVideo(
+  file: File,
+  folderId: string,
+  stepId: string,
+  onProgress?: (pct: number) => void,
+): Promise<string> {
+  const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
+  const path = `${folderId}/${stepId}/${crypto.randomUUID()}.${ext}`;
+  // Supabase JS v2 does not expose upload progress; emit start/end events for UX.
+  onProgress?.(1);
+  const { error } = await supabase.storage.from("training-resources")
+    .upload(path, file, {
+      contentType: file.type || "video/mp4",
+      cacheControl: "3600",
+      upsert: false,
+    });
+  if (error) throw error;
+  onProgress?.(100);
   return path;
 }
 

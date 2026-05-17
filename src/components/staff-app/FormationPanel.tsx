@@ -365,7 +365,7 @@ function ResourceViewer({
       <div style={{ fontSize: 22, fontWeight: 500, marginBottom: 12, lineHeight: 1.2 }}>{resource.title}</div>
 
       <div className="mb-5">
-        {resource.type === "video" && <VideoView url={resource.content} />}
+        {resource.type === "video" && <VideoView resource={resource} />}
         {resource.type === "pdf" && <PdfView path={resource.content} />}
         {resource.type === "note" && <NoteView content={resource.content} />}
         {resource.type === "link" && <LinkView url={resource.content} />}
@@ -388,7 +388,25 @@ function ResourceViewer({
   );
 }
 
-function VideoView({ url }: { url: string }) {
+function VideoView({ resource }: { resource: TrainingResource }) {
+  const url = resource.content;
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    if (!resource.is_uploaded_video) return;
+    getTrainingFileUrl(url).then(setSignedUrl).catch(() => setErr(true));
+  }, [resource.is_uploaded_video, url]);
+
+  if (resource.is_uploaded_video) {
+    if (err) return <div style={{ fontSize: 12, color: "var(--destructive)" }}>Impossible de charger la vidéo.</div>;
+    if (!signedUrl) return <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>;
+    return (
+      <div className="rounded-xl overflow-hidden" style={{ backgroundColor: "#000" }}>
+        <video src={signedUrl} controls preload="metadata" playsInline style={{ width: "100%", borderRadius: 12 }} />
+      </div>
+    );
+  }
+
   const { embedUrl, provider } = detectVideoEmbed(url);
   if (provider === "other") {
     return (

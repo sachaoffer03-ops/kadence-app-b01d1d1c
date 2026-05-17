@@ -35,6 +35,7 @@ interface ProfileRow {
   emergency_contact_relation: string | null; nationality: string | null;
   avatar_url: string | null;
   quota_used: number | null; quota_max: number | null; score: number | null;
+  hourly_rate: number | null;
 }
 interface ShiftRow {
   id: string; shift_date: string; start_time: string; end_time: string;

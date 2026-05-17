@@ -875,6 +875,7 @@ export type Database = {
           emergency_contact_relation: string | null
           first_name: string
           hire_date: string | null
+          hourly_rate: number | null
           iban: string | null
           id: string
           is_protected: boolean
@@ -904,6 +905,7 @@ export type Database = {
           emergency_contact_relation?: string | null
           first_name?: string
           hire_date?: string | null
+          hourly_rate?: number | null
           iban?: string | null
           id: string
           is_protected?: boolean
@@ -933,6 +935,7 @@ export type Database = {
           emergency_contact_relation?: string | null
           first_name?: string
           hire_date?: string | null
+          hourly_rate?: number | null
           iban?: string | null
           id?: string
           is_protected?: boolean
@@ -1516,6 +1519,7 @@ export type Database = {
           created_at: string
           duration_seconds: number | null
           id: string
+          is_uploaded_video: boolean
           order_index: number
           step_id: string
           title: string
@@ -1527,6 +1531,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          is_uploaded_video?: boolean
           order_index?: number
           step_id: string
           title: string
@@ -1538,6 +1543,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          is_uploaded_video?: boolean
           order_index?: number
           step_id?: string
           title?: string
