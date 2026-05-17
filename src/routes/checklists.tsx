@@ -872,7 +872,7 @@ function SubmissionDrawer({ submissionId, onClose }: { submissionId: string; onC
                   <button onClick={handleReview} disabled={busy}
                     className="px-4 py-2 rounded-md disabled:opacity-40 flex items-center gap-1.5"
                     style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
-                    <Check size={13} /> {sub.status === "reviewed" ? "Mettre à jour le retour" : "Marquer comme révisée"}
+                    <Check size={13} /> {sub.reviewed_by_admin_at ? "Mettre à jour le retour" : "Marquer comme révisée"}
                   </button>
                 </div>
                 {sub.reviewed_by_admin_at && (
