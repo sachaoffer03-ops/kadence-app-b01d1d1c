@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Camera, Check, Image as ImageIcon, X, Loader2, Star, MessageSquare, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
@@ -6,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto } from "@/lib/checklists.helpers";
 import { getChecklistPhotoUrl } from "@/hooks/use-checklists";
+import { completeShiftClockOutFn } from "@/lib/shift-clock.functions";
 import type {
   ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto,
   ChecklistSubmissionItem, ChecklistSubmissionPhoto,
@@ -336,6 +338,7 @@ function WrapUp({ shift, submissionId, onBack, onDone }: {
   shift: ShiftRow; submissionId: string; onBack: () => void; onDone: () => void;
 }) {
   const { user } = useAuth();
+  const completeClockOut = useServerFn(completeShiftClockOutFn);
   const [rating, setRating] = useState(0);
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [reportMsg, setReportMsg] = useState("");
@@ -346,35 +349,18 @@ function WrapUp({ shift, submissionId, onBack, onDone }: {
     if (!user) return;
     setBusy(true);
     try {
-      // Mark submission as submitted
-      await supabase.from("checklist_submissions" as any).update({
-        status: "submitted", submitted_at: new Date().toISOString(),
-      } as any).eq("id", submissionId);
+      const result = await completeClockOut({
+        data: {
+          shiftId: shift.id,
+          submissionId,
+          rating,
+          feedbackMsg,
+          reportMsg,
+          handoffMsg,
+        },
+      });
 
-      // Optional feedback
-      if (rating > 0 || feedbackMsg.trim()) {
-        await supabase.from("feedbacks").insert({
-          shift_id: shift.id, author_id: user.id,
-          rating: rating || 3, message: feedbackMsg.trim() || null,
-        });
-      }
-      if (reportMsg.trim()) {
-        await supabase.from("shift_reports").insert({
-          shift_id: shift.id, author_id: user.id, message: reportMsg.trim(),
-        });
-      }
-      if (handoffMsg.trim()) {
-        await supabase.from("shift_handoffs").insert({
-          shift_id: shift.id, author_id: user.id, message: handoffMsg.trim(),
-        });
-      }
-
-      // Clock-out
-      await supabase.from("shifts").update({
-        status: "completed", clocked_out_at: new Date().toISOString(),
-      }).eq("id", shift.id);
-
-      toast.success("Shift clôturé");
+      toast.success(result.alreadyCompleted ? "Shift déjà clôturé" : "Shift clôturé");
       onDone();
     } catch (e: any) {
       toast.error(e.message || "Erreur");
