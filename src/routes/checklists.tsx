@@ -205,8 +205,7 @@ function ItemsEditor({ templateId, items }: { templateId: string; items: Checkli
   const [newLabel, setNewLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [localOrder, setLocalOrder] = useState<ChecklistTemplateItem[]>(items);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const [overIdx, setOverIdx] = useState<number | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   useEffect(() => { setLocalOrder(items); }, [items]);
 
@@ -220,23 +219,21 @@ function ItemsEditor({ templateId, items }: { templateId: string; items: Checkli
     finally { setBusy(false); }
   }
 
-  function onDragStart(idx: number) { setDragIdx(idx); }
-  function onDragOver(e: React.DragEvent, idx: number) {
-    e.preventDefault();
-    if (dragIdx === null || dragIdx === idx) return;
-    setOverIdx(idx);
-  }
-  async function onDrop() {
-    if (dragIdx === null || overIdx === null || dragIdx === overIdx) {
-      setDragIdx(null); setOverIdx(null); return;
-    }
+  async function move(idx: number, dir: -1 | 1) {
+    const target = idx + dir;
+    if (target < 0 || target >= localOrder.length) return;
     const next = [...localOrder];
-    const [moved] = next.splice(dragIdx, 1);
-    next.splice(overIdx, 0, moved);
+    [next[idx], next[target]] = [next[target], next[idx]];
     setLocalOrder(next);
-    setDragIdx(null); setOverIdx(null);
-    try { await reorderItems(next.map((i) => i.id)); }
-    catch (e: any) { toast.error("Erreur de réorganisation"); }
+    setMovingId(next[target].id);
+    try {
+      await reorderItems(next.map((i) => i.id));
+    } catch (e: any) {
+      toast.error("Erreur de réorganisation");
+      setLocalOrder(items);
+    } finally {
+      setTimeout(() => setMovingId(null), 250);
+    }
   }
 
   return (
@@ -249,19 +246,15 @@ function ItemsEditor({ templateId, items }: { templateId: string; items: Checkli
 
       <div className="flex flex-col gap-1.5 mb-3">
         {localOrder.map((item, idx) => (
-          <div key={item.id}
-            draggable
-            onDragStart={() => onDragStart(idx)}
-            onDragOver={(e) => onDragOver(e, idx)}
-            onDrop={onDrop}
-            onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
-            style={{
-              opacity: dragIdx === idx ? 0.4 : 1,
-              transform: overIdx === idx && dragIdx !== idx ? "translateY(2px)" : "none",
-              transition: "transform 120ms ease",
-            }}>
-            <ItemRow item={item} />
-          </div>
+          <ItemRow
+            key={item.id}
+            item={item}
+            index={idx}
+            total={localOrder.length}
+            highlight={movingId === item.id}
+            onMoveUp={() => move(idx, -1)}
+            onMoveDown={() => move(idx, 1)}
+          />
         ))}
       </div>
 
@@ -291,7 +284,14 @@ function ItemsEditor({ templateId, items }: { templateId: string; items: Checkli
   );
 }
 
-function ItemRow({ item }: { item: ChecklistTemplateItem }) {
+function ItemRow({ item, index, total, highlight, onMoveUp, onMoveDown }: {
+  item: ChecklistTemplateItem;
+  index: number;
+  total: number;
+  highlight: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(item.label);
 
@@ -311,12 +311,36 @@ function ItemRow({ item }: { item: ChecklistTemplateItem }) {
     await deleteItem(item.id);
   }
 
+  const isFirst = index === 0;
+  const isLast = index === total - 1;
+
   return (
-    <div className="flex items-center gap-2 rounded-md border px-2 py-2 group hover:bg-[var(--muted)] transition-colors"
-      style={{ backgroundColor: "#fff", borderColor: "var(--border)" }}>
-      <span className="cursor-grab active:cursor-grabbing p-1" style={{ color: "var(--muted-foreground)" }} title="Glisser pour réorganiser">
-        <GripVertical size={14} />
-      </span>
+    <div className="flex items-center gap-2 rounded-md border px-2 py-2 group transition-colors"
+      style={{
+        backgroundColor: highlight ? "var(--muted)" : "#fff",
+        borderColor: "var(--border)",
+        transition: "background-color 250ms",
+      }}>
+      <div className="flex flex-col shrink-0" style={{ width: 24 }}>
+        <button
+          type="button"
+          onClick={onMoveUp}
+          disabled={isFirst}
+          aria-label="Monter"
+          className="flex items-center justify-center rounded transition-colors disabled:opacity-25 disabled:cursor-not-allowed hover:bg-[var(--muted)]"
+          style={{ height: 18, color: "var(--muted-foreground)" }}>
+          <ChevronUp size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={onMoveDown}
+          disabled={isLast}
+          aria-label="Descendre"
+          className="flex items-center justify-center rounded transition-colors disabled:opacity-25 disabled:cursor-not-allowed hover:bg-[var(--muted)]"
+          style={{ height: 18, color: "var(--muted-foreground)" }}>
+          <ChevronDown size={14} />
+        </button>
+      </div>
       <span className="rounded-sm shrink-0" style={{
         width: 18, height: 18, border: "1.5px solid rgba(0,0,0,0.25)", backgroundColor: "#fff",
       }} aria-hidden />
@@ -327,7 +351,8 @@ function ItemRow({ item }: { item: ChecklistTemplateItem }) {
       ) : (
         <button onClick={() => setEditing(true)} className="flex-1 text-left" style={{ fontSize: 13 }}>{item.label}</button>
       )}
-      <button onClick={handleDelete} className="opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity"
+      <button onClick={handleDelete} aria-label="Supprimer"
+        className="md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded transition-opacity"
         style={{ color: "var(--muted-foreground)" }}>
         <Trash2 size={13} />
       </button>
