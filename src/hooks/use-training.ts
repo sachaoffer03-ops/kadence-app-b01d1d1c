@@ -216,6 +216,7 @@ export async function createResource(stepId: string, input: ResourceInput): Prom
     title: input.title.trim(),
     content: input.content,
     duration_seconds: input.duration_seconds ?? null,
+    is_uploaded_video: input.is_uploaded_video ?? false,
     order_index: nextOrder,
   } as any).select("*").single();
   if (error) throw error;
