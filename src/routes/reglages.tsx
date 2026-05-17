@@ -72,7 +72,6 @@ function ReglagesPage() {
 // ── AI Settings (persistés en DB) ──────────────────────────
 function AISettings() {
   const [id, setId] = useState<string | null>(null);
-  const [weights, setWeights] = useState({ performance: 40, equity: 30, preference: 20, random: 10 });
   const [rules, setRules] = useState({
     enforce_student_quota: true,
     enforce_rest_11h: true,
