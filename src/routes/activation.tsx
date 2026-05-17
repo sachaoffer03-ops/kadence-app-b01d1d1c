@@ -72,6 +72,8 @@ function ActivationPage() {
   const [emRel, setEmRel] = useState("");
   const [studentValid, setStudentValid] = useState(false);
   const [accept, setAccept] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token && !preview) {
