@@ -244,8 +244,9 @@ export async function loadSubmissionDetail(submissionId: string): Promise<{ item
 
 export async function reviewSubmission(submissionId: string, feedback: string | null): Promise<void> {
   const { data: u } = await supabase.auth.getUser();
+  // Note: on ne change PAS le status (contraint à pending/in_progress/completed/incomplete_submitted).
+  // L'état "révisée" est porté par reviewed_by_admin_at.
   const { error } = await supabase.from(S as any).update({
-    status: "reviewed",
     admin_feedback: feedback,
     reviewed_by_admin_at: new Date().toISOString(),
     reviewed_by_admin_id: u.user?.id ?? null,
