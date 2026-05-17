@@ -14,6 +14,9 @@ import {
   Phone,
   ShieldCheck,
   Sparkles,
+  Camera,
+  Upload,
+  X,
 } from "lucide-react";
 import logo from "@/assets/kadence-logo.png";
 
