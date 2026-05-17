@@ -365,7 +365,7 @@ function ResourceViewer({
       <div style={{ fontSize: 22, fontWeight: 500, marginBottom: 12, lineHeight: 1.2 }}>{resource.title}</div>
 
       <div className="mb-5">
-        {resource.type === "video" && <VideoView url={resource.content} />}
+        {resource.type === "video" && <VideoView resource={resource} />}
         {resource.type === "pdf" && <PdfView path={resource.content} />}
         {resource.type === "note" && <NoteView content={resource.content} />}
         {resource.type === "link" && <LinkView url={resource.content} />}
