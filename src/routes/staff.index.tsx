@@ -16,6 +16,7 @@ interface ProfileRow {
   id: string; first_name: string; last_name: string; email: string; phone: string | null;
   contract: string | null; studio_id: string | null; status: string;
   score: number | null; quota_used: number | null; quota_max: number | null;
+  avatar_url: string | null;
 }
 interface StudioRow { id: string; name: string; }
 
@@ -37,7 +38,7 @@ function StaffPage() {
   useEffect(() => {
     const load = async () => {
       const [{ data: ps }, { data: br }, { data: sts }, { data: shifts }] = await Promise.all([
-        supabase.from("profiles").select("id,first_name,last_name,email,phone,contract,studio_id,status,score,quota_used,quota_max"),
+        supabase.from("profiles").select("id,first_name,last_name,email,phone,contract,studio_id,status,score,quota_used,quota_max,avatar_url"),
         supabase.from("user_business_roles").select("user_id,role"),
         supabase.from("studios").select("id,name").order("name"),
         supabase.from("shifts").select("user_id,shift_date").gte("shift_date", new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)),
@@ -239,8 +240,10 @@ function StaffPage() {
                       onClick={() => window.location.assign(`/staff/${p.id}`)}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="flex items-center justify-center rounded-full shrink-0" style={{ width: 30, height: 30, backgroundColor: rc.bg, color: rc.text, fontSize: 10, fontWeight: 500 }}>
-                            {initials(p.first_name, p.last_name)}
+                          <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 30, height: 30, backgroundColor: rc.bg, color: rc.text, fontSize: 10, fontWeight: 500 }}>
+                            {p.avatar_url
+                              ? <img src={p.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              : initials(p.first_name, p.last_name)}
                           </div>
                           <div>
                             <div style={{ fontWeight: 500 }}>{p.first_name} {p.last_name}</div>

@@ -24,6 +24,7 @@ interface Profile {
   emergency_contact_name: string | null; emergency_contact_phone: string | null;
   emergency_contact_relation: string | null;
   student_card_valid: boolean | null;
+  avatar_url: string | null;
 }
 interface ShiftRow { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; status: string; clocked_in_at: string | null; clocked_out_at: string | null; }
 interface FB { id: string; rating: number; message: string | null; created_at: string; shift_id: string | null; author_id: string; }
@@ -185,8 +186,10 @@ function EmployeeDetailPage() {
         <div className="col-span-2 flex flex-col gap-4">
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex items-center justify-center rounded-full" style={{ width: 56, height: 56, backgroundColor: rc.bg, color: rc.text, fontSize: 18, fontWeight: 500 }}>
-                {initials(emp.first_name, emp.last_name)}
+              <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 56, height: 56, backgroundColor: rc.bg, color: rc.text, fontSize: 18, fontWeight: 500 }}>
+                {emp.avatar_url
+                  ? <img src={emp.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : initials(emp.first_name, emp.last_name)}
               </div>
               <div>
                 <div style={{ fontSize: 18, fontWeight: 500 }}>{emp.first_name} {emp.last_name}</div>

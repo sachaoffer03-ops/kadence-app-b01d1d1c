@@ -14,6 +14,9 @@ import {
   Phone,
   ShieldCheck,
   Sparkles,
+  Camera,
+  Upload,
+  X,
 } from "lucide-react";
 import logo from "@/assets/kadence-logo.png";
 
@@ -41,7 +44,7 @@ interface Invitation {
   expires_at: string;
 }
 
-const TOTAL_STEPS = 7; // 0 welcome, 1 password, 2 identity, 3 address, 4 rh, 5 emergency, 6 validation
+const TOTAL_STEPS = 8; // 0 welcome, 1 password, 2 identity, 3 photo, 4 address, 5 rh, 6 emergency, 7 validation
 
 function ActivationPage() {
   const { token, preview } = Route.useSearch();
@@ -69,6 +72,8 @@ function ActivationPage() {
   const [emRel, setEmRel] = useState("");
   const [studentValid, setStudentValid] = useState(false);
   const [accept, setAccept] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token && !preview) {
@@ -139,12 +144,15 @@ function ActivationPage() {
       if (!phone || !birthDate || !nationality) return toast.error("Tous les champs sont requis");
     }
     if (step === 3) {
-      if (!city || !address) return toast.error("Tous les champs sont requis");
+      if (!photoFile && !isPreview) return toast.error("Ajoutez une photo de profil");
     }
     if (step === 4) {
-      if (!niss || !iban) return toast.error("NISS et IBAN sont requis");
+      if (!city || !address) return toast.error("Tous les champs sont requis");
     }
     if (step === 5) {
+      if (!niss || !iban) return toast.error("NISS et IBAN sont requis");
+    }
+    if (step === 6) {
       if (!emName || !emPhone || !emRel) return toast.error("Tous les champs sont requis");
     }
     goNext();
@@ -196,6 +204,18 @@ function ActivationPage() {
     await new Promise((r) => setTimeout(r, 600));
     const userId = signUpData.user?.id;
     if (userId) {
+      let avatarUrl: string | null = null;
+      if (photoFile) {
+        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const path = `${userId}/avatar-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("avatars")
+          .upload(path, photoFile, { upsert: true, contentType: photoFile.type || "image/jpeg" });
+        if (!upErr) {
+          const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+          avatarUrl = pub.publicUrl;
+        }
+      }
       await supabase
         .from("profiles")
         .update({
@@ -210,6 +230,7 @@ function ActivationPage() {
           emergency_contact_phone: emPhone,
           emergency_contact_relation: emRel,
           student_card_valid: studentValid,
+          ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
         })
         .eq("id", userId);
     }
@@ -369,12 +390,13 @@ function ActivationPage() {
   }
 
   // ───── step content ─────
-  const stepIcons = [Sparkles, Lock, User, MapPin, FileText, Phone, ShieldCheck];
+  const stepIcons = [Sparkles, Lock, User, Camera, MapPin, FileText, Phone, ShieldCheck];
   const StepIcon = stepIcons[step];
   const headings = [
     { t: `Bienvenue ${invitation.first_name}`, s: "Activons votre compte en quelques étapes" },
     { t: "Sécurisez votre compte", s: "Créez un mot de passe que vous seul connaissez" },
     { t: "Votre identité", s: "On a besoin de quelques infos personnelles" },
+    { t: "Votre photo de profil", s: "Pour que vos managers vous reconnaissent" },
     { t: "Votre adresse", s: "Pour les documents officiels et la déclaration Dimona" },
     { t: "Informations RH", s: "Pour le paiement de votre salaire et la déclaration sociale" },
     { t: "Contact d'urgence", s: "À prévenir en cas de problème pendant votre service" },
@@ -430,10 +452,11 @@ function ActivationPage() {
                 { n: 1, label: "Bienvenue" },
                 { n: 2, label: "Mot de passe" },
                 { n: 3, label: "Identité" },
-                { n: 4, label: "Adresse" },
-                { n: 5, label: "RH" },
-                { n: 6, label: "Urgence" },
-                { n: 7, label: "Validation" },
+                { n: 4, label: "Photo" },
+                { n: 5, label: "Adresse" },
+                { n: 6, label: "RH" },
+                { n: 7, label: "Urgence" },
+                { n: 8, label: "Validation" },
               ].map((s, i) => {
                 const active = !done && i === step;
                 return (
@@ -587,6 +610,17 @@ function ActivationPage() {
             )}
 
             {step === 3 && (
+              <PhotoStep
+                firstName={invitation.first_name}
+                lastName={invitation.last_name}
+                photoFile={photoFile}
+                setPhotoFile={setPhotoFile}
+                photoPreview={photoPreview}
+                setPhotoPreview={setPhotoPreview}
+              />
+            )}
+
+            {step === 4 && (
               <Address
                 city={city}
                 setCity={setCity}
@@ -595,11 +629,11 @@ function ActivationPage() {
               />
             )}
 
-            {step === 4 && (
+            {step === 5 && (
               <RhStep niss={niss} setNiss={setNiss} iban={iban} setIban={setIban} />
             )}
 
-            {step === 5 && (
+            {step === 6 && (
               <Emergency
                 emName={emName}
                 setEmName={setEmName}
@@ -610,7 +644,7 @@ function ActivationPage() {
               />
             )}
 
-            {step === 6 && (
+            {step === 7 && (
               <Review
                 invitation={invitation}
                 studentValid={studentValid}
@@ -910,6 +944,103 @@ function Identity({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function PhotoStep({
+  firstName,
+  lastName,
+  photoFile,
+  setPhotoFile,
+  photoPreview,
+  setPhotoPreview,
+}: {
+  firstName: string;
+  lastName: string;
+  photoFile: File | null;
+  setPhotoFile: (f: File | null) => void;
+  photoPreview: string | null;
+  setPhotoPreview: (v: string | null) => void;
+}) {
+  const handleFile = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Sélectionnez une image");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image trop lourde (5 Mo max)");
+      return;
+    }
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setPhotoPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+  const initials = `${(firstName?.[0] || "").toUpperCase()}${(lastName?.[0] || "").toUpperCase()}`;
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col items-center gap-4">
+        <div
+          className="rounded-full flex items-center justify-center overflow-hidden relative"
+          style={{
+            width: 128,
+            height: 128,
+            backgroundColor: "var(--coral-light)",
+            color: "var(--coral-dark)",
+            fontSize: 36,
+            fontWeight: 500,
+          }}
+        >
+          {photoPreview ? (
+            <img src={photoPreview} alt="Photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span>{initials || <User size={40} strokeWidth={1.4} />}</span>
+          )}
+        </div>
+        {photoPreview && (
+          <button
+            onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1"
+            style={{ fontSize: 12, color: "var(--muted-foreground)", backgroundColor: "var(--secondary)" }}
+          >
+            <X size={12} /> Retirer la photo
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <label
+          className="rounded-md border py-3 px-3 inline-flex items-center justify-center gap-2 cursor-pointer transition-colors hover:bg-[var(--secondary)]"
+          style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)", color: "var(--foreground)" }}
+        >
+          <Camera size={15} strokeWidth={1.7} />
+          Prendre une photo
+          <input
+            type="file"
+            accept="image/*"
+            capture="user"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0] || null)}
+          />
+        </label>
+        <label
+          className="rounded-md border py-3 px-3 inline-flex items-center justify-center gap-2 cursor-pointer transition-colors hover:bg-[var(--secondary)]"
+          style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)", color: "var(--foreground)" }}
+        >
+          <Upload size={15} strokeWidth={1.7} />
+          Importer
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0] || null)}
+          />
+        </label>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--muted-foreground)", textAlign: "center", lineHeight: 1.6 }}>
+        Cette photo sera visible par votre équipe et vos managers. Format carré conseillé, 5 Mo maximum.
+      </p>
     </div>
   );
 }
