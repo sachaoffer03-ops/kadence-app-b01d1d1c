@@ -389,6 +389,49 @@ export const resetTestDataset = createServerFn({ method: "POST" })
     return doPrepare();
   });
 
+// Nettoyage ciblé : shift du jour de Tom Cruise + template checklist test + notifs
+export const cleanTomShift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { data: tom } = await supabaseAdmin
+      .from("profiles").select("id")
+      .eq("email", "agorapro.business@gmail.com").maybeSingle();
+    if (!tom) return { ok: false, message: "Tom Cruise introuvable" };
+    const tomId = (tom as any).id as string;
+
+    // Soumissions checklist des shifts du jour de Tom
+    const { data: shifts } = await supabaseAdmin
+      .from("shifts").select("id")
+      .eq("user_id", tomId).eq("shift_date", new Date().toISOString().slice(0, 10));
+    const shiftIds = ((shifts as any[]) ?? []).map((s) => s.id);
+    let deletedSubs = 0;
+    if (shiftIds.length > 0) {
+      const { count } = await supabaseAdmin
+        .from("checklist_submissions").delete({ count: "exact" })
+        .in("shift_id", shiftIds);
+      deletedSubs = count ?? 0;
+    }
+    const { count: delShifts } = await supabaseAdmin
+      .from("shifts").delete({ count: "exact" })
+      .eq("user_id", tomId).eq("shift_date", new Date().toISOString().slice(0, 10));
+    const { count: delTpl } = await supabaseAdmin
+      .from("checklist_templates").delete({ count: "exact" })
+      .eq("name", "Fin de shift test — Flow complet");
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { count: delNotifs } = await supabaseAdmin
+      .from("notifications").delete({ count: "exact" })
+      .eq("user_id", tomId).gte("created_at", since);
+
+    return {
+      ok: true,
+      deletedSubmissions: deletedSubs,
+      deletedShifts: delShifts ?? 0,
+      deletedTemplates: delTpl ?? 0,
+      deletedNotifications: delNotifs ?? 0,
+    };
+  });
+
 // =============================================================================
 // HELPERS communs aux tests
 // =============================================================================
