@@ -2372,6 +2372,7 @@ async function test31(): Promise<TestResult> {
     if (shiftIds.length) await supabaseAdmin.from("shifts").delete().in("id", shiftIds);
     if (admin) await cleanupE2EEmployee(admin.id);
     if (emp) await cleanupE2EEmployee(emp.id);
+  }
 }
 
 async function test32(): Promise<TestResult> {
