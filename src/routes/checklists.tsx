@@ -707,10 +707,12 @@ function SubmissionRow({ sub, onClick, isLast }: { sub: SubmissionWithRelated; o
   const statusColors: Record<string, { bg: string; fg: string; label: string }> = {
     pending: { bg: "rgba(0,0,0,0.06)", fg: "var(--muted-foreground)", label: "En attente" },
     in_progress: { bg: "#fef3c7", fg: "#92400e", label: "En cours" },
-    submitted: { bg: "var(--coral-light)", fg: "var(--coral-dark, var(--coral))", label: "À réviser" },
-    reviewed: { bg: "#dcfce7", fg: "#166534", label: "Révisée" },
+    completed: { bg: "var(--coral-light)", fg: "var(--coral-dark, var(--coral))", label: "À réviser" },
+    incomplete_submitted: { bg: "#fee2e2", fg: "#991b1b", label: "Incomplète" },
   };
-  const sc = statusColors[sub.status] ?? statusColors.pending;
+  const sc = sub.reviewed_by_admin_at
+    ? { bg: "#dcfce7", fg: "#166534", label: "Révisée" }
+    : (statusColors[sub.status] ?? statusColors.pending);
 
   return (
     <button onClick={onClick}
