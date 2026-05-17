@@ -2508,7 +2508,7 @@ async function runOne(id: number): Promise<TestResult> {
 
 export const runQATest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ test_id: z.number().int().min(1).max(31) }).parse(input))
+  .inputValidator((input) => z.object({ test_id: z.number().int().min(1).max(32) }).parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     return runOne(data.test_id);
