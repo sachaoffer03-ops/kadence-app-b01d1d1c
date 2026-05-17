@@ -390,12 +390,13 @@ function ActivationPage() {
   }
 
   // ───── step content ─────
-  const stepIcons = [Sparkles, Lock, User, MapPin, FileText, Phone, ShieldCheck];
+  const stepIcons = [Sparkles, Lock, User, Camera, MapPin, FileText, Phone, ShieldCheck];
   const StepIcon = stepIcons[step];
   const headings = [
     { t: `Bienvenue ${invitation.first_name}`, s: "Activons votre compte en quelques étapes" },
     { t: "Sécurisez votre compte", s: "Créez un mot de passe que vous seul connaissez" },
     { t: "Votre identité", s: "On a besoin de quelques infos personnelles" },
+    { t: "Votre photo de profil", s: "Pour que vos managers vous reconnaissent" },
     { t: "Votre adresse", s: "Pour les documents officiels et la déclaration Dimona" },
     { t: "Informations RH", s: "Pour le paiement de votre salaire et la déclaration sociale" },
     { t: "Contact d'urgence", s: "À prévenir en cas de problème pendant votre service" },
