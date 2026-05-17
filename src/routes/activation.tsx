@@ -167,8 +167,9 @@ function ActivationPage() {
       setDone(true);
       return;
     }
-    // Real submission below — note: employee will receive a confirmation email
-    // and must click the link before being able to sign in.
+    // TODO: Réactiver la confirmation email quand Resend sera configuré.
+    // Dans Supabase Dashboard → Authentication → Settings → "Enable email confirmations" → ON
+    // Et retirer le signInWithPassword immédiat après signUp ci-dessous.
     const isStudent = (invitation.contracts && invitation.contracts.length > 0)
       ? invitation.contracts.includes("Étudiant")
       : invitation.contract === "Étudiant";
@@ -179,10 +180,6 @@ function ActivationPage() {
     setSubmitting(true);
     const isAdmin = invitation.app_role === "admin" || invitation.app_role === "manager";
     const targetPath = isAdmin ? "/" : "/staff-app";
-    // En prod, force le bon sous-domaine; en preview, reste sur l'origine actuelle.
-    const host = window.location.hostname.toLowerCase();
-    const isProd = host.endsWith("shyft.flashsite.fr");
-    const redirectBase = isProd ? getSpaceUrl(isAdmin ? "admin" : "employee") : window.location.origin;
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: invitation.email,
       password,
@@ -192,7 +189,6 @@ function ActivationPage() {
           first_name: invitation.first_name,
           last_name: invitation.last_name,
         },
-        emailRedirectTo: `${redirectBase}${targetPath}`,
       },
     });
 
@@ -230,13 +226,25 @@ function ActivationPage() {
           emergency_contact_phone: emPhone,
           emergency_contact_relation: emRel,
           student_card_valid: studentValid,
+          status: "active",
           ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
         })
         .eq("id", userId);
     }
+
+    // Connexion immédiate (pas de confirmation email tant que Resend n'est pas configuré)
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: invitation.email,
+      password,
+    });
     setSubmitting(false);
-    setDone(true);
-    // No auto-redirect: user must confirm their email first.
+    if (signInError) {
+      // Fallback : on affiche l'écran de fin, l'utilisateur peut se connecter manuellement
+      setDone(true);
+      return toast.error(signInError.message);
+    }
+    toast.success("Compte activé");
+    navigate({ to: targetPath });
   };
 
   // ───── render states ─────
