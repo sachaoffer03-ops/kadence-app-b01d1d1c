@@ -847,7 +847,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
           emergency_contact_relation: profile.emergency_contact_relation,
           avatar_url: profile.avatar_url,
         }}
-        onSaved={(patch) => onProfileChange(patch)}
+        onSaved={(patch: EditableProfile) => onProfileChange(patch)}
       />
     </div>
   );
