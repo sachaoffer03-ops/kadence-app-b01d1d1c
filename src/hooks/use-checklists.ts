@@ -251,4 +251,22 @@ export async function reviewSubmission(submissionId: string, feedback: string | 
     reviewed_by_admin_id: u.user?.id ?? null,
   } as any).eq("id", submissionId);
   if (error) throw error;
+
+  // Notifier l'employé que sa checklist a été révisée
+  const { data: sub } = await supabase
+    .from(S as any)
+    .select("user_id, shift_id")
+    .eq("id", submissionId)
+    .single();
+
+  const subUserId = (sub as any)?.user_id;
+  if (subUserId && feedback) {
+    await supabase.from("notifications").insert({
+      user_id: subUserId,
+      type: "checklist_reviewed",
+      title: "Checklist révisée par l'admin",
+      body: feedback.length > 100 ? feedback.slice(0, 100) + "…" : feedback,
+      link: "/staff-app",
+    } as any);
+  }
 }

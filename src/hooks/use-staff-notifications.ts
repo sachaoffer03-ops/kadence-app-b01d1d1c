@@ -20,6 +20,13 @@ function fmtShiftDate(iso: string, start?: string) {
   return start ? `${date} · ${start.slice(0, 5)}` : date;
 }
 
+function kindFromType(type: string | null | undefined): StaffNotifKind {
+  const t = (type || "").toLowerCase();
+  if (t.includes("message")) return "message";
+  if (t.includes("request") || t.includes("demande") || t.includes("modification")) return "request";
+  return "shift";
+}
+
 export function useStaffNotifications(userId: string | undefined) {
   const [items, setItems] = useState<StaffNotif[]>([]);
   const [lastSeen, setLastSeen] = useState<number>(() => {
@@ -31,7 +38,7 @@ export function useStaffNotifications(userId: string | undefined) {
     if (!userId) return;
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [{ data: shifts }, { data: reqs }, { data: msgs }] = await Promise.all([
+    const [{ data: shifts }, { data: reqs }, { data: msgs }, { data: notifs }] = await Promise.all([
       supabase.from("shifts")
         .select("id,shift_date,start_time,business_role,created_at,updated_at")
         .eq("user_id", userId)
@@ -49,6 +56,12 @@ export function useStaffNotifications(userId: string | undefined) {
         .eq("recipient_id", userId)
         .order("created_at", { ascending: false })
         .limit(20),
+      supabase.from("notifications")
+        .select("id, type, title, body, read_at, created_at, link")
+        .eq("user_id", userId)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(30),
     ]);
 
     const seenAt = Number(localStorage.getItem(lastSeenKey(userId)) || 0);
@@ -90,6 +103,22 @@ export function useStaffNotifications(userId: string | undefined) {
       });
     });
 
+    (notifs || []).forEach((n: any) => {
+      // Éviter doublons : shift_published déjà couvert par la source shifts
+      const isDuplicate =
+        (n.type === "shift_published" || n.type === "planning_published") &&
+        list.some((existing) => existing.kind === "shift");
+      if (isDuplicate) return;
+      list.push({
+        id: `notif-${n.id}`,
+        kind: kindFromType(n.type),
+        title: n.title || "Notification",
+        body: n.body || "",
+        date: n.created_at,
+        read: !!n.read_at || new Date(n.created_at).getTime() <= seenAt,
+      });
+    });
+
     list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setItems(list.slice(0, 30));
   }, [userId]);
@@ -102,6 +131,7 @@ export function useStaffNotifications(userId: string | undefined) {
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, load)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "modification_requests", filter: `user_id=eq.${userId}` }, load)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${userId}` }, load)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, load)
       .subscribe();
 
     return () => { supabase.removeChannel(ch); };
@@ -109,12 +139,16 @@ export function useStaffNotifications(userId: string | undefined) {
 
   const unread = useMemo(() => items.filter((n) => !n.read).length, [items]);
 
-  const markAllRead = useCallback(() => {
+  const markAllRead = useCallback(async () => {
     if (!userId) return;
     const now = Date.now();
     localStorage.setItem(lastSeenKey(userId), String(now));
     setLastSeen(now);
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    await supabase.from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .is("read_at", null);
   }, [userId]);
 
   return { items, unread, markAllRead, lastSeen };
