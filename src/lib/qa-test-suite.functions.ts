@@ -2370,6 +2370,14 @@ async function runOne(id: number): Promise<TestResult> {
       case 21: return await test21();
       case 22: return await test22();
       case 23: return await test23();
+      case 24: return await test24();
+      case 25: return await test25();
+      case 26: return await test26();
+      case 27: return await test27();
+      case 28: return await test28();
+      case 29: return await test29();
+      case 30: return await test30();
+      case 31: return await test31();
       default: throw new Error(`Test ${id} inconnu`);
     }
   } catch (e: any) {
