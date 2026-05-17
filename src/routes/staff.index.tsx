@@ -240,8 +240,10 @@ function StaffPage() {
                       onClick={() => window.location.assign(`/staff/${p.id}`)}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="flex items-center justify-center rounded-full shrink-0" style={{ width: 30, height: 30, backgroundColor: rc.bg, color: rc.text, fontSize: 10, fontWeight: 500 }}>
-                            {initials(p.first_name, p.last_name)}
+                          <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 30, height: 30, backgroundColor: rc.bg, color: rc.text, fontSize: 10, fontWeight: 500 }}>
+                            {p.avatar_url
+                              ? <img src={p.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              : initials(p.first_name, p.last_name)}
                           </div>
                           <div>
                             <div style={{ fontWeight: 500 }}>{p.first_name} {p.last_name}</div>
