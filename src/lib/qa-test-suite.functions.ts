@@ -461,6 +461,15 @@ const TEST_DEFS = [
   { id: 13, name: "E2E · Signalement & sortie", description: "Signalement créé → résolu par admin → désactivation propre du profil." },
   { id: 14, name: "E2E · Notif publication planning", description: "publishPlanning crée une notification 'planning_published' pour chaque employé concerné." },
   { id: 15, name: "E2E · Notifs cascade (modif + feedback)", description: "Acceptation d'une demande de modif et envoi d'un feedback créent les notifications attendues." },
+  // ─── Tests supplémentaires : flux transverses ──────────────────────────────
+  { id: 16, name: "Publication planning → notif employé", description: "Shift draft → publication → status scheduled, published_at set, notification shift_published créée." },
+  { id: 17, name: "Score recalculé après checklist", description: "Soumission checklist complète → trigger de score appliqué, score non négatif." },
+  { id: 18, name: "Notifications : création et lecture", description: "Insertion d'une notification → champs corrects, non lue par défaut (read_at NULL)." },
+  { id: 19, name: "Chat : envoi et réception", description: "Message inséré, lu par le destinataire, marquage read_at fonctionnel." },
+  { id: 20, name: "Shift proposals : création échange", description: "Création d'une proposition de remplacement pending sur un shift existant." },
+  { id: 21, name: "Formation : progression trackée", description: "Folder + step + resource créés, progression employé enregistrée et lisible." },
+  { id: 22, name: "RLS : isolation des soumissions", description: "Soumission checklist visible côté admin, RLS active sur la table." },
+  { id: 23, name: "Signalement : création et résolution", description: "Signalement créé par un employé, résolu par l'admin avec date." },
 ];
 
 export const listTests = createServerFn({ method: "GET" })
