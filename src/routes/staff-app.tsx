@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { findApplicableTemplate } from "@/lib/checklists.helpers";
 import { toast } from "sonner";
 import {
   Home, Calendar, User, ChevronRight, Clock, GraduationCap, ArrowLeft, CheckSquare,
@@ -132,6 +133,7 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
   const [disposValidated, setDisposValidated] = useState(false);
   const [proposalsOpen, setProposalsOpen] = useState(false);
   const { proposals, reload: reloadProposals } = useProposals(userId);
+  const navigate = useNavigate();
   // tick toutes les 1s pour le timer "en service"
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
@@ -151,6 +153,13 @@ function AccueilTab({ profile, studios, userId, onOpenNotifs }: { profile: Profi
   async function handleEndShift(s: ShiftRow) {
     if (s.clocked_out_at) { toast.info("Ce shift est déjà clôturé"); return; }
     if (!s.clocked_in_at) { toast.error("Tu dois d'abord pointer ton arrivée"); return; }
+    try {
+      const tpl = await findApplicableTemplate({ studioId: s.studio_id ?? null, businessRole: s.business_role });
+      if (tpl) {
+        navigate({ to: "/staff/checklist/$shiftId", params: { shiftId: s.id } });
+        return;
+      }
+    } catch {}
     setEndShift(s);
   }
 
