@@ -63,7 +63,7 @@ function StaffAppPage() {
     (async () => {
       const [{ data: p }, { data: br }, { data: st }, { data: admin }] = await Promise.all([
         supabase.from("profiles").select(
-          "first_name,last_name,email,phone,birth_date,address,city,contract,studio_id,hire_date,niss,iban,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,nationality,avatar_url,quota_used,quota_max,score"
+          "first_name,last_name,email,phone,birth_date,address,city,contract,studio_id,hire_date,niss,iban,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,nationality,avatar_url,quota_used,quota_max,score,hourly_rate"
         ).eq("id", user.id).maybeSingle(),
         supabase.from("user_business_roles").select("role").eq("user_id", user.id),
         supabase.from("studios").select("id,name"),
@@ -804,7 +804,13 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
         <InfoRow icon={<User size={14} />} label="Studio" value={studioName?.replace("Skult ", "") || "—"} />
         <InfoRow icon={<Calendar size={14} />} label="Date d'embauche" value={fmtDate(profile.hire_date)} />
         <InfoRow icon={<Hash size={14} />} label="NISS" value={profile.niss || "—"} />
-        <InfoRow icon={<CreditCard size={14} />} label="IBAN" value={profile.iban || "—"} last />
+        <InfoRow icon={<CreditCard size={14} />} label="IBAN" value={profile.iban || "—"} />
+        <InfoRow
+          icon={<Hash size={14} />}
+          label="Taux horaire"
+          value={profile.hourly_rate !== null && profile.hourly_rate !== undefined ? `${Number(profile.hourly_rate).toFixed(2).replace(".", ",")} €/h (brut)` : "Non renseigné"}
+          last
+        />
       </Card>
 
       <WorkedHoursEmployeeCard userId={userId} hourlyRate={profile.hourly_rate} />

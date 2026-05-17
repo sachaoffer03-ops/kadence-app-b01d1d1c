@@ -84,10 +84,43 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
 
   const locked = validated || (deadline?.passed ?? false);
 
+  // Convertit "HH:MM" en minutes pour comparaison
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  // Détecte un chevauchement entre une plage candidate et les plages existantes (en excluant éventuellement un index)
+  const overlapsExisting = (day: number, start: string, end: string, excludeIdx?: number) => {
+    const s = toMin(start);
+    const e = toMin(end);
+    if (e <= s) return "invalid";
+    const list = ranges[day] ?? [];
+    for (let i = 0; i < list.length; i++) {
+      if (i === excludeIdx) continue;
+      const rs = toMin(list[i].start);
+      const re = toMin(list[i].end);
+      if (s < re && rs < e) return "overlap";
+    }
+    return null;
+  };
+
   const addRange = async (day: number) => {
     if (locked) return;
-    // Plage par défaut : 9h-13h (4h, conforme à la durée minimale)
-    const newRange: Range = { start: "09:00", end: "13:00" };
+    // Cherche un créneau de 4h libre, sinon fallback 9h-13h
+    let newRange: Range = { start: "09:00", end: "13:00" };
+    const candidates: Range[] = [
+      { start: "09:00", end: "13:00" },
+      { start: "13:00", end: "17:00" },
+      { start: "17:00", end: "21:00" },
+      { start: "06:00", end: "09:00" },
+      { start: "21:00", end: "23:30" },
+    ];
+    const free = candidates.find(c => !overlapsExisting(day, c.start, c.end));
+    if (free) newRange = free;
+    else {
+      toast.error("Aucun créneau libre — ajuste les plages existantes");
+      return;
+    }
     try {
       const res: any = await createFn({ data: { avail_date: dateISO(day), start_time: newRange.start, end_time: newRange.end } });
       setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...newRange, id: res.id }] }));
@@ -101,6 +134,15 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     const list = ranges[day] ?? [];
     const updated = { ...list[idx], ...patch };
     if (!updated.id) return;
+    const conflict = overlapsExisting(day, updated.start, updated.end, idx);
+    if (conflict === "invalid") {
+      toast.error("L'heure de fin doit être après l'heure de début");
+      return;
+    }
+    if (conflict === "overlap") {
+      toast.error("Cette plage chevauche une autre plage du même jour");
+      return;
+    }
     try {
       await updateFn({ data: { id: updated.id, start_time: updated.start, end_time: updated.end } });
       setRanges((p) => ({ ...p, [day]: list.map((r, i) => (i === idx ? updated : r)) }));
