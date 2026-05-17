@@ -1182,11 +1182,12 @@ async function test12(): Promise<TestResult> {
     if (mErr || !modReq) throw new Error(`Modif request : ${mErr?.message}`);
 
     // 2. Admin accepte la demande
-    await supabaseAdmin.from("modification_requests").update({
+    const { error: updErr } = await supabaseAdmin.from("modification_requests").update({
       status: "accepted",
       admin_response: "OK, c'est arrangé.",
       resolved_at: new Date().toISOString(),
     }).eq("id", modReq.id);
+    if (updErr) throw new Error(`Update modreq : ${updErr.message}`);
 
     // 3. Admin laisse feedback 5★ sur un shift passé (re-create un shift completed)
     const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
