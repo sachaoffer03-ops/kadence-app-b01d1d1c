@@ -204,6 +204,18 @@ function ActivationPage() {
     await new Promise((r) => setTimeout(r, 600));
     const userId = signUpData.user?.id;
     if (userId) {
+      let avatarUrl: string | null = null;
+      if (photoFile) {
+        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const path = `${userId}/avatar-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("avatars")
+          .upload(path, photoFile, { upsert: true, contentType: photoFile.type || "image/jpeg" });
+        if (!upErr) {
+          const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+          avatarUrl = pub.publicUrl;
+        }
+      }
       await supabase
         .from("profiles")
         .update({
@@ -218,6 +230,7 @@ function ActivationPage() {
           emergency_contact_phone: emPhone,
           emergency_contact_relation: emRel,
           student_card_valid: studentValid,
+          ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
         })
         .eq("id", userId);
     }
