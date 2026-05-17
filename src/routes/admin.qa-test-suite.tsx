@@ -243,6 +243,13 @@ function QAPage() {
             onClick={handleReset} running={setupState === "running"} variant="secondary"
           />
         </div>
+        <div className="mt-3">
+          <ActionButton
+            icon={<Trash2 size={16} />} label="🗑️ Nettoyer shift Tom"
+            description="Supprime shift du jour, template test et notifs récentes de Tom Cruise"
+            onClick={handleCleanTom} running={setupState === "running"} variant="secondary"
+          />
+        </div>
         {setupInfo && (
           <div className="mt-4 rounded-lg p-4" style={{ background: "var(--muted)", fontSize: 13 }}>
             <pre style={{ whiteSpace: "pre-wrap", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>
