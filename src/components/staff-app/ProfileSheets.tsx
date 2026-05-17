@@ -67,6 +67,9 @@ export function ShiftDetailSheet({ open, onClose, shift, studios, onClockIn, onE
   const studioName = (shift.studio_id && studios[shift.studio_id]) || "—";
   const today = new Date().toISOString().slice(0, 10);
   const isToday = shift.shift_date === today;
+  const isDone = !!shift.clocked_out_at;
+  const isInService = !isDone && !!shift.clocked_in_at;
+  const canStart = isToday && !shift.clocked_in_at && !isDone;
 
   return (
     <Sheet open={open} onClose={onClose} title="Détail du shift">
@@ -78,6 +81,22 @@ export function ShiftDetailSheet({ open, onClose, shift, studios, onClockIn, onE
       <Row icon={<Clock size={14} />} label="Horaires" value={`${fmtTime(shift.start_time)} — ${fmtTime(shift.end_time)}`} />
       <Row icon={<MapPin size={14} />} label="Studio" value={studioName} />
 
+      {isDone && (
+        <div className="rounded-lg px-4 py-3 mb-3" style={{ backgroundColor: "var(--success-bg)" }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <Check size={12} style={{ color: "var(--success-text)" }} />
+            <span style={{ fontSize: 11, fontWeight: 500, color: "var(--success-text)" }}>Shift effectué</span>
+          </div>
+          <div style={{ fontSize: 13, color: "var(--foreground)" }}>
+            Pointé de {fmtTime(new Date(shift.clocked_in_at!).toTimeString().slice(0, 5))} à {fmtTime(new Date(shift.clocked_out_at!).toTimeString().slice(0, 5))}
+            {shift.minutes_late ? ` · +${shift.minutes_late} min de retard` : ""}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+            Tes infos ont été transmises à l'admin. Ce shift est clôturé et ne peut plus être modifié.
+          </div>
+        </div>
+      )}
+
       {shift.notes && (
         <div className="rounded-lg px-4 py-3 mb-3" style={{ backgroundColor: "var(--warning-bg)" }}>
           <div className="flex items-center gap-1.5 mb-1">
@@ -88,7 +107,7 @@ export function ShiftDetailSheet({ open, onClose, shift, studios, onClockIn, onE
         </div>
       )}
 
-      {handoff && (
+      {handoff && !isDone && (
         <div className="rounded-lg px-4 py-3 mb-3" style={{ backgroundColor: "var(--coral-light)" }}>
           <div className="flex items-center gap-1.5 mb-1">
             <AlertCircle size={12} style={{ color: "var(--coral-dark)" }} />
@@ -99,14 +118,22 @@ export function ShiftDetailSheet({ open, onClose, shift, studios, onClockIn, onE
       )}
 
       <div className="flex flex-col gap-2 mt-4">
-        {isToday && onEndShift && (
-          <PrimaryButton onClick={onEndShift}>
+        {canStart && onClockIn && (
+          <PrimaryButton onClick={onClockIn}>
             <span className="inline-flex items-center justify-center gap-1.5">
-              <CheckSquare size={14} /> Terminer le shift
+              <Play size={14} /> Commencer mon shift
             </span>
           </PrimaryButton>
         )}
-        {onRequestModif && <SecondaryButton onClick={onRequestModif}>Demander une modification</SecondaryButton>}
+        {isInService && onEndShift && (
+          <PrimaryButton onClick={onEndShift}>
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <CheckSquare size={14} /> Terminer mon shift
+            </span>
+          </PrimaryButton>
+        )}
+        {!isDone && onRequestModif && <SecondaryButton onClick={onRequestModif}>Demander une modification</SecondaryButton>}
+        {isDone && <SecondaryButton onClick={onClose}>Fermer</SecondaryButton>}
       </div>
     </Sheet>
   );
