@@ -126,7 +126,9 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
   }, [invitations, tab, search]);
 
   const copyLink = async (token: string) => {
-    const link = `${window.location.origin}/activation?token=${token}`;
+    // Toujours pointer vers le domaine de production (employé) — le lien sera partagé par email/SMS.
+    const APP_URL = "https://app.shyft.flashsite.fr";
+    const link = `${APP_URL}/activation?token=${token}`;
     try {
       await navigator.clipboard.writeText(link);
       toast.success("Lien copié");
