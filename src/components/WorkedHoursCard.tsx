@@ -1,6 +1,97 @@
-import { useEffect, useMemo, useState } from "react";
-import { Clock, Wallet } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Clock, Wallet, ChevronDown, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
+const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
+  { key: "this_month", label: "Ce mois" },
+  { key: "last_month", label: "Mois précédent" },
+  { key: "last_3_months", label: "3 derniers mois" },
+  { key: "this_year", label: "Cette année" },
+];
+
+function PeriodPicker({ value, onChange }: { value: PeriodKey; onChange: (v: PeriodKey) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = PERIOD_OPTIONS.find(o => o.key === value)?.label ?? "";
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 rounded-full transition-colors"
+        style={{
+          fontSize: 11,
+          fontWeight: 500,
+          padding: "5px 10px 5px 12px",
+          border: "0.5px solid var(--border)",
+          backgroundColor: open ? "var(--muted)" : "transparent",
+          color: "var(--foreground)",
+          letterSpacing: "0.01em",
+        }}
+      >
+        <span>{current}</span>
+        <ChevronDown size={11} style={{ opacity: 0.6, transform: open ? "rotate(180deg)" : "none", transition: "transform 150ms" }} />
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            right: 0,
+            minWidth: 170,
+            backgroundColor: "var(--card)",
+            border: "0.5px solid var(--border)",
+            borderRadius: 10,
+            boxShadow: "0 8px 24px -8px rgba(0,0,0,0.12), 0 2px 6px -2px rgba(0,0,0,0.06)",
+            padding: 4,
+            zIndex: 30,
+          }}
+        >
+          {PERIOD_OPTIONS.map(opt => {
+            const active = opt.key === value;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => { onChange(opt.key); setOpen(false); }}
+                className="w-full flex items-center justify-between rounded-md transition-colors"
+                style={{
+                  fontSize: 12,
+                  fontWeight: active ? 500 : 400,
+                  padding: "7px 10px",
+                  textAlign: "left",
+                  color: "var(--foreground)",
+                  backgroundColor: active ? "var(--muted)" : "transparent",
+                }}
+                onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--muted)"; }}
+                onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
+              >
+                <span>{opt.label}</span>
+                {active && <Check size={12} style={{ color: "var(--primary, #F0997B)" }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type PeriodKey = "this_month" | "last_month" | "last_3_months" | "this_year";
 
