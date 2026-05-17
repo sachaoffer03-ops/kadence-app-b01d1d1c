@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Sheet, fmtTime, fmtDateLong, PrimaryButton, SecondaryButton } from "./shared";
 import { roleColors, type Role } from "@/lib/role-colors";
-import { Clock, MapPin, FileText, AlertCircle, CheckSquare, Bell, Download, Check } from "lucide-react";
+import { Clock, MapPin, FileText, AlertCircle, CheckSquare, Bell, Download, Check, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 /* ─── ShiftDetailSheet : détail d'un shift à venir / en cours ─── */
@@ -9,12 +9,15 @@ interface ShiftLite {
   id: string; shift_date: string; start_time: string; end_time: string;
   business_role: string; studio_id: string | null; notes?: string | null;
   clocked_in_at?: string | null;
+  clocked_out_at?: string | null;
+  minutes_late?: number | null;
 }
 
-export function ShiftDetailSheet({ open, onClose, shift, studios, onEndShift, onRequestModif }: {
+export function ShiftDetailSheet({ open, onClose, shift, studios, onClockIn, onEndShift, onRequestModif }: {
   open: boolean; onClose: () => void;
   shift: ShiftLite | null;
   studios: Record<string, string>;
+  onClockIn?: () => void;
   onEndShift?: () => void;
   onRequestModif?: () => void;
 }) {
