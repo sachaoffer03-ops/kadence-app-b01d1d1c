@@ -70,12 +70,13 @@ function PointagePage() {
 
   const clockIn = async (id: string) => {
     const { error } = await supabase.from("shifts").update({ clocked_in_at: new Date().toISOString() }).eq("id", id);
-    if (error) toast.error(error.message); else toast.success("Pointage IN forcé");
+    if (error) toast.error(error.message); else { toast.success("Pointage IN forcé"); await load(); }
   };
   const clockOut = async (id: string) => {
     try {
       const result = await completeClockOut({ data: { shiftId: id } });
       toast.success(result.alreadyCompleted ? "Shift déjà clôturé" : "Pointage OUT forcé");
+      await load();
     } catch (error: any) {
       toast.error(error?.message || "Impossible de pointer la sortie");
     }
@@ -106,7 +107,39 @@ function PointagePage() {
         ]} />
       </div>
 
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+      <div className="md:hidden flex flex-col gap-2">
+        {filtered.length === 0 ? (
+          <div className="rounded-xl border px-4 py-8 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift aujourd'hui.</div>
+        ) : filtered.map((entry) => {
+          const profile = entry.user_id ? profiles.get(entry.user_id) : null;
+          const status = getStatus(entry);
+          const rc = getRoleStyle(entry.business_role);
+          const studioName = entry.studio_id ? (studios.get(entry.studio_id) || "—").replace("Skult ", "") : "—";
+          const inT = entry.clocked_in_at ? new Date(entry.clocked_in_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
+          const outT = entry.clocked_out_at ? new Date(entry.clocked_out_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
+          return (
+            <div key={entry.id} className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{profile ? fullName(profile) : "Non assigné"}</div>
+                  <span className="inline-block rounded-full px-1.5 py-0.5 mt-1" style={{ fontSize: 10, backgroundColor: rc.bg, color: rc.text }}>{entry.business_role}</span>
+                </div>
+                <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: status === "terminé" ? "var(--success-bg)" : status === "en-cours" ? "var(--coral-light)" : "var(--info-bg)", color: status === "terminé" ? "var(--success-text)" : status === "en-cours" ? "var(--coral-dark)" : "var(--info-text)" }}>{status === "terminé" ? "Terminé" : status === "en-cours" ? "En cours" : "À venir"}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3" style={{ fontSize: 12 }}>
+                <div><span style={{ color: "var(--muted-foreground)" }}>Shift</span><br />{hhmm(entry.start_time)} — {hhmm(entry.end_time)}</div>
+                <div><span style={{ color: "var(--muted-foreground)" }}>Studio</span><br />{studioName}</div>
+                <div><span style={{ color: "var(--muted-foreground)" }}>IN</span><br />{inT}</div>
+                <div><span style={{ color: "var(--muted-foreground)" }}>OUT</span><br />{outT}</div>
+              </div>
+              {status === "à-venir" && profile && <button onClick={() => clockIn(entry.id)} className="mt-3 w-full rounded-md py-2" style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>Forcer pointage IN</button>}
+              {status === "en-cours" && <button onClick={() => clockOut(entry.id)} className="mt-3 w-full rounded-md py-2 flex items-center justify-center gap-1.5" style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}><LogOut size={12} /> Clôturer</button>}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden md:block rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         <table className="w-full" style={{ fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "0.5px solid var(--border)" }}>
