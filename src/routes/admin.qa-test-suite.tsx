@@ -114,6 +114,18 @@ function QAPage() {
       toast.error(e?.message ?? "Erreur");
     }
   };
+  const handleCleanTom = async () => {
+    if (!confirm("Supprimer le shift du jour, le template test et les notifs récentes de Tom Cruise ?")) return;
+    setSetupState("running"); setSetupErr(""); setSetupInfo(null);
+    try {
+      const r = await cleanTom({});
+      setSetupInfo(r); setSetupState("done");
+      toast.success("✅ Données test Tom supprimées");
+    } catch (e: any) {
+      setSetupErr(e?.message ?? "Erreur"); setSetupState("error");
+      toast.error(e?.message ?? "Erreur");
+    }
+  };
 
   // ─── Test actions ───────────────────────────────────────────────────────
   const runSingle = async (id: number) => {
