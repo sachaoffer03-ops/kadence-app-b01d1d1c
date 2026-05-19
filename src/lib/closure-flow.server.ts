@@ -168,11 +168,11 @@ export async function finalizeClosure(input: FinalizeClosureInput) {
     .eq("id", input.shiftId);
 
   // Notify managers of the studio (best-effort, non-blocking)
-  if (shift.studio_id) {
+  const ownerId = shift.user_id as string;
+  if (shift.studio_id && ownerId) {
     const { data: prof } = await supabaseAdmin
-      .from("profiles").select("first_name,last_name").eq("id", shift.user_id).maybeSingle();
+      .from("profiles").select("first_name,last_name").eq("id", ownerId).maybeSingle();
     const name = `${(prof as any)?.first_name ?? ""} ${(prof as any)?.last_name ?? ""}`.trim() || "Un employé";
-    // get managers via user_roles
     const { data: mgrs } = await supabaseAdmin
       .from("user_roles").select("user_id,role").in("role", ["admin", "manager"]);
     if (mgrs && mgrs.length) {
@@ -181,7 +181,7 @@ export async function finalizeClosure(input: FinalizeClosureInput) {
         type: "shift_closed",
         title: "Shift clôturé",
         body: `${name} a clôturé son shift (${shift.business_role})`,
-        link: `/staff/${shift.user_id}`,
+        link: `/staff/${ownerId}`,
       }));
       await supabaseAdmin.from("notifications").insert(notifs);
     }
@@ -194,8 +194,9 @@ export async function finalizeClosure(input: FinalizeClosureInput) {
   const workedHours = workedMin / 60;
 
   // Earnings
-  const { data: profRate } = await supabaseAdmin
-    .from("profiles").select("hourly_rate,first_name").eq("id", shift.user_id).maybeSingle();
+  const { data: profRate } = ownerId ? await supabaseAdmin
+    .from("profiles").select("hourly_rate,first_name").eq("id", ownerId).maybeSingle()
+    : { data: null };
   const hourlyRate = Number((profRate as any)?.hourly_rate ?? 0);
   const earnings = +(workedHours * hourlyRate).toFixed(2);
 
@@ -211,17 +212,17 @@ export async function finalizeClosure(input: FinalizeClosureInput) {
   const scoreDelta = ponctualite + checklistPts + photosPts;
 
   // Next scheduled shift
-  const nowIso = new Date().toISOString();
-  const { data: nextShift } = await supabaseAdmin
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: nextShift } = ownerId ? await supabaseAdmin
     .from("shifts")
     .select("id,shift_date,start_time,end_time,business_role,studio_id")
-    .eq("user_id", shift.user_id)
+    .eq("user_id", ownerId)
     .eq("status", "scheduled")
-    .or(`shift_date.gt.${nowIso.slice(0,10)},and(shift_date.eq.${nowIso.slice(0,10)},start_time.gt.${new Date().toTimeString().slice(0,8)})`)
+    .gt("shift_date", today)
     .order("shift_date", { ascending: true })
     .order("start_time", { ascending: true })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle() : { data: null };
 
   return {
     workedMin,
