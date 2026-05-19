@@ -1221,7 +1221,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // TODO drag&drop: réactiver le drag&drop @dnd-kit sur les blocs absolute.
 // ────────────────────────────────────────────────────────────
 
-const HOUR_PX = 56;
+const HOUR_PX = 40;
 const TIME_COL_PX = 56;
 const DEFAULT_COL_PX = 180;
 const MIN_COL_PX = 80;
@@ -1483,11 +1483,11 @@ function PlanningCalendar({
                   key={i}
                   style={{
                     position: "absolute",
-                    top: i * HOUR_PX,
+                    top: i * HOUR_PX + 2,
                     right: 6,
                     fontSize: 10,
+                    lineHeight: 1,
                     color: "var(--muted-foreground)",
-                    transform: "translateY(-6px)",
                   }}
                 >
                   {String(startHour + i).padStart(2, "0")}h
