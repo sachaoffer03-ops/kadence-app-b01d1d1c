@@ -1662,8 +1662,10 @@ function ShiftBlock({
 
         <div className="flex gap-2 px-4 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
           {isHole ? (
-            <a
-              href={`/trous?shift=${shift.id}`}
+            <Link
+              to="/trous"
+              search={{ shift: shift.id } as never}
+              onClick={() => setOpen(false)}
               className="flex-1 rounded-md px-3 py-2 text-center"
               style={{
                 fontSize: 12,
@@ -1674,11 +1676,11 @@ function ShiftBlock({
               }}
             >
               Envoyer une proposition
-            </a>
+            </Link>
           ) : (
             <>
               <button
-                onClick={() => onDelete(shift)}
+                onClick={() => { setOpen(false); onDelete(shift); }}
                 className="rounded-md px-2.5 py-2"
                 style={{ fontSize: 12, border: "0.5px solid var(--border)", color: "var(--danger-text)" }}
                 aria-label="Supprimer"
@@ -1687,14 +1689,14 @@ function ShiftBlock({
                 <Trash2 size={13} />
               </button>
               <button
-                onClick={() => onReassign(shift)}
+                onClick={() => { setOpen(false); onReassign(shift); }}
                 className="flex-1 rounded-md px-3 py-2 flex items-center justify-center gap-1.5"
                 style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
               >
                 <UserPlus size={13} /> Réassigner
               </button>
               <button
-                onClick={() => onEdit(shift)}
+                onClick={() => { setOpen(false); onEdit(shift); }}
                 className="flex-1 rounded-md px-3 py-2 flex items-center justify-center gap-1.5"
                 style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
               >
