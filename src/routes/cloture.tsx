@@ -222,6 +222,42 @@ function NumInput({ value, onChange, suffix, min = 0, max = 999 }: {
   );
 }
 
+// 3 niveaux d'exigence pour la validation IA des photos
+const THRESHOLD_OPTIONS = [
+  { v: 50, label: "Souple", desc: "Accepte même si la photo n'est pas parfaite" },
+  { v: 75, label: "Standard", desc: "Recommandé — bon équilibre" },
+  { v: 90, label: "Strict", desc: "Refuse au moindre doute" },
+];
+function ThresholdButtons({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  // Snap to the nearest preset if a legacy custom value is stored
+  const active = THRESHOLD_OPTIONS.reduce((best, o) =>
+    Math.abs(o.v - value) < Math.abs(best.v - value) ? o : best, THRESHOLD_OPTIONS[1]);
+  return (
+    <div className="flex gap-1.5">
+      {THRESHOLD_OPTIONS.map((o) => {
+        const isActive = o.v === active.v;
+        return (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => onChange(o.v)}
+            title={o.desc}
+            className="rounded-md px-3 py-1.5 border transition-colors"
+            style={{
+              fontSize: 12, fontWeight: 500,
+              backgroundColor: isActive ? "var(--foreground)" : "var(--background)",
+              color: isActive ? "var(--background)" : "var(--foreground)",
+              borderColor: isActive ? "var(--foreground)" : "var(--border)",
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ============================================================
 // SECTION A — CLOCK OUT
 // ============================================================
