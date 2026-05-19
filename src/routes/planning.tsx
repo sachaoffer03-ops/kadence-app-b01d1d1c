@@ -1357,7 +1357,7 @@ function PlanningCalendar({
 
   // Plage horaire dynamique : extension si shifts hors 7h-23h
   const { startHour, endHour } = useMemo(() => {
-    let s = 7, e = 23;
+    let s = 6, e = 23;
     for (const sh of studioShifts) {
       const sm = minOf(sh.startTime), em = minOf(sh.endTime);
       s = Math.min(s, Math.floor(sm / 60));
