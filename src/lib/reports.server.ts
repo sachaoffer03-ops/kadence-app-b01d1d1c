@@ -171,9 +171,9 @@ export async function getTopAndBottomPerformers(f: Filters) {
 
   // map shift -> user
   const curShiftToUser = new Map<string, string>();
-  for (const s of cur) curShiftToUser.set(s.id, s.user_id);
+  for (const s of cur as any[]) if (s.user_id) curShiftToUser.set(s.id, s.user_id);
   const prevShiftToUser = new Map<string, string>();
-  for (const s of prevShifts) prevShiftToUser.set(s.id, s.user_id);
+  for (const s of prevShifts as any[]) if (s.user_id) prevShiftToUser.set(s.id, s.user_id);
 
   const scoreOf = (rows: any[], map: Map<string, string>) => {
     const acc = new Map<string, { sum: number; n: number }>();
