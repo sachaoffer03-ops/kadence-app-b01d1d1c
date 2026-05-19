@@ -925,17 +925,6 @@ const QR_RENEWAL_OPTIONS = [
   { v: 120, l: "Toutes les 2 minutes" },
   { v: 300, l: "Toutes les 5 minutes" },
 ];
-const QR_SUPPORT_OPTIONS: Record<string, string> = {
-  tablet: "Tablette à l'accueil du studio",
-  printed: "Impression au comptoir",
-  manager_phone: "Téléphone du manager",
-};
-const GEO_OPTIONS = [
-  { key: "off", label: "Désactivé", enabled: false, radius: 50 },
-  { key: "25", label: "Activé (rayon 25m)", enabled: true, radius: 25 },
-  { key: "50", label: "Activé (rayon 50m)", enabled: true, radius: 50 },
-  { key: "100", label: "Activé (rayon 100m)", enabled: true, radius: 100 },
-];
 
 function QrSection({ studio }: { studio: any }) {
   const update = async (patch: any) => {
@@ -943,15 +932,17 @@ function QrSection({ studio }: { studio: any }) {
     if (error) toast.error(error.message); else flashSaved();
   };
 
-  const geoKey = !studio.geofencing_enabled ? "off" : String(studio.geofencing_radius_m ?? 50);
-
   const regenerate = async () => {
     await update({ current_qr_code: randomCode(5) });
     toast.success("Code régénéré");
   };
 
   return (
-    <SectionCard icon={QrCode} title="QR code de clôture">
+    <SectionCard
+      icon={QrCode}
+      title="QR code de clôture"
+      subtitle="Un QR code unique s'affiche sur la tablette posée à l'accueil du studio. Il change automatiquement à l'intervalle ci-dessous pour empêcher qu'un employé pointe à distance."
+    >
       <div className="flex flex-wrap gap-5">
         <Field label="Renouvellement du code">
           <Select value={String(studio.qr_renewal_seconds ?? 60)} onValueChange={(v) => update({ qr_renewal_seconds: parseInt(v, 10) })}>
@@ -962,38 +953,35 @@ function QrSection({ studio }: { studio: any }) {
           </Select>
         </Field>
         <Field label="Support d'affichage">
-          <Select value={studio.qr_display_support ?? "tablet"} onValueChange={(v) => update({ qr_display_support: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(QR_SUPPORT_OPTIONS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label="Géofencing complémentaire">
-          <Select value={geoKey} onValueChange={(v) => {
-            const o = GEO_OPTIONS.find((x) => x.key === v)!;
-            update({ geofencing_enabled: o.enabled, geofencing_radius_m: o.radius });
-          }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {GEO_OPTIONS.map((o) => <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div
+            className="rounded-md border px-3 py-2 flex items-center"
+            style={{ fontSize: 13, borderColor: "var(--border)", backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}
+          >
+            Tablette à l'accueil du studio
+          </div>
         </Field>
       </div>
 
-      <div className="mt-5 flex items-center justify-end gap-3 flex-wrap">
-        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-          Code actuel · <b style={{ color: "var(--foreground)" }}>{studio.name}</b> :
-          <span className="ml-2 px-2 py-1 rounded" style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 13, backgroundColor: "var(--muted)", color: "var(--foreground)" }}>
+      <div
+        className="mt-5 rounded-md px-4 py-3 flex items-start justify-between gap-4 flex-wrap"
+        style={{ backgroundColor: "var(--muted)", fontSize: 12, lineHeight: 1.6 }}
+      >
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <div style={{ fontWeight: 500, marginBottom: 2 }}>Code actuellement affiché sur la tablette de <b>{studio.name}</b></div>
+          <div style={{ color: "var(--muted-foreground)" }}>
+            C'est le code que l'employé scanne (ou tape) à la fin de son shift. Il se renouvelle automatiquement toutes les {studio.qr_renewal_seconds ?? 60} secondes.
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="px-2.5 py-1.5 rounded" style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 14, backgroundColor: "var(--background)", color: "var(--foreground)", border: "1px solid var(--border)" }}>
             {studio.current_qr_code ?? "—"}
           </span>
+          <button onClick={regenerate}
+            className="rounded-md border px-3 py-1.5 flex items-center gap-1.5"
+            style={{ fontSize: 12, borderColor: "var(--border)", backgroundColor: "var(--background)" }}>
+            <RefreshCw size={13} /> Régénérer maintenant
+          </button>
         </div>
-        <button onClick={regenerate}
-          className="rounded-md border px-3 py-1.5 flex items-center gap-1.5"
-          style={{ fontSize: 12, borderColor: "var(--border)" }}>
-          <RefreshCw size={13} /> Régénérer
-        </button>
       </div>
     </SectionCard>
   );
