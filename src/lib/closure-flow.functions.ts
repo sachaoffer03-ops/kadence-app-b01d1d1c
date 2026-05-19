@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { validateClockOut, finalizeClosure } from "./closure-flow.server";
+import { validateClockOut, finalizeClosure, analyzeClosurePhoto, notifyOverdueClockOuts } from "./closure-flow.server";
 
 const validateSchema = z.object({
   shiftId: z.string().uuid(),
