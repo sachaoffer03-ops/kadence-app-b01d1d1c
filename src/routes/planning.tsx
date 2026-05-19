@@ -1005,7 +1005,11 @@ function PlanningCalendarPage() {
         style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
       >
         <div className="flex items-center gap-3" style={{ fontSize: 12 }}>
-          <span style={{ fontWeight: 500 }}>Semaine {selectedStudio.replace("Skult ", "")}</span>
+          <span style={{ fontWeight: 500 }}>
+            Semaine {selectedStudios.size === studios.length
+              ? "tous studios"
+              : Array.from(selectedStudios).map((s) => s.replace("Skult ", "")).join(" + ")}
+          </span>
           <span style={{ color: "var(--muted-foreground)" }}>·</span>
           <span style={{ color: "var(--muted-foreground)" }}>{realShifts.length} shifts planifiés</span>
           {holes.length > 0 && (
