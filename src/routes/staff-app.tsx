@@ -100,7 +100,7 @@ function StaffAppPage() {
       {tab !== "accueil" && <BellButton userId={user.id} onOpen={() => setNotifOpen(true)} />}
 
       <div className="flex-1 overflow-y-auto pb-20">
-        {tab === "accueil" && <AccueilTab profile={profile} studios={studios} userId={user.id} onOpenNotifs={() => setNotifOpen(true)} />}
+        {tab === "accueil" && <AccueilTab profile={profile} studios={studios} studioClockOut={studioClockOut} userId={user.id} onOpenNotifs={() => setNotifOpen(true)} />}
         {tab === "planning" && <PlanningTab studios={studios} userId={user.id} />}
         {tab === "pointage" && <PointageTab studios={studios} userId={user.id} />}
         {tab === "formation" && <FormationPanel userId={user.id} />}
