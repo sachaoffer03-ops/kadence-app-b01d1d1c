@@ -702,10 +702,12 @@ function PhotosEditor({ studioId, roleId, roleName }: { studioId: string; roleId
 
   const addZone = async () => {
     const next = (photos[photos.length - 1]?.order_index ?? -1) + 1;
-    const { error } = await supabase.from("checklist_template_photos").insert({
+    const { data, error } = await supabase.from("checklist_template_photos").insert({
       template_id: template.id, label: "Nouvelle zone", is_required: false, order_index: next,
-    } as any);
-    if (error) toast.error(error.message); else flashSaved();
+    } as any).select("*").single();
+    if (error) { toast.error(error.message); return; }
+    setPhotos((prev) => [...prev, data as any]);
+    flashSaved();
   };
 
   return (
