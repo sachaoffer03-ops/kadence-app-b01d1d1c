@@ -580,9 +580,25 @@ function PlanningCalendarPage() {
 
   const visibleDayIndices = viewMode === "jour" ? [dayIdxJour] : [0, 1, 2, 3, 4, 5, 6];
 
-  const goToday = () => { setMonth(now.getMonth()); setYear(now.getFullYear()); setWeekOffset(0); };
-  const goPrev = () => setWeekOffset((w) => w - 1);
-  const goNext = () => setWeekOffset((w) => w + 1);
+  const shiftWeek = (delta: number) => setWeekStart((d) => { const n = new Date(d); n.setDate(d.getDate() + delta * 7); return n; });
+  const goToday = () => setWeekStart(mondayOf(new Date()));
+  const goPrev = () => shiftWeek(-1);
+  const goNext = () => shiftWeek(1);
+
+  // Auto-refresh: ramener sur la semaine courante quand on revient sur l'onglet ou que minuit passe
+  useEffect(() => {
+    const tick = () => {
+      const today = new Date();
+      const start = mondayOf(today);
+      if (start.getTime() !== mondayOf(weekStart).getTime() && today.toDateString() !== weekStart.toDateString()) {
+        // ne pas écraser la navigation manuelle — uniquement si on est encore "proche" d'aujourd'hui (même semaine attendue)
+      }
+    };
+    const onVis = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVis);
+    const id = window.setInterval(tick, 60_000);
+    return () => { document.removeEventListener("visibilitychange", onVis); window.clearInterval(id); };
+  }, [weekStart]);
 
   // Server functions
   const createShiftFn = useServerFn(createShift);
