@@ -1331,19 +1331,42 @@ function PlanningCalendar({
   );
   void viewMode; // réservé pour adaptation mobile future
 
+  // Plage horaire dynamique : extension si shifts hors 7h-23h
+  const { startHour, endHour } = useMemo(() => {
+    let s = 7, e = 23;
+    for (const sh of studioShifts) {
+      const sm = minOf(sh.startTime), em = minOf(sh.endTime);
+      s = Math.min(s, Math.floor(sm / 60));
+      e = Math.max(e, Math.ceil(em / 60));
+    }
+    return { startHour: Math.max(0, s), endHour: Math.min(24, Math.max(e, s + 1)) };
+  }, [studioShifts]);
+  const totalHours = endHour - startHour;
+  const gridHeight = totalHours * HOUR_PX;
+
+  const shiftsByDay = useMemo(() => {
+    const map = new Map<number, LaidOut[]>();
+    for (const idx of visibleDayIndices) {
+      map.set(idx, layoutDay(studioShifts.filter((s) => s.day === idx)));
+    }
+    return map;
+  }, [studioShifts, visibleDayIndices]);
+
+  const gridCols = `${TIME_COL_PX}px ${visibleDayIndices.map((idx) => `${widthOf(idx)}px`).join(" ")}`;
+  const totalWidth = TIME_COL_PX + visibleDayIndices.reduce((sum, idx) => sum + widthOf(idx), 0);
+
   return (
     <div className="flex flex-col gap-3">
-
       <div
         className="rounded-xl border overflow-hidden"
         style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
       >
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto", userSelect: isResizing ? "none" : undefined }}>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `${TIME_COL_PX}px repeat(${visibleDayIndices.length}, ${dayWidth}px)`,
-              minWidth: TIME_COL_PX + visibleDayIndices.length * dayWidth,
+              gridTemplateColumns: gridCols,
+              minWidth: totalWidth,
             }}
           >
             <div
