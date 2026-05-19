@@ -25,6 +25,7 @@ import { Route as DimonaRouteImport } from './routes/dimona'
 import { Route as DemandesRouteImport } from './routes/demandes'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContingentsRouteImport } from './routes/contingents'
+import { Route as ClotureRouteImport } from './routes/cloture'
 import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as ActivationRouteImport } from './routes/activation'
 import { Route as IndexRouteImport } from './routes/index'
@@ -121,6 +122,11 @@ const ContingentsRoute = ContingentsRouteImport.update({
   path: '/contingents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClotureRoute = ClotureRouteImport.update({
+  id: '/cloture',
+  path: '/cloture',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChecklistsRoute = ChecklistsRouteImport.update({
   id: '/checklists',
   path: '/checklists',
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activation': typeof ActivationRoute
   '/checklists': typeof ChecklistsRoute
+  '/cloture': typeof ClotureRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
@@ -234,6 +241,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activation': typeof ActivationRoute
   '/checklists': typeof ChecklistsRoute
+  '/cloture': typeof ClotureRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activation': typeof ActivationRoute
   '/checklists': typeof ChecklistsRoute
+  '/cloture': typeof ClotureRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
@@ -302,6 +311,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activation'
     | '/checklists'
+    | '/cloture'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activation'
     | '/checklists'
+    | '/cloture'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
@@ -367,6 +378,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activation'
     | '/checklists'
+    | '/cloture'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
@@ -401,6 +413,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivationRoute: typeof ActivationRoute
   ChecklistsRoute: typeof ChecklistsRoute
+  ClotureRoute: typeof ClotureRoute
   ContingentsRoute: typeof ContingentsRoute
   DashboardRoute: typeof DashboardRoute
   DemandesRoute: typeof DemandesRoute
@@ -541,6 +554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContingentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cloture': {
+      id: '/cloture'
+      path: '/cloture'
+      fullPath: '/cloture'
+      preLoaderRoute: typeof ClotureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checklists': {
       id: '/checklists'
       path: '/checklists'
@@ -679,6 +699,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivationRoute: ActivationRoute,
   ChecklistsRoute: ChecklistsRoute,
+  ClotureRoute: ClotureRoute,
   ContingentsRoute: ContingentsRoute,
   DashboardRoute: DashboardRoute,
   DemandesRoute: DemandesRoute,
