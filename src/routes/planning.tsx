@@ -585,20 +585,23 @@ function PlanningCalendarPage() {
   const goPrev = () => shiftWeek(-1);
   const goNext = () => shiftWeek(1);
 
-  // Auto-refresh: ramener sur la semaine courante quand on revient sur l'onglet ou que minuit passe
+  // Auto-actualisation : si l'onglet redevient visible ou que minuit passe,
+  // on recentre sur la semaine réelle (utile quand l'app reste ouverte plusieurs jours).
+  const initialMondayRef = useRef(mondayOf(new Date()).getTime());
   useEffect(() => {
     const tick = () => {
-      const today = new Date();
-      const start = mondayOf(today);
-      if (start.getTime() !== mondayOf(weekStart).getTime() && today.toDateString() !== weekStart.toDateString()) {
-        // ne pas écraser la navigation manuelle — uniquement si on est encore "proche" d'aujourd'hui (même semaine attendue)
+      const todayMonday = mondayOf(new Date()).getTime();
+      if (todayMonday !== initialMondayRef.current) {
+        initialMondayRef.current = todayMonday;
+        setWeekStart(new Date(todayMonday));
+        setRefreshKey((k) => k + 1);
       }
     };
     const onVis = () => { if (document.visibilityState === "visible") tick(); };
     document.addEventListener("visibilitychange", onVis);
     const id = window.setInterval(tick, 60_000);
     return () => { document.removeEventListener("visibilitychange", onVis); window.clearInterval(id); };
-  }, [weekStart]);
+  }, []);
 
   // Server functions
   const createShiftFn = useServerFn(createShift);
