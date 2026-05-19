@@ -76,16 +76,19 @@ const timeSlotDefs = [
   { label: "17h", start: "17h00", end: "23h00", time: "17h — 23h" },
 ];
 
-function getWeekDays(year: number, month: number, weekOffset: number): Date[] {
-  // Get first Monday of the month, then offset by weeks
-  const first = new Date(year, month, 1);
-  const dayOfWeek = first.getDay();
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const firstMonday = new Date(year, month, 1 + mondayOffset + weekOffset * 7);
+function mondayOf(date: Date): Date {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dow = d.getDay();
+  const diff = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function getWeekDaysFromStart(start: Date): Date[] {
   const days: Date[] = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(firstMonday);
-    d.setDate(firstMonday.getDate() + i);
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
     days.push(d);
   }
   return days;
