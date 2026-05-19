@@ -190,7 +190,10 @@ export function DocumentsSheet({ open, onClose }: { open: boolean; onClose: () =
 
 /* ─── NotificationsSheet ─── */
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
-import { Calendar, Replace as ReplaceIcon, MessageCircle } from "lucide-react";
+import { Calendar, Replace as ReplaceIcon, MessageCircle, Send, X } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { acceptProposal, declineProposal, acceptReplacementProposal } from "@/lib/proposals.functions";
+import { toast } from "sonner";
 
 function fmtRelative(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -205,14 +208,88 @@ function fmtRelative(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
 
-export function NotificationsSheet({ open, onClose, userId }: { open: boolean; onClose: () => void; userId: string }) {
+interface PendingProposal {
+  id: string;
+  sent_at: string;
+  replacement_request_id: string | null;
+  shift: {
+    id: string; shift_date: string; start_time: string; end_time: string;
+    business_role: string; studio_id: string | null; user_id: string | null;
+  };
+}
+
+export function NotificationsSheet({ open, onClose, userId, studios, onNavigate }: {
+  open: boolean; onClose: () => void; userId: string;
+  studios?: Record<string, string>;
+  onNavigate?: (tab: "accueil" | "planning" | "pointage" | "chat") => void;
+}) {
   const { items, unread, markAllRead } = useStaffNotifications(userId);
+  const [proposals, setProposals] = useState<PendingProposal[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const acceptFn = useServerFn(acceptProposal);
+  const acceptReplFn = useServerFn(acceptReplacementProposal);
+  const declineFn = useServerFn(declineProposal);
+
+  const loadProps = async () => {
+    const { data } = await supabase
+      .from("shift_proposals")
+      .select("id,sent_at,replacement_request_id,shift:shifts!inner(id,shift_date,start_time,end_time,business_role,studio_id,user_id)")
+      .eq("user_id", userId)
+      .eq("status", "pending")
+      .order("sent_at", { ascending: false });
+    const list = (data || []).filter((p: any) => {
+      if (!p.shift) return false;
+      if (p.replacement_request_id) return p.shift.user_id !== userId;
+      return !p.shift.user_id;
+    }) as PendingProposal[];
+    setProposals(list);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    loadProps();
+    const ch = supabase
+      .channel(`notif-props-${userId}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shift_proposals", filter: `user_id=eq.${userId}` }, loadProps)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, userId]);
 
   // Marquer comme lu à la fermeture
   useEffect(() => {
     if (!open && unread > 0) markAllRead();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const acceptProp = async (p: PendingProposal) => {
+    setBusy(p.id);
+    try {
+      const r = p.replacement_request_id
+        ? await acceptReplFn({ data: { proposalId: p.id } })
+        : await acceptFn({ data: { proposalId: p.id } });
+      if (r.ok) toast.success("Shift accepté !");
+      else toast.error("Trop tard, un autre employé a déjà accepté ce shift");
+      loadProps();
+    } catch (e: any) {
+      toast.error(e.message || "Erreur");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const declineProp = async (id: string) => {
+    setBusy(id);
+    try {
+      await declineFn({ data: { proposalId: id } });
+      toast("Proposition refusée");
+      loadProps();
+    } catch (e: any) {
+      toast.error(e.message || "Erreur");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const iconFor = (kind: string) => {
     if (kind === "shift") return Calendar;
@@ -221,11 +298,21 @@ export function NotificationsSheet({ open, onClose, userId }: { open: boolean; o
     return Bell;
   };
 
+  const handleNotifClick = (kind: string) => {
+    if (!onNavigate) return;
+    onClose();
+    if (kind === "message") onNavigate("chat");
+    else if (kind === "shift") onNavigate("planning");
+    else onNavigate("accueil");
+  };
+
   return (
     <Sheet open={open} onClose={onClose} title="Notifications">
       <div className="flex items-center justify-between mb-3">
         <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-          {unread > 0 ? `${unread} non lue${unread > 1 ? "s" : ""}` : "Tout est à jour"}
+          {unread > 0 || proposals.length > 0
+            ? `${unread + proposals.length} à traiter`
+            : "Tout est à jour"}
         </div>
         {unread > 0 && (
           <button onClick={markAllRead} style={{ fontSize: 11, fontWeight: 500, color: "var(--coral-dark)" }}>
@@ -233,7 +320,41 @@ export function NotificationsSheet({ open, onClose, userId }: { open: boolean; o
           </button>
         )}
       </div>
-      {items.length === 0 ? (
+
+      {/* Propositions de shift en attente — actionnables */}
+      {proposals.length > 0 && (
+        <div className="flex flex-col gap-2 mb-3">
+          {proposals.map((p) => {
+            const sname = p.shift.studio_id && studios ? (studios[p.shift.studio_id] || "—") : "—";
+            const dateLabel = new Date(p.shift.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+            return (
+              <div key={p.id} className="rounded-xl p-3" style={{ backgroundColor: "#fff", border: "1px solid var(--coral)" }}>
+                <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: 10, color: "var(--coral-dark)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <Send size={10} /> Nouvelle proposition
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 500, textTransform: "capitalize" }}>{dateLabel}</div>
+                <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+                  {String(p.shift.start_time).slice(0,5)} — {String(p.shift.end_time).slice(0,5)} · {p.shift.business_role} · {sname.replace("Skult ", "")}
+                </div>
+                <div className="flex gap-2 mt-2.5">
+                  <button onClick={() => acceptProp(p)} disabled={busy === p.id}
+                    className="flex-1 rounded-md py-2 flex items-center justify-center gap-1.5"
+                    style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
+                    <Check size={12} /> Accepter
+                  </button>
+                  <button onClick={() => declineProp(p.id)} disabled={busy === p.id}
+                    className="flex-1 rounded-md py-2 flex items-center justify-center gap-1.5"
+                    style={{ fontSize: 12, fontWeight: 500, backgroundColor: "transparent", color: "var(--muted-foreground)", border: "0.5px solid var(--border)" }}>
+                    <X size={12} /> Refuser
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {items.length === 0 && proposals.length === 0 ? (
         <div className="rounded-lg px-4 py-6 text-center" style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", fontSize: 12, color: "var(--muted-foreground)" }}>
           Aucune notification pour l'instant.
         </div>
@@ -241,19 +362,26 @@ export function NotificationsSheet({ open, onClose, userId }: { open: boolean; o
         <div className="flex flex-col gap-2">
           {items.map(n => {
             const Icon = iconFor(n.kind);
+            const clickable = !!onNavigate;
             return (
-              <div key={n.id} className="rounded-xl px-4 py-3 flex gap-3"
-                style={{ backgroundColor: n.read ? "#fff" : "var(--coral-light)", border: "0.5px solid rgba(0,0,0,0.08)" }}>
-                <div className="rounded-full flex items-center justify-center mt-0.5"
+              <button key={n.id} type="button"
+                onClick={clickable ? () => handleNotifClick(n.kind) : undefined}
+                className="rounded-xl px-4 py-3 flex gap-3 text-left transition-colors"
+                style={{
+                  backgroundColor: n.read ? "#fff" : "var(--coral-light)",
+                  border: "0.5px solid rgba(0,0,0,0.08)",
+                  cursor: clickable ? "pointer" : "default",
+                }}>
+                <div className="rounded-full flex items-center justify-center mt-0.5 shrink-0"
                   style={{ width: 28, height: 28, backgroundColor: n.read ? "var(--muted)" : "var(--coral)", color: n.read ? "var(--muted-foreground)" : "var(--coral-text)" }}>
                   {n.read ? <Check size={12} /> : <Icon size={12} />}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{n.title}</div>
                   <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>{n.body}</div>
                   <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 4 }}>{fmtRelative(n.date)}</div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

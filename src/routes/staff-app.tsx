@@ -108,7 +108,7 @@ function StaffAppPage() {
         {tab === "profil" && <ProfilTab profile={profile} businessRoles={businessRoles} studios={studios} userId={user.id} onProfileChange={(patch) => setProfile((p) => p ? { ...p, ...patch } : p)} onNavigate={setTab} />}
       </div>
 
-      <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} userId={user.id} />
+      <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} userId={user.id} studios={studios} onNavigate={(t) => setTab(t)} />
 
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-around border-t"
         style={{ width: "100%", maxWidth: 430, height: 64, backgroundColor: "#FFFFFF", borderColor: "rgba(0,0,0,0.08)" }}>
