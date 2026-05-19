@@ -195,7 +195,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   const photosValidatedCount = Object.values(photoStates).filter((p) => p.status === "validated").length;
   const photosBlocked = (() => {
     if (!template) return false;
-    const min = template.min_photos_required ?? 0;
+    const min = (template as any)?.min_photos_required ?? 0;
     if (photosValidatedCount < min) return true;
     return photos.some((p) => p.is_required && photoStates[p.id]?.status !== "validated");
   })();
