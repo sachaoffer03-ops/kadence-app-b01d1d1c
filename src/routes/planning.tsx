@@ -1483,11 +1483,11 @@ function PlanningCalendar({
                   key={i}
                   style={{
                     position: "absolute",
-                    top: i * HOUR_PX,
+                    top: i * HOUR_PX + 2,
                     right: 6,
                     fontSize: 10,
+                    lineHeight: 1,
                     color: "var(--muted-foreground)",
-                    transform: "translateY(-6px)",
                   }}
                 >
                   {String(startHour + i).padStart(2, "0")}h
