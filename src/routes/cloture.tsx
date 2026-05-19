@@ -507,8 +507,8 @@ function SortableItem({ item, photos }: { item: any; photos: any[] }) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-md border px-2 py-1.5"
-      style={{ ...style, backgroundColor: "var(--background)", borderColor: "var(--border)" } as any}
+    <div ref={setNodeRef} className="flex items-center gap-2 rounded-md border px-2 py-1.5"
+      style={{ ...style, backgroundColor: "var(--background)", borderColor: "var(--border)" }}
     >
       <button {...attributes} {...listeners} className="cursor-grab touch-none" style={{ color: "var(--muted-foreground)" }}>
         <GripVertical size={14} />
