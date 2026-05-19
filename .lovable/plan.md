@@ -1,71 +1,91 @@
-# Plan — Flow employé complet A→Z
 
-Gros chantier. Je le livre **en 2 sous-tours** comme tu l'autorises, sinon je risque de tout casser.
+# Parcours mobile de clôture de shift (employé)
 
-## Sous-tour 1 — Données + côté employé
+Refonte complète du flow "Terminer mon shift" dans `/staff-app` en un overlay plein écran 6 étapes mobile-first, consommant la config admin de `/cloture`.
 
-### 1. Migrations SQL (parties 2A / 2B / 2C, adaptées au schéma réel)
+## 1. Migrations DB (1 migration)
 
-Le schéma actuel diffère de ton SQL — je vais corriger :
-- `shifts.business_role` est un `text` (pas `business_role_id`)
-- `notifications` n'a pas de colonne `is_read` (c'est `read_at timestamptz`)
-- `shifts.status` enum n'a pas `'published'` — on utilise `published_at IS NOT NULL` à la place, status reste `'scheduled'`
-- `feedbacks` n'a pas de `target_user_id` (la cible se déduit via `shift_id → shifts.user_id`)
+- `studios` : ajouter `lat float NULL`, `lng float NULL` (géofencing — populés plus tard via géocodage)
+- `shifts` : ajouter `dimona_status text NULL CHECK ('pending','sent','failed','not_applicable')` (anticipation profil employé)
+- Aucune nouvelle RLS (colonnes additives sur tables existantes)
 
-Migration unique qui :
-- crée le shift Tom du jour 10h→16h (idempotent, `is_manual=true`, `published_at=now()`)
-- insère 2 notifs (`planning_published`, `shift_reminder`) si absentes < 1h
-- crée le template `Fin de shift test — Flow complet` + 4 items + 2 photos Unsplash
+## 2. Serveur — server functions
 
-### 2. Card "Prochain shift" dynamique (4 états) — `src/routes/staff.index.tsx`
+Nouveau fichier `src/lib/closure-flow.server.ts` + `src/lib/closure-flow.functions.ts` :
 
-Composant `ShiftStatusCard` :
-- **A** Pas de shift aujourd'hui → garder existant
-- **B** Shift prévu, pas commencé → bouton vert "Pointer mon arrivée" (orange + "en retard de X min" si dépassé)
-- **C** En service → fond accent, timer live `useEffect(setInterval, 1000)` depuis `clocked_in_at`, bouton rouge "Pointer ma sortie"
-- **D** Terminé → fond grisé, résumé heures + retard + statut checklist
+- `validateClockOutFn({ shiftId, qrCode, lat?, lng? })` : vérifie QR match `studios.current_qr_code` (case-insensitive), géofencing si activé + studio a lat/lng, calcule `minutes_late`, UPDATE `shifts.clocked_out_at = now()`. **Ne change pas encore le status.** Retourne `{ ok, distance_m? }`.
+- `finalizeClosureFn({ shiftId, submissionId, responses: [{questionId, stars?, yesno?, text?}] })` : transaction → `shifts.status = 'completed'`, `checklist_submissions.status = 'completed' + submitted_at`, INSERT `closure_question_responses` (idempotent via DELETE-then-INSERT par submission), INSERT notif manager du studio. Retourne récap calculé serveur (heures, gains, points par dimension).
+- Hardcoder pour l'instant les règles de points dans le server, avec commentaire TODO "Règles de scoring configurables côté admin future".
+- Toutes les fn vérifient `shift.user_id === context.userId` (pattern existant `shift-clock.server.ts`).
 
-Boutons clock-in/out écrivent directement dans `shifts` (`clocked_in_at` / `clocked_out_at`). Le clock-out ouvre la `EndShiftSheet` existante (qui gère déjà la checklist) au lieu d'écrire directement → respecte le `is_blocking`.
+L'ancien `completeShiftClockOutFn` reste pour compat mais n'est plus utilisé par EndShiftSheet.
 
-### 3. Onglet "Pointage" dans bottom nav staff-app
+## 3. Frontend — nouveau composant `ClosureFlow.tsx`
 
-- Nouvelle route `src/routes/staff.pointage.tsx`
-- Section "Aujourd'hui" : réutilise `ShiftStatusCard`
-- Section "Mes 10 derniers shifts" : table simple (date, prévu, arrivée, retard, durée, checklist OK)
-- Ajout entrée bottom nav dans `src/routes/staff.tsx` (icône Timer entre Planning et Formation)
+Remplace `EndShiftSheet` (qui devient deprecated mais reste pour ne rien casser ailleurs si jamais).
 
-## Sous-tour 2 — Côté admin + notifs chat + cleanup
+`src/components/staff-app/ClosureFlow.tsx` : overlay plein écran (fixed inset-0, fond blanc, z-50), stepper 5 dots en haut, bouton "Retour" gauche + close avec confirm, bouton "Suivant" sticky bas avec `safe-area-inset-bottom`. Transitions slide horizontal 250ms.
 
-### 4. Page `/pointage` admin avec Realtime
-- Tableau "Shifts du jour" avec channel realtime sur `shifts` (filter `shift_date=eq.${today}`)
-- Statuts dérivés temps réel + timer live "en service depuis Xh"
-- Click ligne → drawer détail
+État interne : `step` (1..6) + données collectées par étape, chaque action écrit immédiatement en DB (résilience).
 
-### 5. Drawer checklist amélioré
-- 3 onglets : Checklist / Photos / Note
-- Photos côte à côte (référence vs employé, placeholder rouge si manquante)
-- Badge gris "IA Vision — V2"
-- Zone feedback sticky avec toggle "Notifier" → insert dans `notifications` (`type='feedback_received'`)
+### Étape 1 — Récap shift
+Cartes shift + heure live + countdown + message bleu + bouton "Terminer mon shift" → step 2.
 
-### 6. Fiche employé `/staff/:id` — sections
-- Activité récente (dernier shift + score breakdown)
-- Historique pointages (10 derniers, code couleur retard)
-- 5 dernières checklists
+### Étape 2 — Checklist
+- `findApplicableTemplate` + `getOrCreateSubmission`
+- Liste items avec checkbox (toggle `checklist_submission_items.is_checked`) + icône photo si `photo_zone_id`
+- Compteur live "X / N validés"
+- Si `is_blocking` et items non cochés : "Suivant" disabled
 
-### 7. Notif sur chat admin → employé
-- Dans `ChatPanel.tsx`/`ChatSheet.tsx` send message → si sender est admin/manager, insert notif `type='new_message'`
-- La cloche `useStaffNotifications` consomme déjà la table `messages` directement — j'ajoute la notif explicite en plus pour cohérence avec ton flow
+### Étape 3 — Photos
+- Chaque `checklist_template_photos` → carte avec input `capture="environment"`
+- Upload via `uploadSubmissionPhoto` (helper existant) + INSERT `checklist_submission_photos`
+- Si `analyze_with_ai` : badge "Analyse IA..." 2s puis auto-validation 100/100 (commentaire TODO clair)
+- Retry upload 3× avec toast
+- "Suivant" actif quand `min_photos_required` atteint ET zones `is_required` ont photo validée
 
-### 8. Bouton "🗑️ Nettoyer données flow test" sur `/admin/qa-test-suite`
-- Nouvelle server function `cleanupFlowTest` qui exécute le DELETE en cascade (corrigé pour le schéma réel : pas de `target_user_id` sur feedbacks)
+### Étape 4 — Scan QR
+- Lib `@yudiel/react-qr-scanner` (à ajouter avec `bun add`)
+- Fallback "Entrer manuellement" → 5 inputs style input-otp
+- Si `geofencing_enabled` : `navigator.geolocation` + calcul distance Haversine côté client (envoyé au server pour re-vérif)
+- Server fn `validateClockOutFn` fait la vraie validation
+- Bouton "Valider mon pointage de sortie" disabled tant que pas validé
 
-## Ce que je ne touche pas
-- Les 15 tests QA existants (vérifiés après chaque sous-tour)
-- `client.ts`, `types.ts`, RLS existantes
-- La logique `EndShiftSheet` actuelle (réutilisée telle quelle)
+### Étape 5 — Questions clôture
+- Charger `closure_questions` du studio ordonné `order_index`
+- Stars 1-5 / Oui-Non / Textarea selon `response_type`
+- Sauvegarde immédiate dans state local; bouton "Terminer" disabled tant que tous `is_required` répondus
+- Bandeau confidentialité en haut
 
-## Risques identifiés
-- Le score recalc "live" dépend des triggers DB existants (`trg_recalculate_score`) — je vérifie qu'ils sont bien attachés ; sinon je les ajoute dans la même migration.
-- `is_read` n'existe pas sur `notifications` → j'utilise `read_at` partout (toi tu l'as écrit `is_read` dans le SQL, c'est faux pour ce projet).
+### Étape 6 — Bien joué
+- Appel `finalizeClosureFn` à l'entrée (envoie responses)
+- Récupère récap calculé serveur
+- Cartes : Récap (5 lignes seulement) / Gains (1 ligne, format FR via `toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })`) / Impact score (décomposé) / Prochain shift
+- Bouton "Retour à l'accueil" → ferme overlay + recharge `/staff-app`
 
-**Tu valides ce plan et je commence par le sous-tour 1 ?** (migrations + card employé + onglet Pointage)
+## 4. Branchement dans `staff-app.tsx`
+
+- Remplacer le bouton qui ouvre `EndShiftSheet` par celui qui ouvre `ClosureFlow`
+- Logique d'affichage du bouton "Terminer mon shift" :
+  - `clocked_in_at != null` ET `clocked_out_at == null`
+  - `now() >= shift.end_time - studio.clock_out_button_appears_before_min`
+- Sinon countdown live "Tu pourras clôturer dans X min"
+- Charger `studio.clock_out_button_appears_before_min` (déjà dans le studio query, sinon ajouter au select)
+
+## 5. Page admin `/staff/$id`
+
+Ajouter section "Dernier shift clôturé" (lecture seule, mêmes infos que step 6). Requête : dernier shift `status='completed'` de l'employé + ses submissions/responses.
+
+## 6. À NE PAS faire
+
+- Pas de vraie IA Vision (placeholder 2s, TODO commenté)
+- Pas de toucher au scoring runtime (`scoring.functions.ts`)
+- Pas de modif de `/cloture` ni d'`AppSidebar`
+- Pas de cumul mensuel / heures semaine / Dimona sur écran final
+- Garder `EndShiftSheet` en place mais ne plus l'appeler
+
+---
+
+**Taille estimée** : ~1500 lignes nouvelles (ClosureFlow ~900, server ~250, migration ~30, integration staff-app ~50, profil admin ~80, helpers ~50, package add). 1 migration + 1 npm package.
+
+OK pour partir là-dessus ?

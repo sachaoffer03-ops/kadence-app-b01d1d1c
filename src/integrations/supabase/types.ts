@@ -1191,6 +1191,7 @@ export type Database = {
           clocked_in_at: string | null
           clocked_out_at: string | null
           created_at: string
+          dimona_status: string | null
           end_time: string
           id: string
           is_locked: boolean
@@ -1210,6 +1211,7 @@ export type Database = {
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
+          dimona_status?: string | null
           end_time: string
           id?: string
           is_locked?: boolean
@@ -1229,6 +1231,7 @@ export type Database = {
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
+          dimona_status?: string | null
           end_time?: string
           id?: string
           is_locked?: boolean
@@ -1451,6 +1454,8 @@ export type Database = {
           has_kitchen: boolean
           id: string
           internal_notes: string | null
+          lat: number | null
+          lng: number | null
           manager_id: string | null
           manager_name: string | null
           name: string
@@ -1482,6 +1487,8 @@ export type Database = {
           has_kitchen?: boolean
           id?: string
           internal_notes?: string | null
+          lat?: number | null
+          lng?: number | null
           manager_id?: string | null
           manager_name?: string | null
           name: string
@@ -1513,6 +1520,8 @@ export type Database = {
           has_kitchen?: boolean
           id?: string
           internal_notes?: string | null
+          lat?: number | null
+          lng?: number | null
           manager_id?: string | null
           manager_name?: string | null
           name?: string
