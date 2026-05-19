@@ -1405,7 +1405,10 @@ function PlanningCalendar({
               const d = weekDays[dayIdx];
               const isToday = dayIdx === todayIdx;
               const dayShifts = studioShifts.filter((s) => s.day === dayIdx);
-              const totalMin = dayShifts.reduce(
+              // Compteur = nb total de shifts du jour (tous studios sélectionnés, trous inclus)
+              // Heures cumulées = somme des heures des employés assignés (hors trous)
+              const assignedShifts = dayShifts.filter((s) => !s.hole);
+              const totalMin = assignedShifts.reduce(
                 (sum, s) => sum + Math.max(0, minOf(s.endTime) - minOf(s.startTime)),
                 0,
               );
