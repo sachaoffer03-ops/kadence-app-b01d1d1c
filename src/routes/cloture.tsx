@@ -371,15 +371,16 @@ function ChecklistsSection({ studioId }: { studioId: string }) {
             <button
               key={r.id}
               onClick={() => setActiveRoleId(r.id)}
-              className="rounded-md px-3 py-1.5 flex items-center gap-2 transition-colors"
+              className="rounded-md px-3 py-1.5 flex items-center gap-2 transition-all"
               style={{
                 fontSize: 12, fontWeight: 500,
-                backgroundColor: isActive ? "var(--foreground)" : st.bg,
-                color: isActive ? "var(--background)" : st.text,
-                border: "1px solid transparent",
+                backgroundColor: isActive ? st.bg : "transparent",
+                color: isActive ? st.text : "var(--muted-foreground)",
+                border: `1px solid ${isActive ? st.dot : "var(--border)"}`,
+                boxShadow: isActive ? `inset 0 0 0 1px ${st.dot}` : "none",
               }}
             >
-              <span style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: isActive ? st.dot : st.dot }} />
+              <span style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: st.dot }} />
               {r.name}
             </button>
           );
