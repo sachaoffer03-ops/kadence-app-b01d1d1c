@@ -1,27 +1,34 @@
-import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
+import { X, Send, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Dropdown } from "@/components/Dropdown";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
+import { getRoleStyle, fullName } from "@/lib/staff-helpers";
+import { getEligibleEmployeesForShift, type EligibleEmployee } from "@/lib/shift-eligibility.functions";
+import { sendProposals } from "@/lib/proposals.functions";
 
 interface Studio { id: string; name: string }
-interface Employee { id: string; first_name: string; last_name: string; studio_id: string | null }
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  defaultUserId?: string;
   onCreated?: () => void;
 }
 
-export function CreateShiftModal({ open, onClose, defaultUserId, onCreated }: Props) {
+type Step = "form" | "recipients";
+
+export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const { names: BUSINESS_ROLES } = useBusinessRoles({ onlyActive: true });
+  const eligibilityFn = useServerFn(getEligibleEmployeesForShift);
+  const sendFn = useServerFn(sendProposals);
+
   const [studios, setStudios] = useState<Studio[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [step, setStep] = useState<Step>("form");
   const [submitting, setSubmitting] = useState(false);
 
-  const [userId, setUserId] = useState(defaultUserId || "");
+  // form state
   const [studioId, setStudioId] = useState("");
   const [role, setRole] = useState<string>("Barista");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -31,28 +38,40 @@ export function CreateShiftModal({ open, onClose, defaultUserId, onCreated }: Pr
   const [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly" | "monthly">("none");
   const [until, setUntil] = useState("");
 
+  // step 2 state
+  const [shiftId, setShiftId] = useState<string | null>(null);
+  const [createdCount, setCreatedCount] = useState(0);
+  const [loadingElig, setLoadingElig] = useState(false);
+  const [eligible, setEligible] = useState<EligibleEmployee[]>([]);
+  const [partial, setPartial] = useState<EligibleEmployee[]>([]);
+  const [showPartial, setShowPartial] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     if (!open) return;
-    setUserId(defaultUserId || "");
-    Promise.all([
-      supabase.from("studios").select("id, name"),
-      supabase.from("profiles").select("id, first_name, last_name, studio_id").order("first_name"),
-    ]).then(([s, e]) => {
-      if (s.data) {
-        setStudios(s.data);
-        if (s.data.length && !studioId) setStudioId(s.data[0].id);
+    supabase.from("studios").select("id, name").then(({ data }) => {
+      if (data) {
+        setStudios(data);
+        if (data.length && !studioId) setStudioId(data[0].id);
       }
-      if (e.data) setEmployees(e.data);
     });
-  }, [open, defaultUserId]);
+  }, [open]);
 
-  const reset = () => {
-    setNotes("");
-    setStartTime("10:00"); setEndTime("15:00");
+  const resetAll = () => {
+    setStep("form");
+    setNotes(""); setStartTime("10:00"); setEndTime("15:00");
     setRecurrence("none"); setUntil("");
+    setShiftId(null); setCreatedCount(0);
+    setEligible([]); setPartial([]); setSelected(new Set()); setShowPartial(false);
   };
 
-  const handleClose = () => { reset(); onClose(); };
+  const handleClose = () => {
+    if (step === "recipients" && shiftId && selected.size === 0) {
+      toast("Shift créé comme trou", { description: "Tu peux le traiter dans l'écran Trous." });
+    }
+    resetAll();
+    onClose();
+  };
 
   const buildDates = (): string[] => {
     const start = new Date(date + "T00:00:00");
@@ -71,33 +90,83 @@ export function CreateShiftModal({ open, onClose, defaultUserId, onCreated }: Pr
     return out;
   };
 
-  const submit = async (e: React.FormEvent) => {
+  const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId) return toast.error("Sélectionnez un employé");
     if (endTime <= startTime) return toast.error("L'heure de fin doit être après le début");
     if (recurrence !== "none" && !until) return toast.error("Indiquez une date de fin de répétition");
 
     const dates = buildDates();
     setSubmitting(true);
-    const { error } = await supabase.from("shifts").insert(
-      dates.map((d) => ({
-        user_id: userId,
-        studio_id: studioId || null,
-        business_role: role,
-        shift_date: d,
-        start_time: startTime,
-        end_time: endTime,
-        notes: notes || null,
-      }))
-    );
-    setSubmitting(false);
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("shifts")
+      .insert(
+        dates.map((d) => ({
+          user_id: null,
+          studio_id: studioId || null,
+          business_role: role,
+          shift_date: d,
+          start_time: startTime,
+          end_time: endTime,
+          notes: notes || null,
+          is_manual: true,
+          is_locked: false,
+          status: "scheduled",
+          published_at: nowIso,
+        })),
+      )
+      .select("id, shift_date")
+      .order("shift_date", { ascending: true });
 
-    if (error) return toast.error(error.message);
-    toast.success(dates.length > 1 ? `${dates.length} shifts créés` : "Shift créé");
+    if (error || !data || data.length === 0) {
+      setSubmitting(false);
+      return toast.error(error?.message || "Erreur création");
+    }
+
+    const firstId = data[0].id;
+    setShiftId(firstId);
+    setCreatedCount(data.length);
     onCreated?.();
-    handleClose();
+    setStep("recipients");
+
+    // charge l'éligibilité pour le premier shift
+    setLoadingElig(true);
+    try {
+      const r = await eligibilityFn({ data: { shiftId: firstId } });
+      setEligible(r.eligible);
+      setPartial(r.partial);
+    } catch (err: any) {
+      toast.error(err.message || "Erreur calcul éligibilité");
+    } finally {
+      setLoadingElig(false);
+      setSubmitting(false);
+    }
   };
 
+  const toggle = (uid: string, disabled: boolean) => {
+    if (disabled) return;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  };
+
+  const sendNow = async () => {
+    if (!shiftId || selected.size === 0) return;
+    setSubmitting(true);
+    try {
+      await sendFn({ data: { shiftId, userIds: Array.from(selected) } });
+      toast.success(`Proposition envoyée à ${selected.size} employé${selected.size > 1 ? "s" : ""}`);
+      resetAll();
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || "Erreur envoi");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -113,119 +182,273 @@ export function CreateShiftModal({ open, onClose, defaultUserId, onCreated }: Pr
     border: active ? "none" : "0.5px solid var(--border)",
   });
 
+  const studioName = studios.find((s) => s.id === studioId)?.name || "—";
+  const dateLabel = new Date(date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const roleStyle = getRoleStyle(role);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} onClick={handleClose}>
-      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }} onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "var(--border)" }}>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 500 }}>Créer un shift</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 500 }}>
+              {step === "form" ? "Créer un shift" : "Choisir les destinataires"}
+            </h2>
             <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
-              Visible immédiatement par l'employé dans son app
+              {step === "form"
+                ? "Étape 1 / 2 — définir le besoin"
+                : "Étape 2 / 2 — proposer à un ou plusieurs employés"}
             </p>
           </div>
           <button onClick={handleClose} className="p-1 rounded hover:bg-[var(--muted)]"><X size={18} /></button>
         </div>
 
-        <form onSubmit={submit} className="p-5 space-y-4">
-          {!defaultUserId && (() => {
-            const empLabel = (e: Employee) => `${e.first_name} ${e.last_name}`;
-            const labels = employees.map(empLabel);
-            const selected = employees.find(e => e.id === userId);
-            return (
-              <div>
-                <label style={labelStyle}>Employé *</label>
-                <div className="mt-1">
-                  <Dropdown
-                    fullWidth
-                    placeholder="Sélectionner un employé..."
-                    value={selected ? empLabel(selected) : ""}
-                    options={labels}
-                    onChange={(label) => {
-                      const emp = employees.find(e => empLabel(e) === label);
-                      if (emp) setUserId(emp.id);
-                    }}
-                  />
+        {step === "form" && (
+          <form onSubmit={submitForm} className="p-5 space-y-4">
+            <div>
+              <label style={labelStyle}>Studio</label>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {studios.map((s) => (
+                  <button key={s.id} type="button" onClick={() => setStudioId(s.id)}
+                    className="rounded-full px-2.5 py-1 transition-colors" style={chip(studioId === s.id)}>
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Poste *</label>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {BUSINESS_ROLES.map((r) => (
+                  <button key={r} type="button" onClick={() => setRole(r)}
+                    className="rounded-full px-2.5 py-1 transition-colors" style={chip(role === r)}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div><label style={labelStyle}>Date *</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} required /></div>
+              <div><label style={labelStyle}>Début *</label>
+                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} required /></div>
+              <div><label style={labelStyle}>Fin *</label>
+                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} style={inputStyle} required /></div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Répétition</label>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {([
+                  { v: "none", label: "Jamais" },
+                  { v: "weekly", label: "Chaque semaine" },
+                  { v: "biweekly", label: "Toutes les 2 semaines" },
+                  { v: "monthly", label: "Chaque mois" },
+                ] as const).map((opt) => (
+                  <button key={opt.v} type="button" onClick={() => setRecurrence(opt.v)}
+                    className="rounded-full px-2.5 py-1 transition-colors" style={chip(recurrence === opt.v)}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {recurrence !== "none" && (
+                <div className="mt-3">
+                  <label style={labelStyle}>Jusqu'au *</label>
+                  <input type="date" value={until} min={date} onChange={(e) => setUntil(e.target.value)}
+                    className={inputCls} style={inputStyle} required />
                 </div>
+              )}
+            </div>
+
+            <div>
+              <label style={labelStyle}>Note (optionnel)</label>
+              <input value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} style={inputStyle} placeholder="Briefing, info particulière..." />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={handleClose} className="rounded-md border px-4 py-2"
+                style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)" }}>Annuler</button>
+              <button type="submit" disabled={submitting} className="rounded-md px-4 py-2 disabled:opacity-50"
+                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+                {submitting ? "Création..." : "Suivant : choisir les destinataires"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === "recipients" && (
+          <div className="p-5 space-y-4">
+            {/* Récap */}
+            <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: roleStyle.bg, color: roleStyle.text }}>
+                  {role}
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" }}>{dateLabel}</span>
+                <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+                  · {startTime} — {endTime} · {studioName}
+                </span>
               </div>
-            );
-          })()}
-
-
-          <div>
-            <label style={labelStyle}>Studio</label>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {studios.map((s) => (
-                <button key={s.id} type="button" onClick={() => setStudioId(s.id)}
-                  className="rounded-full px-2.5 py-1 transition-colors" style={chip(studioId === s.id)}>
-                  {s.name}
-                </button>
-              ))}
+              {createdCount > 1 && (
+                <div className="mt-2 rounded-md px-2.5 py-1.5 flex items-center gap-1.5"
+                  style={{ fontSize: 11, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
+                  <AlertTriangle size={12} />
+                  {createdCount - 1} shifts récurrents créés en plus. À traiter dans <Link to="/trous" style={{ textDecoration: "underline" }}>/trous</Link>.
+                </div>
+              )}
             </div>
-          </div>
 
-          <div>
-            <label style={labelStyle}>Poste *</label>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {BUSINESS_ROLES.map((r) => (
-                <button key={r} type="button" onClick={() => setRole(r)}
-                  className="rounded-full px-2.5 py-1 transition-colors" style={chip(role === r)}>
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div><label style={labelStyle}>Date *</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} required /></div>
-            <div><label style={labelStyle}>Début *</label>
-              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} required /></div>
-            <div><label style={labelStyle}>Fin *</label>
-              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} style={inputStyle} required /></div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Répétition</label>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {([
-                { v: "none", label: "Jamais" },
-                { v: "weekly", label: "Chaque semaine" },
-                { v: "biweekly", label: "Toutes les 2 semaines" },
-                { v: "monthly", label: "Chaque mois" },
-              ] as const).map((opt) => (
-                <button key={opt.v} type="button" onClick={() => setRecurrence(opt.v)}
-                  className="rounded-full px-2.5 py-1 transition-colors" style={chip(recurrence === opt.v)}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            {recurrence !== "none" && (
-              <div className="mt-3">
-                <label style={labelStyle}>Jusqu'au *</label>
-                <input type="date" value={until} min={date} onChange={(e) => setUntil(e.target.value)}
-                  className={inputCls} style={inputStyle} required />
-                <p style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
-                  Le shift sera dupliqué automatiquement jusqu'à cette date.
-                </p>
+            {loadingElig ? (
+              <div className="py-8 text-center" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+                Calcul de l'éligibilité…
               </div>
+            ) : (
+              <>
+                <Section
+                  title={`Éligibles (${eligible.length}) — triés par score`}
+                  rows={eligible}
+                  selected={selected}
+                  onToggle={toggle}
+                  shiftRole={role}
+                />
+
+                {partial.length > 0 && (
+                  <div>
+                    <button type="button" onClick={() => setShowPartial((v) => !v)}
+                      className="flex items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors hover:bg-[var(--muted)]"
+                      style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>
+                      {showPartial ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      {showPartial ? "Cacher" : "Voir aussi"} {partial.length} non éligible{partial.length > 1 ? "s" : ""}
+                    </button>
+                    {showPartial && (
+                      <div className="mt-2">
+                        <Section
+                          title=""
+                          rows={partial}
+                          selected={selected}
+                          onToggle={toggle}
+                          shiftRole={role}
+                          showReasons
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
-          </div>
 
-          <div>
-            <label style={labelStyle}>Note (optionnel)</label>
-            <input value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} style={inputStyle} placeholder="Briefing, info particulière..." />
+            <div className="flex justify-between gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+              <button onClick={handleClose} className="rounded-md border px-4 py-2 mt-3"
+                style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)" }}>
+                Fermer sans envoyer
+              </button>
+              <button onClick={sendNow} disabled={selected.size === 0 || submitting}
+                className="rounded-md px-4 py-2 mt-3 flex items-center gap-1.5 disabled:opacity-40"
+                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
+                <Send size={14} />
+                {submitting ? "Envoi…" : `Envoyer la proposition à ${selected.size}`}
+              </button>
+            </div>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
+function Section({ title, rows, selected, onToggle, shiftRole, showReasons }: {
+  title: string;
+  rows: EligibleEmployee[];
+  selected: Set<string>;
+  onToggle: (uid: string, disabled: boolean) => void;
+  shiftRole: string;
+  showReasons?: boolean;
+}) {
+  return (
+    <div>
+      {title && (
+        <div className="mb-2" style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {title}
+        </div>
+      )}
+      {rows.length === 0 ? (
+        <div className="py-4 text-center rounded-md border" style={{ fontSize: 12, color: "var(--muted-foreground)", borderColor: "var(--border)" }}>
+          Personne dans cette liste.
+        </div>
+      ) : (
+        <div className="rounded-md border divide-y" style={{ borderColor: "var(--border)" }}>
+          {rows.map((emp) => (
+            <EmployeeRow key={emp.id} emp={emp} checked={selected.has(emp.id)}
+              onToggle={onToggle} shiftRole={shiftRole} showReasons={showReasons} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={handleClose} className="rounded-md border px-4 py-2"
-              style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)" }}>Annuler</button>
-            <button type="submit" disabled={submitting} className="rounded-md px-4 py-2 disabled:opacity-50"
-              style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
-              {submitting ? "Création..." : "Créer le shift"}
-            </button>
+function EmployeeRow({ emp, checked, onToggle, shiftRole, showReasons }: {
+  emp: EligibleEmployee;
+  checked: boolean;
+  onToggle: (uid: string, disabled: boolean) => void;
+  shiftRole: string;
+  showReasons?: boolean;
+}) {
+  const disabled = emp.pending_proposal;
+  const reasons = useMemo(() => emp.reasons, [emp.reasons]);
+
+  return (
+    <div className="flex items-start gap-3 p-3" style={{ backgroundColor: disabled ? "var(--muted)" : "transparent" }}>
+      <input type="checkbox" checked={checked} disabled={disabled}
+        onChange={() => onToggle(emp.id, disabled)}
+        className="mt-1 cursor-pointer disabled:cursor-not-allowed" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link to="/staff/$id" params={{ id: emp.id }}
+            style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)", textDecoration: "underline", textDecorationColor: "transparent" }}
+            onMouseEnter={(e) => (e.currentTarget.style.textDecorationColor = "var(--foreground)")}
+            onMouseLeave={(e) => (e.currentTarget.style.textDecorationColor = "transparent")}>
+            {fullName({ first_name: emp.first_name, last_name: emp.last_name })}
+          </Link>
+          {emp.score !== null && (
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              {emp.score.toFixed(1)}/10
+            </span>
+          )}
+          {disabled && (
+            <span style={{ fontSize: 10, color: "var(--muted-foreground)", fontStyle: "italic" }}>
+              proposition déjà en attente
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 flex-wrap mt-1">
+          {emp.business_roles.map((r) => {
+            const st = getRoleStyle(r);
+            const highlight = r === shiftRole;
+            return (
+              <span key={r} className="rounded-full px-2 py-0.5"
+                style={{
+                  fontSize: 10, fontWeight: highlight ? 600 : 400,
+                  backgroundColor: st.bg, color: st.text,
+                  outline: highlight ? `1.5px solid ${st.dot}` : "none",
+                }}>
+                {r}
+              </span>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap mt-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+          {emp.contracts.length > 0 && <span>{emp.contracts.join(" · ")}</span>}
+          <span>· {emp.weekly_hours}h cette semaine / {emp.max_weekly_hours}h max</span>
+        </div>
+        {showReasons && reasons.length > 0 && (
+          <div className="mt-1.5 flex items-center gap-1" style={{ fontSize: 11, color: "var(--coral-dark)" }}>
+            <AlertTriangle size={11} />
+            {reasons.join(" · ")}
           </div>
-        </form>
+        )}
       </div>
     </div>
   );
