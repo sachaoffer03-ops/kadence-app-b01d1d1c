@@ -466,10 +466,12 @@ function ChecklistEditor({ studioId, roleId, roleName }: { studioId: string; rol
 
   const addItem = async () => {
     const nextIdx = (items[items.length - 1]?.order_index ?? -1) + 1;
-    const { error } = await supabase.from("checklist_template_items").insert({
+    const { data, error } = await supabase.from("checklist_template_items").insert({
       template_id: template.id, label: "Nouveau point", order_index: nextIdx, is_required: true,
-    } as any);
-    if (error) toast.error(error.message); else flashSaved();
+    } as any).select("*").single();
+    if (error) { toast.error(error.message); return; }
+    setItems((prev) => [...prev, data as any]);
+    flashSaved();
   };
 
   const onDragEnd = async (e: DragEndEvent) => {
