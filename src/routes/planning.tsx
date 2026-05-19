@@ -1199,7 +1199,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const HOUR_PX = 56;
 const TIME_COL_PX = 56;
-const ZOOM_KEY = "kadence_planning_zoom";
+const DEFAULT_COL_PX = 180;
+const MIN_COL_PX = 80;
+const MAX_COL_PX = 600;
+const COL_WIDTHS_KEY = "kadence_planning_column_widths";
 
 function minOf(t: string): number {
   const [h, m] = String(t).slice(0, 5).split(":").map(Number);
