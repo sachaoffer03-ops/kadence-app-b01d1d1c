@@ -1221,7 +1221,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // TODO drag&drop: réactiver le drag&drop @dnd-kit sur les blocs absolute.
 // ────────────────────────────────────────────────────────────
 
-const HOUR_PX = 56;
+const HOUR_PX = 40;
 const TIME_COL_PX = 56;
 const DEFAULT_COL_PX = 180;
 const MIN_COL_PX = 80;
