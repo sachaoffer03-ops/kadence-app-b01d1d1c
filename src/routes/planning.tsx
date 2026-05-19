@@ -451,7 +451,7 @@ function PlanningCalendarPage() {
   const { employees } = useEmployees();
   const now = new Date();
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
-  const [selectedStudio, setSelectedStudio] = useState<Studio>("");
+  const [selectedStudios, setSelectedStudios] = useState<Set<Studio>>(new Set());
   const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
   const [selectedShift, setSelectedShift] = useState<PlanningShift | null>(null);
   const [holeShift, setHoleShift] = useState<PlanningShift | null>(null);
