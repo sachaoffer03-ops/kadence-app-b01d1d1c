@@ -6,7 +6,7 @@ import {
   AlertTriangle,
   FileEdit,
   Clock,
-  ClipboardCheck,
+  DoorClosed,
   MessageSquare,
   PackageSearch,
   GraduationCap,
