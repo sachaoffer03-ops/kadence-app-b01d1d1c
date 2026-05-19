@@ -708,11 +708,12 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
         onEndShift={() => { if (shiftDetail) { const s = shiftDetail; setShiftDetail(null); handleEndShift(s); } }}
         onRequestModif={() => { if (shiftDetail) { setReqShiftId(shiftDetail.id); setShiftDetail(null); setReqOpen(true); } }}
       />
-      <EndShiftSheet
+      <ClosureFlow
         open={!!endShift}
         onClose={() => setEndShift(null)}
         shift={endShift}
         userId={userId}
+        studios={studios}
         onCompleted={() => {
           if (!endShift) return;
           const completedAt = new Date().toISOString();
