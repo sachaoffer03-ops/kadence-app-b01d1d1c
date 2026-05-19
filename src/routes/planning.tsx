@@ -451,7 +451,7 @@ function PlanningCalendarPage() {
   const { employees } = useEmployees();
   const now = new Date();
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
-  const [selectedStudio, setSelectedStudio] = useState<Studio>("");
+  const [selectedStudios, setSelectedStudios] = useState<Set<Studio>>(new Set());
   const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
   const [selectedShift, setSelectedShift] = useState<PlanningShift | null>(null);
   const [holeShift, setHoleShift] = useState<PlanningShift | null>(null);
@@ -463,10 +463,29 @@ function PlanningCalendarPage() {
   const [studioMap, setStudioMap] = useState<Map<string, string>>(new Map());
   // Liste de noms de studios chargée depuis la DB (remplace l'ancien tableau hardcodé).
   const studios = useMemo<Studio[]>(() => Array.from(studioMap.values()), [studioMap]);
-  // Sélection automatique du premier studio dès que la liste est chargée.
+  // Sélection automatique de tous les studios dès que la liste est chargée.
   useEffect(() => {
-    if (!selectedStudio && studios.length > 0) setSelectedStudio(studios[0]);
-  }, [studios, selectedStudio]);
+    if (selectedStudios.size === 0 && studios.length > 0) {
+      setSelectedStudios(new Set(studios));
+    }
+  }, [studios, selectedStudios]);
+  // Studio "primaire" (premier sélectionné) pour les modals/création de shift
+  const selectedStudio: Studio = useMemo(
+    () => (selectedStudios.size > 0 ? Array.from(selectedStudios)[0] : studios[0] ?? ""),
+    [selectedStudios, studios],
+  );
+  const toggleStudio = (s: Studio) => {
+    setSelectedStudios((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) {
+        if (next.size === 1) return prev; // garder au moins un studio actif
+        next.delete(s);
+      } else {
+        next.add(s);
+      }
+      return next;
+    });
+  };
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = () => setRefreshKey((k) => k + 1);
 
@@ -562,7 +581,7 @@ function PlanningCalendarPage() {
     return weekDays.findIndex((d) => d.toDateString() === today.toDateString());
   }, [weekDays]);
 
-  const studioShifts = useMemo(() => shifts.filter((s) => s.studio === selectedStudio), [shifts, selectedStudio]);
+  const studioShifts = useMemo(() => shifts.filter((s) => selectedStudios.has(s.studio)), [shifts, selectedStudios]);
   const realShifts = studioShifts.filter((s) => !s.hole);
   const holes = studioShifts.filter((s) => s.hole);
   const roleTotals = roles.map((r) => ({ role: r, count: realShifts.filter((s) => s.role === r).length }));
@@ -840,11 +859,12 @@ function PlanningCalendarPage() {
         {/* Studio toggle */}
         <div className="flex rounded-full p-1" style={{ backgroundColor: "var(--muted)" }}>
           {studios.map((s) => {
-            const active = selectedStudio === s;
+            const active = selectedStudios.has(s);
             return (
               <button
                 key={s}
-                onClick={() => setSelectedStudio(s)}
+                onClick={() => toggleStudio(s)}
+                title={active ? "Cliquer pour masquer ce studio" : "Cliquer pour afficher ce studio"}
                 className="rounded-full px-5 py-1.5 transition-colors"
                 style={{
                   fontSize: 12,
@@ -985,7 +1005,11 @@ function PlanningCalendarPage() {
         style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
       >
         <div className="flex items-center gap-3" style={{ fontSize: 12 }}>
-          <span style={{ fontWeight: 500 }}>Semaine {selectedStudio.replace("Skult ", "")}</span>
+          <span style={{ fontWeight: 500 }}>
+            Semaine {selectedStudios.size === studios.length
+              ? "tous studios"
+              : Array.from(selectedStudios).map((s) => s.replace("Skult ", "")).join(" + ")}
+          </span>
           <span style={{ color: "var(--muted-foreground)" }}>·</span>
           <span style={{ color: "var(--muted-foreground)" }}>{realShifts.length} shifts planifiés</span>
           {holes.length > 0 && (
@@ -1381,7 +1405,10 @@ function PlanningCalendar({
               const d = weekDays[dayIdx];
               const isToday = dayIdx === todayIdx;
               const dayShifts = studioShifts.filter((s) => s.day === dayIdx);
-              const totalMin = dayShifts.reduce(
+              // Compteur = nb total de shifts du jour (tous studios sélectionnés, trous inclus)
+              // Heures cumulées = somme des heures des employés assignés (hors trous)
+              const assignedShifts = dayShifts.filter((s) => !s.hole);
+              const totalMin = assignedShifts.reduce(
                 (sum, s) => sum + Math.max(0, minOf(s.endTime) - minOf(s.startTime)),
                 0,
               );
