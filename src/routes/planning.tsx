@@ -977,17 +977,7 @@ function PlanningCalendarPage() {
       </div>
 
       {/* Modals */}
-      {selectedShift && (
-        <ShiftDetailModal
-          shift={selectedShift}
-          employee={employees.find((e) => e.id === selectedShift.employeeId)}
-          onClose={() => setSelectedShift(null)}
-          onDelete={() => handleDeleteShift(selectedShift.id)}
-          onConfirm={() => handleConfirmShift(selectedShift.id)}
-          onUnlock={() => { handleUnlockShift(selectedShift.id); setSelectedShift(null); }}
-          onEdit={() => { setEditShift(selectedShift); setSelectedShift(null); }}
-        />
-      )}
+
       {editShift && (
         <EditShiftModal
           shift={{
