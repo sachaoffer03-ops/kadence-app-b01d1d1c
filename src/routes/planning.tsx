@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
-  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit
+  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit, UserPlus, Pencil
 } from "lucide-react";
 import { toast } from "sonner";
 import { roleColors, type Role, type Studio } from "@/lib/role-colors";
@@ -13,6 +13,9 @@ import { createShift, updateShift, deleteShift as deleteShiftFn, publishPlanning
 import { useBusinessRoles } from "@/hooks/use-business-roles";
 import { useEmployees, type EmployeeLite } from "@/hooks/use-employees";
 import { EditShiftModal } from "@/components/EditShiftModal";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
+import { getRoleStyle } from "@/lib/staff-helpers";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
