@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
-  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit
+  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit, UserPlus, Pencil
 } from "lucide-react";
 import { toast } from "sonner";
 import { roleColors, type Role, type Studio } from "@/lib/role-colors";
@@ -13,6 +13,9 @@ import { createShift, updateShift, deleteShift as deleteShiftFn, publishPlanning
 import { useBusinessRoles } from "@/hooks/use-business-roles";
 import { useEmployees, type EmployeeLite } from "@/hooks/use-employees";
 import { EditShiftModal } from "@/components/EditShiftModal";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
+import { getRoleStyle } from "@/lib/staff-helpers";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
@@ -919,222 +922,18 @@ function PlanningCalendarPage() {
         </div>
       )}
 
-      {/* Planning matriciel : lignes = rôles, colonnes = jours */}
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
-        {(() => {
-          const toMin = (t: string) => {
-            const [h, m] = String(t).slice(0, 5).split(":").map(Number);
-            return h * 60 + m;
-          };
-          const durationLabel = (shift: PlanningShift) => {
-            const mins = Math.max(0, toMin(shift.endTime) - toMin(shift.startTime));
-            const h = Math.floor(mins / 60);
-            const m = mins % 60;
-            if (h && m) return `${h}h${String(m).padStart(2, "0")}`;
-            if (h) return `${h}h`;
-            return `${m}min`;
-          };
+      {/* Zoom slider (vue calendrier) */}
+      <PlanningCalendar
+        weekDays={weekDays}
+        visibleDayIndices={visibleDayIndices}
+        todayIdx={todayIdx}
+        studioShifts={studioShifts}
+        viewMode={viewMode}
+        onEdit={(s) => setEditShift(s)}
+        onReassign={(s) => setHoleShift(s)}
+        onDelete={(s) => handleDeleteShift(s.id)}
+      />
 
-          // Lignes = rôles présents pour ce studio (intersection roles actifs ∩ shifts visibles)
-          const presentRoles = new Set(studioShifts.map((s) => s.role));
-          const orderedRoles = roles.filter((r) => presentRoles.has(r));
-          // Si aucun shift, on garde tous les rôles actifs pour ne pas afficher une grille vide.
-          const rowRoles = orderedRoles.length > 0 ? orderedRoles : roles;
-
-          const dayCols = visibleDayIndices.length;
-          const gridTemplateColumns = `140px repeat(${dayCols}, minmax(160px, 1fr))`;
-
-          return (
-            <div style={{ overflowX: "auto" }}>
-              <div className="grid" style={{ gridTemplateColumns, minWidth: 140 + dayCols * 160 }}>
-                {/* En-tête : coin + jours */}
-                <div style={{ borderBottom: "0.5px solid var(--border)", borderRight: "0.5px solid var(--border)", padding: "10px 12px", backgroundColor: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>
-                  Poste
-                </div>
-                {visibleDayIndices.map((dayIdx) => {
-                  const d = weekDays[dayIdx];
-                  const isToday = dayIdx === todayIdx;
-                  const dayShifts = studioShifts.filter((s) => s.day === dayIdx);
-                  const totalMin = dayShifts.reduce((sum, s) => sum + Math.max(0, toMin(s.endTime) - toMin(s.startTime)), 0);
-                  const totalH = Math.round((totalMin / 60) * 10) / 10;
-                  return (
-                    <div key={dayIdx} style={{
-                      borderBottom: "0.5px solid var(--border)",
-                      borderRight: "0.5px solid var(--border)",
-                      padding: "10px 12px",
-                      backgroundColor: isToday ? "var(--coral-light)" : "var(--muted)",
-                    }}>
-                      <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                        {dayNamesShort[d.getDay()]}
-                      </div>
-                      <div className="flex items-center gap-1.5" style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>
-                        {d.getDate()} {monthNames[d.getMonth()].slice(0, 3).toLowerCase()}
-                        {isToday && <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />}
-                      </div>
-                      <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>
-                        {dayShifts.length} shift{dayShifts.length > 1 ? "s" : ""} · {totalH}h
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Lignes par rôle */}
-                {rowRoles.map((role, rowIdx) => {
-                  const rc = roleColors[role];
-                  return (
-                    <div key={`row-${role}`} className="contents">
-                      {/* Cellule rôle (gauche) */}
-                      <div style={{
-                        borderRight: "0.5px solid var(--border)",
-                        borderBottom: rowIdx === rowRoles.length - 1 ? "none" : "0.5px solid var(--border)",
-                        padding: "12px",
-                        backgroundColor: "var(--background)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                      }}>
-                        <span className="rounded-full" style={{ width: 10, height: 10, backgroundColor: rc.dot, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, fontWeight: 500 }}>{role}</span>
-                      </div>
-
-                      {/* Cellules jour x rôle */}
-                      {visibleDayIndices.map((dayIdx) => {
-                        const cellShifts = studioShifts
-                          .filter((s) => s.day === dayIdx && s.role === role)
-                          .sort((a, b) => {
-                            const s = String(a.startTime).localeCompare(String(b.startTime));
-                            return s || String(a.endTime).localeCompare(String(b.endTime));
-                          });
-                        const isToday = dayIdx === todayIdx;
-                        return (
-                          <div
-                            key={`${role}-${dayIdx}`}
-                            style={{
-                              borderRight: "0.5px solid var(--border)",
-                              borderBottom: rowIdx === rowRoles.length - 1 ? "none" : "0.5px solid var(--border)",
-                              padding: 8,
-                              minHeight: 90,
-                              backgroundColor: isToday ? "color-mix(in oklab, var(--coral-light) 35%, transparent)" : "transparent",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 6,
-                            }}
-                            onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).style.outline = "2px dashed var(--coral)"; (e.currentTarget as HTMLElement).style.outlineOffset = "-2px"; }}
-                            onDragLeave={(e) => { (e.currentTarget as HTMLElement).style.outline = "none"; }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              (e.currentTarget as HTMLElement).style.outline = "none";
-                              const sid = e.dataTransfer.getData("text/shift-id");
-                              if (!sid) return;
-                              const orig = studioShifts.find((s) => s.id === sid);
-                              if (!orig) return;
-                              const toMin = (t: string) => {
-                                const [h, m] = String(t).slice(0, 5).split(":").map(Number);
-                                return h * 60 + m;
-                              };
-                              // Détecte un shift cible sous le curseur (style Google Calendar)
-                              const cellEl = e.currentTarget as HTMLElement;
-                              const dropY = e.clientY;
-                              const targets = Array.from(cellEl.querySelectorAll<HTMLElement>("[data-shift-start]"));
-                              let newStartMin: number | null = null;
-                              for (const el of targets) {
-                                if (el.dataset.shiftId === sid) continue;
-                                const r = el.getBoundingClientRect();
-                                if (dropY < r.top - 4 || dropY > r.bottom + 4) continue;
-                                const baseStart = el.dataset.shiftStart!;
-                                const baseMin = toMin(baseStart);
-                                const ratio = (dropY - r.top) / Math.max(1, r.height);
-                                if (ratio < 0.4) {
-                                  newStartMin = baseMin; // superposer (même heure)
-                                } else if (ratio < 0.75) {
-                                  newStartMin = baseMin + 15;
-                                } else {
-                                  newStartMin = baseMin + 30; // décalé ~30 min
-                                }
-                                break;
-                              }
-                              if (newStartMin === null && targets.length > 0) {
-                                // Drop sous le dernier shift → enchaîner +30 min après son début
-                                const last = targets[targets.length - 1];
-                                const lastRect = last.getBoundingClientRect();
-                                if (dropY > lastRect.bottom) {
-                                  newStartMin = toMin(last.dataset.shiftStart!) + 30;
-                                }
-                              }
-                              if (newStartMin !== null) {
-                                handleMoveShiftPrecise(sid, dayIdx, newStartMin);
-                              } else {
-                                handleMoveShift(sid, dayIdx, orig.slot ?? 0);
-                              }
-                            }}
-                          >
-                            {cellShifts.length === 0 ? (
-                              <div style={{ fontSize: 10, color: "var(--muted-foreground)", textAlign: "center", padding: "16px 0", opacity: 0.5 }}>—</div>
-                            ) : cellShifts.map((shift) => {
-                              const startLabel = shift.startHour.replace("h00", "h");
-                              const endLabel = shift.endHour.replace("h00", "h");
-                              const baseStyle = {
-                                width: "100%",
-                                borderRadius: 6,
-                                padding: "6px 8px",
-                                textAlign: "left" as const,
-                                border: shift.conflict ? "1px solid var(--danger-text)" : shift.isDraft ? "1px dashed var(--muted-foreground)" : "0.5px solid var(--border)",
-                                cursor: shift.hole ? "pointer" : "grab",
-                              };
-
-                              if (shift.hole) {
-                                return (
-                                  <button
-                                    key={shift.id}
-                                    onClick={() => setHoleShift(shift)}
-                                    className="transition-opacity"
-                                    style={{ ...baseStyle, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}
-                                  >
-                                    <div style={{ fontSize: 12, fontWeight: 500 }}>{startLabel}–{endLabel}</div>
-                                    <div style={{ fontSize: 10, marginTop: 2 }}>Libre · {durationLabel(shift)}</div>
-                                  </button>
-                                );
-                              }
-
-                              return (
-                                <button
-                                  key={shift.id}
-                                  onClick={() => setSelectedShift(shift)}
-                                  draggable
-                                  data-shift-id={shift.id}
-                                  data-shift-start={shift.startTime}
-                                  onDragStart={(e) => { e.dataTransfer.setData("text/shift-id", shift.id); e.dataTransfer.effectAllowed = "move"; }}
-                                  className="transition-opacity"
-                                  style={{ ...baseStyle, backgroundColor: rc.bg, color: rc.text, opacity: shift.isDraft ? 0.78 : 1 }}
-                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = shift.isDraft ? "0.9" : "0.86"; }}
-                                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = shift.isDraft ? "0.78" : "1"; }}
-                                >
-                                  <div className="flex items-center justify-between gap-1" style={{ fontSize: 12, fontWeight: 500 }}>
-                                    <span>{startLabel}–{endLabel}</span>
-                                    <span style={{ fontSize: 10, opacity: 0.85 }}>{durationLabel(shift)}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1" style={{ fontSize: 11, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {shift.isLocked && <Lock size={10} style={{ flexShrink: 0 }} />}
-                                    {shift.conflict && <AlertTriangle size={10} style={{ color: "var(--danger-text)", flexShrink: 0 }} />}
-                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{shift.name || "Sans employé"}</span>
-                                  </div>
-                                  {shift.isDraft && (
-                                    <div style={{ fontSize: 9, marginTop: 3, opacity: 0.85 }}>Brouillon</div>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-      </div>
 
       {/* Footer summary */}
       <div
@@ -1178,17 +977,7 @@ function PlanningCalendarPage() {
       </div>
 
       {/* Modals */}
-      {selectedShift && (
-        <ShiftDetailModal
-          shift={selectedShift}
-          employee={employees.find((e) => e.id === selectedShift.employeeId)}
-          onClose={() => setSelectedShift(null)}
-          onDelete={() => handleDeleteShift(selectedShift.id)}
-          onConfirm={() => handleConfirmShift(selectedShift.id)}
-          onUnlock={() => { handleUnlockShift(selectedShift.id); setSelectedShift(null); }}
-          onEdit={() => { setEditShift(selectedShift); setSelectedShift(null); }}
-        />
-      )}
+
       {editShift && (
         <EditShiftModal
           shift={{
@@ -1354,5 +1143,490 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <div style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{label}</div>
       {children}
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// PlanningCalendar — vue "Google Calendar"
+// Axe Y = heures, axe X = jours, blocs absolute positionnés.
+// Chevauchements résolus en sous-colonnes par cluster.
+// TODO drag&drop: réactiver le drag&drop @dnd-kit sur les blocs absolute.
+// ────────────────────────────────────────────────────────────
+
+const HOUR_PX = 56;
+const TIME_COL_PX = 56;
+const ZOOM_KEY = "kadence_planning_zoom";
+
+function minOf(t: string): number {
+  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+function fmtHHMM(t: string): string {
+  const s = String(t).slice(0, 5);
+  return s.endsWith(":00") ? `${s.slice(0, 2)}h` : s.replace(":", "h");
+}
+function durLabel(s: PlanningShift): string {
+  const m = Math.max(0, minOf(s.endTime) - minOf(s.startTime));
+  const h = Math.floor(m / 60), r = m % 60;
+  if (h && r) return `${h}h${String(r).padStart(2, "0")}`;
+  if (h) return `${h}h`;
+  return `${r}min`;
+}
+
+interface LaidOut {
+  shift: PlanningShift;
+  col: number;
+  clusterCols: number;
+}
+
+function layoutDay(shifts: PlanningShift[]): LaidOut[] {
+  const sorted = [...shifts].sort(
+    (a, b) =>
+      String(a.startTime).localeCompare(String(b.startTime)) ||
+      String(a.endTime).localeCompare(String(b.endTime)),
+  );
+  const out: LaidOut[] = [];
+  let cluster: LaidOut[] = [];
+  let clusterEnd = -1;
+  const finalize = () => {
+    if (!cluster.length) return;
+    const cols = Math.max(1, ...cluster.map((i) => i.col + 1));
+    for (const it of cluster) it.clusterCols = cols;
+    cluster = [];
+    clusterEnd = -1;
+  };
+  for (const sh of sorted) {
+    const sM = minOf(sh.startTime);
+    const eM = minOf(sh.endTime);
+    if (cluster.length && sM >= clusterEnd) finalize();
+    let col = 0;
+    while (cluster.some((it) => it.col === col && minOf(it.shift.endTime) > sM)) col++;
+    const item: LaidOut = { shift: sh, col, clusterCols: 1 };
+    cluster.push(item);
+    out.push(item);
+    clusterEnd = Math.max(clusterEnd, eM);
+  }
+  finalize();
+  return out;
+}
+
+function PlanningCalendar({
+  weekDays,
+  visibleDayIndices,
+  todayIdx,
+  studioShifts,
+  viewMode,
+  onEdit,
+  onReassign,
+  onDelete,
+}: {
+  weekDays: Date[];
+  visibleDayIndices: number[];
+  todayIdx: number;
+  studioShifts: PlanningShift[];
+  viewMode: ViewMode;
+  onEdit: (s: PlanningShift) => void;
+  onReassign: (s: PlanningShift) => void;
+  onDelete: (s: PlanningShift) => void;
+}) {
+  const [zoom, setZoom] = useState<number>(() => {
+    if (typeof window === "undefined") return 180;
+    const v = Number(window.localStorage.getItem(ZOOM_KEY));
+    return v >= 100 && v <= 400 ? v : 180;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined")
+      window.localStorage.setItem(ZOOM_KEY, String(zoom));
+  }, [zoom]);
+
+  // Plage horaire dynamique : extension si shifts hors 7h-23h
+  const { startHour, endHour } = useMemo(() => {
+    let s = 7, e = 23;
+    for (const sh of studioShifts) {
+      const sm = minOf(sh.startTime), em = minOf(sh.endTime);
+      s = Math.min(s, Math.floor(sm / 60));
+      e = Math.max(e, Math.ceil(em / 60));
+    }
+    return { startHour: Math.max(0, s), endHour: Math.min(24, Math.max(e, s + 1)) };
+  }, [studioShifts]);
+  const totalHours = endHour - startHour;
+  const gridHeight = totalHours * HOUR_PX;
+
+  const shiftsByDay = useMemo(() => {
+    const map = new Map<number, LaidOut[]>();
+    for (const idx of visibleDayIndices) {
+      map.set(idx, layoutDay(studioShifts.filter((s) => s.day === idx)));
+    }
+    return map;
+  }, [studioShifts, visibleDayIndices]);
+
+  const dayWidth = zoom;
+  void viewMode; // réservé pour adaptation mobile future
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Slider de zoom — caché en mobile */}
+      <div className="hidden md:flex items-center gap-3 px-1">
+        <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>Zoom</span>
+        <Slider
+          value={[zoom]}
+          min={100}
+          max={400}
+          step={10}
+          onValueChange={(v) => setZoom(v[0] ?? 180)}
+          className="max-w-[260px]"
+        />
+        <span style={{ fontSize: 11, color: "var(--muted-foreground)", minWidth: 44 }}>{zoom}px</span>
+      </div>
+
+      <div
+        className="rounded-xl border overflow-hidden"
+        style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
+      >
+        <div style={{ overflowX: "auto" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `${TIME_COL_PX}px repeat(${visibleDayIndices.length}, ${dayWidth}px)`,
+              minWidth: TIME_COL_PX + visibleDayIndices.length * dayWidth,
+            }}
+          >
+            <div
+              style={{
+                borderBottom: "0.5px solid var(--border)",
+                borderRight: "0.5px solid var(--border)",
+                backgroundColor: "var(--muted)",
+                height: 56,
+              }}
+            />
+            {visibleDayIndices.map((dayIdx) => {
+              const d = weekDays[dayIdx];
+              const isToday = dayIdx === todayIdx;
+              const dayShifts = studioShifts.filter((s) => s.day === dayIdx);
+              const totalMin = dayShifts.reduce(
+                (sum, s) => sum + Math.max(0, minOf(s.endTime) - minOf(s.startTime)),
+                0,
+              );
+              const totalH = Math.round((totalMin / 60) * 10) / 10;
+              return (
+                <div
+                  key={`h-${dayIdx}`}
+                  style={{
+                    borderBottom: "0.5px solid var(--border)",
+                    borderRight: "0.5px solid var(--border)",
+                    padding: "8px 10px",
+                    backgroundColor: isToday ? "var(--coral-light)" : "var(--muted)",
+                    height: 56,
+                  }}
+                >
+                  <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    {dayNamesShort[d.getDay()]}
+                  </div>
+                  <div className="flex items-center gap-1.5" style={{ fontSize: 13, fontWeight: 500, marginTop: 1 }}>
+                    {d.getDate()} {monthNames[d.getMonth()].slice(0, 3).toLowerCase()}
+                    {isToday && <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />}
+                    <span style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 400, marginLeft: "auto" }}>
+                      {dayShifts.length} · {totalH}h
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div
+              style={{
+                position: "relative",
+                height: gridHeight,
+                borderRight: "0.5px solid var(--border)",
+                backgroundColor: "var(--background)",
+              }}
+            >
+              {Array.from({ length: totalHours }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    top: i * HOUR_PX,
+                    right: 6,
+                    fontSize: 10,
+                    color: "var(--muted-foreground)",
+                    transform: "translateY(-6px)",
+                  }}
+                >
+                  {String(startHour + i).padStart(2, "0")}h
+                </div>
+              ))}
+            </div>
+
+            {visibleDayIndices.map((dayIdx) => {
+              const isToday = dayIdx === todayIdx;
+              const items = shiftsByDay.get(dayIdx) ?? [];
+              return (
+                <div
+                  key={`d-${dayIdx}`}
+                  style={{
+                    position: "relative",
+                    height: gridHeight,
+                    borderRight: "0.5px solid var(--border)",
+                    backgroundColor: isToday
+                      ? "color-mix(in oklab, var(--coral-light) 30%, transparent)"
+                      : "transparent",
+                  }}
+                >
+                  {Array.from({ length: totalHours }).map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        position: "absolute",
+                        top: i * HOUR_PX,
+                        left: 0,
+                        right: 0,
+                        height: 1,
+                        borderTop: "0.5px solid var(--border)",
+                        opacity: 0.6,
+                      }}
+                    />
+                  ))}
+                  {items.map(({ shift, col, clusterCols }) => {
+                    const sM = minOf(shift.startTime);
+                    const eM = minOf(shift.endTime);
+                    const top = ((sM - startHour * 60) / 60) * HOUR_PX;
+                    const height = Math.max(22, ((eM - sM) / 60) * HOUR_PX - 2);
+                    const gap = 3;
+                    const colWidth = (dayWidth - gap * (clusterCols - 1) - 4) / clusterCols;
+                    const left = 2 + col * (colWidth + gap);
+                    return (
+                      <ShiftBlock
+                        key={shift.id}
+                        shift={shift}
+                        top={top}
+                        height={height}
+                        left={left}
+                        width={colWidth}
+                        onEdit={onEdit}
+                        onReassign={onReassign}
+                        onDelete={onDelete}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShiftBlock({
+  shift,
+  top,
+  height,
+  left,
+  width,
+  onEdit,
+  onReassign,
+  onDelete,
+}: {
+  shift: PlanningShift;
+  top: number;
+  height: number;
+  left: number;
+  width: number;
+  onEdit: (s: PlanningShift) => void;
+  onReassign: (s: PlanningShift) => void;
+  onDelete: (s: PlanningShift) => void;
+}) {
+  const style = getRoleStyle(shift.role);
+  const isHole = shift.hole;
+  const bg = isHole ? "var(--coral-light)" : style.bg;
+  const fg = isHole ? "var(--coral-dark)" : style.text;
+  const accent = isHole ? "var(--coral)" : style.dot;
+  const initials = shift.name
+    ? shift.name
+        .split(" ")
+        .map((p) => p[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "··";
+  const compact = height < 44;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          style={{
+            position: "absolute",
+            top,
+            left,
+            width,
+            height,
+            backgroundColor: bg,
+            color: fg,
+            borderLeft: `3px solid ${accent}`,
+            borderRadius: 6,
+            padding: compact ? "2px 6px" : "4px 6px 4px 8px",
+            textAlign: "left",
+            overflow: "hidden",
+            cursor: "pointer",
+            boxShadow: shift.conflict
+              ? "0 0 0 1px var(--danger-text)"
+              : shift.isDraft
+                ? "inset 0 0 0 1px var(--muted-foreground)"
+                : "none",
+            opacity: shift.isDraft ? 0.82 : 1,
+          }}
+        >
+          <div
+            className="flex items-center gap-1"
+            style={{ fontSize: 11, fontWeight: 500, lineHeight: 1.2 }}
+          >
+            {shift.isLocked && <Lock size={9} style={{ flexShrink: 0 }} />}
+            {shift.conflict && (
+              <AlertTriangle size={9} style={{ color: "var(--danger-text)", flexShrink: 0 }} />
+            )}
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {isHole ? "Trou" : shift.name || initials}
+            </span>
+          </div>
+          {!compact && (
+            <>
+              <div style={{ fontSize: 9, opacity: 0.8, marginTop: 1 }}>{shift.role}</div>
+              <div style={{ fontSize: 9, opacity: 0.7, marginTop: 1 }}>
+                {fmtHHMM(shift.startTime)} — {fmtHHMM(shift.endTime)}
+              </div>
+            </>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align="start"
+        collisionPadding={12}
+        style={{
+          width: 280,
+          padding: 0,
+          backgroundColor: "var(--card)",
+          border: "0.5px solid var(--border)",
+        }}
+      >
+        <div className="px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+          {isHole ? (
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Trou — aucun employé assigné</div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{shift.role}</div>
+            </div>
+          ) : (
+            <>
+              <Link
+                to="/staff/$id"
+                params={{ id: shift.employeeId }}
+                style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", textDecoration: "none" }}
+              >
+                {shift.name || "—"}
+              </Link>
+              <div className="mt-1.5">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5"
+                  style={{ fontSize: 10, fontWeight: 500, backgroundColor: style.bg, color: style.text }}
+                >
+                  <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: style.dot }} />
+                  {shift.role}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="px-4 py-3 flex flex-col gap-1.5" style={{ fontSize: 12 }}>
+          <Row label="Début" value={fmtHHMM(shift.startTime)} />
+          <Row label="Fin" value={fmtHHMM(shift.endTime)} />
+          <Row label="Durée" value={durLabel(shift)} />
+          <Row label="Studio" value={shift.studio || "—"} />
+          <div className="flex items-center justify-between">
+            <span style={{ color: "var(--muted-foreground)" }}>Statut</span>
+            <StatusBadge shift={shift} />
+          </div>
+        </div>
+
+        <div className="flex gap-2 px-4 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
+          {isHole ? (
+            <a
+              href={`/trous?shift=${shift.id}`}
+              className="flex-1 rounded-md px-3 py-2 text-center"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                backgroundColor: "var(--coral)",
+                color: "#fff",
+                textDecoration: "none",
+              }}
+            >
+              Envoyer une proposition
+            </a>
+          ) : (
+            <>
+              <button
+                onClick={() => onDelete(shift)}
+                className="rounded-md px-2.5 py-2"
+                style={{ fontSize: 12, border: "0.5px solid var(--border)", color: "var(--danger-text)" }}
+                aria-label="Supprimer"
+                title="Supprimer"
+              >
+                <Trash2 size={13} />
+              </button>
+              <button
+                onClick={() => onReassign(shift)}
+                className="flex-1 rounded-md px-3 py-2 flex items-center justify-center gap-1.5"
+                style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
+              >
+                <UserPlus size={13} /> Réassigner
+              </button>
+              <button
+                onClick={() => onEdit(shift)}
+                className="flex-1 rounded-md px-3 py-2 flex items-center justify-center gap-1.5"
+                style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
+              >
+                <Pencil size={13} /> Modifier
+              </button>
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span style={{ color: "var(--muted-foreground)" }}>{label}</span>
+      <span style={{ fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+}
+
+function StatusBadge({ shift }: { shift: PlanningShift }) {
+  let label = "Confirmé";
+  let bg = "var(--success-bg)", fg = "var(--success-text)";
+  if (shift.isDraft) { label = "Brouillon"; bg = "var(--muted)"; fg = "var(--muted-foreground)"; }
+  else if (shift.confirmation === "en-attente") { label = "En attente"; bg = "var(--warning-bg)"; fg = "var(--warning-text)"; }
+  else if (shift.confirmation === "refusé") { label = "Refusé"; bg = "var(--danger-bg)"; fg = "var(--danger-text)"; }
+  return (
+    <span
+      className="rounded-full px-2 py-0.5"
+      style={{ fontSize: 10, fontWeight: 500, backgroundColor: bg, color: fg }}
+    >
+      {label}
+    </span>
   );
 }
