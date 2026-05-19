@@ -107,6 +107,13 @@ function ClotureePage() {
 
   const flash = useSavedFlash();
 
+  // Notify admin of overdue clock-outs on page load (silent fire-and-forget)
+  const notifyOverdue = useServerFn(notifyOverdueClockOutsFn);
+  useEffect(() => {
+    if (loading || !appRole || (appRole !== "admin" && appRole !== "manager")) return;
+    notifyOverdue({ data: {} }).catch((e) => console.warn("[cloture] notifyOverdue failed", e));
+  }, [loading, appRole, notifyOverdue]);
+
   if (loading || studiosLoading) {
     return <div className="p-6" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement…</div>;
   }
