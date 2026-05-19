@@ -67,12 +67,18 @@ function StaffAppPage() {
           "first_name,last_name,email,phone,birth_date,address,city,contract,studio_id,hire_date,niss,iban,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,nationality,avatar_url,quota_used,quota_max,score,hourly_rate"
         ).eq("id", user.id).maybeSingle(),
         supabase.from("user_business_roles").select("role").eq("user_id", user.id),
-        supabase.from("studios").select("id,name"),
+        supabase.from("studios").select("id,name,clock_out_button_appears_before_min,clock_out_grace_period_min"),
         supabase.rpc("get_default_admin").maybeSingle(),
       ]);
       if (p) setProfile(p as ProfileRow);
       if (br) setBusinessRoles(br.map((r) => r.role as Role));
-      if (st) setStudios(Object.fromEntries(st.map((s) => [s.id, s.name])));
+      if (st) {
+        setStudios(Object.fromEntries(st.map((s: any) => [s.id, s.name])));
+        setStudioClockOut(Object.fromEntries(st.map((s: any) => [s.id, {
+          before: s.clock_out_button_appears_before_min ?? 15,
+          grace: s.clock_out_grace_period_min ?? 20,
+        }])));
+      }
       const a = admin as { user_id?: string; first_name?: string | null; last_name?: string | null } | null;
       if (a?.user_id) {
         setAdminId(a.user_id);
