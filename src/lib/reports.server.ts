@@ -262,9 +262,10 @@ export async function getEmployeesReport(f: Filters) {
   const { data: studios } = await supabaseAdmin.from("studios").select("id,name,short_name");
   const smap = new Map((studios ?? []).map((s: any) => [s.id, s]));
 
-  const { data: roleRows } = await supabaseAdmin.from("user_business_roles" as any).select("user_id,role").in("user_id", userIds);
+  const { data: roleRowsRaw } = await supabaseAdmin.from("user_business_roles" as any).select("user_id,role").in("user_id", userIds);
+  const roleRows = (roleRowsRaw ?? []) as Array<{ user_id: string; role: string }>;
   const rolesMap = new Map<string, string[]>();
-  for (const r of roleRows ?? []) {
+  for (const r of roleRows) {
     const a = rolesMap.get(r.user_id) ?? []; a.push(r.role); rolesMap.set(r.user_id, a);
   }
 
