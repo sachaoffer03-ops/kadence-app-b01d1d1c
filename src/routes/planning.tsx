@@ -552,9 +552,8 @@ function PlanningCalendarPage() {
     return () => { cancelled = true; };
   }, [weekDays, studioMap, refreshKey]);
 
-  // weekKey ref kept for compatibility but no longer regenerates mock
-  const lastWeekKey = useRef(`${year}-${month}-${weekOffset}`);
-  const weekKey = `${year}-${month}-${weekOffset}`;
+  const weekKey = weekStart.toISOString().slice(0, 10);
+  const lastWeekKey = useRef(weekKey);
   if (weekKey !== lastWeekKey.current) {
     lastWeekKey.current = weekKey;
   }
