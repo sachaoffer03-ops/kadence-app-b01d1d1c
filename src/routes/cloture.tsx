@@ -725,17 +725,12 @@ function PhotosEditor({ studioId, roleId, roleName }: { studioId: string; roleId
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex flex-wrap gap-5 flex-1">
-          <Field label="Photos minimum requises">
-            <NumInput value={template.min_photos_required ?? 0} onChange={(n) => updateDebounced({ min_photos_required: n })} />
-          </Field>
-          <Field label="Exigence de l'analyse IA">
-            <ThresholdButtons
-              value={template.ai_validation_threshold ?? 75}
-              onChange={(n) => update({ ai_validation_threshold: n })}
-            />
-          </Field>
-        </div>
+        <Field label="Exigence de l'analyse IA">
+          <ThresholdButtons
+            value={template.ai_validation_threshold ?? 75}
+            onChange={(n) => update({ ai_validation_threshold: n })}
+          />
+        </Field>
         <label className="flex items-center gap-2">
           <Switch checked={!!template.analyze_with_ai} onCheckedChange={(v) => update({ analyze_with_ai: v })} />
           <span style={{ fontSize: 12, fontWeight: 500 }}>Analyse IA activée</span>
