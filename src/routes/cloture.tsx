@@ -718,6 +718,7 @@ function PhotosEditor({ studioId, roleId, roleName }: { studioId: string; roleId
     } as any).select("*").single();
     if (error) { toast.error(error.message); return; }
     setPhotos((prev) => [...prev, data as any]);
+    setEditing(data as any);
     flashSaved();
   };
 
