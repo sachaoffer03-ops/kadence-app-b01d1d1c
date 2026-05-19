@@ -16,6 +16,7 @@ import { Route as StaffRouteImport } from './routes/staff'
 import { Route as SignalementsRouteImport } from './routes/signalements'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReglagesRouteImport } from './routes/reglages'
+import { Route as RapportsRouteImport } from './routes/rapports'
 import { Route as PointageRouteImport } from './routes/pointage'
 import { Route as PlanningRouteImport } from './routes/planning'
 import { Route as LoginRouteImport } from './routes/login'
@@ -75,6 +76,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const ReglagesRoute = ReglagesRouteImport.update({
   id: '/reglages',
   path: '/reglages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RapportsRoute = RapportsRouteImport.update({
+  id: '/rapports',
+  path: '/rapports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PointageRoute = PointageRouteImport.update({
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
+  '/rapports': typeof RapportsRoute
   '/reglages': typeof ReglagesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
+  '/rapports': typeof RapportsRoute
   '/reglages': typeof ReglagesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
@@ -285,6 +293,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
+  '/rapports': typeof RapportsRoute
   '/reglages': typeof ReglagesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
@@ -321,6 +330,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/planning'
     | '/pointage'
+    | '/rapports'
     | '/reglages'
     | '/reset-password'
     | '/signalements'
@@ -355,6 +365,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/planning'
     | '/pointage'
+    | '/rapports'
     | '/reglages'
     | '/reset-password'
     | '/signalements'
@@ -388,6 +399,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/planning'
     | '/pointage'
+    | '/rapports'
     | '/reglages'
     | '/reset-password'
     | '/signalements'
@@ -423,6 +435,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PlanningRoute: typeof PlanningRouteWithChildren
   PointageRoute: typeof PointageRoute
+  RapportsRoute: typeof RapportsRoute
   ReglagesRoute: typeof ReglagesRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignalementsRoute: typeof SignalementsRoute
@@ -489,6 +502,13 @@ declare module '@tanstack/react-router' {
       path: '/reglages'
       fullPath: '/reglages'
       preLoaderRoute: typeof ReglagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rapports': {
+      id: '/rapports'
+      path: '/rapports'
+      fullPath: '/rapports'
+      preLoaderRoute: typeof RapportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pointage': {
@@ -709,6 +729,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PlanningRoute: PlanningRouteWithChildren,
   PointageRoute: PointageRoute,
+  RapportsRoute: RapportsRoute,
   ReglagesRoute: ReglagesRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignalementsRoute: SignalementsRoute,

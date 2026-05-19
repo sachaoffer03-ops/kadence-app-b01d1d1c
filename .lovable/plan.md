@@ -1,91 +1,95 @@
+# Page Rapports — Plan d'implémentation
 
-# Parcours mobile de clôture de shift (employé)
+## 1. Sidebar + routing
 
-Refonte complète du flow "Terminer mon shift" dans `/staff-app` en un overlay plein écran 6 étapes mobile-first, consommant la config admin de `/cloture`.
+- `src/components/AppSidebar.tsx` : ajouter entrée **Rapports** (icône `BarChart3`) dans la section PILOTAGE, entre Dashboard et Planning, visible admin/manager seulement (même règle que les autres entrées de pilotage).
+- `src/routes/rapports.tsx` : nouvelle route. Garde admin/manager via `useAuth` ; sinon `navigate({ to: "/staff-app" })`.
 
-## 1. Migrations DB (1 migration)
+## 2. Filtres globaux (mémorisés en URL via `validateSearch`)
 
-- `studios` : ajouter `lat float NULL`, `lng float NULL` (géofencing — populés plus tard via géocodage)
-- `shifts` : ajouter `dimona_status text NULL CHECK ('pending','sent','failed','not_applicable')` (anticipation profil employé)
-- Aucune nouvelle RLS (colonnes additives sur tables existantes)
+Search params : `from`, `to`, `preset` (today|yesterday|week|month|30d|custom), `studios` (csv uuids), `roles` (csv uuids), `view` (overview|employees|shifts).
 
-## 2. Serveur — server functions
+Barre haut : preset Dropdown + DateRangePicker (Popover + 2 Calendar shadcn) + multi-select Studios + multi-select Rôles + bouton **Exporter CSV** à droite. Tabs shadcn pour basculer entre les 3 vues (synchronisées avec `view`).
 
-Nouveau fichier `src/lib/closure-flow.server.ts` + `src/lib/closure-flow.functions.ts` :
+## 3. Server functions — `src/lib/reports.functions.ts`
 
-- `validateClockOutFn({ shiftId, qrCode, lat?, lng? })` : vérifie QR match `studios.current_qr_code` (case-insensitive), géofencing si activé + studio a lat/lng, calcule `minutes_late`, UPDATE `shifts.clocked_out_at = now()`. **Ne change pas encore le status.** Retourne `{ ok, distance_m? }`.
-- `finalizeClosureFn({ shiftId, submissionId, responses: [{questionId, stars?, yesno?, text?}] })` : transaction → `shifts.status = 'completed'`, `checklist_submissions.status = 'completed' + submitted_at`, INSERT `closure_question_responses` (idempotent via DELETE-then-INSERT par submission), INSERT notif manager du studio. Retourne récap calculé serveur (heures, gains, points par dimension).
-- Hardcoder pour l'instant les règles de points dans le server, avec commentaire TODO "Règles de scoring configurables côté admin future".
-- Toutes les fn vérifient `shift.user_id === context.userId` (pattern existant `shift-clock.server.ts`).
+Toutes avec `requireSupabaseAuth` + helper `assertAdminOrManager(supabase, userId)`. Input Zod : `{ from, to, studioIds?, roleIds? }`.
 
-L'ancien `completeShiftClockOutFn` reste pour compat mais n'est plus utilisé par EndShiftSheet.
+- `getOverviewKpis` — counts completed vs scheduled, score moyen équipe (avec sparkline 30j en sous-requête `date_trunc('day')`), payroll (sum hours * hourly_rate, exclut hourly_rate NULL et renvoie `employeesWithoutRate`), checklist completion % (avg done/total par submission).
+- `getTopAndBottomPerformers` — top 5 et bottom 5 (≥3 shifts sur période), avec score période actuelle vs période précédente (delta).
+- `getRecentActivity` — 20 derniers shifts `status=completed`, joints sur profiles + studios.
+- `getEmployeesReport` — agrégation par user : nb shifts, heures, coût, score actuel, Δ vs période précédente, last clôture.
+- `getEmployeeDetail` — sparkline 90j, breakdown 3 sous-scores (réutilise logique de `calculate_profile_score` simplifiée côté SQL), 10 derniers shifts, gains total, quota étudiant si contract='student'.
+- `getShiftsReport` — tous shifts completed, retard, % checklist, photos validées count.
+- `getShiftDetail` — items checklist, photos avec validation, **réponses `closure_question_responses`** (RLS bloque déjà les autres rôles), breakdown score du shift, gain €.
 
-## 3. Frontend — nouveau composant `ClosureFlow.tsx`
+Toutes mappées en DTO sérialisables.
 
-Remplace `EndShiftSheet` (qui devient deprecated mais reste pour ne rien casser ailleurs si jamais).
+## 4. Migration — indexes manquants
 
-`src/components/staff-app/ClosureFlow.tsx` : overlay plein écran (fixed inset-0, fond blanc, z-50), stepper 5 dots en haut, bouton "Retour" gauche + close avec confirm, bouton "Suivant" sticky bas avec `safe-area-inset-bottom`. Transitions slide horizontal 250ms.
+Une migration légère `add_reports_indexes` :
 
-État interne : `step` (1..6) + données collectées par étape, chaque action écrit immédiatement en DB (résilience).
+```sql
+CREATE INDEX IF NOT EXISTS idx_shifts_status_date ON public.shifts (status, shift_date);
+CREATE INDEX IF NOT EXISTS idx_shifts_user_date ON public.shifts (user_id, shift_date);
+CREATE INDEX IF NOT EXISTS idx_shifts_studio_date ON public.shifts (studio_id, shift_date);
+CREATE INDEX IF NOT EXISTS idx_checklist_subs_user ON public.checklist_submissions (user_id, status);
+CREATE INDEX IF NOT EXISTS idx_closure_resp_sub ON public.closure_question_responses (submission_id);
+```
 
-### Étape 1 — Récap shift
-Cartes shift + heure live + countdown + message bleu + bouton "Terminer mon shift" → step 2.
+Pas de schema change métier ; juste perf.
 
-### Étape 2 — Checklist
-- `findApplicableTemplate` + `getOrCreateSubmission`
-- Liste items avec checkbox (toggle `checklist_submission_items.is_checked`) + icône photo si `photo_zone_id`
-- Compteur live "X / N validés"
-- Si `is_blocking` et items non cochés : "Suivant" disabled
+## 5. UI — `src/routes/rapports.tsx`
 
-### Étape 3 — Photos
-- Chaque `checklist_template_photos` → carte avec input `capture="environment"`
-- Upload via `uploadSubmissionPhoto` (helper existant) + INSERT `checklist_submission_photos`
-- Si `analyze_with_ai` : badge "Analyse IA..." 2s puis auto-validation 100/100 (commentaire TODO clair)
-- Retry upload 3× avec toast
-- "Suivant" actif quand `min_photos_required` atteint ET zones `is_required` ont photo validée
+Une seule route, 3 sous-composants : `OverviewView`, `EmployeesView`, `ShiftsView`. Chacune utilise `useQuery` (staleTime 5 min, pas de refetchOnWindowFocus) via `useServerFn`.
 
-### Étape 4 — Scan QR
-- Lib `@yudiel/react-qr-scanner` (à ajouter avec `bun add`)
-- Fallback "Entrer manuellement" → 5 inputs style input-otp
-- Si `geofencing_enabled` : `navigator.geolocation` + calcul distance Haversine côté client (envoyé au server pour re-vérif)
-- Server fn `validateClockOutFn` fait la vraie validation
-- Bouton "Valider mon pointage de sortie" disabled tant que pas validé
+### Overview
+- Grille 4 KPI cards (`grid-cols-2 md:grid-cols-4`) : Shifts clôturés, Score moyen équipe (couleur conditionnelle vert/orange/rouge + sparkline recharts `LineChart` 80×24), Coût payroll (+ avertissement employés sans tarif), Taux complétion checklists (+ sparkline).
+- Sous : 2 colonnes (`md:grid-cols-2`) Top 5 / À surveiller. Avatar + nom + score + delta coloré + raison.
+- En bas : Activité récente, 20 lignes timeline ; clic → `setView("shifts")` + ouvre detail sheet sur le shiftId.
 
-### Étape 5 — Questions clôture
-- Charger `closure_questions` du studio ordonné `order_index`
-- Stars 1-5 / Oui-Non / Textarea selon `response_type`
-- Sauvegarde immédiate dans state local; bouton "Terminer" disabled tant que tous `is_required` répondus
-- Bandeau confidentialité en haut
+### Employees
+- Table shadcn desktop, cards stack `md:hidden` sur mobile.
+- Tri client sur les colonnes (useState `{ key, dir }`).
+- Bouton "Voir détail" → `Sheet` (side=right, w-full sm:max-w-xl) qui appelle `getEmployeeDetail`. Contient sparkline 90j (recharts), 3 BarChart horizontales pour sous-scores, table 10 derniers shifts, carte Gains, badge quota étudiant si applicable, lien `/staff/$id`.
 
-### Étape 6 — Bien joué
-- Appel `finalizeClosureFn` à l'entrée (envoie responses)
-- Récupère récap calculé serveur
-- Cartes : Récap (5 lignes seulement) / Gains (1 ligne, format FR via `toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })`) / Impact score (décomposé) / Prochain shift
-- Bouton "Retour à l'accueil" → ferme overlay + recharge `/staff-app`
+### Shifts
+- Table tous shifts. Mobile = cards.
+- Clic ligne → `Sheet` qui appelle `getShiftDetail`. Sections : Pointages, Checklist (items + photo si liée, click photo = lightbox simple `Dialog`), Photos (grille), **Réponses post-shift** avec bandeau coral `🔒 Confidentiel`, Score gagné (breakdown), Gains. Boutons "Voir l'employé" et "Voir dans planning" (Link to `/planning` avec query `?shift={id}` — pas besoin de modifier planning pour ce prompt, le param sera juste là).
 
-## 4. Branchement dans `staff-app.tsx`
+## 6. Export CSV
 
-- Remplacer le bouton qui ouvre `EndShiftSheet` par celui qui ouvre `ClosureFlow`
-- Logique d'affichage du bouton "Terminer mon shift" :
-  - `clocked_in_at != null` ET `clocked_out_at == null`
-  - `now() >= shift.end_time - studio.clock_out_button_appears_before_min`
-- Sinon countdown live "Tu pourras clôturer dans X min"
-- Charger `studio.clock_out_button_appears_before_min` (déjà dans le studio query, sinon ajouter au select)
+`src/lib/csv.ts` helper `toCsv(rows, columns) → string` + `downloadCsv(filename, csv)`. Le bouton "Exporter CSV" appelle la même server function que la vue courante (`getOverviewKpis` → flatten en KV, `getEmployeesReport` direct, `getShiftsReport` SANS les réponses confidentielles), génère CSV et déclenche download. Nom : `kadence-rapport-{view}-{from}-{to}.csv`.
 
-## 5. Page admin `/staff/$id`
+## 7. Design
 
-Ajouter section "Dernier shift clôturé" (lecture seule, mêmes infos que step 6). Requête : dernier shift `status='completed'` de l'employé + ses submissions/responses.
+- Tokens existants uniquement (`var(--card)`, `var(--border)`, `var(--coral)`, `var(--success-text)` etc.).
+- Pas d'emoji décoratif ; l'icône cadenas vient de lucide (`Lock`).
+- Skeletons shadcn pendant chargement.
+- Couleurs sémantiques pour les deltas score (vert ↑, rouge ↓, gris =).
 
-## 6. À NE PAS faire
+## 8. À NE PAS toucher
 
-- Pas de vraie IA Vision (placeholder 2s, TODO commenté)
-- Pas de toucher au scoring runtime (`scoring.functions.ts`)
-- Pas de modif de `/cloture` ni d'`AppSidebar`
-- Pas de cumul mensuel / heures semaine / Dimona sur écran final
-- Garder `EndShiftSheet` en place mais ne plus l'appeler
+`/cloture`, `ClosureFlow`, `scoring.functions.ts`, page Feedbacks. Pas de nouvelle page "Règles de scoring".
 
----
+## Récap fichiers
 
-**Taille estimée** : ~1500 lignes nouvelles (ClosureFlow ~900, server ~250, migration ~30, integration staff-app ~50, profil admin ~80, helpers ~50, package add). 1 migration + 1 npm package.
+Création :
+- `src/routes/rapports.tsx`
+- `src/lib/reports.functions.ts`
+- `src/lib/reports.server.ts` (helpers SQL + types DTO partagés)
+- `src/components/reports/OverviewView.tsx`
+- `src/components/reports/EmployeesView.tsx`
+- `src/components/reports/ShiftsView.tsx`
+- `src/components/reports/EmployeeDetailSheet.tsx`
+- `src/components/reports/ShiftDetailSheet.tsx`
+- `src/components/reports/FiltersBar.tsx`
+- `src/components/reports/KpiCard.tsx`
+- `src/components/reports/Sparkline.tsx`
+- `src/lib/csv.ts`
+- 1 migration `add_reports_indexes`
 
-OK pour partir là-dessus ?
+Modifs :
+- `src/components/AppSidebar.tsx` (1 entrée)
+
+Volume estimé ~1400 lignes. Pas de nouvelles deps (recharts, shadcn Sheet/Tabs déjà là).

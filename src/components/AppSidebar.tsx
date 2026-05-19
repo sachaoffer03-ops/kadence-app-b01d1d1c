@@ -37,6 +37,7 @@ const navSections: NavSection[] = [
     title: "Pilotage",
     items: [
       { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+      { label: "Rapports", to: "/rapports", icon: BarChart3 },
       { label: "Planning", to: "/planning", icon: CalendarDays },
       { label: "Staff", to: "/staff", icon: Users },
       { label: "Trous à combler", to: "/trous", icon: AlertTriangle },
