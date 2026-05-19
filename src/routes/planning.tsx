@@ -1276,55 +1276,63 @@ function PlanningCalendar({
   onReassign: (s: PlanningShift) => void;
   onDelete: (s: PlanningShift) => void;
 }) {
-  const [zoom, setZoom] = useState<number>(() => {
-    if (typeof window === "undefined") return 180;
-    const v = Number(window.localStorage.getItem(ZOOM_KEY));
-    return v >= 100 && v <= 400 ? v : 180;
+  // Largeurs personnalisées par colonne jour (clé = dayIdx 0-6), persistées en localStorage
+  const [columnWidths, setColumnWidths] = useState<Record<number, number>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem(COL_WIDTHS_KEY);
+      return raw ? (JSON.parse(raw) as Record<number, number>) : {};
+    } catch {
+      return {};
+    }
   });
   useEffect(() => {
-    if (typeof window !== "undefined")
-      window.localStorage.setItem(ZOOM_KEY, String(zoom));
-  }, [zoom]);
-
-  // Plage horaire dynamique : extension si shifts hors 7h-23h
-  const { startHour, endHour } = useMemo(() => {
-    let s = 7, e = 23;
-    for (const sh of studioShifts) {
-      const sm = minOf(sh.startTime), em = minOf(sh.endTime);
-      s = Math.min(s, Math.floor(sm / 60));
-      e = Math.max(e, Math.ceil(em / 60));
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(columnWidths));
     }
-    return { startHour: Math.max(0, s), endHour: Math.min(24, Math.max(e, s + 1)) };
-  }, [studioShifts]);
-  const totalHours = endHour - startHour;
-  const gridHeight = totalHours * HOUR_PX;
+  }, [columnWidths]);
 
-  const shiftsByDay = useMemo(() => {
-    const map = new Map<number, LaidOut[]>();
-    for (const idx of visibleDayIndices) {
-      map.set(idx, layoutDay(studioShifts.filter((s) => s.day === idx)));
-    }
-    return map;
-  }, [studioShifts, visibleDayIndices]);
+  const resizingRef = useRef<{ dayIdx: number; startX: number; startW: number } | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const startResize = useCallback(
+    (dayIdx: number, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startW = columnWidths[dayIdx] ?? DEFAULT_COL_PX;
+      resizingRef.current = { dayIdx, startX: e.clientX, startW };
+      setIsResizing(true);
+      const prevCursor = document.body.style.cursor;
+      const prevUserSelect = document.body.style.userSelect;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      const onMove = (ev: MouseEvent) => {
+        const ctx = resizingRef.current;
+        if (!ctx) return;
+        const next = Math.max(MIN_COL_PX, Math.min(MAX_COL_PX, ctx.startW + (ev.clientX - ctx.startX)));
+        setColumnWidths((prev) => ({ ...prev, [ctx.dayIdx]: next }));
+      };
+      const onUp = () => {
+        resizingRef.current = null;
+        setIsResizing(false);
+        document.body.style.cursor = prevCursor;
+        document.body.style.userSelect = prevUserSelect;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [columnWidths],
+  );
 
-  const dayWidth = zoom;
+  const widthOf = useCallback(
+    (dayIdx: number) => columnWidths[dayIdx] ?? DEFAULT_COL_PX,
+    [columnWidths],
+  );
   void viewMode; // réservé pour adaptation mobile future
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Slider de zoom — caché en mobile */}
-      <div className="hidden md:flex items-center gap-3 px-1">
-        <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>Zoom</span>
-        <Slider
-          value={[zoom]}
-          min={100}
-          max={400}
-          step={10}
-          onValueChange={(v) => setZoom(v[0] ?? 180)}
-          className="max-w-[260px]"
-        />
-        <span style={{ fontSize: 11, color: "var(--muted-foreground)", minWidth: 44 }}>{zoom}px</span>
-      </div>
 
       <div
         className="rounded-xl border overflow-hidden"
