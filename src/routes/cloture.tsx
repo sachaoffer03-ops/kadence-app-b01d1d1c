@@ -528,7 +528,7 @@ function ChecklistEditor({ studioId, roleId, roleName }: { studioId: string; rol
   );
 }
 
-function SortableItem({ item, photos }: { item: any; photos: any[] }) {
+function SortableItem({ item, photos, onDeleted }: { item: any; photos: any[]; onDeleted?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -550,6 +550,7 @@ function SortableItem({ item, photos }: { item: any; photos: any[] }) {
   };
 
   const remove = async () => {
+    onDeleted?.();
     const { error } = await supabase.from("checklist_template_items").delete().eq("id", item.id);
     if (error) toast.error(error.message); else flashSaved();
   };
