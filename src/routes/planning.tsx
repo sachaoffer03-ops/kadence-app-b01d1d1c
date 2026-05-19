@@ -14,6 +14,7 @@ import { useBusinessRoles } from "@/hooks/use-business-roles";
 import { useEmployees, type EmployeeLite } from "@/hooks/use-employees";
 import { EditShiftModal } from "@/components/EditShiftModal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Slider } from "@/components/ui/slider";
 import { getRoleStyle } from "@/lib/staff-helpers";
 
