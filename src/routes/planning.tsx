@@ -463,10 +463,29 @@ function PlanningCalendarPage() {
   const [studioMap, setStudioMap] = useState<Map<string, string>>(new Map());
   // Liste de noms de studios chargée depuis la DB (remplace l'ancien tableau hardcodé).
   const studios = useMemo<Studio[]>(() => Array.from(studioMap.values()), [studioMap]);
-  // Sélection automatique du premier studio dès que la liste est chargée.
+  // Sélection automatique de tous les studios dès que la liste est chargée.
   useEffect(() => {
-    if (!selectedStudio && studios.length > 0) setSelectedStudio(studios[0]);
-  }, [studios, selectedStudio]);
+    if (selectedStudios.size === 0 && studios.length > 0) {
+      setSelectedStudios(new Set(studios));
+    }
+  }, [studios, selectedStudios]);
+  // Studio "primaire" (premier sélectionné) pour les modals/création de shift
+  const selectedStudio: Studio = useMemo(
+    () => (selectedStudios.size > 0 ? Array.from(selectedStudios)[0] : studios[0] ?? ""),
+    [selectedStudios, studios],
+  );
+  const toggleStudio = (s: Studio) => {
+    setSelectedStudios((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) {
+        if (next.size === 1) return prev; // garder au moins un studio actif
+        next.delete(s);
+      } else {
+        next.add(s);
+      }
+      return next;
+    });
+  };
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = () => setRefreshKey((k) => k + 1);
 
