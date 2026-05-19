@@ -566,13 +566,15 @@ function SortableItem({ item, photos }: { item: any; photos: any[] }) {
         className="flex-1 px-2 py-1 rounded"
         style={{ fontSize: 13, backgroundColor: "transparent", border: "none", outline: "none" }}
       />
-      <Select value={item.photo_zone_id ?? "__none__"} onValueChange={setPhoto}>
-        <SelectTrigger className="w-[180px] h-8"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__none__">Pas de photo liée</SelectItem>
-          {photos.map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      {photos.length > 0 && (
+        <Select value={item.photo_zone_id ?? "__none__"} onValueChange={setPhoto}>
+          <SelectTrigger className="w-[180px] h-8"><SelectValue placeholder="Lier une photo…" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Aucune photo liée</SelectItem>
+            {photos.map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      )}
       <button onClick={remove} className="rounded p-1 hover:bg-muted" style={{ color: "var(--muted-foreground)" }}>
         <X size={14} />
       </button>
