@@ -451,16 +451,15 @@ function PlanningCalendarPage() {
   const { names: roles } = useBusinessRoles({ onlyActive: true });
   const { employees } = useEmployees();
   const now = new Date();
-  const [month, setMonth] = useState(now.getMonth());
-  const [year, setYear] = useState(now.getFullYear());
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
   const [selectedStudio, setSelectedStudio] = useState<Studio>("");
   const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
   const [selectedShift, setSelectedShift] = useState<PlanningShift | null>(null);
   const [holeShift, setHoleShift] = useState<PlanningShift | null>(null);
   const [editShift, setEditShift] = useState<PlanningShift | null>(null);
+  const [calOpen, setCalOpen] = useState(false);
 
-  const weekDays = useMemo(() => getWeekDays(year, month, weekOffset), [year, month, weekOffset]);
+  const weekDays = useMemo(() => getWeekDaysFromStart(weekStart), [weekStart]);
   const [shifts, setShifts] = useState<PlanningShift[]>([]);
   const [studioMap, setStudioMap] = useState<Map<string, string>>(new Map());
   // Liste de noms de studios chargée depuis la DB (remplace l'ancien tableau hardcodé).
