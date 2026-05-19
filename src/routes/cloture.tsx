@@ -652,13 +652,15 @@ function PhotosEditor({ studioId, roleId, roleName }: { studioId: string; roleId
     return () => { supabase.removeChannel(ch); };
   }, [template?.id, reload]);
 
-  if (loading || !template) return <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>;
-
-  const update = async (patch: any) => {
+  const update = useCallback(async (patch: any) => {
+    if (!template?.id) return;
     const { error } = await supabase.from("checklist_templates").update(patch).eq("id", template.id);
     if (error) toast.error(error.message); else flashSaved();
-  };
+  }, [template?.id]);
   const updateDebounced = useDebouncedCallback(update, 500);
+
+  if (loading || !template) return <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>;
+
 
   const addZone = async () => {
     const next = (photos[photos.length - 1]?.order_index ?? -1) + 1;
