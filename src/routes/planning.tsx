@@ -581,7 +581,7 @@ function PlanningCalendarPage() {
     return weekDays.findIndex((d) => d.toDateString() === today.toDateString());
   }, [weekDays]);
 
-  const studioShifts = useMemo(() => shifts.filter((s) => s.studio === selectedStudio), [shifts, selectedStudio]);
+  const studioShifts = useMemo(() => shifts.filter((s) => selectedStudios.has(s.studio)), [shifts, selectedStudios]);
   const realShifts = studioShifts.filter((s) => !s.hole);
   const holes = studioShifts.filter((s) => s.hole);
   const roleTotals = roles.map((r) => ({ role: r, count: realShifts.filter((s) => s.role === r).length }));
