@@ -290,11 +290,11 @@ function EmployeeDetailPage() {
           </div>
 
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Administratif</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Administratif</div>
+            <HourlyRateRow profileId={emp.id} value={emp.hourly_rate} canEdit={appRole === "admin" || appRole === "manager"} onSaved={(v) => setEmp({ ...emp, hourly_rate: v })} />
             <Row label="Date d'embauche" value={emp.hire_date || "—"} />
             <Row label="Date de naissance" value={emp.birth_date || "—"} />
             <Row label="Nationalité" value={emp.nationality || "—"} />
-            <HourlyRateRow profileId={emp.id} value={emp.hourly_rate} canEdit={appRole === "admin" || appRole === "manager"} onSaved={(v) => setEmp({ ...emp, hourly_rate: v })} />
             <Row label="NISS" value={emp.niss || "—"} />
             <Row label="IBAN" value={emp.iban || "—"} />
             {emp.contract === "etudiant" && <Row label="Carte étudiant" value={emp.student_card_valid ? "Valide" : "Manquante"} />}
