@@ -1,425 +1,244 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import {
-  Plus, MoreVertical, Pencil, Trash2, GripVertical, ArrowUp, ArrowDown,
-  GraduationCap, Video, FileText, StickyNote, LinkIcon,
-} from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  useTrainingFolders, useFolderWithContent, useAllTrainingProgress,
-  softDeleteFolder, reorderFolders, deleteStep, reorderSteps,
-  deleteResource, reorderResources,
-} from "@/hooks/use-training";
-import { getFolderIcon, DEFAULT_FOLDER_COLOR } from "@/lib/training-presets";
-import { FolderModal } from "@/components/training/FolderModal";
-import { StepModal } from "@/components/training/StepModal";
-import { ResourceModal } from "@/components/training/ResourceModal";
-import { ProgressDashboard } from "@/components/training/ProgressDashboard";
-import type { TrainingFolder, TrainingStep, TrainingResource, ResourceType } from "@/types/training";
+import { GraduationCap, Plus, BookOpen, Award, Users, TrendingUp } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getFormationIndex, createCourse } from "@/lib/formation.functions";
+import { useBusinessRoles } from "@/hooks/use-business-roles";
 
 export const Route = createFileRoute("/formation")({
-  component: FormationPage,
+  component: FormationIndexPage,
   head: () => ({ meta: [{ title: "Formation — Kadence" }] }),
 });
 
-function FormationPage() {
-  const { folders, loading } = useTrainingFolders();
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const { data: folderDetail, reload } = useFolderWithContent(activeId);
-  const { progress } = useAllTrainingProgress();
+type IndexData = Awaited<ReturnType<typeof getFormationIndex>>;
 
-  const [folderModal, setFolderModal] = useState<{ open: boolean; folder?: TrainingFolder | null }>({ open: false });
-  const [stepModal, setStepModal] = useState<{ open: boolean; step?: TrainingStep | null }>({ open: false });
-  const [resourceModal, setResourceModal] = useState<{ open: boolean; stepId: string; resource?: TrainingResource | null }>({ open: false, stepId: "" });
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
+const EMOJI_PICK = ["📚", "☕", "🍳", "🛎️", "🎓", "🌟", "🔧", "❤️", "🎯", "💡"];
 
-  useEffect(() => {
-    if (!activeId && folders.length > 0) setActiveId(folders[0].id);
-    if (activeId && folders.length > 0 && !folders.find((f) => f.id === activeId)) {
-      setActiveId(folders[0]?.id ?? null);
+function FormationIndexPage() {
+  const navigate = useNavigate();
+  const [data, setData] = useState<IndexData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const fetchIndex = useServerFn(getFormationIndex);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const d = await fetchIndex();
+      setData(d);
+    } catch (e: any) {
+      toast.error(e.message || "Erreur de chargement");
+    } finally {
+      setLoading(false);
     }
-  }, [folders, activeId]);
-
-  // Stats par dossier (pour la sidebar)
-  const folderStats = useMemo(() => {
-    const stats: Record<string, { steps: number; resources: number }> = {};
-    folders.forEach((f) => { stats[f.id] = { steps: 0, resources: 0 }; });
-    if (folderDetail) {
-      stats[folderDetail.id] = {
-        steps: folderDetail.steps.length,
-        resources: folderDetail.steps.reduce((acc, s) => acc + s.resources.length, 0),
-      };
-    }
-    return stats;
-  }, [folders, folderDetail]);
-
-  const moveFolder = async (id: string, dir: -1 | 1) => {
-    const idx = folders.findIndex((f) => f.id === id);
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= folders.length) return;
-    const reordered = [...folders];
-    [reordered[idx], reordered[newIdx]] = [reordered[newIdx], reordered[idx]];
-    await reorderFolders(reordered.map((f) => f.id));
   };
 
-  const moveStep = async (stepId: string, dir: -1 | 1) => {
-    if (!folderDetail) return;
-    const steps = folderDetail.steps;
-    const idx = steps.findIndex((s) => s.id === stepId);
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= steps.length) return;
-    const reordered = [...steps];
-    [reordered[idx], reordered[newIdx]] = [reordered[newIdx], reordered[idx]];
-    await reorderSteps(reordered.map((s) => s.id));
+  useEffect(() => { load(); }, []);
+
+  const fmtDuration = (min: number) => {
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60), m = min % 60;
+    return m > 0 ? `${h}h ${String(m).padStart(2, "0")}` : `${h}h`;
   };
-
-  const moveResource = async (stepId: string, resId: string, dir: -1 | 1) => {
-    const step = folderDetail?.steps.find((s) => s.id === stepId);
-    if (!step) return;
-    const idx = step.resources.findIndex((r) => r.id === resId);
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= step.resources.length) return;
-    const reordered = [...step.resources];
-    [reordered[idx], reordered[newIdx]] = [reordered[newIdx], reordered[idx]];
-    await reorderResources(reordered.map((r) => r.id));
-  };
-
-  const removeFolder = async (id: string) => {
-    if (!confirm("Supprimer ce dossier ? Les étapes et ressources seront aussi supprimées.")) return;
-    await softDeleteFolder(id);
-    toast.success("Dossier supprimé");
-    setOpenMenu(null);
-  };
-
-  const removeStep = async (id: string) => {
-    if (!confirm("Supprimer cette étape et ses ressources ?")) return;
-    await deleteStep(id);
-    toast.success("Étape supprimée");
-  };
-
-  const removeResource = async (id: string) => {
-    if (!confirm("Supprimer cette ressource ?")) return;
-    await deleteResource(id);
-    toast.success("Ressource supprimée");
-  };
-
-  const activeFolder = folders.find((f) => f.id === activeId) ?? null;
-
-  if (loading) {
-    return <div className="p-4 md:p-6" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement…</div>;
-  }
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="mb-5">
-        <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Formation</h1>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Plateforme de formation interne pour ton équipe.</p>
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <div className="mb-2">
+        <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.01em" }}>Espace formation</h1>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4, maxWidth: 640 }}>
+          Crée un parcours pour chaque poste de ton équipe. L'employé doit terminer son parcours pour
+          accéder au planning et choisir ses shifts.
+        </p>
       </div>
 
-      <Tabs defaultValue="content">
-        <TabsList className="mb-4">
-          <TabsTrigger value="content">Contenu</TabsTrigger>
-          <TabsTrigger value="progress">Progression</TabsTrigger>
-        </TabsList>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
+        ) : data ? (
+          <>
+            <Kpi icon={BookOpen} label="Parcours actifs" value={String(data.kpis.publishedCourses)} sub={`${data.kpis.totalModules} modules au total`} />
+            <Kpi icon={Users} label="Employés en formation" value={`${data.kpis.inTrainingCount}/${data.kpis.totalEmployees}`} sub={`${data.kpis.pctInTraining}% de l'équipe`} />
+            <Kpi icon={TrendingUp} label="Complétion moyenne" value={`${data.kpis.avgCompletionRate}%`} sub="sur les parcours actifs" />
+            <Kpi icon={Award} label="Quiz réussis 1er coup" value={`${data.kpis.firstTryRate}%`}
+              sub={data.kpis.firstTryRate >= 70 ? "Bon niveau d'attention" : data.kpis.firstTryRate < 50 ? "À surveiller" : "Niveau correct"} />
+          </>
+        ) : null}
+      </div>
 
-        <TabsContent value="content">
-          <div className="grid gap-4" style={{ gridTemplateColumns: "minmax(280px, 320px) 1fr" }}>
-            {/* SIDEBAR */}
-            <aside>
-              <div className="flex items-center justify-between mb-3">
-                <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Dossiers
+      {/* Courses list */}
+      <div className="flex items-center justify-between mt-10 mb-4">
+        <h2 style={{ fontSize: 15, fontWeight: 500 }}>Parcours par poste</h2>
+        <button onClick={() => setShowModal(true)} className="rounded-md px-3 py-2 flex items-center gap-1.5"
+          style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+          <Plus size={13} /> Nouveau parcours
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
+        </div>
+      ) : data && data.courses.length === 0 ? (
+        <div className="rounded-xl border p-10 text-center" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+          <GraduationCap size={32} style={{ color: "var(--muted-foreground)", margin: "0 auto 12px" }} />
+          <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Aucun parcours pour l'instant</div>
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Crée ton premier parcours pour démarrer la formation.</div>
+        </div>
+      ) : data ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {data.courses.map((c) => {
+            const accent = c.color ?? "#F0997B";
+            return (
+              <button key={c.id} onClick={() => navigate({ to: "/formation/$courseId", params: { courseId: c.id } })}
+                className="rounded-xl border text-left transition-all hover:shadow-sm overflow-hidden flex flex-col"
+                style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+                <div style={{ height: 4, backgroundColor: accent }} />
+                <div className="p-4 flex-1 flex flex-col">
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>{c.icon ?? "📚"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{c.title}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                    {c.moduleCount} module{c.moduleCount !== 1 ? "s" : ""} · {fmtDuration(c.totalMinutes)}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {c.is_required_for_all && (
+                      <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>
+                        Obligatoire pour tous
+                      </span>
+                    )}
+                    {!c.is_published && (
+                      <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
+                        Brouillon
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-auto pt-3">
+                    <div className="flex items-center justify-between mb-1.5" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                      <span>{c.completedCount}/{c.targetCount} validés</span>
+                      <span style={{ fontWeight: 500, color: c.pct === 100 ? "var(--success-text)" : "var(--foreground)" }}>{c.pct}%</span>
+                    </div>
+                    <div style={{ width: "100%", height: 4, borderRadius: 2, backgroundColor: "var(--muted)" }}>
+                      <div style={{ width: `${c.pct}%`, height: "100%", borderRadius: 2, backgroundColor: c.pct === 100 ? "var(--success-text)" : accent }} />
+                    </div>
+                  </div>
                 </div>
-                <button onClick={() => setFolderModal({ open: true, folder: null })}
-                  className="rounded-md p-1.5 flex items-center gap-1"
-                  style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
-                  <Plus size={12} /> Nouveau
-                </button>
-              </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
-              {folders.length === 0 ? (
-                <div className="rounded-xl border px-4 py-8 text-center" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
-                  <GraduationCap size={24} style={{ color: "var(--muted-foreground)", margin: "0 auto 8px" }} />
-                  <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>Aucun dossier</div>
-                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Crée ton premier dossier pour commencer.</div>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {folders.map((f, idx) => {
-                    const Icon = getFolderIcon(f.icon);
-                    const color = f.color || DEFAULT_FOLDER_COLOR;
-                    const active = activeId === f.id;
-                    const stats = folderStats[f.id] || { steps: 0, resources: 0 };
-                    return (
-                      <div key={f.id} className="rounded-xl border relative"
-                        style={{
-                          backgroundColor: active ? "var(--coral-light)" : "var(--card)",
-                          borderColor: active ? "var(--coral)" : "var(--border)",
-                        }}>
-                        <button onClick={() => setActiveId(f.id)} className="w-full text-left p-3 flex items-start gap-2.5">
-                          <div className="rounded-lg flex items-center justify-center shrink-0"
-                            style={{ width: 32, height: 32, backgroundColor: color, color: "#fff" }}>
-                            <Icon size={16} />
-                          </div>
-                          <div className="flex-1 min-w-0 pr-6">
-                            <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.3 }} className="truncate">{f.name}</div>
-                            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
-                              {stats.steps} étape{stats.steps !== 1 ? "s" : ""} · {stats.resources} ressource{stats.resources !== 1 ? "s" : ""}
-                            </div>
-                            {f.required_for_roles.length > 0 && (
-                              <span className="inline-block mt-1.5 rounded-full px-1.5 py-0.5"
-                                style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
-                                Requis
-                              </span>
-                            )}
-                          </div>
-                        </button>
-
-                        <button onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === f.id ? null : f.id); }}
-                          className="absolute top-2 right-2 rounded p-1 hover:bg-muted">
-                          <MoreVertical size={13} />
-                        </button>
-
-                        {openMenu === f.id && (
-                          <div className="absolute top-9 right-2 z-10 rounded-lg shadow-lg py-1 min-w-[140px]"
-                            style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}>
-                            <button onClick={() => { setFolderModal({ open: true, folder: f }); setOpenMenu(null); }}
-                              className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2"
-                              style={{ fontSize: 12 }}>
-                              <Pencil size={11} /> Modifier
-                            </button>
-                            {idx > 0 && (
-                              <button onClick={() => { moveFolder(f.id, -1); setOpenMenu(null); }}
-                                className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2"
-                                style={{ fontSize: 12 }}>
-                                <ArrowUp size={11} /> Monter
-                              </button>
-                            )}
-                            {idx < folders.length - 1 && (
-                              <button onClick={() => { moveFolder(f.id, 1); setOpenMenu(null); }}
-                                className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2"
-                                style={{ fontSize: 12 }}>
-                                <ArrowDown size={11} /> Descendre
-                              </button>
-                            )}
-                            <button onClick={() => removeFolder(f.id)}
-                              className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2"
-                              style={{ fontSize: 12, color: "var(--danger-text)" }}>
-                              <Trash2 size={11} /> Supprimer
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </aside>
-
-            {/* MAIN ZONE */}
-            <main>
-              {!activeFolder ? (
-                <div className="rounded-xl border px-6 py-12 text-center" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
-                  <GraduationCap size={32} style={{ color: "var(--muted-foreground)", margin: "0 auto 12px" }} />
-                  <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Aucun dossier sélectionné</div>
-                  <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Crée ou sélectionne un dossier dans la liste à gauche.</div>
-                </div>
-              ) : (
-                <FolderContent
-                  folder={activeFolder}
-                  detail={folderDetail}
-                  progress={progress}
-                  onEditFolder={() => setFolderModal({ open: true, folder: activeFolder })}
-                  onAddStep={() => setStepModal({ open: true, step: null })}
-                  onEditStep={(s) => setStepModal({ open: true, step: s })}
-                  onDeleteStep={removeStep}
-                  onMoveStep={moveStep}
-                  onAddResource={(stepId) => setResourceModal({ open: true, stepId, resource: null })}
-                  onEditResource={(stepId, r) => setResourceModal({ open: true, stepId, resource: r })}
-                  onDeleteResource={removeResource}
-                  onMoveResource={moveResource}
-                />
-              )}
-            </main>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="progress">
-          <ProgressDashboard />
-        </TabsContent>
-      </Tabs>
-
-      <FolderModal open={folderModal.open} onOpenChange={(v) => setFolderModal({ open: v })}
-        folder={folderModal.folder} onSaved={() => {}} />
-      {activeFolder && (
-        <StepModal open={stepModal.open} onOpenChange={(v) => setStepModal({ open: v })}
-          folderId={activeFolder.id} step={stepModal.step} onSaved={reload} />
-      )}
-      {activeFolder && resourceModal.stepId && (
-        <ResourceModal open={resourceModal.open} onOpenChange={(v) => setResourceModal({ ...resourceModal, open: v })}
-          folderId={activeFolder.id} stepId={resourceModal.stepId}
-          resource={resourceModal.resource} onSaved={reload} />
-      )}
+      <NewCourseModal open={showModal} onOpenChange={setShowModal} onCreated={async (id) => { await load(); navigate({ to: "/formation/$courseId", params: { courseId: id } }); }} />
     </div>
   );
 }
 
-// ============= FOLDER CONTENT =============
-
-const RESOURCE_ICONS: Record<ResourceType, React.ElementType> = {
-  video: Video, pdf: FileText, note: StickyNote, link: LinkIcon,
-};
-const RESOURCE_LABELS: Record<ResourceType, string> = {
-  video: "Vidéo", pdf: "PDF", note: "Note", link: "Lien",
-};
-
-interface FolderContentProps {
-  folder: TrainingFolder;
-  detail: ReturnType<typeof useFolderWithContent>["data"];
-  progress: ReturnType<typeof useAllTrainingProgress>["progress"];
-  onEditFolder: () => void;
-  onAddStep: () => void;
-  onEditStep: (s: TrainingStep) => void;
-  onDeleteStep: (id: string) => void;
-  onMoveStep: (id: string, dir: -1 | 1) => void;
-  onAddResource: (stepId: string) => void;
-  onEditResource: (stepId: string, r: TrainingResource) => void;
-  onDeleteResource: (id: string) => void;
-  onMoveResource: (stepId: string, resId: string, dir: -1 | 1) => void;
+function Kpi({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={13} style={{ color: "var(--muted-foreground)" }} />
+        <div style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 500, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>{sub}</div>
+    </div>
+  );
 }
 
-function FolderContent({
-  folder, detail, progress, onEditFolder, onAddStep, onEditStep, onDeleteStep,
-  onMoveStep, onAddResource, onEditResource, onDeleteResource, onMoveResource,
-}: FolderContentProps) {
-  const Icon = getFolderIcon(folder.icon);
-  const color = folder.color || DEFAULT_FOLDER_COLOR;
-  const steps = detail?.steps || [];
-  const totalResources = steps.reduce((acc, s) => acc + s.resources.length, 0);
+function NewCourseModal({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (v: boolean) => void; onCreated: (id: string) => void }) {
+  const { roles } = useBusinessRoles({ onlyActive: true });
+  const [type, setType] = useState<"all" | "role">("all");
+  const [title, setTitle] = useState("");
+  const [icon, setIcon] = useState("📚");
+  const [roleId, setRoleId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const create = useServerFn(createCourse);
 
-  const allResIds = steps.flatMap((s) => s.resources.map((r) => r.id));
-  const usersStarted = new Set(progress.filter((p) => allResIds.includes(p.resource_id)).map((p) => p.user_id));
-  const completionsPerResource: Record<string, number> = {};
-  progress.forEach((p) => {
-    if (p.status === "completed") completionsPerResource[p.resource_id] = (completionsPerResource[p.resource_id] || 0) + 1;
-  });
+  useEffect(() => {
+    if (open) { setTitle(""); setIcon("📚"); setType("all"); setRoleId(null); }
+  }, [open]);
+
+  const save = async () => {
+    if (!title.trim()) { toast.error("Titre requis"); return; }
+    if (type === "role" && !roleId) { toast.error("Sélectionne un poste"); return; }
+    setSaving(true);
+    try {
+      const res = await create({ data: { title: title.trim(), icon, isRequiredForAll: type === "all", businessRoleId: type === "role" ? roleId : null } });
+      toast.success("Parcours créé");
+      onOpenChange(false);
+      onCreated(res.id);
+    } catch (e: any) {
+      toast.error(e.message || "Erreur");
+    } finally { setSaving(false); }
+  };
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-        <div className="flex items-start gap-3">
-          <div className="rounded-xl flex items-center justify-center shrink-0"
-            style={{ width: 48, height: 48, backgroundColor: color, color: "#fff" }}>
-            <Icon size={22} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 style={{ fontSize: 16, fontWeight: 500 }}>{folder.name}</h2>
-              {folder.required_for_roles.length > 0 && (
-                <span className="rounded-full px-2 py-0.5"
-                  style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
-                  Requis : {folder.required_for_roles.join(", ")}
-                </span>
-              )}
-            </div>
-            {folder.description && (
-              <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>{folder.description}</div>
-            )}
-            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 8 }}>
-              {steps.length} étape{steps.length !== 1 ? "s" : ""} · {totalResources} ressource{totalResources !== 1 ? "s" : ""} · {usersStarted.size} employé{usersStarted.size !== 1 ? "s" : ""} ont commencé
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle style={{ fontSize: 16, fontWeight: 500 }}>Nouveau parcours</DialogTitle></DialogHeader>
+        <div className="flex flex-col gap-4 py-2">
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Type</label>
+            <div className="flex flex-col gap-1.5 mt-2">
+              <button type="button" onClick={() => setType("all")} className="rounded-lg px-3 py-2.5 text-left"
+                style={{ fontSize: 12, border: `0.5px solid ${type === "all" ? "var(--foreground)" : "var(--border)"}`, backgroundColor: type === "all" ? "var(--background)" : "transparent" }}>
+                <div style={{ fontWeight: 500 }}>Onboarding général</div>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Obligatoire pour tous les employés</div>
+              </button>
+              <button type="button" onClick={() => setType("role")} className="rounded-lg px-3 py-2.5 text-left"
+                style={{ fontSize: 12, border: `0.5px solid ${type === "role" ? "var(--foreground)" : "var(--border)"}`, backgroundColor: type === "role" ? "var(--background)" : "transparent" }}>
+                <div style={{ fontWeight: 500 }}>Par poste</div>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Spécifique à un rôle métier</div>
+              </button>
             </div>
           </div>
-          <button onClick={onEditFolder} className="rounded-md p-2" style={{ border: "0.5px solid var(--border)" }}>
-            <Pencil size={13} />
-          </button>
-        </div>
-      </div>
 
-      {/* Steps */}
-      {steps.length === 0 ? (
-        <div className="rounded-xl border px-6 py-10 text-center" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
-          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Aucune étape</div>
-          <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12 }}>Ajoute une première étape à ce dossier.</div>
-          <button onClick={onAddStep} className="rounded-md px-3 py-2 inline-flex items-center gap-1.5"
-            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
-            <Plus size={12} /> Ajouter une étape
-          </button>
-        </div>
-      ) : (
-        <>
-          {steps.map((step, sIdx) => (
-            <div key={step.id} className="rounded-xl border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-              <div className="flex items-center gap-3 p-3" style={{ borderBottom: step.resources.length > 0 ? "0.5px solid var(--border)" : "none" }}>
-                <div className="rounded-md flex items-center justify-center shrink-0"
-                  style={{ width: 24, height: 24, backgroundColor: "var(--muted)", fontSize: 11, fontWeight: 500 }}>
-                  {sIdx + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{step.title}</div>
-                  {step.description && (
-                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{step.description}</div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  {sIdx > 0 && (
-                    <button onClick={() => onMoveStep(step.id, -1)} className="rounded p-1 hover:bg-muted"><ArrowUp size={12} /></button>
-                  )}
-                  {sIdx < steps.length - 1 && (
-                    <button onClick={() => onMoveStep(step.id, 1)} className="rounded p-1 hover:bg-muted"><ArrowDown size={12} /></button>
-                  )}
-                  <button onClick={() => onEditStep(step)} className="rounded p-1 hover:bg-muted"><Pencil size={12} /></button>
-                  <button onClick={() => onDeleteStep(step.id)} className="rounded p-1 hover:bg-muted" style={{ color: "var(--danger-text)" }}><Trash2 size={12} /></button>
-                </div>
-              </div>
+          {type === "role" && (
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Poste</label>
+              <select value={roleId ?? ""} onChange={(e) => setRoleId(e.target.value || null)}
+                className="w-full mt-1.5 rounded-md"
+                style={{ fontSize: 13, padding: "8px 12px", border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+                <option value="">— Choisir —</option>
+                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+          )}
 
-              {step.resources.length > 0 && (
-                <div className="flex flex-col">
-                  {step.resources.map((r, rIdx) => {
-                    const RIcon = RESOURCE_ICONS[r.type];
-                    const completedCount = completionsPerResource[r.id] || 0;
-                    return (
-                      <div key={r.id} className="flex items-center gap-3 px-3 py-2.5"
-                        style={{ borderTop: rIdx > 0 ? "0.5px solid var(--border)" : "none" }}>
-                        <RIcon size={14} style={{ color: "var(--muted-foreground)" }} />
-                        <div className="flex-1 min-w-0">
-                          <div style={{ fontSize: 12, fontWeight: 500 }}>{r.title}</div>
-                          <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 1 }}>
-                            {RESOURCE_LABELS[r.type]} · {completedCount} complété{completedCount !== 1 ? "s" : ""}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {rIdx > 0 && (
-                            <button onClick={() => onMoveResource(step.id, r.id, -1)} className="rounded p-1 hover:bg-muted"><ArrowUp size={11} /></button>
-                          )}
-                          {rIdx < step.resources.length - 1 && (
-                            <button onClick={() => onMoveResource(step.id, r.id, 1)} className="rounded p-1 hover:bg-muted"><ArrowDown size={11} /></button>
-                          )}
-                          <button onClick={() => onEditResource(step.id, r)} className="rounded p-1 hover:bg-muted"><Pencil size={11} /></button>
-                          <button onClick={() => onDeleteResource(r.id)} className="rounded p-1 hover:bg-muted" style={{ color: "var(--danger-text)" }}><Trash2 size={11} /></button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Titre</label>
+            <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex. Parcours Barista"
+              className="w-full mt-1.5 rounded-md"
+              style={{ fontSize: 13, padding: "8px 12px", border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
+          </div>
 
-              <div className="px-3 py-2" style={{ borderTop: "0.5px solid var(--border)" }}>
-                <button onClick={() => onAddResource(step.id)} className="flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-muted"
-                  style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-                  <Plus size={11} /> Ajouter une ressource
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Icône</label>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {EMOJI_PICK.map(e => (
+                <button key={e} type="button" onClick={() => setIcon(e)}
+                  className="rounded-md flex items-center justify-center"
+                  style={{ width: 36, height: 36, fontSize: 20, border: `0.5px solid ${icon === e ? "var(--foreground)" : "var(--border)"}`, backgroundColor: icon === e ? "var(--background)" : "transparent" }}>
+                  {e}
                 </button>
-              </div>
+              ))}
             </div>
-          ))}
-
-          <button onClick={onAddStep} className="rounded-xl py-3 flex items-center justify-center gap-1.5"
-            style={{ fontSize: 12, fontWeight: 500, border: "1px dashed var(--border)", backgroundColor: "var(--card)" }}>
-            <Plus size={12} /> Ajouter une étape
+          </div>
+        </div>
+        <DialogFooter>
+          <button onClick={() => onOpenChange(false)} disabled={saving} className="rounded-md px-3 py-2" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Annuler</button>
+          <button onClick={save} disabled={saving} className="rounded-md px-3 py-2" style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+            {saving ? "..." : "Créer le parcours"}
           </button>
-        </>
-      )}
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
