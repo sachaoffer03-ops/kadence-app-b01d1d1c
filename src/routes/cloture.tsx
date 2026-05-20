@@ -170,7 +170,7 @@ function ClotureePage() {
 
       <Tabs
         value={tab}
-        onValueChange={(v) => navigate({ search: (prev) => ({ ...prev, tab: v as "config" | "notation" }) })}
+        onValueChange={(v) => navigate({ search: (prev: any) => ({ ...prev, tab: v as "config" | "notation" }) })}
         className="w-full"
       >
         <TabsList className="mb-5">
