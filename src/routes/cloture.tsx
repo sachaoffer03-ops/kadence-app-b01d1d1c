@@ -1,8 +1,10 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import {
   DoorClosed, Clock, Camera, QrCode, MessageSquare, Plus, Trash2, GripVertical,
-  Pencil, Check, X, Sparkles, Lock, RefreshCw, Upload,
+  Pencil, Check, X, Sparkles, Lock, RefreshCw, Upload, Settings as SettingsIcon, BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -16,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { NotationTab } from "@/components/cloture/NotationTab";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -25,7 +29,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+const clotureSearchSchema = z.object({
+  tab: fallback(z.enum(["config", "notation"]), "config").default("config"),
+});
+
 export const Route = createFileRoute("/cloture")({
+  validateSearch: zodValidator(clotureSearchSchema),
   beforeLoad: () => {
     // Client-side role guard happens inside the component; this stays open for SSR.
   },
