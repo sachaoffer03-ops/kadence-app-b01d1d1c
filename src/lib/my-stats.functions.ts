@@ -108,7 +108,7 @@ export const getMyStats = createServerFn({ method: "POST" })
     for (const s of weekShifts ?? []) {
       if (s.clocked_in_at && s.clocked_out_at) {
         workedMin += minutesBetween(s.clocked_in_at, s.clocked_out_at);
-      } else if (s.status === "scheduled" || s.status === "in_progress") {
+      } else if (s.status !== "cancelled") {
         scheduledMin += Math.round(hoursBetweenTime(s.start_time, s.end_time) * 60);
       }
     }
