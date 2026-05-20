@@ -1158,7 +1158,13 @@ function QuestionsSection({ studioId }: { studioId: string }) {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={questions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-1.5">
-            {questions.map((q) => <SortableQuestion key={q.id} q={q} />)}
+            {questions.map((q) => (
+              <SortableQuestion
+                key={q.id}
+                q={q}
+                onDeleted={() => setQuestions((prev) => prev.filter((x) => x.id !== q.id))}
+              />
+            ))}
           </div>
         </SortableContext>
       </DndContext>
