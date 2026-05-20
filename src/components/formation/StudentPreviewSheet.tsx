@@ -35,13 +35,13 @@ export function StudentPreviewSheet({ open, onOpenChange, data }: Props) {
                 Section {si + 1} · {sec.title}
               </div>
               <div className="flex flex-col gap-3">
-                {sec.modules.map((mod, mi) => (
+                {sec.modules.map((mod: any, mi: number) => (
                   <div key={mod.id} className="rounded-lg p-3" style={{ backgroundColor: "var(--background)" }}>
                     <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>
                       {mi + 1}. {mod.title}
                     </div>
                     <div className="flex flex-col gap-2">
-                      {mod.contents.map((c) => (
+                      {mod.contents.map((c: any) => (
                         <div key={c.id} className="flex items-start gap-2">
                           <span style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: TYPE_COLOR[c.type as keyof typeof TYPE_COLOR], marginTop: 6, flexShrink: 0 }} />
                           {c.type === "video" && <Video size={13} style={{ color: "var(--muted-foreground)", marginTop: 2 }} />}
