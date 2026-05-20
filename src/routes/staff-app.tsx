@@ -20,6 +20,7 @@ import { ChatPanel } from "@/components/staff-app/ChatPanel";
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSheet";
 import { WorkedHoursEmployeeCard, EmployeeLastShifts } from "@/components/WorkedHoursCard";
+import { MyStatsCard } from "@/components/staff-app/MyStatsCard";
 
 export const Route = createFileRoute("/staff-app")({
   component: StaffAppPage,
@@ -832,6 +833,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
         />
       </Card>
 
+      <MyStatsCard />
       <WorkedHoursEmployeeCard userId={userId} hourlyRate={profile.hourly_rate} />
       <EmployeeLastShifts userId={userId} />
 
