@@ -410,3 +410,406 @@ export const getEmployeeTrainingProgress = createServerFn({ method: "POST" })
       courses: result,
     };
   });
+
+// ============================================
+// COURSE BUILDER (full structure + CRUD)
+// ============================================
+export const getCourseFullStructure = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ courseId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+
+    const [courseRes, sectionsRes, modulesRes, contentsRes, quizzesRes, questionsRes, optionsRes, rolesRes] = await Promise.all([
+      supabase.from("training_courses").select("*").eq("id", data.courseId).maybeSingle(),
+      supabase.from("training_sections").select("*").eq("course_id", data.courseId).order("position"),
+      supabase.from("training_modules").select("*").order("position"),
+      supabase.from("training_contents").select("*").order("position"),
+      supabase.from("training_quizzes").select("*"),
+      supabase.from("training_quiz_questions").select("*").order("position"),
+      supabase.from("training_quiz_options").select("*").order("position"),
+      supabase.from("business_roles").select("id, name"),
+    ]);
+    if (!courseRes.data) throw new Error("Parcours introuvable");
+
+    const sections = (sectionsRes.data ?? []) as any[];
+    const sectionIds = new Set(sections.map((s) => s.id));
+    const modules = ((modulesRes.data ?? []) as any[]).filter((m) => sectionIds.has(m.section_id));
+    const moduleIds = new Set(modules.map((m) => m.id));
+    const contents = ((contentsRes.data ?? []) as any[]).filter((c) => moduleIds.has(c.module_id));
+    const quizzes = ((quizzesRes.data ?? []) as any[]).filter((q) => moduleIds.has(q.module_id));
+    const quizIds = new Set(quizzes.map((q) => q.id));
+    const questions = ((questionsRes.data ?? []) as any[]).filter((q) => quizIds.has(q.quiz_id));
+    const questionIds = new Set(questions.map((q) => q.id));
+    const options = ((optionsRes.data ?? []) as any[]).filter((o) => questionIds.has(o.question_id));
+
+    return {
+      course: courseRes.data as any,
+      businessRoles: (rolesRes.data ?? []) as any[],
+      sections: sections.map((sec) => {
+        const secModules = modules.filter((m) => m.section_id === sec.id);
+        return {
+          ...sec,
+          modules: secModules.map((mod) => {
+            const modContents = contents.filter((c) => c.module_id === mod.id);
+            const quiz = quizzes.find((q) => q.module_id === mod.id) ?? null;
+            const quizQs = quiz ? questions.filter((q) => q.quiz_id === quiz.id) : [];
+            return {
+              ...mod,
+              contents: modContents,
+              quiz: quiz
+                ? {
+                    ...quiz,
+                    questions: quizQs.map((qq) => ({
+                      ...qq,
+                      options: options.filter((o) => o.question_id === qq.id),
+                    })),
+                  }
+                : null,
+            };
+          }),
+        };
+      }),
+    };
+  });
+
+export const updateCourse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    courseId: z.string().uuid(),
+    patch: z.object({
+      title: z.string().trim().min(1).max(120).optional(),
+      description: z.string().max(2000).nullable().optional(),
+      icon: z.string().max(8).nullable().optional(),
+      color: z.string().max(16).nullable().optional(),
+      business_role_id: z.string().uuid().nullable().optional(),
+      is_required_for_all: z.boolean().optional(),
+      required_for_planning: z.boolean().optional(),
+      passing_quiz_score: z.number().int().min(0).max(100).optional(),
+    }),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { error } = await supabase.from("training_courses").update(data.patch as any).eq("id", data.courseId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const publishCourse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ courseId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+
+    const { data: course } = await supabase.from("training_courses").select("*").eq("id", data.courseId).maybeSingle();
+    if (!course) throw new Error("Parcours introuvable");
+
+    const { data: sections } = await supabase.from("training_sections").select("id").eq("course_id", data.courseId);
+    if (!sections || sections.length === 0) throw new Error("Le parcours est vide, impossible de publier");
+    const { data: modules } = await supabase.from("training_modules").select("id, section_id").in("section_id", sections.map((s: any) => s.id));
+    if (!modules || modules.length === 0) throw new Error("Le parcours est vide, impossible de publier");
+    const { data: contents } = await supabase.from("training_contents").select("id").in("module_id", modules.map((m: any) => m.id));
+    if (!contents || contents.length === 0) throw new Error("Le parcours est vide, impossible de publier");
+
+    const { error } = await supabase.from("training_courses").update({ is_published: true } as any).eq("id", data.courseId);
+    if (error) throw new Error(error.message);
+
+    // Notify concerned employees
+    const c = course as any;
+    let targetIds: string[] = [];
+    if (c.is_required_for_all) {
+      const { data: emps } = await supabase.from("profiles").select("id").eq("status", "active");
+      targetIds = (emps ?? []).map((e: any) => e.id);
+    } else if (c.business_role_id) {
+      const { data: role } = await supabase.from("business_roles").select("name").eq("id", c.business_role_id).maybeSingle();
+      if (role) {
+        const { data: ubr } = await supabase.from("user_business_roles").select("user_id").eq("role", (role as any).name);
+        targetIds = Array.from(new Set((ubr ?? []).map((u: any) => u.user_id)));
+      }
+    }
+    if (targetIds.length > 0) {
+      await supabase.from("notifications").insert(
+        targetIds.map((uid) => ({
+          user_id: uid,
+          type: "training_assigned",
+          title: "Nouveau parcours de formation",
+          body: `${c.icon ?? "📚"} ${c.title} est disponible.`,
+          link: "/staff-app?tab=formation",
+        })) as any
+      );
+    }
+    return { ok: true, notified: targetIds.length };
+  });
+
+export const unpublishCourse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ courseId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { error } = await supabase.from("training_courses").update({ is_published: false } as any).eq("id", data.courseId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- Sections ----------
+export const createSection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    courseId: z.string().uuid(),
+    title: z.string().trim().min(1).max(120),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { data: last } = await supabase.from("training_sections").select("position").eq("course_id", data.courseId).order("position", { ascending: false }).limit(1);
+    const nextPos = ((last as any)?.[0]?.position ?? -1) + 1;
+    const { data: row, error } = await supabase.from("training_sections").insert({ course_id: data.courseId, title: data.title, position: nextPos } as any).select("id").single();
+    if (error || !row) throw new Error(error?.message ?? "Création échouée");
+    return { id: (row as any).id };
+  });
+
+export const updateSection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    sectionId: z.string().uuid(),
+    title: z.string().trim().min(1).max(120).optional(),
+    description: z.string().max(2000).nullable().optional(),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { sectionId, ...patch } = data;
+    const { error } = await supabase.from("training_sections").update(patch as any).eq("id", sectionId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteSection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ sectionId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { error } = await supabase.from("training_sections").delete().eq("id", data.sectionId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const reorderSections = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    courseId: z.string().uuid(),
+    orderedIds: z.array(z.string().uuid()).min(1).max(50),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    for (let i = 0; i < data.orderedIds.length; i++) {
+      await supabase.from("training_sections").update({ position: i } as any).eq("id", data.orderedIds[i]).eq("course_id", data.courseId);
+    }
+    return { ok: true };
+  });
+
+// ---------- Modules ----------
+export const createModule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    sectionId: z.string().uuid(),
+    title: z.string().trim().min(1).max(120),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { data: last } = await supabase.from("training_modules").select("position").eq("section_id", data.sectionId).order("position", { ascending: false }).limit(1);
+    const nextPos = ((last as any)?.[0]?.position ?? -1) + 1;
+    const { data: row, error } = await supabase.from("training_modules").insert({ section_id: data.sectionId, title: data.title, position: nextPos } as any).select("id").single();
+    if (error || !row) throw new Error(error?.message ?? "Création échouée");
+    return { id: (row as any).id };
+  });
+
+export const updateModule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    moduleId: z.string().uuid(),
+    title: z.string().trim().min(1).max(120).optional(),
+    description: z.string().max(2000).nullable().optional(),
+    duration_estimate_min: z.number().int().min(0).max(600).nullable().optional(),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { moduleId, ...patch } = data;
+    const { error } = await supabase.from("training_modules").update(patch as any).eq("id", moduleId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteModule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ moduleId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { error } = await supabase.from("training_modules").delete().eq("id", data.moduleId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const reorderModules = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    sectionId: z.string().uuid(),
+    orderedIds: z.array(z.string().uuid()).min(1).max(50),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    for (let i = 0; i < data.orderedIds.length; i++) {
+      await supabase.from("training_modules").update({ position: i } as any).eq("id", data.orderedIds[i]).eq("section_id", data.sectionId);
+    }
+    return { ok: true };
+  });
+
+// ---------- Contents ----------
+const contentTypeSchema = z.enum(["video", "pdf", "image", "text"]);
+
+export const createContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    moduleId: z.string().uuid(),
+    type: contentTypeSchema,
+    title: z.string().trim().min(1).max(160),
+    description: z.string().max(2000).nullable().optional(),
+    url: z.string().url().nullable().optional(),
+    external_url: z.string().url().nullable().optional(),
+    text_content: z.string().max(20000).nullable().optional(),
+    duration_seconds: z.number().int().min(0).max(36000).nullable().optional(),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { data: last } = await supabase.from("training_contents").select("position").eq("module_id", data.moduleId).order("position", { ascending: false }).limit(1);
+    const nextPos = ((last as any)?.[0]?.position ?? -1) + 1;
+    const { moduleId, ...rest } = data;
+    const { data: row, error } = await supabase.from("training_contents").insert({ module_id: moduleId, position: nextPos, ...rest } as any).select("id").single();
+    if (error || !row) throw new Error(error?.message ?? "Création échouée");
+    return { id: (row as any).id };
+  });
+
+export const updateContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    contentId: z.string().uuid(),
+    title: z.string().trim().min(1).max(160).optional(),
+    description: z.string().max(2000).nullable().optional(),
+    url: z.string().url().nullable().optional(),
+    external_url: z.string().url().nullable().optional(),
+    text_content: z.string().max(20000).nullable().optional(),
+    duration_seconds: z.number().int().min(0).max(36000).nullable().optional(),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { contentId, ...patch } = data;
+    const { error } = await supabase.from("training_contents").update(patch as any).eq("id", contentId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ contentId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const { error } = await supabase.from("training_contents").delete().eq("id", data.contentId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const reorderContents = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    moduleId: z.string().uuid(),
+    orderedIds: z.array(z.string().uuid()).min(1).max(100),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    for (let i = 0; i < data.orderedIds.length; i++) {
+      await supabase.from("training_contents").update({ position: i } as any).eq("id", data.orderedIds[i]).eq("module_id", data.moduleId);
+    }
+    return { ok: true };
+  });
+
+// ---------- Quiz ----------
+const quizQuestionSchema = z.object({
+  question_text: z.string().trim().min(1).max(500),
+  question_type: z.enum(["single_choice", "multiple_choice", "true_false"]),
+  explanation: z.string().max(1000).nullable().optional(),
+  options: z.array(z.object({
+    option_text: z.string().trim().min(1).max(300),
+    is_correct: z.boolean(),
+  })).min(2).max(8),
+});
+
+export const createOrUpdateQuiz = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({
+    moduleId: z.string().uuid(),
+    title: z.string().trim().min(1).max(160),
+    passing_score: z.number().int().min(0).max(100),
+    questions: z.array(quizQuestionSchema).max(50),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+
+    let quizId: string;
+    const { data: existing } = await supabase.from("training_quizzes").select("id").eq("module_id", data.moduleId).maybeSingle();
+    if (existing) {
+      quizId = (existing as any).id;
+      await supabase.from("training_quizzes").update({ title: data.title, passing_score: data.passing_score } as any).eq("id", quizId);
+      // wipe existing questions (cascade deletes options)
+      await supabase.from("training_quiz_questions").delete().eq("quiz_id", quizId);
+    } else {
+      const { data: row, error } = await supabase.from("training_quizzes").insert({ module_id: data.moduleId, title: data.title, passing_score: data.passing_score } as any).select("id").single();
+      if (error || !row) throw new Error(error?.message ?? "Création échouée");
+      quizId = (row as any).id;
+      await supabase.from("training_modules").update({ has_final_quiz: true } as any).eq("id", data.moduleId);
+    }
+
+    for (let i = 0; i < data.questions.length; i++) {
+      const q = data.questions[i];
+      const { data: qRow, error: qErr } = await supabase.from("training_quiz_questions").insert({
+        quiz_id: quizId,
+        question_text: q.question_text,
+        question_type: q.question_type,
+        explanation: q.explanation ?? null,
+        position: i,
+      } as any).select("id").single();
+      if (qErr || !qRow) throw new Error(qErr?.message ?? "Question");
+      const qid = (qRow as any).id;
+      if (q.options.length > 0) {
+        await supabase.from("training_quiz_options").insert(
+          q.options.map((opt, oi) => ({ question_id: qid, option_text: opt.option_text, is_correct: opt.is_correct, position: oi })) as any
+        );
+      }
+    }
+    return { ok: true, quizId };
+  });
+
+export const deleteQuiz = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ moduleId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    await supabase.from("training_quizzes").delete().eq("module_id", data.moduleId);
+    await supabase.from("training_modules").update({ has_final_quiz: false } as any).eq("id", data.moduleId);
+    return { ok: true };
+  });
