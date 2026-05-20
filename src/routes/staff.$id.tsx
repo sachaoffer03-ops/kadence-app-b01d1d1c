@@ -477,14 +477,30 @@ function HourlyRateRow({ profileId, value, canEdit, onSaved }: { profileId: stri
   };
 
   if (!canEdit || !editing) {
+    const isEmpty = value === null;
     return (
-      <div className="flex items-center justify-between py-1" style={{ fontSize: 12 }}>
+      <div className="flex items-center justify-between py-1.5" style={{ fontSize: 12 }}>
         <span style={{ color: "var(--muted-foreground)" }}>Taux horaire</span>
         <span className="flex items-center gap-2">
-          <span style={{ fontWeight: 500 }}>{display}</span>
+          <span style={{ fontWeight: 500, color: isEmpty ? "var(--muted-foreground)" : "var(--foreground)" }}>
+            {isEmpty ? "Non défini" : display}
+          </span>
           {canEdit && (
-            <button onClick={() => { setRaw(value !== null ? String(value).replace(".", ",") : ""); setEditing(true); }}
-              style={{ fontSize: 10, color: "var(--coral)" }}>Éditer</button>
+            <button
+              onClick={() => { setRaw(value !== null ? String(value).replace(".", ",") : ""); setEditing(true); }}
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                padding: "3px 10px",
+                borderRadius: 6,
+                border: isEmpty ? "none" : "0.5px solid var(--border)",
+                backgroundColor: isEmpty ? "var(--coral)" : "transparent",
+                color: isEmpty ? "#fff" : "var(--foreground)",
+                cursor: "pointer",
+              }}
+            >
+              {isEmpty ? "Définir" : "Modifier"}
+            </button>
           )}
         </span>
       </div>
