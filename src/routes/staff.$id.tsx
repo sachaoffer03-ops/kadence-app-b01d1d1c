@@ -290,11 +290,11 @@ function EmployeeDetailPage() {
           </div>
 
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Administratif</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Administratif</div>
+            <HourlyRateRow profileId={emp.id} value={emp.hourly_rate} canEdit={appRole === "admin" || appRole === "manager"} onSaved={(v) => setEmp({ ...emp, hourly_rate: v })} />
             <Row label="Date d'embauche" value={emp.hire_date || "—"} />
             <Row label="Date de naissance" value={emp.birth_date || "—"} />
             <Row label="Nationalité" value={emp.nationality || "—"} />
-            <HourlyRateRow profileId={emp.id} value={emp.hourly_rate} canEdit={appRole === "admin" || appRole === "manager"} onSaved={(v) => setEmp({ ...emp, hourly_rate: v })} />
             <Row label="NISS" value={emp.niss || "—"} />
             <Row label="IBAN" value={emp.iban || "—"} />
             {emp.contract === "etudiant" && <Row label="Carte étudiant" value={emp.student_card_valid ? "Valide" : "Manquante"} />}
@@ -479,46 +479,80 @@ function HourlyRateRow({ profileId, value, canEdit, onSaved }: { profileId: stri
   if (!canEdit || !editing) {
     const isEmpty = value === null;
     return (
-      <div className="flex items-center justify-between py-1.5" style={{ fontSize: 12 }}>
-        <span style={{ color: "var(--muted-foreground)" }}>Taux horaire</span>
-        <span className="flex items-center gap-2">
-          <span style={{ fontWeight: 500, color: isEmpty ? "var(--muted-foreground)" : "var(--foreground)" }}>
+      <div
+        className="rounded-lg flex items-center justify-between mb-3"
+        style={{
+          padding: "12px 14px",
+          backgroundColor: isEmpty ? "rgba(240, 153, 123, 0.08)" : "var(--background)",
+          border: isEmpty ? "1px solid var(--coral)" : "0.5px solid var(--border)",
+        }}
+      >
+        <div className="flex flex-col">
+          <span style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Taux horaire
+          </span>
+          <span style={{ fontSize: 18, fontWeight: 500, marginTop: 2, color: isEmpty ? "var(--muted-foreground)" : "var(--foreground)" }}>
             {isEmpty ? "Non défini" : display}
           </span>
-          {canEdit && (
-            <button
-              onClick={() => { setRaw(value !== null ? String(value).replace(".", ",") : ""); setEditing(true); }}
-              style={{
-                fontSize: 11,
-                fontWeight: 500,
-                padding: "3px 10px",
-                borderRadius: 6,
-                border: isEmpty ? "none" : "0.5px solid var(--border)",
-                backgroundColor: isEmpty ? "var(--coral)" : "transparent",
-                color: isEmpty ? "#fff" : "var(--foreground)",
-                cursor: "pointer",
-              }}
-            >
-              {isEmpty ? "Définir" : "Modifier"}
-            </button>
-          )}
-        </span>
+        </div>
+        {canEdit && (
+          <button
+            onClick={() => { setRaw(value !== null ? String(value).replace(".", ",") : ""); setEditing(true); }}
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "none",
+              backgroundColor: "var(--coral)",
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            {isEmpty ? "Définir" : "Modifier"}
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between py-1 gap-2" style={{ fontSize: 12 }}>
-      <span style={{ color: "var(--muted-foreground)" }}>Taux horaire</span>
-      <span className="flex items-center gap-1">
-        <input value={raw} onChange={(e) => setRaw(e.target.value)} placeholder="Ex: 12,50" inputMode="decimal"
-          style={{ fontSize: 12, padding: "2px 6px", border: "0.5px solid var(--border)", borderRadius: 4, width: 80, textAlign: "right" }} />
-        <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>€/h</span>
-        <button onClick={save} disabled={saving} style={{ fontSize: 10, fontWeight: 500, color: "var(--coral)" }}>
-          {saving ? "..." : "OK"}
+    <div
+      className="rounded-lg flex items-center gap-2 mb-3"
+      style={{ padding: "12px 14px", backgroundColor: "var(--background)", border: "1px solid var(--coral)" }}
+    >
+      <div className="flex flex-col flex-1">
+        <span style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+          Taux horaire
+        </span>
+        <div className="flex items-center gap-1.5">
+          <input
+            autoFocus
+            value={raw}
+            onChange={(e) => setRaw(e.target.value)}
+            placeholder="Ex: 12,50"
+            inputMode="decimal"
+            style={{ fontSize: 16, fontWeight: 500, padding: "4px 8px", border: "0.5px solid var(--border)", borderRadius: 6, width: 100, textAlign: "right", backgroundColor: "#fff" }}
+          />
+          <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>€/h</span>
+        </div>
+      </div>
+      <div className="flex gap-1.5">
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{ fontSize: 12, fontWeight: 500, padding: "8px 14px", borderRadius: 8, border: "none", backgroundColor: "var(--coral)", color: "#fff", cursor: "pointer" }}
+        >
+          {saving ? "..." : "Enregistrer"}
         </button>
-        <button onClick={() => setEditing(false)} disabled={saving} style={{ fontSize: 10, color: "var(--muted-foreground)" }}>×</button>
-      </span>
+        <button
+          onClick={() => setEditing(false)}
+          disabled={saving}
+          style={{ fontSize: 12, fontWeight: 500, padding: "8px 12px", borderRadius: 8, border: "0.5px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer" }}
+        >
+          Annuler
+        </button>
+      </div>
     </div>
   );
 }
