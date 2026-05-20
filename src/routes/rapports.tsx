@@ -25,6 +25,7 @@ const searchSchema = z.object({
   studios: z.string().optional(),
   roles: z.string().optional(),
   view: z.enum(["overview", "employees", "shifts"]).default("overview"),
+  userId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/rapports")({

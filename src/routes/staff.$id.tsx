@@ -10,6 +10,7 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceL
 import { useServerFn } from "@tanstack/react-start";
 import { getScoreBreakdown } from "@/lib/scoring.functions";
 import { WorkedHoursAdminCard, ClockedShiftsTable } from "@/components/WorkedHoursCard";
+import { EmployeeStatsCard } from "@/components/EmployeeStatsCard";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -182,6 +183,8 @@ function EmployeeDetailPage() {
           <button onClick={handleDeactivate} className="rounded-md px-2 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--card)" }}>Réactiver</button>
         </div>
       )}
+
+      <EmployeeStatsCard userId={emp.id} />
 
       <div className="grid grid-cols-5 gap-5">
         {/* LEFT */}
