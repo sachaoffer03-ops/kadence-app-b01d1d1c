@@ -571,71 +571,6 @@ export type Database = {
           },
         ]
       }
-      formation_completions: {
-        Row: {
-          completed_at: string
-          formation_id: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          completed_at?: string
-          formation_id: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          completed_at?: string
-          formation_id?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "formation_completions_formation_id_fkey"
-            columns: ["formation_id"]
-            isOneToOne: false
-            referencedRelation: "formations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      formations: {
-        Row: {
-          created_at: string
-          description: string | null
-          duration_min: number | null
-          id: string
-          path_id: string | null
-          position: number
-          required_role: string | null
-          title: string
-          video_url: string | null
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          duration_min?: number | null
-          id?: string
-          path_id?: string | null
-          position?: number
-          required_role?: string | null
-          title: string
-          video_url?: string | null
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          duration_min?: number | null
-          id?: string
-          path_id?: string | null
-          position?: number
-          required_role?: string | null
-          title?: string
-          video_url?: string | null
-        }
-        Relationships: []
-      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -1612,204 +1547,457 @@ export type Database = {
         }
         Relationships: []
       }
-      training_folders: {
-        Row: {
-          color: string | null
-          created_at: string
-          deleted_at: string | null
-          description: string | null
-          icon: string | null
-          id: string
-          name: string
-          order_index: number
-          required_for_roles: string[]
-          updated_at: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          description?: string | null
-          icon?: string | null
-          id?: string
-          name: string
-          order_index?: number
-          required_for_roles?: string[]
-          updated_at?: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          description?: string | null
-          icon?: string | null
-          id?: string
-          name?: string
-          order_index?: number
-          required_for_roles?: string[]
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      training_paths: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          position: number
-          required_role: string | null
-          title: string
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          position?: number
-          required_role?: string | null
-          title: string
-          type?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          position?: number
-          required_role?: string | null
-          title?: string
-          type?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      training_progress: {
+      training_content_progress: {
         Row: {
           completed_at: string | null
-          created_at: string
+          content_id: string
+          first_accessed_at: string | null
           id: string
-          resource_id: string
+          last_accessed_at: string | null
+          progress_pct: number
           status: string
-          updated_at: string
+          time_spent_seconds: number
           user_id: string
         }
         Insert: {
           completed_at?: string | null
-          created_at?: string
+          content_id: string
+          first_accessed_at?: string | null
           id?: string
-          resource_id: string
+          last_accessed_at?: string | null
+          progress_pct?: number
           status?: string
-          updated_at?: string
+          time_spent_seconds?: number
           user_id: string
         }
         Update: {
           completed_at?: string | null
-          created_at?: string
+          content_id?: string
+          first_accessed_at?: string | null
           id?: string
-          resource_id?: string
+          last_accessed_at?: string | null
+          progress_pct?: number
           status?: string
-          updated_at?: string
+          time_spent_seconds?: number
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "training_progress_resource_id_fkey"
-            columns: ["resource_id"]
+            foreignKeyName: "training_content_progress_content_id_fkey"
+            columns: ["content_id"]
             isOneToOne: false
-            referencedRelation: "training_resources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "training_progress_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "training_contents"
             referencedColumns: ["id"]
           },
         ]
       }
-      training_resources: {
-        Row: {
-          content: string
-          created_at: string
-          duration_seconds: number | null
-          id: string
-          is_uploaded_video: boolean
-          order_index: number
-          step_id: string
-          title: string
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          duration_seconds?: number | null
-          id?: string
-          is_uploaded_video?: boolean
-          order_index?: number
-          step_id: string
-          title: string
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          duration_seconds?: number | null
-          id?: string
-          is_uploaded_video?: boolean
-          order_index?: number
-          step_id?: string
-          title?: string
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "training_resources_step_id_fkey"
-            columns: ["step_id"]
-            isOneToOne: false
-            referencedRelation: "training_steps"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      training_steps: {
+      training_contents: {
         Row: {
           created_at: string
           description: string | null
-          folder_id: string
+          duration_seconds: number | null
+          external_url: string | null
           id: string
-          order_index: number
+          module_id: string
+          position: number
+          text_content: string | null
+          title: string
+          type: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          external_url?: string | null
+          id?: string
+          module_id: string
+          position?: number
+          text_content?: string | null
+          title: string
+          type: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          external_url?: string | null
+          id?: string
+          module_id?: string
+          position?: number
+          text_content?: string | null
+          title?: string
+          type?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_contents_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "training_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_course_completions: {
+        Row: {
+          completed_at: string
+          course_id: string
+          id: string
+          total_time_spent_seconds: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          course_id: string
+          id?: string
+          total_time_spent_seconds?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          course_id?: string
+          id?: string
+          total_time_spent_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_course_completions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "training_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_courses: {
+        Row: {
+          business_role_id: string | null
+          color: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_published: boolean
+          is_required_for_all: boolean
+          passing_quiz_score: number
+          position: number
+          required_for_planning: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          business_role_id?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_published?: boolean
+          is_required_for_all?: boolean
+          passing_quiz_score?: number
+          position?: number
+          required_for_planning?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          business_role_id?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_published?: boolean
+          is_required_for_all?: boolean
+          passing_quiz_score?: number
+          position?: number
+          required_for_planning?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_courses_business_role_id_fkey"
+            columns: ["business_role_id"]
+            isOneToOne: false
+            referencedRelation: "business_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_modules: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_estimate_min: number | null
+          has_final_quiz: boolean
+          id: string
+          position: number
+          section_id: string
           title: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           description?: string | null
-          folder_id: string
+          duration_estimate_min?: number | null
+          has_final_quiz?: boolean
           id?: string
-          order_index?: number
+          position?: number
+          section_id: string
           title: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           description?: string | null
-          folder_id?: string
+          duration_estimate_min?: number | null
+          has_final_quiz?: boolean
           id?: string
-          order_index?: number
+          position?: number
+          section_id?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "training_steps_folder_id_fkey"
-            columns: ["folder_id"]
+            foreignKeyName: "training_modules_section_id_fkey"
+            columns: ["section_id"]
             isOneToOne: false
-            referencedRelation: "training_folders"
+            referencedRelation: "training_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_quiz_answers: {
+        Row: {
+          answered_at: string
+          attempt_id: string
+          id: string
+          is_correct: boolean
+          question_id: string
+          selected_option_ids: string[]
+        }
+        Insert: {
+          answered_at?: string
+          attempt_id: string
+          id?: string
+          is_correct?: boolean
+          question_id: string
+          selected_option_ids?: string[]
+        }
+        Update: {
+          answered_at?: string
+          attempt_id?: string
+          id?: string
+          is_correct?: boolean
+          question_id?: string
+          selected_option_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_quiz_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "training_quiz_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_quiz_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "training_quiz_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_quiz_attempts: {
+        Row: {
+          attempt_number: number
+          completed_at: string | null
+          id: string
+          passed: boolean | null
+          quiz_id: string
+          score: number | null
+          started_at: string
+          time_spent_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          attempt_number?: number
+          completed_at?: string | null
+          id?: string
+          passed?: boolean | null
+          quiz_id: string
+          score?: number | null
+          started_at?: string
+          time_spent_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          attempt_number?: number
+          completed_at?: string | null
+          id?: string
+          passed?: boolean | null
+          quiz_id?: string
+          score?: number | null
+          started_at?: string
+          time_spent_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "training_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_quiz_options: {
+        Row: {
+          id: string
+          is_correct: boolean
+          option_text: string
+          position: number
+          question_id: string
+        }
+        Insert: {
+          id?: string
+          is_correct?: boolean
+          option_text: string
+          position?: number
+          question_id: string
+        }
+        Update: {
+          id?: string
+          is_correct?: boolean
+          option_text?: string
+          position?: number
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_quiz_options_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "training_quiz_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_quiz_questions: {
+        Row: {
+          created_at: string
+          explanation: string | null
+          id: string
+          position: number
+          question_text: string
+          question_type: string
+          quiz_id: string
+        }
+        Insert: {
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          position?: number
+          question_text: string
+          question_type?: string
+          quiz_id: string
+        }
+        Update: {
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          position?: number
+          question_text?: string
+          question_type?: string
+          quiz_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "training_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_quizzes: {
+        Row: {
+          created_at: string
+          id: string
+          module_id: string
+          passing_score: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          module_id: string
+          passing_score?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          module_id?: string
+          passing_score?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_quizzes_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: true
+            referencedRelation: "training_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_sections: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          id: string
+          position: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          position?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          position?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_sections_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "training_courses"
             referencedColumns: ["id"]
           },
         ]
