@@ -11,6 +11,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { getScoreBreakdown } from "@/lib/scoring.functions";
 import { WorkedHoursAdminCard, ClockedShiftsTable } from "@/components/WorkedHoursCard";
 import { EmployeeStatsCard } from "@/components/EmployeeStatsCard";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { EmployeeFormationTab } from "@/components/staff/EmployeeFormationTab";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -186,7 +188,14 @@ function EmployeeDetailPage() {
 
       <EmployeeStatsCard userId={emp.id} />
 
-      <div className="grid grid-cols-5 gap-5">
+      <Tabs defaultValue="profil" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="profil">Profil</TabsTrigger>
+          <TabsTrigger value="formation">Formation</TabsTrigger>
+        </TabsList>
+        <TabsContent value="profil">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
+
         {/* LEFT */}
         <div className="col-span-2 flex flex-col gap-4">
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
@@ -434,6 +443,11 @@ function EmployeeDetailPage() {
           </div>
         </div>
       </div>
+        </TabsContent>
+        <TabsContent value="formation">
+          <EmployeeFormationTab userId={emp.id} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -34,6 +34,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
+import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminQaTestSuiteRouteImport } from './routes/admin.qa-test-suite'
 import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-studios'
@@ -169,6 +170,11 @@ const PlanningGenerateRoute = PlanningGenerateRouteImport.update({
   path: '/generate',
   getParentRoute: () => PlanningRoute,
 } as any)
+const FormationCourseIdRoute = FormationCourseIdRouteImport.update({
+  id: '/$courseId',
+  path: '/$courseId',
+  getParentRoute: () => FormationRoute,
+} as any)
 const AdminSeederRoute = AdminSeederRouteImport.update({
   id: '/admin/seeder',
   path: '/admin/seeder',
@@ -225,7 +231,7 @@ export interface FileRoutesByFullPath {
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
   '/feedbacks': typeof FeedbacksRoute
-  '/formation': typeof FormationRoute
+  '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seeder': typeof AdminSeederRoute
+  '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
@@ -261,7 +268,7 @@ export interface FileRoutesByTo {
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
   '/feedbacks': typeof FeedbacksRoute
-  '/formation': typeof FormationRoute
+  '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
@@ -281,6 +288,7 @@ export interface FileRoutesByTo {
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seeder': typeof AdminSeederRoute
+  '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
@@ -297,7 +305,7 @@ export interface FileRoutesById {
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
   '/feedbacks': typeof FeedbacksRoute
-  '/formation': typeof FormationRoute
+  '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
@@ -318,6 +326,7 @@ export interface FileRoutesById {
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seeder': typeof AdminSeederRoute
+  '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
@@ -356,6 +365,7 @@ export interface FileRouteTypes {
     | '/admin/migrate-studios'
     | '/admin/qa-test-suite'
     | '/admin/seeder'
+    | '/formation/$courseId'
     | '/planning/generate'
     | '/staff/$id'
     | '/staff/'
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/admin/migrate-studios'
     | '/admin/qa-test-suite'
     | '/admin/seeder'
+    | '/formation/$courseId'
     | '/planning/generate'
     | '/staff/$id'
     | '/staff'
@@ -427,6 +438,7 @@ export interface FileRouteTypes {
     | '/admin/migrate-studios'
     | '/admin/qa-test-suite'
     | '/admin/seeder'
+    | '/formation/$courseId'
     | '/planning/generate'
     | '/staff/$id'
     | '/staff/'
@@ -443,7 +455,7 @@ export interface RootRouteChildren {
   DemandesRoute: typeof DemandesRoute
   DimonaRoute: typeof DimonaRoute
   FeedbacksRoute: typeof FeedbacksRoute
-  FormationRoute: typeof FormationRoute
+  FormationRoute: typeof FormationRouteWithChildren
   LoginRoute: typeof LoginRoute
   PlanningRoute: typeof PlanningRouteWithChildren
   PointageRoute: typeof PointageRoute
@@ -643,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanningGenerateRouteImport
       parentRoute: typeof PlanningRoute
     }
+    '/formation/$courseId': {
+      id: '/formation/$courseId'
+      path: '/$courseId'
+      fullPath: '/formation/$courseId'
+      preLoaderRoute: typeof FormationCourseIdRouteImport
+      parentRoute: typeof FormationRoute
+    }
     '/admin/seeder': {
       id: '/admin/seeder'
       path: '/admin/seeder'
@@ -709,6 +728,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface FormationRouteChildren {
+  FormationCourseIdRoute: typeof FormationCourseIdRoute
+}
+
+const FormationRouteChildren: FormationRouteChildren = {
+  FormationCourseIdRoute: FormationCourseIdRoute,
+}
+
+const FormationRouteWithChildren = FormationRoute._addFileChildren(
+  FormationRouteChildren,
+)
+
 interface PlanningRouteChildren {
   PlanningGenerateRoute: typeof PlanningGenerateRoute
 }
@@ -745,7 +776,7 @@ const rootRouteChildren: RootRouteChildren = {
   DemandesRoute: DemandesRoute,
   DimonaRoute: DimonaRoute,
   FeedbacksRoute: FeedbacksRoute,
-  FormationRoute: FormationRoute,
+  FormationRoute: FormationRouteWithChildren,
   LoginRoute: LoginRoute,
   PlanningRoute: PlanningRouteWithChildren,
   PointageRoute: PointageRoute,
@@ -770,13 +801,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
