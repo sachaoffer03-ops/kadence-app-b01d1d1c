@@ -1158,7 +1158,13 @@ function QuestionsSection({ studioId }: { studioId: string }) {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={questions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-1.5">
-            {questions.map((q) => <SortableQuestion key={q.id} q={q} />)}
+            {questions.map((q) => (
+              <SortableQuestion
+                key={q.id}
+                q={q}
+                onDeleted={() => setQuestions((prev) => prev.filter((x) => x.id !== q.id))}
+              />
+            ))}
           </div>
         </SortableContext>
       </DndContext>
@@ -1178,7 +1184,7 @@ function QuestionsSection({ studioId }: { studioId: string }) {
   );
 }
 
-function SortableQuestion({ q }: { q: any }) {
+function SortableQuestion({ q, onDeleted }: { q: any; onDeleted?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: q.id });
   const [text, setText] = useState(q.question_text);
   useEffect(() => setText(q.question_text), [q.question_text]);
@@ -1193,6 +1199,7 @@ function SortableQuestion({ q }: { q: any }) {
     if (error) toast.error(error.message); else flashSaved();
   };
   const remove = async () => {
+    onDeleted?.();
     const { error } = await supabase.from("closure_questions" as any).delete().eq("id", q.id);
     if (error) toast.error(error.message); else flashSaved();
   };
