@@ -40,7 +40,7 @@ interface StudioRow { id: string; name: string; }
 const initials = (f: string, l: string) => `${(f?.[0] || "").toUpperCase()}${(l?.[0] || "").toUpperCase()}`;
 
 function StaffPage() {
-  const [tab, setTab] = useState<"employees" | "inactive" | "invitations">("employees");
+  const [tab, setTab] = useState<"employees" | "suspended" | "invitations">("employees");
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [rolesByUser, setRolesByUser] = useState<Record<string, Role[]>>({});
   const [shiftCountByUser, setShiftCountByUser] = useState<Record<string, number>>({});
@@ -79,12 +79,12 @@ function StaffPage() {
 
   const studioName = (id: string | null) => studios.find(s => s.id === id)?.name || "—";
 
-  const activeCount = useMemo(() => profiles.filter(p => p.status !== "inactive").length, [profiles]);
-  const inactiveCount = useMemo(() => profiles.filter(p => p.status === "inactive").length, [profiles]);
+  const activeCount = useMemo(() => profiles.filter(p => p.status !== "suspended").length, [profiles]);
+  const inactiveCount = useMemo(() => profiles.filter(p => p.status === "suspended").length, [profiles]);
 
   const filtered = useMemo(() => {
     const byStatus = profiles.filter(p =>
-      tab === "inactive" ? p.status === "inactive" : p.status !== "inactive"
+      tab === "suspended" ? p.status === "suspended" : p.status !== "suspended"
     );
     const list = byStatus.filter(p => {
       if (search) {
@@ -117,7 +117,7 @@ function StaffPage() {
   const handleConfirm = async () => {
     if (!confirmTarget) return;
     const { p, action } = confirmTarget;
-    const newStatus = action === "deactivate" ? "inactive" : "active";
+    const newStatus = action === "deactivate" ? "suspended" : "active";
     const { error } = await supabase.from("profiles").update({ status: newStatus }).eq("id", p.id);
     if (error) {
       toast.error("Erreur : " + error.message);
@@ -137,14 +137,14 @@ function StaffPage() {
   const { names: businessRoleOptionsRaw } = useBusinessRoles({ onlyActive: true });
   const businessRoleOptions = businessRoleOptionsRaw as Role[];
 
-  const isInactiveTab = tab === "inactive";
+  const isInactiveTab = tab === "suspended";
 
   return (
     <div className="p-4 md:p-6">
       <div className="flex items-center gap-1 mb-5 border-b" style={{ borderColor: "var(--border)" }}>
         {[
           { key: "employees" as const, label: `Employés · ${activeCount}`, Icon: Users },
-          { key: "inactive" as const, label: `Désactivés · ${inactiveCount}`, Icon: UserX },
+          { key: "suspended" as const, label: `Désactivés · ${inactiveCount}`, Icon: UserX },
           { key: "invitations" as const, label: "Invitations", Icon: Mail },
         ].map(({ key, label, Icon }) => {
           const active = tab === key;
@@ -189,7 +189,7 @@ function StaffPage() {
               <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
               {contracts.map(c => {
                 const a = contractFilters.has(c);
-                const count = profiles.filter(p => p.contract === c && (isInactiveTab ? p.status === "inactive" : p.status !== "inactive")).length;
+                const count = profiles.filter(p => p.contract === c && (isInactiveTab ? p.status === "suspended" : p.status !== "suspended")).length;
                 if (count === 0) return null;
                 return (
                   <button key={c} onClick={() => toggle(contractFilters, setContractFilters, c)}
@@ -205,7 +205,7 @@ function StaffPage() {
               <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
               {studios.map(s => {
                 const a = studioFilters.has(s.id);
-                const count = profiles.filter(p => p.studio_id === s.id && (isInactiveTab ? p.status === "inactive" : p.status !== "inactive")).length;
+                const count = profiles.filter(p => p.studio_id === s.id && (isInactiveTab ? p.status === "suspended" : p.status !== "suspended")).length;
                 return (
                   <button key={s.id} onClick={() => toggle(studioFilters, setStudioFilters, s.id)}
                     className="rounded-full px-2.5 py-1"
@@ -220,7 +220,7 @@ function StaffPage() {
               <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
               {businessRoleOptions.map(r => {
                 const a = roleFilters.has(r);
-                const count = profiles.filter(p => (rolesByUser[p.id] || []).includes(r) && (isInactiveTab ? p.status === "inactive" : p.status !== "inactive")).length;
+                const count = profiles.filter(p => (rolesByUser[p.id] || []).includes(r) && (isInactiveTab ? p.status === "suspended" : p.status !== "suspended")).length;
                 if (count === 0) return null;
                 const rc = roleColors[r];
                 return (
@@ -282,7 +282,7 @@ function StaffPage() {
                   const scoreColor = score >= 9 ? "var(--success-text)" : score >= 7 ? "var(--foreground)" : "var(--warning-text)";
                   const used = p.quota_used ?? null;
                   const max = p.quota_max ?? null;
-                  const isInactive = p.status === "inactive";
+                  const isInactive = p.status === "suspended";
                   return (
                     <tr key={p.id} style={{ borderBottom: "0.5px solid var(--border)", cursor: "pointer", opacity: isInactive ? 0.65 : 1 }}
                       onClick={() => window.location.assign(`/staff/${p.id}`)}>
