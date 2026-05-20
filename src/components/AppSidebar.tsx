@@ -14,7 +14,7 @@ import {
   BarChart3,
   Building2,
   Settings,
-  Gauge,
+  
 
   Eye,
   X,
@@ -67,7 +67,7 @@ const navSections: NavSection[] = [
     title: "Configuration",
     items: [
       { label: "Studios & postes", to: "/studios", icon: Building2 },
-      { label: "Règles de scoring", to: "/regles-scoring", icon: Gauge },
+      
       { label: "Réglages", to: "/reglages", icon: Settings },
     ],
   },
