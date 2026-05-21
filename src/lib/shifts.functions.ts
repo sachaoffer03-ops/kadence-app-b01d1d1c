@@ -228,7 +228,7 @@ export const deleteShift = createServerFn({ method: "POST" })
         type: "shift_removed",
         title: "Shift annulé",
         body: `${cur.shift_date} ${String(cur.start_time).slice(0,5)}`,
-        link: "/staff-app",
+        link: "/staff-app?tab=planning",
         priority: "normal",
         category: "shift",
       });
