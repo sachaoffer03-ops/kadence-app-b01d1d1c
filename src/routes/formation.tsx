@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ type IndexData = Awaited<ReturnType<typeof getFormationIndex>>;
 const EMOJI_PICK = ["📚", "☕", "🍳", "🛎️", "🎓", "🌟", "🔧", "❤️", "🎯", "💡"];
 
 function FormationIndexPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [data, setData] = useState<IndexData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,10 @@ function FormationIndexPage() {
     const h = Math.floor(min / 60), m = min % 60;
     return m > 0 ? `${h}h ${String(m).padStart(2, "0")}` : `${h}h`;
   };
+
+  if (pathname !== "/formation") {
+    return <Outlet />;
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
