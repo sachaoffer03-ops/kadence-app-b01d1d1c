@@ -1237,7 +1237,7 @@ function QuestionsSection({ studioId }: { studioId: string }) {
   );
 }
 
-function SortableQuestion({ q, onDeleted }: { q: any; onDeleted?: () => void }) {
+function SortableQuestion({ q, onChanged, onDeleted }: { q: any; onChanged?: (patch: any) => void; onDeleted?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: q.id });
   const [text, setText] = useState(q.question_text);
   useEffect(() => setText(q.question_text), [q.question_text]);
@@ -1248,6 +1248,7 @@ function SortableQuestion({ q, onDeleted }: { q: any; onDeleted?: () => void }) 
   }, 500);
 
   const setType = async (v: string) => {
+    onChanged?.({ response_type: v });
     const { error } = await supabase.from("closure_questions" as any).update({ response_type: v } as any).eq("id", q.id);
     if (error) toast.error(error.message); else flashSaved();
   };
