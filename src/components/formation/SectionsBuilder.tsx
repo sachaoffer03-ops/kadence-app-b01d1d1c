@@ -262,6 +262,16 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
           onSaved={() => { setEditingQuiz(null); onChange(); }}
         />
       )}
+
+      {promptDlg && (
+        <PromptDialog
+          open
+          onOpenChange={(v) => !v && setPromptDlg(null)}
+          variant={promptDlg.variant}
+          initialValue={promptDlg.initial}
+          onSubmit={promptDlg.onSubmit}
+        />
+      )}
     </div>
   );
 }
