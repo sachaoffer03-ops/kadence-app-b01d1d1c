@@ -13,6 +13,8 @@ import { WorkedHoursAdminCard, ClockedShiftsTable } from "@/components/WorkedHou
 import { EmployeeStatsCard } from "@/components/EmployeeStatsCard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmployeeFormationTab } from "@/components/staff/EmployeeFormationTab";
+import { EmployeeDocumentsTab } from "@/components/staff/EmployeeDocumentsTab";
+import { countUnviewedDocuments } from "@/lib/documents.functions";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -59,7 +61,9 @@ function EmployeeDetailPage() {
   const [saving, setSaving] = useState(false);
   const [breakdown, setBreakdown] = useState<Awaited<ReturnType<typeof getScoreBreakdown>> | null>(null);
   const [tab, setTab] = useState("profil");
+  const [unviewedDocs, setUnviewedDocs] = useState(0);
   const fetchBreakdown = useServerFn(getScoreBreakdown);
+  const fetchUnviewed = useServerFn(countUnviewedDocuments);
 
   const load = async () => {
     const [{ data: p }, { data: br }, { data: sts }, { data: us }, { data: uc }, { data: sh }, { data: sg }] = await Promise.all([
@@ -104,6 +108,9 @@ function EmployeeDetailPage() {
   useEffect(() => {
     fetchBreakdown({ data: { userId: id } }).then(setBreakdown).catch(() => setBreakdown(null));
   }, [id]);
+  useEffect(() => {
+    fetchUnviewed({ data: { userId: id } }).then(r => setUnviewedDocs(r.count)).catch(() => setUnviewedDocs(0));
+  }, [id, tab]);
 
   const submitRating = async (shiftId: string) => {
     if (!user) return;
@@ -192,6 +199,14 @@ function EmployeeDetailPage() {
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="profil">Profil</TabsTrigger>
+          <TabsTrigger value="documents">
+            Documents
+            {unviewedDocs > 0 && (
+              <span className="ml-1.5 rounded-full px-1.5" style={{ fontSize: 10, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
+                {unviewedDocs}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="formation">Formation</TabsTrigger>
         </TabsList>
         <TabsContent value="profil">
@@ -444,6 +459,9 @@ function EmployeeDetailPage() {
           </div>
         </div>
       </div>
+        </TabsContent>
+        <TabsContent value="documents">
+          <EmployeeDocumentsTab userId={emp.id} firstName={emp.first_name} />
         </TabsContent>
         <TabsContent value="formation">
           <EmployeeFormationTab userId={emp.id} />

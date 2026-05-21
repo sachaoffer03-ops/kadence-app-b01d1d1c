@@ -753,6 +753,17 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
   const [docsOpen, setDocsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("openDocs") === "1") {
+      setDocsOpen(true);
+      params.delete("openDocs");
+      const newSearch = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (newSearch ? `?${newSearch}` : ""));
+    }
+  }, []);
+
   if (!profile) return <div className="px-5 pt-6" style={{ fontSize: 13 }}>Chargement…</div>;
 
   const initials = `${profile.first_name?.[0] || ""}${profile.last_name?.[0] || ""}`.toUpperCase();

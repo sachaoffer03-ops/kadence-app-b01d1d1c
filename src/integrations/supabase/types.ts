@@ -530,6 +530,60 @@ export type Database = {
           },
         ]
       }
+      employee_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_mime_type: string | null
+          file_path: string
+          file_size_bytes: number
+          first_viewed_at: string | null
+          id: string
+          is_archived: boolean
+          period_end: string | null
+          period_start: string | null
+          title: string
+          type: string
+          updated_at: string
+          uploaded_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_mime_type?: string | null
+          file_path: string
+          file_size_bytes?: number
+          first_viewed_at?: string | null
+          id?: string
+          is_archived?: boolean
+          period_end?: string | null
+          period_start?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          uploaded_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_mime_type?: string | null
+          file_path?: string
+          file_size_bytes?: number
+          first_viewed_at?: string | null
+          id?: string
+          is_archived?: boolean
+          period_end?: string | null
+          period_start?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       feedbacks: {
         Row: {
           admin_reply: string | null
