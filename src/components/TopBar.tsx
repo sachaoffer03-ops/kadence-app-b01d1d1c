@@ -94,6 +94,14 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   }, []);
 
   const unread = notifications.filter((n) => !n.read_at).length;
+  const urgentUnread = notifications.filter((n) => !n.read_at && n.priority === "urgent").length;
+
+  const filteredNotifications = useMemo(() => {
+    if (notifTab === "unread") return notifications.filter((n) => !n.read_at);
+    if (notifTab === "urgent") return notifications.filter((n) => n.priority === "urgent");
+    return notifications;
+  }, [notifications, notifTab]);
+
 
   const openNotif = async (n: NotifRow) => {
     setNotifOpen(false);
