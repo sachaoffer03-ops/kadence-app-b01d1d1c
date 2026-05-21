@@ -132,7 +132,8 @@ export function MyStatsCard() {
         className="rounded-xl border p-3"
         style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}
       >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+
           {/* Gains ce mois */}
           <SubCard title="Gains ce mois" icon={<Wallet size={11} />}>
             {!earnings.hasRate ? (
