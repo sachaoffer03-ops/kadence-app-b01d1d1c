@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
-import { Wallet, Clock, FileCheck, Star, TrendingUp, TrendingDown, Minus, GraduationCap, Award, Lock } from "lucide-react";
+import { Wallet, Clock, FileCheck, TrendingUp, TrendingDown, Minus, GraduationCap, Award, Lock } from "lucide-react";
 import { getMyStats } from "@/lib/my-stats.functions";
 import { getMyAssignedCourses } from "@/lib/formation.functions";
+
 
 type Stats = Awaited<ReturnType<typeof getMyStats>>;
 type Formation = Awaited<ReturnType<typeof getMyAssignedCourses>>;
