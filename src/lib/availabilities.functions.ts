@@ -51,18 +51,23 @@ async function getDeadlineDay(supabase: any): Promise<number> {
 }
 
 /**
- * Vérifie que la date n'est pas dans un mois "verrouillé" par la deadline.
- * Pour le mois M, deadline = jour D du mois M-1. Si on est après cette date,
- * impossible de toucher aux dispos du mois M.
+ * Verrouillé UNIQUEMENT si un planning publié couvre le mois de la date cible.
+ * La deadline est purement indicative côté UI.
  */
-function isMonthLocked(targetDate: string, deadlineDay: number, today: Date): boolean {
+async function isMonthLocked(supabase: any, targetDate: string): Promise<boolean> {
   const target = new Date(`${targetDate}T00:00:00`);
-  const targetMonthStart = new Date(target.getFullYear(), target.getMonth(), 1);
-  const deadline = new Date(targetMonthStart);
-  deadline.setMonth(deadline.getMonth() - 1);
-  deadline.setDate(deadlineDay);
-  deadline.setHours(23, 59, 59, 999);
-  return today > deadline;
+  const y = target.getFullYear();
+  const m = target.getMonth();
+  const monthStart = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const monthEnd = `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const { data } = await supabase
+    .from("planning_publications")
+    .select("id")
+    .lte("period_start", monthEnd)
+    .gte("period_end", monthStart)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
 }
 
 function validateRangeShape(start: string, end: string) {
@@ -109,7 +114,6 @@ export const createAvailability = createServerFn({ method: "POST" })
   .inputValidator((i) => AvailInput.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const today = new Date();
     const todayStr = todayIso();
     const admin = await isAdmin(supabase, userId);
 
@@ -117,13 +121,8 @@ export const createAvailability = createServerFn({ method: "POST" })
       throw new Error("Impossible de créer une dispo dans le passé");
     }
 
-    if (!admin) {
-      const deadline = await getDeadlineDay(supabase);
-      if (isMonthLocked(data.avail_date, deadline, today)) {
-        throw new Error(
-          `Deadline dépassée : les dispos pour ce mois devaient être saisies avant le ${deadline} du mois précédent`
-        );
-      }
+    if (!admin && await isMonthLocked(supabase, data.avail_date)) {
+      throw new Error("Le planning de ce mois est publié — tu ne peux plus modifier tes dispos. Fais une demande de modification.");
     }
 
     const { s, e } = validateRangeShape(data.start_time, data.end_time);
@@ -151,7 +150,6 @@ export const updateAvailability = createServerFn({ method: "POST" })
   .inputValidator((i) => UpdateInput.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const today = new Date();
     const todayStr = todayIso();
     const admin = await isAdmin(supabase, userId);
 
@@ -168,11 +166,8 @@ export const updateAvailability = createServerFn({ method: "POST" })
       throw new Error("Impossible de modifier une dispo passée");
     }
 
-    if (!admin) {
-      const deadline = await getDeadlineDay(supabase);
-      if (isMonthLocked(existing.avail_date, deadline, today)) {
-        throw new Error(`Deadline dépassée pour ce mois`);
-      }
+    if (!admin && await isMonthLocked(supabase, existing.avail_date)) {
+      throw new Error("Le planning de ce mois est publié — tu ne peux plus modifier tes dispos.");
     }
 
     const { s, e } = validateRangeShape(data.start_time, data.end_time);
@@ -194,7 +189,6 @@ export const deleteAvailability = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const today = new Date();
     const todayStr = todayIso();
     const admin = await isAdmin(supabase, userId);
 
@@ -208,11 +202,8 @@ export const deleteAvailability = createServerFn({ method: "POST" })
     if (existing.avail_date < todayStr) {
       throw new Error("Impossible de supprimer une dispo passée");
     }
-    if (!admin) {
-      const deadline = await getDeadlineDay(supabase);
-      if (isMonthLocked(existing.avail_date, deadline, today)) {
-        throw new Error("Deadline dépassée pour ce mois");
-      }
+    if (!admin && await isMonthLocked(supabase, existing.avail_date)) {
+      throw new Error("Le planning de ce mois est publié — tu ne peux plus modifier tes dispos.");
     }
 
     const { error } = await supabase.from("availabilities").delete().eq("id", data.id);
@@ -221,19 +212,20 @@ export const deleteAvailability = createServerFn({ method: "POST" })
   });
 
 // =============================================================================
-// getAvailabilityDeadline : utilisé par l'UI pour le countdown
+// getAvailabilityDeadline : indicatif + état de publication du mois cible
 // =============================================================================
 export const getAvailabilityDeadline = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase } = context;
     const day = await getDeadlineDay(supabase);
-    // Mois cible courant pour la saisie = mois suivant le mois actuel
     const today = new Date();
     const target = new Date(today.getFullYear(), today.getMonth() + 1, 1);
     const deadline = new Date(today.getFullYear(), today.getMonth(), day, 23, 59, 59, 999);
     const msLeft = deadline.getTime() - today.getTime();
     const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+    const targetMonthFirst = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-01`;
+    const published = await isMonthLocked(supabase, targetMonthFirst);
     return {
       deadline_day: day,
       deadline_iso: deadline.toISOString(),
@@ -241,5 +233,6 @@ export const getAvailabilityDeadline = createServerFn({ method: "GET" })
       target_month: target.getMonth(), // 0-indexed
       days_left: daysLeft,
       passed: msLeft < 0,
+      planning_published: published,
     };
   });

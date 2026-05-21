@@ -42,7 +42,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [ranges, setRanges] = useState<Record<number, Range[]>>({});
   const [loading, setLoading] = useState(true);
   const [validated, setValidated] = useState(false);
-  const [deadline, setDeadline] = useState<{ days_left: number; passed: boolean; deadline_day: number } | null>(null);
+  const [deadline, setDeadline] = useState<{ days_left: number; passed: boolean; deadline_day: number; planning_published?: boolean } | null>(null);
 
   const createFn = useServerFn(createAvailability);
   const updateFn = useServerFn(updateAvailability);
@@ -82,13 +82,15 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     })();
   }, [open, userId, year, month, daysInMonth]);
 
-  const locked = validated || (deadline?.passed ?? false);
+  const planningPublished = deadline?.planning_published ?? false;
+  const locked = validated || planningPublished;
 
   // Convertit "HH:MM" en minutes pour comparaison
   const toMin = (t: string) => {
     const [h, m] = t.split(":").map(Number);
     return h * 60 + (m || 0);
   };
+  const fmtMin = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   // Détecte un chevauchement entre une plage candidate et les plages existantes (en excluant éventuellement un index)
   const overlapsExisting = (day: number, start: string, end: string, excludeIdx?: number) => {
     const s = toMin(start);
@@ -104,26 +106,41 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     return null;
   };
 
+  // Trouve le premier sous-créneau libre >= 4h dans la journée (entre 06:00 et 23:30)
+  const findFirstFreeSlot = (day: number): { start: string; end: string } | null => {
+    const MIN = 4 * 60; // 4 heures
+    const DAY_START = 6 * 60;    // 06:00 — éviter du créneau 00:00-06:00 par défaut
+    const DAY_END = 23 * 60 + 30; // 23:30
+    const list = (ranges[day] ?? [])
+      .map(r => ({ s: toMin(r.start), e: toMin(r.end) }))
+      .sort((a, b) => a.s - b.s);
+    let cursor = DAY_START;
+    for (const r of list) {
+      if (r.s - cursor >= MIN) {
+        const start = cursor;
+        const end = Math.min(start + Math.max(MIN, 4 * 60), r.s);
+        return { start: fmtMin(start), end: fmtMin(end) };
+      }
+      cursor = Math.max(cursor, r.e);
+    }
+    if (DAY_END - cursor >= MIN) {
+      const start = cursor;
+      const end = Math.min(start + 4 * 60, DAY_END);
+      return { start: fmtMin(start), end: fmtMin(end) };
+    }
+    return null;
+  };
+
   const addRange = async (day: number) => {
     if (locked) return;
-    // Cherche un créneau de 4h libre, sinon fallback 9h-13h
-    let newRange: Range = { start: "09:00", end: "13:00" };
-    const candidates: Range[] = [
-      { start: "09:00", end: "13:00" },
-      { start: "13:00", end: "17:00" },
-      { start: "17:00", end: "21:00" },
-      { start: "06:00", end: "09:00" },
-      { start: "21:00", end: "23:30" },
-    ];
-    const free = candidates.find(c => !overlapsExisting(day, c.start, c.end));
-    if (free) newRange = free;
-    else {
-      toast.error("Aucun créneau libre — ajuste les plages existantes");
+    const free = findFirstFreeSlot(day);
+    if (!free) {
+      toast.error("Cette journée est déjà entièrement couverte");
       return;
     }
     try {
-      const res: any = await createFn({ data: { avail_date: dateISO(day), start_time: newRange.start, end_time: newRange.end } });
-      setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...newRange, id: res.id }] }));
+      const res: any = await createFn({ data: { avail_date: dateISO(day), start_time: free.start, end_time: free.end } });
+      setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...free, id: res.id }] }));
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur de sauvegarde");
     }
@@ -194,34 +211,29 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
           <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12, lineHeight: 1.5 }}>
             Indique tes plages horaires de disponibilité pour <span style={{ textTransform: "capitalize" }}>{monthLabel}</span>. Tu peux ajouter plusieurs plages par jour.
           </div>
-          {deadline && (
+          {planningPublished ? (
+            <div className="rounded-xl px-3 py-3 mb-2 flex items-start gap-2" style={{ backgroundColor: "var(--danger-bg)" }}>
+              <Lock size={14} style={{ color: "var(--danger-text)", marginTop: 1 }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--danger-text)", lineHeight: 1.5 }}>
+                Le planning de <span style={{ textTransform: "capitalize" }}>{monthLabel}</span> est publié. Tu ne peux plus modifier tes dispos. Pour signaler une indisponibilité, fais une demande de modification depuis l'accueil.
+              </span>
+            </div>
+          ) : deadline && (
             <div
               className="rounded-xl px-3 py-2 mb-2 flex items-center gap-2"
-              style={{
-                backgroundColor: deadline.passed
-                  ? "var(--danger-bg)"
-                  : deadline.days_left <= 3
-                  ? "var(--warning-bg)"
-                  : "var(--muted)",
-              }}
+              style={{ backgroundColor: deadline.passed ? "var(--warning-bg)" : "var(--muted)" }}
             >
-              {(deadline.passed || deadline.days_left <= 3) && <Lock size={12} style={{ color: deadline.passed ? "var(--danger-text)" : "var(--warning-text)" }} />}
               <span
                 style={{
                   fontSize: 12,
                   fontWeight: 500,
-                  color: deadline.passed
-                    ? "var(--danger-text)"
-                    : deadline.days_left <= 3
-                    ? "var(--warning-text)"
-                    : "var(--muted-foreground)",
+                  color: deadline.passed ? "var(--warning-text)" : "var(--muted-foreground)",
+                  lineHeight: 1.4,
                 }}
               >
                 {deadline.passed
-                  ? `Deadline dépassée (le ${deadline.deadline_day} du mois). Édition verrouillée.`
-                  : deadline.days_left === 0
-                  ? `Dernier jour pour valider (deadline aujourd'hui)`
-                  : `Plus que ${deadline.days_left} jour${deadline.days_left > 1 ? "s" : ""} avant la deadline (le ${deadline.deadline_day} du mois)`}
+                  ? `Deadline indicative dépassée (jour ${deadline.deadline_day}). Tu peux encore modifier jusqu'à la publication du planning.`
+                  : `Deadline indicative : jour ${deadline.deadline_day} du mois. Tu peux modifier jusqu'à la publication du planning.`}
               </span>
             </div>
           )}

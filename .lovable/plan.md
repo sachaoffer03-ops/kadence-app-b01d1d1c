@@ -1,61 +1,82 @@
-# Refonte du système de notifications
+# Plan — Fix critiques côté employé
 
-Système unifié avec priorités, catégories, pages dédiées, widgets d'accueil et navigation au clic fonctionnelle.
+Cinq chantiers de tailles très différentes. Je propose de les livrer dans cet ordre, chacun étant testable indépendamment.
 
-## 1. Base de données (migration SQL)
+## 1. Seed démo enrichi (FIX 4) — ~30 min
+Enrichir `src/lib/seed-demo.functions.ts > resetDemoEnvironment` :
+- Forcer sur le studio de Clara : `current_qr_code = "DEMO5"`, grace periods 15/20, `geofencing_enabled = false`.
+- Purge + insertion d'un `checklist_template` Barista actif avec 6 items + 3 zones photo (Plan de travail, Caisse, Sol & poubelles).
+- Insertion de 5 `closure_questions` pour le studio (stars/yes_no/free_text).
+- Insertion d'un `training_course` "Parcours Barista — Démo" publié, 2 sections, 3 modules dont 1 quiz à 3 questions ; Clara complète 60% + 1 quiz réussi.
+- Dispos déjà créées : OK, je vérifie qu'on couvre bien le mois suivant.
+- Aucune publication planning pour le mois courant (déjà le cas — je m'en assure dans la purge).
+- Étendre la purge `purgeDemoUserData` / `cleanupAllDemoData` pour wiper proprement ces nouvelles entités liées au studio démo.
 
-- Ajout colonnes `priority` (`urgent`/`normal`/`info`) et `category` (`planning`/`shift`/`training`/`request`/`document`/`pointage`/`general`) à `notifications`
-- Index partiel `(user_id, priority, created_at DESC) WHERE read_at IS NULL` pour requêtes rapides
-- Backfill : passer à `urgent` les types `shift_late_arrival`, `shift_no_show_suspected`, et `modification_request_new` urgence haute. Reste = `normal`/`info` selon mapping.
+## 2. Bug "Aucun créneau libre" (FIX 3) — ~20 min
+Dans `DisposSheet.tsx` (et éventuellement `availabilities.functions.ts`) :
+- Quand on clique "+ Ajouter" sur un jour qui a déjà ≥1 plage, calculer les trous ≥4h entre 00:00 et 24:00.
+- Si au moins un trou : pré-remplir avec ce trou (capé à 4h+ raisonnable, ex. premier trou trouvé).
+- Si aucun : message clair "Cette journée est déjà entièrement couverte".
 
-## 2. Couche serveur centralisée
+## 3. Dispos jusqu'à publication (FIX 2) — ~25 min
+Dans `src/lib/availabilities.functions.ts` :
+- Réécrire `isMonthLocked` : check `planning_publications` sur intersection avec le mois cible.
+- Ne plus bloquer sur la deadline (jour 20).
+- Côté `DisposSheet` :
+  - Si publication → bandeau rouge "Planning publié, plus modifiable, fais une demande de modification".
+  - Sinon → bandeau info "Deadline indicative : jour X" + édition libre.
+- Renvoyer un flag `lockedReason: "planning_published" | null` depuis la server fn pour piloter l'UI.
 
-**`src/lib/notifications.functions.ts`** (nouveau, via `requireSupabaseAuth`) :
-- `listMyNotifications({ filter, category, limit, offset })` → notifs paginées + counts par priorité
-- `markNotificationRead({ notificationId })`
-- `markAllRead({ category? })`
-- `countUnread()` → `{ urgent, normal, info, total }`
-- `getRecentImportantNotifications({ limit = 3 })` → top 3 urgent+normal non lues
+## 4. Scan QR à l'arrivée (FIX 1) — ~1h
+Nouvelle sheet `ClockInSheet.tsx` calquée sur `EndShiftSheet` (étape QR) :
+- Scanner QR (réutilise composant existant `QrScanner` du flow de clôture).
+- Champ manuel OTP 5 inputs (collapsé par défaut).
+- Géofencing si `studio.geofencing_enabled`.
+- Bouton "✓ Valider mon arrivée" gated.
 
-## 3. Métadonnées partagées
+Server fn `validateClockIn({ shiftId, qrCode, lat?, lng? })` dans `shift-clock.functions.ts` :
+- Vérifs : shift à l'employé, pas déjà pointé, QR matche `studio.current_qr_code` (lower), géofencing OK.
+- Update `clocked_in_at = now()`, `minutes_late` calculé.
+- Insert `shift_clock_audit`.
 
-**`src/lib/notifications-meta.ts`** : mapping catégorie → `{ icon, color }`, priorité → `{ color, label }`. Helper `formatRelativeFr(date)` basé sur date-fns/fr.
+Côté `staff-app.tsx` (Accueil + tab Pointage) :
+- Logique fenêtre : si `start - now > 30min` → message "Tu pourras pointer 30 min avant".
+- Sinon (`-30min .. +1h`) → bouton "Commencer mon shift" → ouvre `ClockInSheet`.
+- Après `+1h` sans pointage → état "En retard, contacte ton manager".
+- Action admin `manualClockIn` reste inchangée.
 
-## 4. UI Admin
+## 5. Audit mobile staff-app (FIX 5) — ~45 min
+Passage écran par écran (viewport 375px) sur :
+1. `staff-app.tsx` — 6 tabs (overflow horizontal, bottom nav, safe-area-inset-bottom).
+2. `ClosureFlow.tsx` — étapes 1‑par‑1, tap targets ≥44px.
+3. `staff-app/formation/*` — FormationHub, CourseDetailView, ModulePlayer, Video/Pdf/ImageViewer, QuizPlayer.
+4. `ProfileSheets.tsx` — DocumentsSheet, NotificationsSheet, ShiftDetailSheet en full-screen <640px.
+5. `MyStatsCard`, `EmployeeNotifsWidget`, `EditProfileSheet`.
 
-- **TopBar dropdown amélioré** : 380px, 3 onglets (Toutes / Urgent / Non lues) avec badges, pastille priorité 4px à gauche, clic = mark read + navigate(link), lien "Voir tout" → `/notifications`. Badge cloche rouge si urgent unread, coral sinon.
-- **Nouvelle page `/notifications`** (`src/routes/notifications.tsx`) : filtres par catégorie (pills) + toggle "non lues", bouton "Tout marquer lu", liste paginée 50/page avec actions mark read/unread, skeletons, empty state. Entrée sidebar dans CONFIGURATION.
-- **Widget Dashboard** : section "Notifications importantes" (max 5, urgent+normal non lues) entre KPIs et timeline. Caché si vide. Bouton "Voir toutes".
+Checklist appliquée partout : pas d'overflow X, tap targets ≥44px, font ≥14px, padding latéral ≥16px, `pb-[env(safe-area-inset-bottom)]` sur les zones sticky bottom, sheets full-screen mobile, skeletons partout.
 
-## 5. UI Employé
+## Détails techniques
 
-- **NotificationsSheet (cloche)** refondue avec 2 sections :
-  - **Actions requises** : propositions de shifts pending (logique intacte avec accept/decline)
-  - **Notifications** : tout le reste, clic = mark read + navigate(link) via `useNavigate` (interne) ou `window.location.assign` (externe)
-  - Bouton "Tout marquer lu" en haut
-- **Widget Accueil** (`AccueilTab` dans `staff-app.tsx`) : 3 notifs importantes non lues entre header et liste shifts, CTA contextuel par catégorie ("Voir le shift", "Voir le parcours", etc.). Si rien : "Tu es à jour 👍" discret. `FormationNotifBanner` conservé.
+```text
+src/lib/
+├── seed-demo.functions.ts       # FIX 4 — enrich
+├── availabilities.functions.ts  # FIX 2 — isMonthLocked
+├── shift-clock.functions.ts     # FIX 1 — validateClockIn
+└── shift-clock.server.ts        # FIX 1 — helper
 
-## 6. Backfill insert points
+src/components/staff-app/
+├── ClockInSheet.tsx             # FIX 1 — NEW
+├── DisposSheet.tsx              # FIX 2 + FIX 3
+├── ClosureFlow.tsx              # FIX 5
+├── ProfileSheets.tsx            # FIX 5
+└── formation/*                  # FIX 5
 
-Tous les `from("notifications").insert(...)` dans la codebase reçoivent `priority` + `category` selon mapping :
-- `proposals.functions.ts`, `shifts.functions.ts`, `planning-workflow.functions.ts`, `pointage.functions.ts`, `demandes.functions.ts`, `formation.functions.ts`, `documents.functions.ts`
+src/routes/staff-app.tsx         # FIX 1 + FIX 5
+```
 
-## 7. Design
+Aucune migration SQL (les colonnes existent toutes). Aucun changement sur scoring / IA planning / éligibilité / pages admin.
 
-- Pastille priorité 4px verticale à gauche (style Linear)
-- Icône catégorie cercle 28×28 fond semi-transparent
-- Dates relatives FR (`formatDistanceToNow` + locale fr)
-- Realtime subscribe sur `notifications WHERE user_id=auth.uid()`
-- Anim slide-in nouvelle notif, skeletons loading, 100% mobile
+## Vérification finale
+Après chaque fix : test rapide via `/admin/seed` → reset → login Clara → reproduit le flow concerné. Mobile audit en dernier avec viewport 375px dans le preview.
 
-## Hors scope
-
-- Pas de suppression de la table `notifications` (rétro-compat)
-- Logique d'acceptation des propositions inchangée
-- Pas de modif scoring/IA planning
-
-## Fichiers
-
-**Nouveaux** : migration SQL, `src/lib/notifications.functions.ts`, `src/lib/notifications-meta.ts`, `src/routes/notifications.tsx`, `src/components/notifications/NotificationItem.tsx`, `src/components/notifications/AdminAlertsWidget.tsx`, `src/components/staff-app/EmployeeNotifsWidget.tsx`, `src/hooks/use-admin-notifications.ts`
-
-**Modifiés** : `src/components/TopBar.tsx`, `src/components/AppSidebar.tsx`, `src/routes/dashboard.tsx`, `src/routes/staff-app.tsx`, `src/components/staff-app/ProfileSheets.tsx`, `src/hooks/use-staff-notifications.ts`, + tous les insert points listés ci-dessus
+Validez ce plan et je commence par le FIX 4 (seed enrichi) puisqu'il débloque les tests des autres.
