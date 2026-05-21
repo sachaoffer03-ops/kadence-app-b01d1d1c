@@ -322,7 +322,7 @@ export const publishPlanning = createServerFn({ method: "POST" })
         type: "planning_published",
         title: "Nouveau planning publié",
         body: `${count} shift${count > 1 ? "s" : ""} entre le ${data.startDate} et le ${data.endDate}`,
-        link: "/staff-app",
+        link: "/staff-app?tab=planning",
         priority: "info",
         category: "planning",
       }));
