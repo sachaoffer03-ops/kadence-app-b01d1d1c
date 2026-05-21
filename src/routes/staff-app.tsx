@@ -587,9 +587,19 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
       <ShiftDetailSheet
         open={!!shiftDetail} onClose={() => setShiftDetail(null)}
         shift={shiftDetail} studios={studios}
-        onClockIn={() => { if (shiftDetail) { const s = shiftDetail; setShiftDetail(null); handleClockIn(s); } }}
+        onClockIn={() => { if (shiftDetail) { const s = shiftDetail; setShiftDetail(null); handleStartClockIn(s); } }}
         onEndShift={() => { if (shiftDetail) { const s = shiftDetail; setShiftDetail(null); handleEndShift(s); } }}
         onRequestModif={() => { if (shiftDetail) { setReqShiftId(shiftDetail.id); setShiftDetail(null); setReqOpen(true); } }}
+      />
+      <ClockInSheet
+        open={!!clockInShift}
+        onClose={() => setClockInShift(null)}
+        shift={clockInShift}
+        studios={studios}
+        onCompleted={({ clockedInAt, minutesLate }) => {
+          if (!clockInShift) return;
+          setShifts((prev) => prev.map((s) => s.id === clockInShift.id ? { ...s, clocked_in_at: clockedInAt, minutes_late: minutesLate } : s));
+        }}
       />
       <ClosureFlow
         open={!!endShift}
