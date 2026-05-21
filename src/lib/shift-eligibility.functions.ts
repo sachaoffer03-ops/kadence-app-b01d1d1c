@@ -73,6 +73,9 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       { data: weekShifts },
       { data: pendingProps },
       { data: settingsRows },
+      { data: trainingCourses },
+      { data: trainingCompletions },
+      { data: trainingRoles },
     ] = await Promise.all([
       supabaseAdmin
         .from("profiles")
