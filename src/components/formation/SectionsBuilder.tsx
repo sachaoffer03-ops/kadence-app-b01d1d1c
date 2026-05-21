@@ -42,18 +42,26 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
     setOpenSections(next);
   };
 
-  const handleAddSection = async () => {
-    const title = promptDlg("Titre de la section ?");
-    if (!title?.trim()) return;
-    try { await createSec({ data: { courseId, title: title.trim() } }); onChange(); }
-    catch (e: any) { toast.error(e.message); }
+  const handleAddSection = () => {
+    setPromptDlg({
+      variant: "section",
+      onSubmit: async (title) => {
+        try { await createSec({ data: { courseId, title } }); onChange(); }
+        catch (e: any) { toast.error(e.message); }
+      },
+    });
   };
 
-  const handleRenameSection = async (id: string, current: string) => {
-    const title = promptDlg("Nouveau titre ?", current);
-    if (!title?.trim() || title === current) return;
-    try { await updateSec({ data: { sectionId: id, title: title.trim() } }); onChange(); }
-    catch (e: any) { toast.error(e.message); }
+  const handleRenameSection = (id: string, current: string) => {
+    setPromptDlg({
+      variant: "rename",
+      initial: current,
+      onSubmit: async (title) => {
+        if (title === current) return;
+        try { await updateSec({ data: { sectionId: id, title } }); onChange(); }
+        catch (e: any) { toast.error(e.message); }
+      },
+    });
   };
 
   const handleDeleteSection = async (id: string) => {
@@ -71,18 +79,26 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
     catch (e: any) { toast.error(e.message); }
   };
 
-  const handleAddModule = async (sectionId: string) => {
-    const title = promptDlg("Titre du module ?");
-    if (!title?.trim()) return;
-    try { await createMod({ data: { sectionId, title: title.trim() } }); onChange(); }
-    catch (e: any) { toast.error(e.message); }
+  const handleAddModule = (sectionId: string) => {
+    setPromptDlg({
+      variant: "module",
+      onSubmit: async (title) => {
+        try { await createMod({ data: { sectionId, title } }); onChange(); }
+        catch (e: any) { toast.error(e.message); }
+      },
+    });
   };
 
-  const handleRenameModule = async (id: string, current: string) => {
-    const title = promptDlg("Nouveau titre ?", current);
-    if (!title?.trim() || title === current) return;
-    try { await updateMod({ data: { moduleId: id, title: title.trim() } }); onChange(); }
-    catch (e: any) { toast.error(e.message); }
+  const handleRenameModule = (id: string, current: string) => {
+    setPromptDlg({
+      variant: "rename",
+      initial: current,
+      onSubmit: async (title) => {
+        if (title === current) return;
+        try { await updateMod({ data: { moduleId: id, title } }); onChange(); }
+        catch (e: any) { toast.error(e.message); }
+      },
+    });
   };
 
   const handleDeleteModule = async (id: string) => {
