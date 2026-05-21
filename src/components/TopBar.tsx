@@ -175,28 +175,99 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
             )}
           </button>
           {notifOpen && (
-            <div className="absolute right-0 mt-2 rounded-lg border shadow-lg overflow-hidden z-50" style={{ width: 320, backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-              <div className="px-3 py-2 border-b flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
-                <span style={{ fontSize: 12, fontWeight: 500 }}>Notifications</span>
-                {unread > 0 && (
-                  <button onClick={markAllRead} style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Tout marquer lu</button>
-                )}
+            <div className="absolute right-0 mt-2 rounded-xl border shadow-xl overflow-hidden z-50" style={{ width: 380, backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+              <div className="px-3 pt-3 pb-2 border-b" style={{ borderColor: "var(--border)" }}>
+                <div className="flex items-center justify-between mb-2">
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>Notifications</span>
+                  {unread > 0 && (
+                    <button onClick={markAllRead} className="flex items-center gap-1 transition-colors hover:opacity-70" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                      <CheckCheck size={12} /> Tout marquer lu
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {([
+                    { id: "unread" as NotifTab, label: "Non lues", count: unread },
+                    { id: "urgent" as NotifTab, label: "Urgentes", count: urgentUnread },
+                    { id: "all" as NotifTab, label: "Tout", count: notifications.length },
+                  ]).map((t) => {
+                    const active = notifTab === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setNotifTab(t.id)}
+                        className="flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors"
+                        style={{
+                          fontSize: 11, fontWeight: 500,
+                          backgroundColor: active ? "var(--foreground)" : "transparent",
+                          color: active ? "var(--card)" : "var(--muted-foreground)",
+                        }}
+                      >
+                        {t.label}
+                        {t.count > 0 && (
+                          <span
+                            className="rounded-full flex items-center justify-center"
+                            style={{
+                              minWidth: 16, height: 14, padding: "0 4px", fontSize: 9, fontWeight: 600,
+                              backgroundColor: active ? "var(--card)" : "var(--muted)",
+                              color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                            }}
+                          >
+                            {t.count > 99 ? "99+" : t.count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="max-h-80 overflow-y-auto">
-                {notifications.length === 0 && (
-                  <div className="px-3 py-6 text-center" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Aucune notification</div>
+              <div className="max-h-96 overflow-y-auto">
+                {filteredNotifications.length === 0 && (
+                  <div className="px-3 py-8 text-center" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                    {notifTab === "unread" ? "Aucune notification non lue" : notifTab === "urgent" ? "Aucune notification urgente" : "Aucune notification"}
+                  </div>
                 )}
-                {notifications.map((n) => (
-                  <button key={n.id} onClick={() => openNotif(n)}
-                    className="block w-full text-left px-3 py-2.5 transition-colors"
-                    style={{ borderBottom: "0.5px solid var(--border)", backgroundColor: n.read_at ? "transparent" : "var(--muted)" }}>
-                    <div style={{ fontSize: 12, fontWeight: 500 }}>{n.title}</div>
-                    {n.body && <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{n.body}</div>}
-                  </button>
-                ))}
+                {filteredNotifications.map((n) => {
+                  const cat = getCategoryMeta(n.category);
+                  const prio = getPriorityMeta(n.priority);
+                  const Icon = cat.icon;
+                  return (
+                    <button
+                      key={n.id}
+                      onClick={() => openNotif(n)}
+                      className="relative flex items-stretch w-full text-left transition-colors hover:bg-[var(--muted)]"
+                      style={{ borderBottom: "0.5px solid var(--border)", backgroundColor: n.read_at ? "transparent" : "color-mix(in oklab, var(--coral) 6%, transparent)" }}
+                    >
+                      <div style={{ width: 3, backgroundColor: prio.color, flexShrink: 0 }} />
+                      <div className="flex-1 flex items-start gap-2.5 px-3 py-2.5 min-w-0">
+                        <div
+                          className="rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                          style={{ width: 28, height: 28, backgroundColor: cat.color + "22", color: cat.color }}
+                        >
+                          <Icon size={13} strokeWidth={1.8} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div style={{ fontSize: 12, fontWeight: n.read_at ? 400 : 500 }}>{n.title}</div>
+                          {n.body && <div className="truncate" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{n.body}</div>}
+                          <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>{formatRelativeFr(n.created_at)}</div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="border-t" style={{ borderColor: "var(--border)" }}>
+                <button
+                  onClick={() => { setNotifOpen(false); navigate({ to: "/notifications" }); }}
+                  className="w-full text-center py-2.5 transition-colors hover:bg-[var(--muted)]"
+                  style={{ fontSize: 11, fontWeight: 500, color: "var(--foreground)" }}
+                >
+                  Voir toutes les notifications
+                </button>
               </div>
             </div>
           )}
+
         </div>
         {currentPath.startsWith("/planning") && (
           <>
