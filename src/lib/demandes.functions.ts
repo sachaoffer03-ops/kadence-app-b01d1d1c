@@ -178,7 +178,7 @@ export const acceptTimeChangeRequest = createServerFn({ method: "POST" })
       .update({ status: "accepted", resolved_at: now, admin_actor_id: userId })
       .eq("id", req.id);
 
-    await notifyEmployee(req.user_id, req.type, "accepted", `Nouveau créneau : ${data.finalStart.slice(0, 5)}–${data.finalEnd.slice(0, 5)}`);
+    await notifyEmployee(req.user_id, req.type, "accepted", `Nouveau créneau : ${data.finalStart.slice(0, 5)}–${data.finalEnd.slice(0, 5)}`, data.requestId);
     return { ok: true };
   });
 
@@ -224,7 +224,7 @@ export const acceptUnavailabilityRequest = createServerFn({ method: "POST" })
       .eq("id", req.id);
 
     await notifyEmployee(req.user_id, req.type, "accepted",
-      `Période : ${req.proposed_start_date} → ${req.proposed_end_date}`);
+      `Période : ${req.proposed_start_date} → ${req.proposed_end_date}`, data.requestId);
     return { ok: true };
   });
 
@@ -259,7 +259,7 @@ export const refuseRequest = createServerFn({ method: "POST" })
       })
       .eq("id", req.id);
 
-    await notifyEmployee(req.user_id, req.type, "refused", data.response);
+    await notifyEmployee(req.user_id, req.type, "refused", data.response, data.requestId);
     return { ok: true };
   });
 
