@@ -309,7 +309,7 @@ async function runEngine(ctx: EngineCtx) {
 
   // ─── PHASE 0 — Chargement des données ─────────────────────────────────────
   const t_load = Date.now();
-  const [settingsRows, profilesRows, contractsRows, rolesRows, studiosRows, availsRows, templatesRows, existingShifts, kitchenRolesRows, trainingCoursesRows, trainingCompletionsRows, businessRolesRows] = await Promise.all([
+  const [settingsRows, profilesRows, contractsRows, rolesRows, studiosRows, availsRows, templatesRows, existingShifts, kitchenRolesRows, trainingCoursesRows, trainingCompletionsRows, businessRolesRows, unavailRows] = await Promise.all([
     supabase.from("ai_planning_settings").select("*").order("updated_at", { ascending: false }).limit(1),
     fetchAll<any>(supabase.from("profiles").select("id, first_name, last_name, score, contract, status").eq("status", "active")),
     fetchAll<any>(supabase.from("user_contracts").select("user_id, contract")),
@@ -322,7 +322,20 @@ async function runEngine(ctx: EngineCtx) {
     fetchAll<any>(supabase.from("training_courses").select("id, business_role_id, is_required_for_all, required_for_planning").eq("required_for_planning", true)),
     fetchAll<any>(supabase.from("training_course_completions").select("user_id, course_id")),
     fetchAll<any>(supabase.from("business_roles").select("id, name")),
+    fetchAll<any>(supabase.from("unavailability_periods").select("user_id, start_date, end_date").lte("start_date", monthEnd).gte("end_date", monthStart)),
   ]);
+
+  // Indisponibilités : Map<userId, Array<{start,end}>>
+  const unavailByUser = new Map<string, Array<{ start: string; end: string }>>();
+  for (const u of unavailRows ?? []) {
+    if (!unavailByUser.has(u.user_id)) unavailByUser.set(u.user_id, []);
+    unavailByUser.get(u.user_id)!.push({ start: u.start_date, end: u.end_date });
+  }
+  const isUnavailable = (uid: string, date: string): boolean => {
+    const periods = unavailByUser.get(uid);
+    if (!periods) return false;
+    return periods.some((p) => date >= p.start && date <= p.end);
+  };
 
   // Formation gating : per user → roles that they can't take because a required course is not completed
   const roleNameById = new Map<string, string>((businessRolesRows ?? []).map((r: any) => [r.id, r.name]));
