@@ -215,25 +215,8 @@ export function MyStatsCard() {
             )}
           </SubCard>
 
-          {/* Score */}
-          <SubCard title="Mon score" icon={<Star size={11} />}>
-            <div className="flex items-baseline gap-1" style={{ marginTop: 2 }}>
-              <span style={{ fontSize: 22, fontWeight: 500, lineHeight: 1.1, color: scoreColor }}>
-                {score.current.toFixed(1).replace(".", ",")}
-              </span>
-              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>/ 10</span>
-            </div>
-            <div style={{ height: 28, marginTop: 2 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sparkData}>
-                  <YAxis hide domain={[0, 10]} />
-                  <Line type="monotone" dataKey="value" stroke={scoreColor} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ fontSize: 10, color: "var(--muted-foreground)" }}>30 derniers jours</div>
-          </SubCard>
         </div>
+
 
         {/* Carrière */}
         <div
