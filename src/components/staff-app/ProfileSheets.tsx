@@ -151,39 +151,133 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
   );
 }
 
-/* ─── DocumentsSheet : fiches de paie / contrats fictifs ─── */
-const FAKE_DOCS = [
-  { id: "1", title: "Fiche de paie - Avril 2026", type: "Fiche de paie", date: "30 avril 2026", size: "142 Ko" },
-  { id: "2", title: "Fiche de paie - Mars 2026", type: "Fiche de paie", date: "31 mars 2026", size: "138 Ko" },
-  { id: "3", title: "Contrat étudiant 2024-2025", type: "Contrat", date: "15 septembre 2024", size: "287 Ko" },
-  { id: "4", title: "Attestation de présence", type: "Attestation", date: "12 février 2026", size: "98 Ko" },
+/* ─── DocumentsSheet : fiches de paie / contrats réels ─── */
+import { useServerFn } from "@tanstack/react-start";
+import { listMyDocuments, markDocumentViewed, getMyDocumentDownloadUrl } from "@/lib/documents.functions";
+import { FileSpreadsheet, FileCheck2, Paperclip } from "lucide-react";
+import { toast } from "sonner";
+
+type DocType = "fiche_paie" | "contrat" | "attestation" | "autre";
+const DOC_TYPE_LABEL: Record<DocType, string> = {
+  fiche_paie: "Fiche de paie", contrat: "Contrat", attestation: "Attestation", autre: "Autre",
+};
+const DOC_FILTERS: { value: DocType | "all"; label: string }[] = [
+  { value: "all", label: "Tous" },
+  { value: "fiche_paie", label: "Fiches" },
+  { value: "contrat", label: "Contrats" },
+  { value: "attestation", label: "Attestations" },
+  { value: "autre", label: "Autres" },
 ];
+function docIconFor(t: DocType) {
+  if (t === "fiche_paie") return FileSpreadsheet;
+  if (t === "contrat") return FileCheck2;
+  if (t === "attestation") return FileText;
+  return Paperclip;
+}
+function fmtBytes(b: number) {
+  if (b < 1024) return `${b} o`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} Ko`;
+  return `${(b / 1024 / 1024).toFixed(1)} Mo`;
+}
+
+interface MyDoc {
+  id: string; type: DocType; title: string; description: string | null;
+  file_size_bytes: number; file_mime_type: string | null;
+  period_start: string | null; period_end: string | null;
+  first_viewed_at: string | null; created_at: string;
+}
 
 export function DocumentsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const list = useServerFn(listMyDocuments);
+  const markViewed = useServerFn(markDocumentViewed);
+  const getUrl = useServerFn(getMyDocumentDownloadUrl);
+  const [docs, setDocs] = useState<MyDoc[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<DocType | "all">("all");
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    list({ data: {} }).then(r => setDocs(r.documents as MyDoc[])).finally(() => setLoading(false));
+  }, [open]);
+
+  const filtered = filter === "all" ? docs : docs.filter(d => d.type === filter);
+
+  const openDoc = async (d: MyDoc) => {
+    try {
+      const [{ url }] = await Promise.all([
+        getUrl({ data: { documentId: d.id } }),
+        markViewed({ data: { documentId: d.id } }),
+      ]);
+      setDocs(prev => prev.map(x => x.id === d.id ? { ...x, first_viewed_at: x.first_viewed_at ?? new Date().toISOString() } : x));
+      window.open(url, "_blank");
+    } catch (e: any) {
+      toast.error(e.message || "Erreur");
+    }
+  };
+
   return (
     <Sheet open={open} onClose={onClose} title="Mes documents">
       <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12 }}>
         Tes fiches de paie, contrats et attestations.
       </div>
-      <div className="flex flex-col gap-2">
-        {FAKE_DOCS.map(d => (
-          <button key={d.id} onClick={() => { /* preview / download */ }}
-            className="rounded-xl px-4 py-3 flex items-center gap-3 text-left"
-            style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)" }}>
-            <div className="rounded-lg flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: "var(--muted)" }}>
-              <FileText size={16} style={{ color: "var(--muted-foreground)" }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div style={{ fontSize: 13, fontWeight: 500 }} className="truncate">{d.title}</div>
-              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{d.type} · {d.date} · {d.size}</div>
-            </div>
-            <Download size={16} style={{ color: "var(--muted-foreground)" }} />
+
+      <div className="flex gap-1.5 flex-wrap mb-3">
+        {DOC_FILTERS.map(f => (
+          <button key={f.value} onClick={() => setFilter(f.value)} className="rounded-full px-2.5 py-1"
+            style={{
+              fontSize: 11, fontWeight: 500,
+              backgroundColor: filter === f.value ? "var(--foreground)" : "var(--card)",
+              color: filter === f.value ? "var(--background)" : "var(--muted-foreground)",
+              border: "0.5px solid rgba(0,0,0,0.08)",
+            }}>
+            {f.label}
           </button>
         ))}
       </div>
-      <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 16, textAlign: "center" }}>
-        Documents fictifs — la vraie connexion arrive bientôt.
-      </div>
+
+      {loading ? (
+        <div className="flex flex-col gap-2">
+          {[1,2,3].map(i => <div key={i} className="rounded-xl h-14" style={{ backgroundColor: "var(--muted)", opacity: 0.5 }} />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl px-4 py-6 text-center" style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)" }}>
+          <FileText size={24} style={{ color: "var(--muted-foreground)", margin: "0 auto 8px" }} />
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            Aucun document pour le moment. Les fiches de paie et contrats apparaîtront ici quand ton manager les uploadera.
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {filtered.map(d => {
+            const Icon = docIconFor(d.type);
+            const isNew = !d.first_viewed_at;
+            return (
+              <button key={d.id} onClick={() => openDoc(d)}
+                className="rounded-xl px-4 py-3 flex items-center gap-3 text-left"
+                style={{ backgroundColor: "#fff", border: `0.5px solid ${isNew ? "var(--coral)" : "rgba(0,0,0,0.08)"}` }}>
+                <div className="rounded-lg flex items-center justify-center shrink-0" style={{ width: 36, height: 36, backgroundColor: "var(--muted)" }}>
+                  <Icon size={16} style={{ color: "var(--muted-foreground)" }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <div style={{ fontSize: 13, fontWeight: 500 }} className="truncate">{d.title}</div>
+                    {isNew && (
+                      <span className="rounded-full px-1.5" style={{ fontSize: 9, fontWeight: 600, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
+                        NOUVEAU
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }} className="truncate">
+                    {DOC_TYPE_LABEL[d.type]} · {new Date(d.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })} · {fmtBytes(d.file_size_bytes)}
+                  </div>
+                </div>
+                <Download size={16} style={{ color: "var(--muted-foreground)" }} />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </Sheet>
   );
 }
