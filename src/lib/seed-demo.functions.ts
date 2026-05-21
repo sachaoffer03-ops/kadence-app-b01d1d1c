@@ -213,6 +213,128 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
     ], { onConflict: "user_id,role" });
     log.push("Profil + rôles + studio configurés");
 
+    // 4b. Checklist template Barista (idempotent par nom+studio)
+    const TPL_NAME = "Démo — Ouverture Barista";
+    let { data: tplExisting } = await supabaseAdmin
+      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", TPL_NAME).maybeSingle();
+    let templateId = tplExisting?.id as string | undefined;
+    const { data: baristaBr } = await supabaseAdmin
+      .from("business_roles").select("id").eq("name", "Barista").maybeSingle();
+    if (!templateId) {
+      const { data: ins, error: tplErr } = await supabaseAdmin.from("checklist_templates").insert({
+        studio_id: studio.id,
+        business_role_id: baristaBr?.id ?? null,
+        name: TPL_NAME,
+        description: "Checklist d'ouverture pour test démo",
+        is_active: true,
+        is_blocking: true,
+        analyze_with_ai: false,
+        min_photos_required: 3,
+      }).select("id").single();
+      if (tplErr) throw new Error(`template: ${tplErr.message}`);
+      templateId = ins.id;
+      // 6 items + 3 zones photo
+      const photos = [
+        { template_id: templateId, label: "Comptoir propre", description: "Vue d'ensemble du comptoir", order_index: 0, is_required: true },
+        { template_id: templateId, label: "Machine espresso", description: "Photo de la machine prête", order_index: 1, is_required: true },
+        { template_id: templateId, label: "Vitrine pâtisseries", description: "Vitrine remplie", order_index: 2, is_required: true },
+      ];
+      const { data: photoRows } = await supabaseAdmin.from("checklist_template_photos").insert(photos).select("id, label");
+      const photoByLabel = new Map((photoRows ?? []).map((p: any) => [p.label, p.id]));
+      const items = [
+        { template_id: templateId, label: "Allumer la machine espresso", order_index: 0, is_required: true, photo_zone_id: photoByLabel.get("Machine espresso") ?? null },
+        { template_id: templateId, label: "Nettoyer le comptoir", order_index: 1, is_required: true, photo_zone_id: photoByLabel.get("Comptoir propre") ?? null },
+        { template_id: templateId, label: "Vérifier le stock de lait", order_index: 2, is_required: true, photo_zone_id: null },
+        { template_id: templateId, label: "Préparer la vitrine pâtisseries", order_index: 3, is_required: true, photo_zone_id: photoByLabel.get("Vitrine pâtisseries") ?? null },
+        { template_id: templateId, label: "Ouvrir la caisse", order_index: 4, is_required: true, photo_zone_id: null },
+        { template_id: templateId, label: "Vérifier les températures frigos", order_index: 5, is_required: false, photo_zone_id: null },
+      ];
+      await supabaseAdmin.from("checklist_template_items").insert(items);
+      log.push("Template checklist Barista créé (6 items + 3 zones photo)");
+    } else {
+      log.push("Template checklist Barista déjà présent");
+    }
+
+    // 4c. Questions de clôture (5) pour le studio
+    const { count: cqCount } = await supabaseAdmin
+      .from("closure_questions").select("id", { count: "exact", head: true }).eq("studio_id", studio.id);
+    if (!cqCount || cqCount === 0) {
+      await supabaseAdmin.from("closure_questions").insert([
+        { studio_id: studio.id, question_text: "Comment s'est passé ton service ?", response_type: "stars_1_5", order_index: 0, is_required: true },
+        { studio_id: studio.id, question_text: "Tout le matériel fonctionne correctement ?", response_type: "yes_no", order_index: 1, is_required: true },
+        { studio_id: studio.id, question_text: "Note de l'affluence aujourd'hui", response_type: "stars_1_5", order_index: 2, is_required: false },
+        { studio_id: studio.id, question_text: "As-tu un message pour la relève ?", response_type: "text", order_index: 3, is_required: false },
+        { studio_id: studio.id, question_text: "Stock suffisant pour demain ?", response_type: "yes_no", order_index: 4, is_required: true },
+      ]);
+      log.push("5 questions de clôture créées");
+    } else {
+      log.push("Questions de clôture déjà présentes");
+    }
+
+    // 4d. Parcours formation Barista (2 sections / 3 modules / 1 quiz)
+    if (baristaBr?.id) {
+      const COURSE_TITLE = "Parcours Barista — Démo";
+      const { data: courseExisting } = await supabaseAdmin
+        .from("training_courses").select("id").eq("title", COURSE_TITLE).maybeSingle();
+      if (!courseExisting) {
+        const { data: course, error: cErr } = await supabaseAdmin.from("training_courses").insert({
+          title: COURSE_TITLE,
+          description: "Apprends les bases du métier de barista chez Skult",
+          business_role_id: baristaBr.id,
+          is_required_for_all: false,
+          required_for_planning: false,
+          passing_quiz_score: 70,
+          position: 0,
+          is_published: true,
+        }).select("id").single();
+        if (cErr) throw new Error(`course: ${cErr.message}`);
+
+        const { data: secs } = await supabaseAdmin.from("training_sections").insert([
+          { course_id: course.id, title: "Bases du café", description: "L'essentiel pour démarrer", position: 0 },
+          { course_id: course.id, title: "Service client", description: "Accueillir et servir", position: 1 },
+        ]).select("id, position");
+        const sec1 = secs?.find((s: any) => s.position === 0);
+        const sec2 = secs?.find((s: any) => s.position === 1);
+
+        const { data: mods } = await supabaseAdmin.from("training_modules").insert([
+          { section_id: sec1!.id, title: "Histoire du café", position: 0, duration_estimate_min: 10, has_final_quiz: false },
+          { section_id: sec1!.id, title: "Préparer un espresso", position: 1, duration_estimate_min: 15, has_final_quiz: false },
+          { section_id: sec2!.id, title: "Accueillir un client", position: 0, duration_estimate_min: 8, has_final_quiz: true },
+        ]).select("id, title, has_final_quiz");
+
+        const contents = (mods ?? []).flatMap((m: any) => ([
+          { module_id: m.id, type: "text", title: `Introduction — ${m.title}`, text_content: `Contenu de démo pour ${m.title}.`, position: 0, duration_seconds: 120 },
+        ]));
+        await supabaseAdmin.from("training_contents").insert(contents);
+
+        // Quiz sur le 3e module
+        const quizMod = (mods ?? []).find((m: any) => m.has_final_quiz);
+        if (quizMod) {
+          const { data: quiz } = await supabaseAdmin.from("training_quizzes").insert({
+            module_id: quizMod.id, title: "Quiz — Accueil client", passing_score: 70,
+          }).select("id").single();
+          const { data: qs } = await supabaseAdmin.from("training_quiz_questions").insert([
+            { quiz_id: quiz!.id, question_text: "Quelle phrase utiliser pour accueillir un client ?", question_type: "single_choice", position: 0 },
+            { quiz_id: quiz!.id, question_text: "Toujours sourire au client", question_type: "true_false", position: 1 },
+          ]).select("id, position");
+          const q1 = qs?.find((q: any) => q.position === 0);
+          const q2 = qs?.find((q: any) => q.position === 1);
+          if (q1) await supabaseAdmin.from("training_quiz_options").insert([
+            { question_id: q1.id, option_text: "Bonjour, qu'est-ce qui te ferait plaisir ?", is_correct: true, position: 0 },
+            { question_id: q1.id, option_text: "Quoi ?", is_correct: false, position: 1 },
+            { question_id: q1.id, option_text: "Salut", is_correct: false, position: 2 },
+          ]);
+          if (q2) await supabaseAdmin.from("training_quiz_options").insert([
+            { question_id: q2.id, option_text: "Vrai", is_correct: true, position: 0 },
+            { question_id: q2.id, option_text: "Faux", is_correct: false, position: 1 },
+          ]);
+        }
+        log.push("Parcours formation Barista créé (2 sections / 3 modules / 1 quiz)");
+      } else {
+        log.push("Parcours formation Barista déjà présent");
+      }
+    }
+
     // 5. Disponibilités (4 prochaines semaines)
     const avails: any[] = [];
     for (let i = 0; i < 28; i++) {
