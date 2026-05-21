@@ -40,6 +40,8 @@ export interface EligibleEmployee {
   weekly_hours: number;
   max_weekly_hours: number;
   pending_proposal: boolean;
+  not_trained: boolean;
+  untrained_courses: { id: string; title: string; icon: string | null }[];
   reasons: string[];
 }
 
