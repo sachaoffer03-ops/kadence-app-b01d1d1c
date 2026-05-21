@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowRight, AlertTriangle, ChevronRight, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getRoleStyle, hhmm } from "@/lib/staff-helpers";
+import { RealtimeTimeline } from "@/components/dashboard/RealtimeTimeline";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
