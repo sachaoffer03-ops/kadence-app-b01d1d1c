@@ -23,7 +23,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(sections.map((s) => s.id)));
   const [editing, setEditing] = useState<{ moduleId: string; type: ContentType; existing: any } | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<{ moduleId: string; existing: any } | null>(null);
-  const [prompt, setPrompt] = useState<{ variant: PromptVariant; initial?: string; onSubmit: (v: string) => Promise<void> } | null>(null);
+  const [promptDlg, setPrompt] = useState<{ variant: PromptVariant; initial?: string; onSubmit: (v: string) => Promise<void> } | null>(null);
 
   const createSec = useServerFn(createSection);
   const updateSec = useServerFn(updateSection);
@@ -43,14 +43,14 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
   };
 
   const handleAddSection = async () => {
-    const title = prompt("Titre de la section ?");
+    const title = promptDlg("Titre de la section ?");
     if (!title?.trim()) return;
     try { await createSec({ data: { courseId, title: title.trim() } }); onChange(); }
     catch (e: any) { toast.error(e.message); }
   };
 
   const handleRenameSection = async (id: string, current: string) => {
-    const title = prompt("Nouveau titre ?", current);
+    const title = promptDlg("Nouveau titre ?", current);
     if (!title?.trim() || title === current) return;
     try { await updateSec({ data: { sectionId: id, title: title.trim() } }); onChange(); }
     catch (e: any) { toast.error(e.message); }
@@ -72,14 +72,14 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
   };
 
   const handleAddModule = async (sectionId: string) => {
-    const title = prompt("Titre du module ?");
+    const title = promptDlg("Titre du module ?");
     if (!title?.trim()) return;
     try { await createMod({ data: { sectionId, title: title.trim() } }); onChange(); }
     catch (e: any) { toast.error(e.message); }
   };
 
   const handleRenameModule = async (id: string, current: string) => {
-    const title = prompt("Nouveau titre ?", current);
+    const title = promptDlg("Nouveau titre ?", current);
     if (!title?.trim() || title === current) return;
     try { await updateMod({ data: { moduleId: id, title: title.trim() } }); onChange(); }
     catch (e: any) { toast.error(e.message); }
