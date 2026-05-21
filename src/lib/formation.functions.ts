@@ -1198,7 +1198,7 @@ export const submitQuizAttempt = createServerFn({ method: "POST" })
           type: "training_blocked",
           title: "Formation bloquée",
           body: `${name} a échoué 3 fois au quiz "${(quiz as any).title}".`,
-          link: "/formation",
+          link: `/staff/${userId}?tab=formation`,
           priority: "urgent",
           category: "training",
         })) as any);
