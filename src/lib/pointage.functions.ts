@@ -82,9 +82,9 @@ export const getPointageTodayFn = createServerFn({ method: "POST" })
       planned = 0;
 
     const out: PointageShift[] = (rows || []).map((r: any) => {
-      const s = r.studio_id ? smap.get(r.studio_id) : null;
+      const s = r.studio_id ? smap.get(r.studio_id) as any : null;
       const grace = s?.clock_in_grace_period_min ?? 15;
-      const p = r.user_id ? pmap.get(r.user_id) : null;
+      const p = r.user_id ? pmap.get(r.user_id) as any : null;
       const computed = computeShiftStatus({
         shiftDate: r.shift_date,
         startTime: r.start_time,
@@ -372,7 +372,7 @@ export const checkPointageAlertsFn = createServerFn({ method: "POST" })
 
     for (const sh of (shifts ?? []) as any[]) {
       if (!sh.user_id || sh.status === "cancelled") continue;
-      const studio = sh.studio_id ? smap.get(sh.studio_id) : null;
+      const studio = sh.studio_id ? (smap.get(sh.studio_id) as any) : null;
       const grace = studio?.clock_in_grace_period_min ?? 15;
       const start = new Date(`${sh.shift_date}T${sh.start_time}`);
       const end = new Date(`${sh.shift_date}T${sh.end_time}`);
