@@ -166,7 +166,7 @@ async function writeAudit(
   action: string,
   before: any,
   after: any,
-  note?: string
+  note?: string | null
 ) {
   await supabase.from("shift_clock_audit").insert({
     shift_id: shiftId,
