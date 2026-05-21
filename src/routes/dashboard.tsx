@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, AlertTriangle, ChevronRight, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeTimeline } from "@/components/dashboard/RealtimeTimeline";
+import { AdminAlertsWidget } from "@/components/notifications/AdminAlertsWidget";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
@@ -136,6 +137,10 @@ function DashboardPage() {
         <KpiCard label="Heures prestées" value={data.totalHours.toString()} unit="h" change="7 derniers jours" changeColor="var(--muted-foreground)" />
         <KpiCard label="Demandes en attente" value={data.pendingRequests.toString()} unit="" change="À traiter" changeColor={data.pendingRequests > 0 ? "var(--warning-text)" : "var(--success-text)"} onClick={() => navigate({ to: "/demandes" })} />
         <KpiCard label="Signalements ouverts" value={data.pendingSignalements.toString()} unit="" change="À résoudre" changeColor={data.pendingSignalements > 0 ? "var(--warning-text)" : "var(--success-text)"} onClick={() => navigate({ to: "/signalements" })} />
+      </div>
+
+      <div className="mt-5">
+        <AdminAlertsWidget />
       </div>
 
       <div className="mt-5">

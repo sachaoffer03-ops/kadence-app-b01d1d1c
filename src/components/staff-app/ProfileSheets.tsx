@@ -390,11 +390,20 @@ export function NotificationsSheet({ open, onClose, userId, studios, onNavigate 
     return Bell;
   };
 
-  const handleNotifClick = (kind: string) => {
-    if (!onNavigate) return;
+  const handleNotifClick = (n: typeof items[number]) => {
     onClose();
-    if (kind === "message") onNavigate("chat");
-    else if (kind === "shift") onNavigate("planning");
+    if (n.link) {
+      // Tous les liens internes employé pointent vers /staff-app?... → recharger pour set tab
+      if (n.link.startsWith("/staff-app")) {
+        window.location.assign(n.link);
+        return;
+      }
+      window.location.assign(n.link);
+      return;
+    }
+    if (!onNavigate) return;
+    if (n.kind === "message") onNavigate("chat");
+    else if (n.kind === "shift") onNavigate("planning");
     else onNavigate("accueil");
   };
 
@@ -454,10 +463,10 @@ export function NotificationsSheet({ open, onClose, userId, studios, onNavigate 
         <div className="flex flex-col gap-2">
           {items.map(n => {
             const Icon = iconFor(n.kind);
-            const clickable = !!onNavigate;
+            const clickable = !!(n.link || onNavigate);
             return (
               <button key={n.id} type="button"
-                onClick={clickable ? () => handleNotifClick(n.kind) : undefined}
+                onClick={clickable ? () => handleNotifClick(n) : undefined}
                 className="rounded-xl px-4 py-3 flex gap-3 text-left transition-colors"
                 style={{
                   backgroundColor: n.read ? "#fff" : "var(--coral-light)",

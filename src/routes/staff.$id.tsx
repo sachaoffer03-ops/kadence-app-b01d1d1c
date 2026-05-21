@@ -130,6 +130,8 @@ function EmployeeDetailPage() {
         title: "Nouveau feedback reçu",
         body: `Tu as reçu une note ${rateValue}/5 sur un de tes shifts.`,
         link: "/staff-app",
+        priority: "normal",
+        category: "general",
       });
     }
     toast.success("Note enregistrée");

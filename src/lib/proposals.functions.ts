@@ -54,6 +54,8 @@ export const sendProposals = createServerFn({ method: "POST" })
       title: "Nouvelle proposition de shift",
       body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
       link: "/staff-app",
+      priority: "normal",
+      category: "shift",
     }));
     await supabaseAdmin.from("notifications").insert(notifs);
 
@@ -122,6 +124,8 @@ export const acceptProposal = createServerFn({ method: "POST" })
         title: "Trou comblé",
         body: `${updated.business_role} · ${dateLabel} · ${String(updated.start_time).slice(0,5)}–${String(updated.end_time).slice(0,5)}`,
         link: "/trous",
+        priority: "info",
+        category: "shift",
       });
     }
     return { ok: true };
@@ -197,6 +201,8 @@ export const sendReplacementProposals = createServerFn({ method: "POST" })
       title: "Proposition de remplacement",
       body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
       link: "/staff-app",
+      priority: "normal",
+      category: "shift",
     }));
     await supabaseAdmin.from("notifications").insert(notifs);
 

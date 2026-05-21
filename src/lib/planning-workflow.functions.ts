@@ -116,6 +116,8 @@ export const publishPlanning = createServerFn({ method: "POST" })
         title: "Nouveau planning publié",
         body: `Le planning de ${monthLabel} est disponible. Consulte-le maintenant.`,
         link: "/staff-app",
+        priority: "info",
+        category: "planning",
       }));
       await supabase.from("notifications").insert(rows);
     }

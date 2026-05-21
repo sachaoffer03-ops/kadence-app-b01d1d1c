@@ -424,6 +424,8 @@ export const checkPointageAlertsFn = createServerFn({ method: "POST" })
     const rowsToInsert: any[] = [];
     for (const a of alerts) {
       const link = `/pointage?shift=${a.shiftId}&alert=${a.type}`;
+      const priority =
+        a.type === "shift_late_arrival" || a.type === "shift_no_show_suspected" ? "urgent" : "normal";
       for (const adminId of adminIds) {
         const key = `${adminId}::${link}`;
         if (existingKeys.has(key)) continue;
@@ -433,6 +435,8 @@ export const checkPointageAlertsFn = createServerFn({ method: "POST" })
           title: a.title,
           body: a.body,
           link,
+          priority,
+          category: "pointage",
         });
       }
     }

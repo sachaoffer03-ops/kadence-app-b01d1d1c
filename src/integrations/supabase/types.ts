@@ -800,9 +800,11 @@ export type Database = {
       notifications: {
         Row: {
           body: string | null
+          category: string
           created_at: string
           id: string
           link: string | null
+          priority: string
           read_at: string | null
           title: string
           type: string
@@ -810,9 +812,11 @@ export type Database = {
         }
         Insert: {
           body?: string | null
+          category?: string
           created_at?: string
           id?: string
           link?: string | null
+          priority?: string
           read_at?: string | null
           title: string
           type: string
@@ -820,9 +824,11 @@ export type Database = {
         }
         Update: {
           body?: string | null
+          category?: string
           created_at?: string
           id?: string
           link?: string | null
+          priority?: string
           read_at?: string | null
           title?: string
           type?: string

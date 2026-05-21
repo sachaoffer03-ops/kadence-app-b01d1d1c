@@ -117,6 +117,8 @@ export const updateShift = createServerFn({ method: "POST" })
             title: "Shift retiré",
             body: `Le shift du ${current.shift_date} ${String(current.start_time).slice(0,5)} a été réassigné.`,
             link: "/staff-app",
+            priority: "info",
+            category: "shift",
           });
         }
         if (nextUserId) {
@@ -126,6 +128,8 @@ export const updateShift = createServerFn({ method: "POST" })
             title: "Nouveau shift",
             body: fmtRange,
             link: "/staff-app",
+            priority: "normal",
+            category: "shift",
           });
         }
       } else if (timeChanged && nextUserId) {
@@ -135,6 +139,8 @@ export const updateShift = createServerFn({ method: "POST" })
           title: "Shift modifié",
           body: fmtRange,
           link: "/staff-app",
+          priority: "info",
+          category: "shift",
         });
       }
       if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
@@ -194,6 +200,8 @@ export const createShift = createServerFn({ method: "POST" })
         title: "Nouveau shift ajouté",
         body: `${data.shiftDate} ${data.startTime.slice(0, 5)}-${data.endTime.slice(0, 5)}`,
         link: "/staff-app",
+        priority: "normal",
+        category: "shift",
       });
     }
     return { ok: true, id: row?.id };
@@ -220,6 +228,8 @@ export const deleteShift = createServerFn({ method: "POST" })
         title: "Shift annulé",
         body: `${cur.shift_date} ${String(cur.start_time).slice(0,5)}`,
         link: "/staff-app",
+        priority: "normal",
+        category: "shift",
       });
     }
     return { ok: true };
@@ -312,6 +322,8 @@ export const publishPlanning = createServerFn({ method: "POST" })
         title: "Nouveau planning publié",
         body: `${count} shift${count > 1 ? "s" : ""} entre le ${data.startDate} et le ${data.endDate}`,
         link: "/staff-app",
+        priority: "info",
+        category: "planning",
       }));
       await supabase.from("notifications").insert(notifs);
     }

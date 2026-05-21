@@ -182,6 +182,8 @@ export async function finalizeClosure(input: FinalizeClosureInput) {
         title: "Shift clôturé",
         body: `${name} a clôturé son shift (${shift.business_role})`,
         link: `/staff/${ownerId}`,
+        priority: "info",
+        category: "shift",
       }));
       await supabaseAdmin.from("notifications").insert(notifs);
     }
@@ -451,6 +453,8 @@ export async function notifyOverdueClockOuts() {
       title: `Pointage de sortie en retard — ${studio.name}`,
       body: `${name} n'a pas pointé sa sortie (${sh.business_role}). En retard de ${overdueMin} min.`,
       link: linkSig,
+      priority: "normal",
+      category: "pointage",
     }));
     await supabaseAdmin.from("notifications").insert(rows);
     notified += 1;

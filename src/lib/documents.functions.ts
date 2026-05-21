@@ -124,6 +124,8 @@ export const uploadEmployeeDocument = createServerFn({ method: "POST" })
       title: "Nouveau document",
       body: `${title} a été ajouté à tes documents`,
       link: "/staff-app?openDocs=1",
+      priority: "info",
+      category: "document",
     });
 
     return { document: inserted };

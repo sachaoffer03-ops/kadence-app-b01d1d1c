@@ -91,6 +91,8 @@ function FeedbacksPage() {
         title: "Réponse à ton feedback",
         body: v.length > 120 ? v.slice(0, 117) + "…" : v,
         link: "/staff-app",
+        priority: "normal",
+        category: "general",
       });
     }
     setReplyingId(null); setDraft("");

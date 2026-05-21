@@ -538,6 +538,8 @@ export const publishCourse = createServerFn({ method: "POST" })
           title: "Nouveau parcours de formation",
           body: `${c.icon ?? "📚"} ${c.title} est disponible.`,
           link: "/staff-app?tab=formation",
+          priority: "normal",
+          category: "training",
         })) as any
       );
     }
@@ -1197,6 +1199,8 @@ export const submitQuizAttempt = createServerFn({ method: "POST" })
           title: "Formation bloquée",
           body: `${name} a échoué 3 fois au quiz "${(quiz as any).title}".`,
           link: "/formation",
+          priority: "urgent",
+          category: "training",
         })) as any);
       }
     }
@@ -1264,6 +1268,8 @@ async function maybeCompleteCourse(supabase: any, userId: string, courseId: stri
       title: "Formation terminée",
       body: `${name} a terminé "${c?.title ?? "un parcours"}".`,
       link: "/formation",
+      priority: "info",
+      category: "training",
     })) as any);
   }
   return true;
