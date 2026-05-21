@@ -103,7 +103,7 @@ function StaffAppPage() {
       {/* Cloche notifications globale — l'onglet Accueil a sa propre cloche inline */}
       {tab !== "accueil" && <BellButton userId={user.id} onOpen={() => setNotifOpen(true)} />}
 
-      <div className="flex-1 overflow-y-auto pb-20">
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}>
         {tab === "accueil" && <AccueilTab profile={profile} studios={studios} studioClockOut={studioClockOut} userId={user.id} onOpenNotifs={() => setNotifOpen(true)} onGoFormation={() => setTab("formation")} />}
         {tab === "planning" && <PlanningTab studios={studios} userId={user.id} />}
         {tab === "pointage" && <PointageTab studios={studios} userId={user.id} />}
@@ -115,7 +115,7 @@ function StaffAppPage() {
       <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} userId={user.id} studios={studios} onNavigate={(t) => setTab(t)} />
 
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-around border-t"
-        style={{ width: "100%", maxWidth: 430, height: 64, backgroundColor: "#FFFFFF", borderColor: "rgba(0,0,0,0.08)" }}>
+        style={{ width: "100%", maxWidth: 430, paddingBottom: "env(safe-area-inset-bottom)", backgroundColor: "#FFFFFF", borderColor: "rgba(0,0,0,0.08)" }}>
         {([
           { id: "accueil" as Tab, label: "Accueil", icon: Home },
           { id: "planning" as Tab, label: "Planning", icon: Calendar },
@@ -124,9 +124,9 @@ function StaffAppPage() {
           { id: "chat" as Tab, label: "Chat", icon: MessageCircle },
           { id: "profil" as Tab, label: "Profil", icon: User },
         ]).map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-2 px-1">
-            <t.icon size={18} strokeWidth={1.6} style={{ color: tab === t.id ? "var(--coral)" : "var(--muted-foreground)" }} />
-            <span style={{ fontSize: 9, fontWeight: tab === t.id ? 500 : 400, color: tab === t.id ? "var(--coral-dark)" : "var(--muted-foreground)" }}>{t.label}</span>
+          <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-3 px-1" style={{ minHeight: 56, flex: 1 }}>
+            <t.icon size={20} strokeWidth={1.6} style={{ color: tab === t.id ? "var(--coral)" : "var(--muted-foreground)" }} />
+            <span style={{ fontSize: 10, fontWeight: tab === t.id ? 500 : 400, color: tab === t.id ? "var(--coral-dark)" : "var(--muted-foreground)" }}>{t.label}</span>
           </button>
         ))}
       </div>
