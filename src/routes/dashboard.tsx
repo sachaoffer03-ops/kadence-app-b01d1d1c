@@ -138,64 +138,42 @@ function DashboardPage() {
         <KpiCard label="Signalements ouverts" value={data.pendingSignalements.toString()} unit="" change="À résoudre" changeColor={data.pendingSignalements > 0 ? "var(--warning-text)" : "var(--success-text)"} onClick={() => navigate({ to: "/signalements" })} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mt-5">
-        <div className="md:col-span-3">
-          <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-            <h2 style={{ fontSize: 14, fontWeight: 500, marginBottom: 16 }}>Activité du jour</h2>
-            {data.todayShifts.length === 0 ? (
-              <div style={{ fontSize: 13, color: "var(--muted-foreground)", padding: "24px 0", textAlign: "center" }}>
-                Aucun shift programmé aujourd'hui.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1">
-                {data.todayShifts.map((s) => {
-                  const profile = s.user_id ? data.profiles.get(s.user_id) : null;
-                  const studioName = s.studio_id ? data.studios.get(s.studio_id) || "—" : "—";
-                  const name = profile ? `${profile.first_name} ${profile.last_name}` : "Non assigné";
-                  const status = !s.user_id ? { bg: "var(--danger-bg)", text: "var(--danger-text)", label: "Trou" }
-                    : s.clocked_out_at ? { bg: "var(--success-bg)", text: "var(--success-text)", label: "Terminé" }
-                    : s.clocked_in_at ? { bg: "var(--coral-light)", text: "var(--coral-dark)", label: "En cours" }
-                    : { bg: "var(--info-bg)", text: "var(--info-text)", label: "À venir" };
-                  return <ShiftRowItem key={s.id} name={name} role={s.business_role} studio={studioName} startHour={hhmm(s.start_time)} endHour={hhmm(s.end_time)} status={status} />;
-                })}
-              </div>
-            )}
+      <div className="mt-5">
+        <RealtimeTimeline />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+        <div className="rounded-xl p-5" style={{ backgroundColor: "var(--coral-light)" }}>
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle size={15} style={{ color: "var(--coral-dark)" }} />
+            <span style={{ fontSize: 14, fontWeight: 500, color: "var(--coral-text)" }}>Actions en attente</span>
+            <span className="rounded-full inline-flex items-center justify-center" style={{ width: 20, height: 20, fontSize: 10, fontWeight: 500, backgroundColor: "var(--danger-bg)", color: "var(--danger-text)" }}>
+              {data.pendingRequests + data.pendingSignalements}
+            </span>
+          </div>
+          <div className="flex flex-col gap-3">
+            {data.pendingRequests > 0 && <ActionRow title={`${data.pendingRequests} demande${data.pendingRequests > 1 ? "s" : ""} de modification`} subtitle="À valider ou refuser" onClick={() => navigate({ to: "/demandes" })} />}
+            {data.pendingSignalements > 0 && <ActionRow title={`${data.pendingSignalements} signalement${data.pendingSignalements > 1 ? "s" : ""} ouvert${data.pendingSignalements > 1 ? "s" : ""}`} subtitle="Stock, matériel, hygiène" onClick={() => navigate({ to: "/signalements" })} />}
+            {data.pendingRequests + data.pendingSignalements === 0 && <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Tout est à jour.</div>}
           </div>
         </div>
 
-        <div className="md:col-span-2 flex flex-col gap-5">
-          <div className="rounded-xl p-5" style={{ backgroundColor: "var(--coral-light)" }}>
-            <div className="flex items-center gap-2 mb-4">
-              <AlertTriangle size={15} style={{ color: "var(--coral-dark)" }} />
-              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--coral-text)" }}>Actions en attente</span>
-              <span className="rounded-full inline-flex items-center justify-center" style={{ width: 20, height: 20, fontSize: 10, fontWeight: 500, backgroundColor: "var(--danger-bg)", color: "var(--danger-text)" }}>
-                {data.pendingRequests + data.pendingSignalements}
-              </span>
-            </div>
-            <div className="flex flex-col gap-3">
-              {data.pendingRequests > 0 && <ActionRow title={`${data.pendingRequests} demande${data.pendingRequests > 1 ? "s" : ""} de modification`} subtitle="À valider ou refuser" onClick={() => navigate({ to: "/demandes" })} />}
-              {data.pendingSignalements > 0 && <ActionRow title={`${data.pendingSignalements} signalement${data.pendingSignalements > 1 ? "s" : ""} ouvert${data.pendingSignalements > 1 ? "s" : ""}`} subtitle="Stock, matériel, hygiène" onClick={() => navigate({ to: "/signalements" })} />}
-              {data.pendingRequests + data.pendingSignalements === 0 && <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Tout est à jour.</div>}
-            </div>
+        <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 style={{ fontSize: 14, fontWeight: 500 }}>Planning du mois</h2>
+            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</span>
           </div>
-
-          <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 style={{ fontSize: 14, fontWeight: 500 }}>Planning du mois</h2>
-              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</span>
-            </div>
-            <div className="flex flex-col gap-2" style={{ fontSize: 13 }}>
-              <div>Shifts attribués : <span style={{ fontWeight: 500 }}>{data.monthAssigned} / {data.monthShifts}</span></div>
-              <div style={{ color: "var(--muted-foreground)" }}>{data.monthShifts - data.monthAssigned} trou{data.monthShifts - data.monthAssigned > 1 ? "s" : ""} à combler</div>
-            </div>
-            <div className="flex gap-2 mt-4">
-              <Link to="/planning" className="flex-1 flex items-center justify-center gap-1.5 rounded-md border py-2" style={{ fontSize: 12, fontWeight: 500, borderColor: "var(--border)", color: "var(--foreground)", textDecoration: "none" }}>
-                Voir le planning <ArrowRight size={13} />
-              </Link>
-              <Link to="/trous" className="flex-1 flex items-center justify-center gap-1.5 rounded-md py-2" style={{ fontSize: 12, fontWeight: 500, color: "var(--card)", backgroundColor: "var(--foreground)", textDecoration: "none" }}>
-                Combler les trous
-              </Link>
-            </div>
+          <div className="flex flex-col gap-2" style={{ fontSize: 13 }}>
+            <div>Shifts attribués : <span style={{ fontWeight: 500 }}>{data.monthAssigned} / {data.monthShifts}</span></div>
+            <div style={{ color: "var(--muted-foreground)" }}>{data.monthShifts - data.monthAssigned} trou{data.monthShifts - data.monthAssigned > 1 ? "s" : ""} à combler</div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Link to="/planning" className="flex-1 flex items-center justify-center gap-1.5 rounded-md border py-2" style={{ fontSize: 12, fontWeight: 500, borderColor: "var(--border)", color: "var(--foreground)", textDecoration: "none" }}>
+              Voir le planning <ArrowRight size={13} />
+            </Link>
+            <Link to="/trous" className="flex-1 flex items-center justify-center gap-1.5 rounded-md py-2" style={{ fontSize: 12, fontWeight: 500, color: "var(--card)", backgroundColor: "var(--foreground)", textDecoration: "none" }}>
+              Combler les trous
+            </Link>
           </div>
         </div>
       </div>
