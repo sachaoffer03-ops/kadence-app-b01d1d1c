@@ -77,11 +77,11 @@ export function useStaffNotifications(userId: string | undefined) {
         body: `Nouveau shift ${fmtShiftDate(s.shift_date, s.start_time)} · ${s.business_role}`,
         date: s.created_at,
         read: ts <= seenAt,
-        link: "/staff-app?tab=planning",
+        link: `/staff-app?tab=planning&shift=${s.id}`,
       });
     });
 
-    (reqs || []).forEach((r) => {
+    (reqs || []).forEach((r: any) => {
       const accepted = r.status === "accepted";
       list.push({
         id: `req-${r.id}`,
@@ -90,11 +90,11 @@ export function useStaffNotifications(userId: string | undefined) {
         body: r.admin_response || (accepted ? "L'admin a validé ta demande." : "L'admin a refusé ta demande."),
         date: r.resolved_at!,
         read: new Date(r.resolved_at!).getTime() <= seenAt,
-        link: "/staff-app?tab=accueil",
+        link: `/staff-app?tab=planning&request=${r.id}`,
       });
     });
 
-    (msgs || []).forEach((m) => {
+    (msgs || []).forEach((m: any) => {
       const c = m.content ?? "";
       list.push({
         id: `msg-${m.id}`,
@@ -103,7 +103,7 @@ export function useStaffNotifications(userId: string | undefined) {
         body: c.length > 90 ? c.slice(0, 90) + "…" : (c || "Pièce jointe"),
         date: m.created_at,
         read: !!m.read_at || new Date(m.created_at).getTime() <= seenAt,
-        link: "/staff-app?tab=chat",
+        link: m.sender_id ? `/staff-app?tab=chat&thread=${m.sender_id}` : "/staff-app?tab=chat",
       });
     });
 
