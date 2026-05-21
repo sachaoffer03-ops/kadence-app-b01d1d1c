@@ -1,212 +1,301 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
-import { Clock, Check, Calendar, Search, X, LogIn, LogOut } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Clock, Check, Calendar, Search, X, Users, AlertTriangle, Ban,
+  MoreVertical, LogIn, LogOut, Edit3, FileText, History, Undo2, Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getRoleStyle, hhmm, fullName, computePunctuality, computePartialPunctuality, punctualityColor } from "@/lib/staff-helpers";
-import { completeShiftClockOutFn } from "@/lib/shift-clock.functions";
+import { useStudios } from "@/hooks/use-studios";
+import { getRoleStyle, hhmm, initials } from "@/lib/staff-helpers";
+import {
+  getPointageTodayFn, manualClockInFn, manualClockOutFn, editMinutesLateFn,
+  markNoShowFn, undoNoShowFn, setAdminNoteFn, getShiftAuditHistoryFn,
+  checkPointageAlertsFn, type PointageShift, type PointageTodayResult, type AuditEntry,
+} from "@/lib/pointage.functions";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/pointage")({
   component: PointagePage,
   head: () => ({ meta: [{ title: "Pointage — Kadence" }] }),
 });
 
-interface Shift {
-  id: string; shift_date: string; start_time: string; end_time: string;
-  business_role: string; user_id: string | null; studio_id: string | null;
-  clocked_in_at: string | null; clocked_out_at: string | null;
+type StatusFilter = "all" | "upcoming" | "in_progress" | "late" | "completed" | "no_show";
+
+const STATUS_META: Record<PointageShift["computed_status"], { label: string; dot: string; bg: string; text: string }> = {
+  upcoming:    { label: "À venir",   dot: "#9CA3AF", bg: "color-mix(in oklab, #9CA3AF 14%, white)", text: "#374151" },
+  in_progress: { label: "Pointé",    dot: "#10B981", bg: "color-mix(in oklab, #10B981 14%, white)", text: "#065F46" },
+  late_no_in:  { label: "En retard", dot: "#F59E0B", bg: "color-mix(in oklab, #F59E0B 16%, white)", text: "#92400E" },
+  late_in:     { label: "En retard", dot: "#F59E0B", bg: "color-mix(in oklab, #F59E0B 16%, white)", text: "#92400E" },
+  completed:   { label: "Terminé",   dot: "#3B82F6", bg: "color-mix(in oklab, #3B82F6 14%, white)", text: "#1E40AF" },
+  no_show:     { label: "No-show",   dot: "#EF4444", bg: "color-mix(in oklab, #EF4444 14%, white)", text: "#991B1B" },
+};
+
+function fmtTimeIso(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h");
+}
+function fmtMinutes(min: number): string {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
+}
+function nowHHMM(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-type StatusFilter = "tous" | "en-cours" | "terminé" | "à-venir";
-
 function PointagePage() {
-  const completeClockOut = useServerFn(completeShiftClockOutFn);
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [profiles, setProfiles] = useState<Map<string, { first_name: string; last_name: string }>>(new Map());
-  const [studios, setStudios] = useState<Map<string, string>>(new Map());
+  const [tab, setTab] = useState<"today" | "week" | "history">("today");
+
+  return (
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 500, marginBottom: 2 }}>Pointage</h1>
+          <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Vue temps réel des shifts du jour</p>
+        </div>
+        <LiveIndicator />
+      </div>
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
+        <TabsList className="mb-5">
+          <TabsTrigger value="today">Aujourd'hui</TabsTrigger>
+          <TabsTrigger value="week">Semaine</TabsTrigger>
+          <TabsTrigger value="history">Historique</TabsTrigger>
+        </TabsList>
+        <TabsContent value="today" className="mt-0"><TodayTab /></TabsContent>
+        <TabsContent value="week" className="mt-0"><StubTab label="Vue semaine à venir." /></TabsContent>
+        <TabsContent value="history" className="mt-0"><StubTab label="Historique de pointage à venir." /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function LiveIndicator() {
+  return (
+    <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+      <span style={{
+        width: 8, height: 8, borderRadius: 999, backgroundColor: "#10B981",
+        boxShadow: "0 0 0 0 #10B981", animation: "kdc-pulse 1.8s infinite",
+      }} />
+      <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)" }}>Live</span>
+      <style>{`@keyframes kdc-pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.5)}70%{box-shadow:0 0 0 8px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}`}</style>
+    </div>
+  );
+}
+
+function StubTab({ label }: { label: string }) {
+  return (
+    <div className="rounded-xl border p-10 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: 13, color: "var(--muted-foreground)" }}>
+      {label}
+    </div>
+  );
+}
+
+// ============================================================
+// TODAY TAB
+// ============================================================
+
+function TodayTab() {
+  const getToday = useServerFn(getPointageTodayFn);
+  const checkAlerts = useServerFn(checkPointageAlertsFn);
+  const { studios } = useStudios();
+  const [data, setData] = useState<PointageTodayResult | null>(null);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("tous");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [studioFilter, setStudioFilter] = useState<string>("all");
 
-  const load = async () => {
-    const today = new Date().toISOString().split("T")[0];
-    const [{ data: s }, { data: p }, { data: st }] = await Promise.all([
-      supabase.from("shifts").select("*").eq("shift_date", today).order("start_time"),
-      supabase.from("profiles").select("id,first_name,last_name"),
-      supabase.from("studios").select("id,name"),
-    ]);
-    setShifts((s || []) as Shift[]);
-    setProfiles(new Map((p || []).map((x) => [x.id, x])));
-    setStudios(new Map((st || []).map((x) => [x.id, x.name])));
-  };
+  const reload = useCallback(async () => {
+    try {
+      const res = await getToday({ data: studioFilter === "all" ? {} : { studioIds: [studioFilter] } });
+      setData(res);
+    } catch (e: any) {
+      toast.error(e?.message || "Impossible de charger le pointage");
+    } finally {
+      setLoading(false);
+    }
+  }, [getToday, studioFilter]);
 
+  useEffect(() => { reload(); }, [reload]);
+
+  // Realtime
   useEffect(() => {
-    load();
-    const ch = supabase.channel("pointage-rt").on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, load).subscribe();
+    const ch = supabase
+      .channel("pointage-rt-v2")
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, () => reload())
+      .on("postgres_changes", { event: "*", schema: "public", table: "shift_clock_audit" }, () => reload())
+      .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [reload]);
 
-  const getStatus = (s: Shift): StatusFilter =>
-    s.clocked_out_at ? "terminé" : s.clocked_in_at ? "en-cours" : "à-venir";
+  // 30s polling backup
+  useEffect(() => {
+    const t = window.setInterval(() => reload(), 30_000);
+    return () => window.clearInterval(t);
+  }, [reload]);
+
+  // Alerts check on mount (idempotent)
+  useEffect(() => {
+    checkAlerts().catch(() => { /* silent */ });
+  }, [checkAlerts]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return shifts.filter((s) => {
-      if (statusFilter !== "tous" && getStatus(s) !== statusFilter) return false;
-      if (q) {
-        const profile = s.user_id ? profiles.get(s.user_id) : null;
-        const name = profile ? `${profile.first_name} ${profile.last_name}` : "";
-        if (!name.toLowerCase().includes(q)) return false;
-      }
+    return (data?.shifts ?? []).filter((s) => {
+      if (statusFilter === "late" && !(s.computed_status === "late_no_in" || s.computed_status === "late_in")) return false;
+      if (statusFilter !== "all" && statusFilter !== "late" && s.computed_status !== statusFilter) return false;
+      if (q && !(s.user_name || "").toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [shifts, search, statusFilter, profiles]);
-
-  const counts = {
-    inProgress: shifts.filter((s) => getStatus(s) === "en-cours").length,
-    done: shifts.filter((s) => getStatus(s) === "terminé").length,
-    upcoming: shifts.filter((s) => getStatus(s) === "à-venir").length,
-  };
-
-  const clockIn = async (id: string) => {
-    const { error } = await supabase.from("shifts").update({ clocked_in_at: new Date().toISOString() }).eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Pointage IN forcé"); await load(); }
-  };
-  const clockOut = async (id: string) => {
-    try {
-      const result = await completeClockOut({ data: { shiftId: id } });
-      toast.success(result.alreadyCompleted ? "Shift déjà clôturé" : "Pointage OUT forcé");
-      await load();
-    } catch (error: any) {
-      toast.error(error?.message || "Impossible de pointer la sortie");
-    }
-  };
+  }, [data, search, statusFilter]);
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="mb-5">
-        <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Pointage</h1>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Suivi en temps réel des arrivées et départs — {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}.</p>
+    <div className="flex flex-col gap-5">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard
+          label="Présents aujourd'hui"
+          value={data?.kpis.present_count ?? 0}
+          hint={`/ ${data?.kpis.expected_count ?? 0} attendus`}
+          tone="success"
+          icon={<Users size={14} />}
+          loading={loading}
+        />
+        <KpiCard
+          label="En retard"
+          value={data?.kpis.late_count ?? 0}
+          hint={`cumulé du jour`}
+          tone={(data?.kpis.late_count ?? 0) > 0 ? "warning" : "neutral"}
+          icon={<AlertTriangle size={14} />}
+          loading={loading}
+        />
+        <KpiCard
+          label="No-show"
+          value={data?.kpis.no_show_count ?? 0}
+          hint=""
+          tone={(data?.kpis.no_show_count ?? 0) > 0 ? "danger" : "neutral"}
+          icon={<Ban size={14} />}
+          loading={loading}
+        />
+        <KpiCard
+          label="Heures cumulées équipe"
+          value={fmtMinutes(data?.kpis.worked_minutes ?? 0)}
+          hint={`${fmtMinutes(data?.kpis.planned_minutes ?? 0)} prévues`}
+          delta={
+            data
+              ? (() => {
+                  const diff = (data.kpis.worked_minutes ?? 0) - (data.kpis.planned_minutes ?? 0);
+                  if (Math.abs(diff) < 5) return null;
+                  return diff < 0 ? `${fmtMinutes(-diff)} vs prévu` : `+${fmtMinutes(diff)} vs prévu`;
+                })()
+              : null
+          }
+          tone="neutral"
+          icon={<Clock size={14} />}
+          loading={loading}
+        />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-        <Kpi label="En cours" value={counts.inProgress} icon={<Clock size={14} />} />
-        <Kpi label="Terminés" value={counts.done} icon={<Check size={14} />} color="var(--success-text)" />
-        <Kpi label="À venir" value={counts.upcoming} icon={<Calendar size={14} />} />
-        <Kpi label="Total jour" value={shifts.length} icon={<Clock size={14} />} />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 mb-3">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 rounded-md px-2.5 py-1.5" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
           <Search size={13} style={{ color: "var(--muted-foreground)" }} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher…" style={{ fontSize: 12, background: "transparent", outline: "none", border: "none", width: 180 }} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un employé…"
+            style={{ fontSize: 12, background: "transparent", outline: "none", border: "none", width: 200 }}
+          />
           {search && <X size={12} style={{ cursor: "pointer" }} onClick={() => setSearch("")} />}
         </div>
-        <Chips value={statusFilter} onChange={(v) => setStatusFilter(v as StatusFilter)} options={[
-          { value: "tous", label: "Tous" }, { value: "à-venir", label: "À venir" }, { value: "en-cours", label: "En cours" }, { value: "terminé", label: "Terminés" },
-        ]} />
+
+        <Chips
+          value={statusFilter}
+          onChange={(v) => setStatusFilter(v as StatusFilter)}
+          options={[
+            { value: "all", label: "Tous" },
+            { value: "upcoming", label: "À venir" },
+            { value: "in_progress", label: "En cours" },
+            { value: "late", label: "En retard" },
+            { value: "completed", label: "Terminé" },
+            { value: "no_show", label: "No-show" },
+          ]}
+        />
+
+        <div className="ml-auto">
+          <Select value={studioFilter} onValueChange={setStudioFilter}>
+            <SelectTrigger className="w-[180px] h-8"><SelectValue placeholder="Studio" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les studios</SelectItem>
+              {studios.map((s) => <SelectItem key={s.id} value={s.id}>{s.short_name || s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div className="md:hidden flex flex-col gap-2">
-        {filtered.length === 0 ? (
-          <div className="rounded-xl border px-4 py-8 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift aujourd'hui.</div>
-        ) : filtered.map((entry) => {
-          const profile = entry.user_id ? profiles.get(entry.user_id) : null;
-          const status = getStatus(entry);
-          const rc = getRoleStyle(entry.business_role);
-          const studioName = entry.studio_id ? (studios.get(entry.studio_id) || "—").replace("Skult ", "") : "—";
-          const inT = entry.clocked_in_at ? new Date(entry.clocked_in_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
-          const outT = entry.clocked_out_at ? new Date(entry.clocked_out_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
-          return (
-            <div key={entry.id} className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{profile ? fullName(profile) : "Non assigné"}</div>
-                  <span className="inline-block rounded-full px-1.5 py-0.5 mt-1" style={{ fontSize: 10, backgroundColor: rc.bg, color: rc.text }}>{entry.business_role}</span>
-                </div>
-                <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: status === "terminé" ? "var(--success-bg)" : status === "en-cours" ? "var(--coral-light)" : "var(--info-bg)", color: status === "terminé" ? "var(--success-text)" : status === "en-cours" ? "var(--coral-dark)" : "var(--info-text)" }}>{status === "terminé" ? "Terminé" : status === "en-cours" ? "En cours" : "À venir"}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-3" style={{ fontSize: 12 }}>
-                <div><span style={{ color: "var(--muted-foreground)" }}>Shift</span><br />{hhmm(entry.start_time)} — {hhmm(entry.end_time)}</div>
-                <div><span style={{ color: "var(--muted-foreground)" }}>Studio</span><br />{studioName}</div>
-                <div><span style={{ color: "var(--muted-foreground)" }}>IN</span><br />{inT}</div>
-                <div><span style={{ color: "var(--muted-foreground)" }}>OUT</span><br />{outT}</div>
-              </div>
-              {status === "à-venir" && profile && <button onClick={() => clockIn(entry.id)} className="mt-3 w-full rounded-md py-2" style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>Forcer pointage IN</button>}
-              {status === "en-cours" && <button onClick={() => clockOut(entry.id)} className="mt-3 w-full rounded-md py-2 flex items-center justify-center gap-1.5" style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}><LogOut size={12} /> Clôturer</button>}
-            </div>
-          );
-        })}
+      {/* List */}
+      {loading && !data ? (
+        <div className="flex flex-col gap-2">
+          {[0, 1, 2, 3].map((i) => <SkeletonRow key={i} />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border p-10 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: 13, color: "var(--muted-foreground)" }}>
+          Aucun shift correspondant aujourd'hui.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {filtered.map((s) => <ShiftRow key={s.id} shift={s} onChanged={reload} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+      <div className="flex items-center gap-3">
+        <div style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: "var(--muted)" }} />
+        <div className="flex-1">
+          <div style={{ width: 140, height: 12, backgroundColor: "var(--muted)", borderRadius: 4, marginBottom: 6 }} />
+          <div style={{ width: 220, height: 10, backgroundColor: "var(--muted)", borderRadius: 4 }} />
+        </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="hidden md:block rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
-        <table className="w-full" style={{ fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: "0.5px solid var(--border)" }}>
-              {["Employé", "Shift prévu", "Studio", "IN", "OUT", "Ponctualité", "Statut", ""].map((h) => (
-                <th key={h} className="text-left px-4 py-2.5" style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift aujourd'hui.</td></tr>
-            ) : filtered.map((entry) => {
-              const profile = entry.user_id ? profiles.get(entry.user_id) : null;
-              const status = getStatus(entry);
-              const rc = getRoleStyle(entry.business_role);
-              const studioName = entry.studio_id ? (studios.get(entry.studio_id) || "—").replace("Skult ", "") : "—";
-              const sty = status === "terminé" ? { bg: "var(--success-bg)", text: "var(--success-text)", label: "Terminé" }
-                : status === "en-cours" ? { bg: "var(--coral-light)", text: "var(--coral-dark)", label: "En cours" }
-                : { bg: "var(--info-bg)", text: "var(--info-text)", label: "À venir" };
-              const inT = entry.clocked_in_at ? new Date(entry.clocked_in_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
-              const outT = entry.clocked_out_at ? new Date(entry.clocked_out_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h") : "—";
-              const punct = entry.clocked_out_at
-                ? computePunctuality(entry)
-                : entry.clocked_in_at
-                ? computePartialPunctuality(entry)
-                : null;
-              const punctIsFinal = !!entry.clocked_out_at;
-
-              return (
-                <tr key={entry.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontWeight: 500 }}>{profile ? fullName(profile) : "Non assigné"}</span>
-                      <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: rc.bg, color: rc.text }}>{entry.business_role}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3" style={{ fontSize: 12 }}>{hhmm(entry.start_time)} — {hhmm(entry.end_time)}</td>
-                  <td className="px-4 py-3" style={{ fontSize: 12 }}>{studioName}</td>
-                  <td className="px-4 py-3" style={{ fontSize: 12, fontFamily: "monospace" }}>{inT}</td>
-                  <td className="px-4 py-3" style={{ fontSize: 12, fontFamily: "monospace" }}>{outT}</td>
-                  <td className="px-4 py-3" style={{ fontSize: 12 }}>
-                    {punct === null ? (
-                      <span style={{ color: "var(--muted-foreground)" }}>—</span>
-                    ) : (
-                      <span style={{ fontWeight: 500, color: punctualityColor(punct) }}>
-                        {punct}%{!punctIsFinal && <span style={{ fontSize: 10, color: "var(--muted-foreground)", marginLeft: 4 }}>(IN)</span>}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: sty.bg, color: sty.text }}>{sty.label}</span></td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 justify-end">
-                      {status === "à-venir" && profile && (
-                        <button onClick={() => clockIn(entry.id)} title="Forcer pointage IN" className="rounded-md p-1.5" style={{ border: "0.5px solid var(--border)" }}><LogIn size={12} /></button>
-                      )}
-                      {status === "en-cours" && (
-                        <button onClick={() => clockOut(entry.id)} className="rounded-md px-2.5 py-1 flex items-center gap-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
-                          <LogOut size={11} /> Clôturer
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+function KpiCard({ label, value, hint, delta, tone, icon, loading }: {
+  label: string; value: number | string; hint?: string; delta?: string | null;
+  tone: "success" | "warning" | "danger" | "neutral"; icon: React.ReactNode; loading?: boolean;
+}) {
+  const color =
+    tone === "success" ? "#10B981" :
+    tone === "warning" ? "#F59E0B" :
+    tone === "danger" ? "#EF4444" : "var(--muted-foreground)";
+  return (
+    <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+      <div className="flex items-center gap-1.5 mb-2" style={{ color }}>
+        {icon}
+        <span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 500, color: tone === "neutral" ? "var(--foreground)" : color, lineHeight: 1 }}>
+        {loading ? "…" : value}
+      </div>
+      <div className="mt-1.5 flex items-center gap-2" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+        {hint && <span>{hint}</span>}
+        {delta && <span style={{ color: delta.startsWith("+") ? "#10B981" : "#F59E0B", fontWeight: 500 }}>{delta}</span>}
       </div>
     </div>
   );
@@ -218,8 +307,17 @@ function Chips({ value, onChange, options }: { value: string; onChange: (v: stri
       {options.map((o) => {
         const a = value === o.value;
         return (
-          <button key={o.value} onClick={() => onChange(o.value)} className="rounded-full px-2.5 py-1"
-            style={{ fontSize: 11, fontWeight: a ? 500 : 400, backgroundColor: a ? "var(--foreground)" : "transparent", color: a ? "var(--card)" : "var(--muted-foreground)", border: a ? "none" : "0.5px solid var(--border)" }}>
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className="rounded-full px-2.5 py-1"
+            style={{
+              fontSize: 11, fontWeight: a ? 500 : 400,
+              backgroundColor: a ? "var(--foreground)" : "transparent",
+              color: a ? "var(--card)" : "var(--muted-foreground)",
+              border: a ? "none" : "0.5px solid var(--border)",
+            }}
+          >
             {o.label}
           </button>
         );
@@ -228,13 +326,350 @@ function Chips({ value, onChange, options }: { value: string; onChange: (v: stri
   );
 }
 
-function Kpi({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color?: string }) {
+// ============================================================
+// SHIFT ROW
+// ============================================================
+
+type DialogKind = null | "clock_in" | "clock_out" | "edit_late" | "no_show" | "note" | "history";
+
+function ShiftRow({ shift, onChanged }: { shift: PointageShift; onChanged: () => void }) {
+  const meta = STATUS_META[shift.computed_status];
+  const rs = getRoleStyle(shift.business_role);
+  const [dialog, setDialog] = useState<DialogKind>(null);
+
+  const realTimes = (() => {
+    if (!shift.clocked_in_at) return "—";
+    const inT = fmtTimeIso(shift.clocked_in_at);
+    if (shift.clocked_out_at) return `${inT} → ${fmtTimeIso(shift.clocked_out_at)}`;
+    return `${inT} → en cours`;
+  })();
+
+  const studio = (shift.studio_short || shift.studio_name || "—").replace(/^Skult\s+/i, "");
+  const lateBadge = (shift.minutes_late ?? 0) > 0 ? `+${shift.minutes_late} min` : null;
+
   return (
-    <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-      <div className="flex items-center gap-1.5 mb-2" style={{ color: color || "var(--muted-foreground)" }}>
-        {icon}<span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+    <>
+      <div
+        className="rounded-xl border p-3 md:p-4 flex items-center gap-3"
+        style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", borderLeft: `3px solid ${meta.dot}` }}
+      >
+        {/* Avatar */}
+        <div
+          className="hidden sm:flex items-center justify-center shrink-0"
+          style={{
+            width: 36, height: 36, borderRadius: 999,
+            backgroundColor: shift.user_avatar ? "transparent" : "var(--muted)",
+            backgroundImage: shift.user_avatar ? `url(${shift.user_avatar})` : "none",
+            backgroundSize: "cover", fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)",
+          }}
+        >
+          {!shift.user_avatar && initials(shift.user_name?.split(" ")[0], shift.user_name?.split(" ")[1])}
+        </div>
+
+        {/* Identity */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{shift.user_name || "Non assigné"}</span>
+            <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: rs.bg, color: rs.text }}>{shift.business_role}</span>
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>·</span>
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{studio}</span>
+          </div>
+          <div className="mt-0.5 flex items-center gap-3 flex-wrap" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+            <span>Prévu : <span style={{ color: "var(--foreground)", fontFamily: "monospace" }}>{hhmm(shift.start_time)} — {hhmm(shift.end_time)}</span></span>
+            <span>Réel : <span style={{ color: "var(--foreground)", fontFamily: "monospace" }}>{realTimes}</span></span>
+            {lateBadge && <span style={{ color: "#F59E0B", fontWeight: 500 }}>{lateBadge}</span>}
+            {shift.clock_admin_note && <span title={shift.clock_admin_note} className="flex items-center gap-1"><FileText size={11} /> note</span>}
+          </div>
+        </div>
+
+        {/* Status pill */}
+        <span className="rounded-full px-2 py-0.5 shrink-0" style={{ fontSize: 10, fontWeight: 500, backgroundColor: meta.bg, color: meta.text }}>
+          {meta.label}
+        </span>
+
+        {/* Actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="rounded-md p-1.5 shrink-0" style={{ border: "0.5px solid var(--border)" }} aria-label="Actions">
+              <MoreVertical size={14} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {!shift.clocked_in_at && shift.user_id && (
+              <DropdownMenuItem onClick={() => setDialog("clock_in")} className="gap-2">
+                <LogIn size={14} /> Pointer arrivée
+              </DropdownMenuItem>
+            )}
+            {shift.clocked_in_at && !shift.clocked_out_at && (
+              <DropdownMenuItem onClick={() => setDialog("clock_out")} className="gap-2">
+                <LogOut size={14} /> Pointer sortie
+              </DropdownMenuItem>
+            )}
+            {shift.clocked_in_at && (
+              <DropdownMenuItem onClick={() => setDialog("edit_late")} className="gap-2">
+                <Edit3 size={14} /> Corriger minutes de retard
+              </DropdownMenuItem>
+            )}
+            {shift.status !== "cancelled" && !shift.clocked_in_at && (
+              <DropdownMenuItem onClick={() => setDialog("no_show")} className="gap-2" style={{ color: "#991B1B" }}>
+                <Ban size={14} /> Marquer no-show
+              </DropdownMenuItem>
+            )}
+            {shift.status === "cancelled" && (
+              <DropdownMenuItem onClick={async () => { try { await undoNoShowFn({ data: { shiftId: shift.id } } as any); toast.success("No-show annulé"); onChanged(); } catch (e: any) { toast.error(e?.message); } }} className="gap-2">
+                <Undo2 size={14} /> Annuler no-show
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setDialog("note")} className="gap-2">
+              <FileText size={14} /> {shift.clock_admin_note ? "Éditer note" : "Ajouter note"}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setDialog("history")} className="gap-2">
+              <History size={14} /> Historique
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-      <span style={{ fontSize: 22, fontWeight: 500, color: color || "var(--foreground)" }}>{value}</span>
+
+      {dialog && (
+        <ActionDialog
+          kind={dialog}
+          shift={shift}
+          onClose={() => setDialog(null)}
+          onDone={() => { setDialog(null); onChanged(); }}
+        />
+      )}
+    </>
+  );
+}
+
+// ============================================================
+// DIALOGS
+// ============================================================
+
+function ActionDialog({ kind, shift, onClose, onDone }: { kind: Exclude<DialogKind, null>; shift: PointageShift; onClose: () => void; onDone: () => void }) {
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        {kind === "clock_in" && <ClockDialog shift={shift} mode="in" onDone={onDone} />}
+        {kind === "clock_out" && <ClockDialog shift={shift} mode="out" onDone={onDone} />}
+        {kind === "edit_late" && <EditLateDialog shift={shift} onDone={onDone} />}
+        {kind === "no_show" && <NoShowDialog shift={shift} onDone={onDone} />}
+        {kind === "note" && <NoteDialog shift={shift} onDone={onDone} />}
+        {kind === "history" && <HistoryDialog shift={shift} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ClockDialog({ shift, mode, onDone }: { shift: PointageShift; mode: "in" | "out"; onDone: () => void }) {
+  const [time, setTime] = useState(nowHHMM());
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const clockIn = useServerFn(manualClockInFn);
+  const clockOut = useServerFn(manualClockOutFn);
+  const submit = async () => {
+    if (!reason.trim()) { toast.error("Raison obligatoire"); return; }
+    setBusy(true);
+    try {
+      if (mode === "in") await clockIn({ data: { shiftId: shift.id, time, reason } });
+      else await clockOut({ data: { shiftId: shift.id, time, reason } });
+      toast.success(mode === "in" ? "Arrivée pointée" : "Sortie pointée");
+      onDone();
+    } catch (e: any) { toast.error(e?.message || "Échec"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <>
+      <DialogHeader><DialogTitle>{mode === "in" ? "Pointer l'arrivée" : "Pointer la sortie"}</DialogTitle></DialogHeader>
+      <div className="flex flex-col gap-3 py-2">
+        <FormField label="Heure">
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-md border px-2.5 py-1.5" style={inputStyle} />
+        </FormField>
+        <FormField label="Raison (obligatoire)">
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="rounded-md border px-2.5 py-1.5" style={inputStyle} placeholder="Ex: badge oublié…" />
+        </FormField>
+      </div>
+      <DialogFooter>
+        <DialogButton onClick={submit} busy={busy} primary>Confirmer</DialogButton>
+      </DialogFooter>
+    </>
+  );
+}
+
+function EditLateDialog({ shift, onDone }: { shift: PointageShift; onDone: () => void }) {
+  const [value, setValue] = useState(shift.minutes_late ?? 0);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const fn = useServerFn(editMinutesLateFn);
+  const submit = async () => {
+    if (!reason.trim()) { toast.error("Raison obligatoire"); return; }
+    setBusy(true);
+    try {
+      await fn({ data: { shiftId: shift.id, newValue: value, reason } });
+      toast.success("Retard mis à jour");
+      onDone();
+    } catch (e: any) { toast.error(e?.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <>
+      <DialogHeader><DialogTitle>Corriger les minutes de retard</DialogTitle></DialogHeader>
+      <div className="flex flex-col gap-3 py-2">
+        <FormField label="Minutes de retard">
+          <input type="number" min={0} value={value} onChange={(e) => setValue(parseInt(e.target.value || "0", 10) || 0)} className="rounded-md border px-2.5 py-1.5 w-32" style={inputStyle} />
+        </FormField>
+        <FormField label="Raison (obligatoire)">
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="rounded-md border px-2.5 py-1.5" style={inputStyle} />
+        </FormField>
+      </div>
+      <DialogFooter>
+        <DialogButton onClick={submit} busy={busy} primary>Enregistrer</DialogButton>
+      </DialogFooter>
+    </>
+  );
+}
+
+function NoShowDialog({ shift, onDone }: { shift: PointageShift; onDone: () => void }) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const fn = useServerFn(markNoShowFn);
+  const submit = async () => {
+    if (!reason.trim()) { toast.error("Raison obligatoire"); return; }
+    setBusy(true);
+    try {
+      await fn({ data: { shiftId: shift.id, reason } });
+      toast.success("Marqué no-show");
+      onDone();
+    } catch (e: any) { toast.error(e?.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <>
+      <DialogHeader><DialogTitle>Marquer no-show</DialogTitle></DialogHeader>
+      <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: -4 }}>
+        Le shift sera annulé. Le score de l'employé sera recalculé.
+      </p>
+      <div className="flex flex-col gap-3 py-2">
+        <FormField label="Raison (obligatoire)">
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="rounded-md border px-2.5 py-1.5" style={inputStyle} />
+        </FormField>
+      </div>
+      <DialogFooter>
+        <DialogButton onClick={submit} busy={busy} primary danger>Confirmer no-show</DialogButton>
+      </DialogFooter>
+    </>
+  );
+}
+
+function NoteDialog({ shift, onDone }: { shift: PointageShift; onDone: () => void }) {
+  const [note, setNote] = useState(shift.clock_admin_note || "");
+  const [busy, setBusy] = useState(false);
+  const fn = useServerFn(setAdminNoteFn);
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await fn({ data: { shiftId: shift.id, note } });
+      toast.success("Note enregistrée");
+      onDone();
+    } catch (e: any) { toast.error(e?.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <>
+      <DialogHeader><DialogTitle>{shift.clock_admin_note ? "Éditer la note" : "Ajouter une note"}</DialogTitle></DialogHeader>
+      <div className="flex flex-col gap-3 py-2">
+        <FormField label="Note">
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} className="rounded-md border px-2.5 py-1.5" style={inputStyle} />
+        </FormField>
+      </div>
+      <DialogFooter>
+        <DialogButton onClick={submit} busy={busy} primary>Enregistrer</DialogButton>
+      </DialogFooter>
+    </>
+  );
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  manual_clock_in: "Pointage arrivée manuel",
+  manual_clock_out: "Pointage sortie manuel",
+  edit_minutes_late: "Correction retard",
+  mark_no_show: "Marqué no-show",
+  undo_no_show: "No-show annulé",
+  add_note: "Note ajoutée",
+  edit_note: "Note modifiée",
+};
+
+function HistoryDialog({ shift }: { shift: PointageShift }) {
+  const fn = useServerFn(getShiftAuditHistoryFn);
+  const [rows, setRows] = useState<AuditEntry[] | null>(null);
+  useEffect(() => { fn({ data: { shiftId: shift.id } }).then(setRows).catch(() => setRows([])); }, [fn, shift.id]);
+  return (
+    <>
+      <DialogHeader><DialogTitle>Historique du shift</DialogTitle></DialogHeader>
+      <div className="max-h-[400px] overflow-y-auto">
+        {!rows ? (
+          <div className="py-4 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
+        ) : rows.length === 0 ? (
+          <div className="py-4 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucune action enregistrée.</div>
+        ) : (
+          <ul className="flex flex-col gap-2 py-2">
+            {rows.map((r) => (
+              <li key={r.id} className="rounded-md border p-3" style={{ borderColor: "var(--border)", fontSize: 12 }}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span style={{ fontWeight: 500 }}>{ACTION_LABELS[r.action] || r.action}</span>
+                  <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
+                    {new Date(r.created_at).toLocaleString("fr-FR")}
+                  </span>
+                </div>
+                <div style={{ color: "var(--muted-foreground)" }}>par {r.actor_name || "—"}</div>
+                {r.note && <div className="mt-1" style={{ fontStyle: "italic" }}>« {r.note} »</div>}
+                {(r.before_value || r.after_value) && (
+                  <div className="mt-1.5 grid grid-cols-2 gap-2" style={{ fontSize: 11 }}>
+                    <div><span style={{ color: "var(--muted-foreground)" }}>Avant : </span>{r.before_value ? JSON.stringify(r.before_value) : "—"}</div>
+                    <div><span style={{ color: "var(--muted-foreground)" }}>Après : </span>{r.after_value ? JSON.stringify(r.after_value) : "—"}</div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ============================================================
+// SHARED
+// ============================================================
+
+const inputStyle: React.CSSProperties = { fontSize: 13, backgroundColor: "var(--background)", borderColor: "var(--border)" };
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)" }}>{label}</label>
+      {children}
     </div>
+  );
+}
+
+function DialogButton({ children, onClick, busy, primary, danger }: { children: React.ReactNode; onClick: () => void; busy?: boolean; primary?: boolean; danger?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy}
+      className="rounded-md px-3 py-1.5 flex items-center gap-2"
+      style={{
+        fontSize: 12, fontWeight: 500,
+        backgroundColor: danger ? "#EF4444" : primary ? "var(--foreground)" : "transparent",
+        color: danger || primary ? "var(--card)" : "var(--foreground)",
+        border: primary || danger ? "none" : "0.5px solid var(--border)",
+        opacity: busy ? 0.6 : 1,
+      }}
+    >
+      {busy && <Loader2 size={12} className="animate-spin" />}
+      {children}
+    </button>
   );
 }
