@@ -17,7 +17,10 @@ export interface ApplicableTemplateContext {
  *   4. fully generic
  * Returns null if no template applies.
  */
-export async function findApplicableTemplate(ctx: { studioId: string | null; businessRole: string }): Promise<ChecklistTemplate | null> {
+export type ChecklistPhase = "opening" | "closing";
+
+export async function findApplicableTemplate(ctx: { studioId: string | null; businessRole: string; phase?: ChecklistPhase }): Promise<ChecklistTemplate | null> {
+  const phase: ChecklistPhase = ctx.phase ?? "closing";
   const { data: roleRow } = await supabase
     .from("business_roles")
     .select("id")
@@ -28,7 +31,8 @@ export async function findApplicableTemplate(ctx: { studioId: string | null; bus
   const { data: tpls } = await supabase
     .from("checklist_templates" as any)
     .select("*")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .eq("phase", phase);
 
   const list = ((tpls as any[]) ?? []).filter((t) =>
     (t.business_role_id === roleId || t.business_role_id === null) &&
@@ -42,21 +46,22 @@ export async function findApplicableTemplate(ctx: { studioId: string | null; bus
 }
 
 /**
- * Get-or-create a submission row for (user, shift, template).
+ * Get-or-create a submission row for (user, shift, template, phase).
  * Idempotent: returns the existing submission if one exists.
  */
-export async function getOrCreateSubmission(userId: string, shiftId: string, templateId: string): Promise<string> {
+export async function getOrCreateSubmission(userId: string, shiftId: string, templateId: string, phase: ChecklistPhase = "closing"): Promise<string> {
   const { data: existing } = await supabase
     .from("checklist_submissions" as any)
     .select("id")
     .eq("user_id", userId)
     .eq("shift_id", shiftId)
     .eq("template_id", templateId)
+    .eq("phase", phase)
     .maybeSingle();
   if (existing) return (existing as any).id;
   const { data, error } = await supabase
     .from("checklist_submissions" as any)
-    .insert({ user_id: userId, shift_id: shiftId, template_id: templateId, status: "in_progress" } as any)
+    .insert({ user_id: userId, shift_id: shiftId, template_id: templateId, status: "in_progress", phase } as any)
     .select("id")
     .single();
   if (error) throw error;
