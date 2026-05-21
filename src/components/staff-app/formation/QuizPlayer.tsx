@@ -58,7 +58,7 @@ export function QuizPlayer({ quiz, firstName, onBack, onPassed }: Props) {
     try {
       const r = await submit({ data: {
         attemptId,
-        answers: quiz.questions.map((qq) => ({ questionId: qq.id, selectedOptionIds: answers[qq.id] ?? [] })),
+        answers: quiz.questions.map((qq: any) => ({ questionId: qq.id, selectedOptionIds: answers[qq.id] ?? [] })),
       } });
       setResult(r);
       if (r.passed) onPassed(r.courseCompleted);
@@ -152,7 +152,7 @@ export function QuizPlayer({ quiz, firstName, onBack, onPassed }: Props) {
       </div>
 
       <div className="flex gap-1.5">
-        {quiz.questions.map((_, i) => (
+        {quiz.questions.map((_: any, i: number) => (
           <div key={i} className="flex-1 rounded-full" style={{ height: 4, backgroundColor: i < idx ? "var(--foreground)" : i === idx ? "#F0997B" : "var(--border)" }} />
         ))}
       </div>
@@ -163,7 +163,7 @@ export function QuizPlayer({ quiz, firstName, onBack, onPassed }: Props) {
       {isMulti && <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Plusieurs réponses possibles</div>}
 
       <div className="flex flex-col gap-2">
-        {q.options.map((opt) => {
+        {q.options.map((opt: any) => {
           const isSelected = selected.includes(opt.id);
           return (
             <button key={opt.id} onClick={() => toggleOpt(opt.id)}
