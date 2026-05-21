@@ -37,6 +37,7 @@ import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
+import { Route as AdminSeedRouteImport } from './routes/admin.seed'
 import { Route as AdminQaTestSuiteRouteImport } from './routes/admin.qa-test-suite'
 import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-studios'
 import { Route as AdminIntegrityReportRouteImport } from './routes/admin.integrity-report'
@@ -186,6 +187,11 @@ const AdminSeederRoute = AdminSeederRouteImport.update({
   path: '/admin/seeder',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSeedRoute = AdminSeedRouteImport.update({
+  id: '/admin/seed',
+  path: '/admin/seed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminQaTestSuiteRoute = AdminQaTestSuiteRouteImport.update({
   id: '/admin/qa-test-suite',
   path: '/admin/qa-test-suite',
@@ -258,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/admin/integrity-report': typeof AdminIntegrityReportRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
+  '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -295,6 +302,7 @@ export interface FileRoutesByTo {
   '/admin/integrity-report': typeof AdminIntegrityReportRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
+  '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -334,6 +342,7 @@ export interface FileRoutesById {
   '/admin/integrity-report': typeof AdminIntegrityReportRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
+  '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -374,6 +383,7 @@ export interface FileRouteTypes {
     | '/admin/integrity-report'
     | '/admin/migrate-studios'
     | '/admin/qa-test-suite'
+    | '/admin/seed'
     | '/admin/seeder'
     | '/formation/$courseId'
     | '/planning/generate'
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/admin/integrity-report'
     | '/admin/migrate-studios'
     | '/admin/qa-test-suite'
+    | '/admin/seed'
     | '/admin/seeder'
     | '/formation/$courseId'
     | '/planning/generate'
@@ -449,6 +460,7 @@ export interface FileRouteTypes {
     | '/admin/integrity-report'
     | '/admin/migrate-studios'
     | '/admin/qa-test-suite'
+    | '/admin/seed'
     | '/admin/seeder'
     | '/formation/$courseId'
     | '/planning/generate'
@@ -488,6 +500,7 @@ export interface RootRouteChildren {
   AdminIntegrityReportRoute: typeof AdminIntegrityReportRoute
   AdminMigrateStudiosRoute: typeof AdminMigrateStudiosRoute
   AdminQaTestSuiteRoute: typeof AdminQaTestSuiteRoute
+  AdminSeedRoute: typeof AdminSeedRoute
   AdminSeederRoute: typeof AdminSeederRoute
 }
 
@@ -689,6 +702,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSeederRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/seed': {
+      id: '/admin/seed'
+      path: '/admin/seed'
+      fullPath: '/admin/seed'
+      preLoaderRoute: typeof AdminSeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/qa-test-suite': {
       id: '/admin/qa-test-suite'
       path: '/admin/qa-test-suite'
@@ -817,6 +837,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIntegrityReportRoute: AdminIntegrityReportRoute,
   AdminMigrateStudiosRoute: AdminMigrateStudiosRoute,
   AdminQaTestSuiteRoute: AdminQaTestSuiteRoute,
+  AdminSeedRoute: AdminSeedRoute,
   AdminSeederRoute: AdminSeederRoute,
 }
 export const routeTree = rootRouteImport
