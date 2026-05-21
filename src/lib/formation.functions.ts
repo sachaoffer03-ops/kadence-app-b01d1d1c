@@ -1267,7 +1267,7 @@ async function maybeCompleteCourse(supabase: any, userId: string, courseId: stri
       type: "training_completed",
       title: "Formation terminée",
       body: `${name} a terminé "${c?.title ?? "un parcours"}".`,
-      link: "/formation",
+      link: `/staff/${userId}?tab=formation`,
       priority: "info",
       category: "training",
     })) as any);
