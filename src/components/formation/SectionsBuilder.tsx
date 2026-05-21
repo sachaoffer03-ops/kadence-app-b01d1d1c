@@ -45,7 +45,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
   const handleAddSection = () => {
     setPromptDlg({
       variant: "section",
-      onSubmit: async (title) => {
+      onSubmit: async (title: string) => {
         try { await createSec({ data: { courseId, title } }); onChange(); }
         catch (e: any) { toast.error(e.message); }
       },
@@ -56,7 +56,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
     setPromptDlg({
       variant: "rename",
       initial: current,
-      onSubmit: async (title) => {
+      onSubmit: async (title: string) => {
         if (title === current) return;
         try { await updateSec({ data: { sectionId: id, title } }); onChange(); }
         catch (e: any) { toast.error(e.message); }
@@ -82,7 +82,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
   const handleAddModule = (sectionId: string) => {
     setPromptDlg({
       variant: "module",
-      onSubmit: async (title) => {
+      onSubmit: async (title: string) => {
         try { await createMod({ data: { sectionId, title } }); onChange(); }
         catch (e: any) { toast.error(e.message); }
       },
@@ -93,7 +93,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
     setPromptDlg({
       variant: "rename",
       initial: current,
-      onSubmit: async (title) => {
+      onSubmit: async (title: string) => {
         if (title === current) return;
         try { await updateMod({ data: { moduleId: id, title } }); onChange(); }
         catch (e: any) { toast.error(e.message); }
