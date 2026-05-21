@@ -16,6 +16,7 @@ import { ShiftDetailSheet, DocumentsSheet, NotificationsSheet } from "@/componen
 import { EditProfileSheet, type EditableProfile } from "@/components/staff-app/EditProfileSheet";
 import { DisposSheet, disposKey } from "@/components/staff-app/DisposSheet";
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
+import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
 import { ChatPanel } from "@/components/staff-app/ChatPanel";
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSheet";
@@ -469,6 +470,9 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
           </div>
         );
       })()}
+
+      {/* Notifications formation */}
+      <FormationNotifBanner onGoFormation={onGoFormation} />
 
       {/* Bandeau propositions de shift */}
       {proposals.length > 0 && (
