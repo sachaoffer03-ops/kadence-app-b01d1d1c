@@ -39,11 +39,11 @@ export function EmployeeNotifsWidget({ userId }: { userId: string }) {
   const goTo = async (n: NotifRow) => {
     try { await markRead({ data: { notificationId: n.id } }); } catch {}
     setItems((prev) => prev.filter((x) => x.id !== n.id));
-    if (!n.link) return;
-    if (n.link.startsWith("/staff-app") || n.link.startsWith("http")) {
-      window.location.assign(n.link);
+    const target = n.link || fallbackLinkByCategory(n.category, true);
+    if (target.startsWith("/staff-app") || target.startsWith("http")) {
+      window.location.assign(target);
     } else {
-      navigate({ to: n.link as any });
+      navigate({ to: target as any });
     }
   };
 
