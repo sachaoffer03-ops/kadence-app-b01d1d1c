@@ -170,13 +170,17 @@ function ClotureePage() {
 
       <Tabs
         value={tab}
-        onValueChange={(v) => navigate({ search: (prev: any) => ({ ...prev, tab: v as "config" | "notation" }) })}
+        onValueChange={(v) => navigate({ search: (prev: any) => ({ ...prev, tab: v as "config" | "opening" | "notation" }) })}
         className="w-full"
       >
         <TabsList className="mb-5">
           <TabsTrigger value="config" className="gap-2">
             <SettingsIcon size={14} strokeWidth={1.8} />
             Configuration
+          </TabsTrigger>
+          <TabsTrigger value="opening" className="gap-2">
+            <Sunrise size={14} strokeWidth={1.8} />
+            Ouverture
           </TabsTrigger>
           <TabsTrigger value="notation" className="gap-2">
             <BarChart3 size={14} strokeWidth={1.8} />
@@ -190,10 +194,27 @@ function ClotureePage() {
           ) : (
             <div className="flex flex-col gap-5">
               <ClockOutSection studio={studio} />
-              <ChecklistsSection studioId={studio.id} />
-              <PhotosSection studioId={studio.id} />
+              <ChecklistsSection studioId={studio.id} phase="closing" />
+              <PhotosSection studioId={studio.id} phase="closing" />
               <QrSection studio={studio} />
               <QuestionsSection studioId={studio.id} />
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="opening" className="mt-0">
+          {!studio ? (
+            <EmptyCard text="Sélectionne un studio pour configurer l'ouverture." />
+          ) : (
+            <div className="flex flex-col gap-5">
+              <div className="rounded-lg border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+                <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Checklist d'ouverture</div>
+                <div style={{ fontSize: 12, color: "var(--muted-foreground)", maxWidth: 700, lineHeight: 1.5 }}>
+                  Ce que tes employés doivent faire dès leur arrivée au studio, juste après le scan du QR, avant de commencer leur service.
+                </div>
+              </div>
+              <ChecklistsSection studioId={studio.id} phase="opening" />
+              <PhotosSection studioId={studio.id} phase="opening" />
             </div>
           )}
         </TabsContent>
