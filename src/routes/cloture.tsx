@@ -315,22 +315,25 @@ const OVERDUE_LABELS: Record<string, string> = {
 
 function ClockOutSection({ studio }: { studio: any }) {
   const [local, setLocal] = useState({
+    graceIn: studio.clock_in_grace_period_min ?? 15,
     before: studio.clock_out_button_appears_before_min ?? 15,
     grace: studio.clock_out_grace_period_min ?? 20,
     action: studio.clock_out_overdue_action ?? "notify_manager",
   });
   useEffect(() => {
     setLocal({
+      graceIn: studio.clock_in_grace_period_min ?? 15,
       before: studio.clock_out_button_appears_before_min ?? 15,
       grace: studio.clock_out_grace_period_min ?? 20,
       action: studio.clock_out_overdue_action ?? "notify_manager",
     });
-  }, [studio.id, studio.clock_out_button_appears_before_min, studio.clock_out_grace_period_min, studio.clock_out_overdue_action]);
+  }, [studio.id, studio.clock_in_grace_period_min, studio.clock_out_button_appears_before_min, studio.clock_out_grace_period_min, studio.clock_out_overdue_action]);
 
   const save = async (patch: Partial<typeof local>) => {
     const next = { ...local, ...patch };
     setLocal(next);
     const dbPatch: any = {};
+    if (patch.graceIn !== undefined) dbPatch.clock_in_grace_period_min = patch.graceIn;
     if (patch.before !== undefined) dbPatch.clock_out_button_appears_before_min = patch.before;
     if (patch.grace !== undefined) dbPatch.clock_out_grace_period_min = patch.grace;
     if (patch.action !== undefined) dbPatch.clock_out_overdue_action = patch.action;
@@ -342,11 +345,21 @@ function ClockOutSection({ studio }: { studio: any }) {
   return (
     <SectionCard
       icon={Clock}
-      title="Configuration du pointage de fin de shift"
-      subtitle="Définis quand le bouton 'Terminer mon shift' s'active, ce que l'employé doit faire avant la clôture, et ce qu'on lui demande après."
+      title="Configuration du pointage"
+      subtitle="Tolérance à l'arrivée et à la sortie. Ces réglages alimentent la page Pointage et les notifications proactives envoyées au manager."
     >
       <div className="flex flex-wrap gap-5">
-        <Field label="Le bouton apparaît">
+        <Field label="Tolérance retard à l'arrivée">
+          <NumInput
+            value={local.graceIn}
+            onChange={(n) => { setLocal({ ...local, graceIn: n }); saveDebounced({ graceIn: n }); }}
+            suffix="min après l'heure de début"
+          />
+          <p style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+            Au-delà de ce délai, l'admin est notifié que l'employé n'est pas pointé.
+          </p>
+        </Field>
+        <Field label="Le bouton de sortie apparaît">
           <NumInput
             value={local.before}
             onChange={(n) => { setLocal({ ...local, before: n }); saveDebounced({ before: n }); }}
@@ -377,7 +390,8 @@ function ClockOutSection({ studio }: { studio: any }) {
         style={{ backgroundColor: "color-mix(in oklab, #60a5fa 10%, white)", borderLeft: "3px solid #60a5fa", fontSize: 12, lineHeight: 1.6 }}
       >
         <span style={{ fontWeight: 500 }}>Exemple : </span>
-        un shift se termine à <b>22h00</b>. L'employé voit le bouton « Terminer mon shift » dès <b>{addMinutes("22:00", -local.before)}</b>.
+        un shift commence à <b>08h00</b>. Si l'employé n'a pas pointé à <b>{addMinutes("08:00", local.graceIn)}</b>, l'admin est notifié.
+        Il se termine à <b>22h00</b> : le bouton « Terminer mon shift » apparaît dès <b>{addMinutes("22:00", -local.before)}</b>.
         S'il n'a pas scanné le QR à <b>{addMinutes("22:00", local.grace)}</b>, <b>{OVERDUE_LABELS[local.action].toLowerCase()}</b>.
       </div>
     </SectionCard>
