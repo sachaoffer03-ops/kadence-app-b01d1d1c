@@ -245,6 +245,7 @@ export type Database = {
           created_at: string
           employee_note: string | null
           id: string
+          phase: string
           reviewed_by_admin_at: string | null
           reviewed_by_admin_id: string | null
           shift_id: string
@@ -259,6 +260,7 @@ export type Database = {
           created_at?: string
           employee_note?: string | null
           id?: string
+          phase?: string
           reviewed_by_admin_at?: string | null
           reviewed_by_admin_id?: string | null
           shift_id: string
@@ -273,6 +275,7 @@ export type Database = {
           created_at?: string
           employee_note?: string | null
           id?: string
+          phase?: string
           reviewed_by_admin_at?: string | null
           reviewed_by_admin_id?: string | null
           shift_id?: string
@@ -394,6 +397,7 @@ export type Database = {
           is_blocking: boolean
           min_photos_required: number
           name: string
+          phase: string
           studio_id: string | null
           updated_at: string
         }
@@ -409,6 +413,7 @@ export type Database = {
           is_blocking?: boolean
           min_photos_required?: number
           name: string
+          phase?: string
           studio_id?: string | null
           updated_at?: string
         }
@@ -424,6 +429,7 @@ export type Database = {
           is_blocking?: boolean
           min_photos_required?: number
           name?: string
+          phase?: string
           studio_id?: string | null
           updated_at?: string
         }
