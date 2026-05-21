@@ -58,19 +58,24 @@ function Skeleton() {
   );
 }
 
-export function EmployeeStatsCard({ userId }: { userId: string }) {
+export function EmployeeStatsCard({ userId, onOpenFormation }: { userId: string; onOpenFormation?: () => void }) {
   const fetchStats = useServerFn(getEmployeeStats);
+  const fetchFormation = useServerFn(getAssignedCoursesForEmployee);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [formation, setFormation] = useState<Formation | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancel = false;
     setLoading(true);
-    fetchStats({ data: { userId } })
-      .then((s) => { if (!cancel) { setStats(s); setLoading(false); } })
+    Promise.all([
+      fetchStats({ data: { userId } }),
+      fetchFormation({ data: { userId } }).catch(() => null),
+    ])
+      .then(([s, f]) => { if (!cancel) { setStats(s); setFormation(f as Formation | null); setLoading(false); } })
       .catch(() => { if (!cancel) setLoading(false); });
     return () => { cancel = true; };
-  }, [fetchStats, userId]);
+  }, [fetchStats, fetchFormation, userId]);
 
   if (loading) return <Skeleton />;
   if (!stats) return null;
