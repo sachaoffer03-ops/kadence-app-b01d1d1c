@@ -258,7 +258,7 @@ function AppShell() {
       <MobileSidebar open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <div className="flex-1 flex flex-col md:ml-[220px]">
         <TopBar onMenuToggle={() => setMobileMenuOpen(prev => !prev)} />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
           <Outlet />
         </main>
       </div>
