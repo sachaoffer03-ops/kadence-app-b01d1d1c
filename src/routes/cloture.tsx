@@ -658,7 +658,7 @@ function SortableItem({ item, photos, onDeleted }: { item: any; photos: any[]; o
   );
 }
 
-function DuplicateButton({ items, currentRoleId, studioId }: { items: any[]; currentRoleId: string; studioId: string }) {
+function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: { items: any[]; currentRoleId: string; studioId: string; phase?: "opening" | "closing" }) {
   const { roles } = useBusinessRoles({ onlyActive: true });
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<string>("");
@@ -673,10 +673,11 @@ function DuplicateButton({ items, currentRoleId, studioId }: { items: any[]; cur
         .select("id")
         .eq("studio_id", studioId)
         .eq("business_role_id", target)
+        .eq("phase", phase)
         .maybeSingle();
       if (!tpl) {
         const { data: created, error: cErr } = await supabase.from("checklist_templates").insert({
-          studio_id: studioId, business_role_id: target, name: "Clôture", is_active: true, is_blocking: true,
+          studio_id: studioId, business_role_id: target, name: phase === "opening" ? "Ouverture" : "Clôture", phase, is_active: true, is_blocking: true,
         } as any).select("id").single();
         if (cErr) { toast.error(cErr.message); return; }
         tpl = created as any;
