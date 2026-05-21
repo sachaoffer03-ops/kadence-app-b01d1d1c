@@ -254,6 +254,7 @@ export function RealtimeTimeline() {
           </div>
         ) : (
           <div className="flex flex-col gap-2.5">
+            {nowInsertIndex === 0 && <NowLine ref={nowLineRef} now={now} />}
             {filtered.map((shift, i) => (
               <ShiftRow
                 key={shift.id}
@@ -266,12 +267,12 @@ export function RealtimeTimeline() {
                   const end = new Date(`${shift.shift_date}T${shift.end_time}`).getTime();
                   return start <= t && t < end;
                 })()}
-                separator={i === nowInsertIndex - 1 ? (
+                separator={i === nowInsertIndex - 1 && i < filtered.length - 1 ? (
                   <NowLine ref={nowLineRef} now={now} />
                 ) : null}
               />
             ))}
-            {nowInsertIndex === filtered.length && (
+            {nowInsertIndex === filtered.length && filtered.length > 0 && (
               <NowLine ref={nowLineRef} now={now} />
             )}
           </div>
