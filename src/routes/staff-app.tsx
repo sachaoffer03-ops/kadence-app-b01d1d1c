@@ -495,6 +495,11 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         </button>
       )}
 
+      {/* Notifications importantes (urgent + normal) */}
+      <EmployeeNotifsWidget userId={userId} />
+
+
+
       <button
         onClick={() => !disposValidated && setDisposOpen(true)}
         className="w-full rounded-xl px-4 py-4 mb-5 flex items-center gap-3 text-left"
