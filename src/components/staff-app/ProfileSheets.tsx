@@ -285,9 +285,7 @@ export function DocumentsSheet({ open, onClose }: { open: boolean; onClose: () =
 /* ─── NotificationsSheet ─── */
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { Calendar, Replace as ReplaceIcon, MessageCircle, Send, X } from "lucide-react";
-import { useServerFn } from "@tanstack/react-start";
 import { acceptProposal, declineProposal, acceptReplacementProposal } from "@/lib/proposals.functions";
-import { toast } from "sonner";
 
 function fmtRelative(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
