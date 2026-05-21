@@ -42,7 +42,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [ranges, setRanges] = useState<Record<number, Range[]>>({});
   const [loading, setLoading] = useState(true);
   const [validated, setValidated] = useState(false);
-  const [deadline, setDeadline] = useState<{ days_left: number; passed: boolean; deadline_day: number } | null>(null);
+  const [deadline, setDeadline] = useState<{ days_left: number; passed: boolean; deadline_day: number; planning_published?: boolean } | null>(null);
 
   const createFn = useServerFn(createAvailability);
   const updateFn = useServerFn(updateAvailability);
@@ -82,7 +82,8 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     })();
   }, [open, userId, year, month, daysInMonth]);
 
-  const locked = validated || (deadline?.passed ?? false);
+  const planningPublished = deadline?.planning_published ?? false;
+  const locked = validated || planningPublished;
 
   // Convertit "HH:MM" en minutes pour comparaison
   const toMin = (t: string) => {
