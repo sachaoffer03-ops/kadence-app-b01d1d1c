@@ -108,6 +108,9 @@ function EmployeeDetailPage() {
   useEffect(() => {
     fetchBreakdown({ data: { userId: id } }).then(setBreakdown).catch(() => setBreakdown(null));
   }, [id]);
+  useEffect(() => {
+    fetchUnviewed({ data: { userId: id } }).then(r => setUnviewedDocs(r.count)).catch(() => setUnviewedDocs(0));
+  }, [id, tab]);
 
   const submitRating = async (shiftId: string) => {
     if (!user) return;
