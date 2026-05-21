@@ -40,6 +40,8 @@ export interface EligibleEmployee {
   weekly_hours: number;
   max_weekly_hours: number;
   pending_proposal: boolean;
+  not_trained: boolean;
+  untrained_courses: { id: string; title: string; icon: string | null }[];
   reasons: string[];
 }
 
@@ -71,6 +73,9 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       { data: weekShifts },
       { data: pendingProps },
       { data: settingsRows },
+      { data: trainingCourses },
+      { data: trainingCompletions },
+      { data: trainingRoles },
     ] = await Promise.all([
       supabaseAdmin
         .from("profiles")
@@ -98,6 +103,17 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
         .from("ai_planning_settings")
         .select("max_weekly_cdi_hours, max_weekly_student_hours, max_weekly_flexi_hours")
         .limit(1),
+      supabaseAdmin
+        .from("training_courses")
+        .select("id, title, icon, business_role_id, is_required_for_all, required_for_planning")
+        .eq("is_published", true)
+        .eq("required_for_planning", true),
+      supabaseAdmin
+        .from("training_course_completions")
+        .select("user_id, course_id"),
+      supabaseAdmin
+        .from("business_roles")
+        .select("id, name"),
     ]);
 
     const settings = settingsRows?.[0] || {
@@ -137,6 +153,18 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
     });
     const pendingSet = new Set<string>((pendingProps || []).map((p: any) => p.user_id));
 
+    // Training eligibility
+    const roleNameById = new Map<string, string>(((trainingRoles ?? []) as any[]).map((r: any) => [r.id, r.name]));
+    const completionsByUser = new Map<string, Set<string>>();
+    for (const c of ((trainingCompletions ?? []) as any[])) {
+      const s = completionsByUser.get(c.user_id) ?? new Set<string>();
+      s.add(c.course_id);
+      completionsByUser.set(c.user_id, s);
+    }
+    const requiredCoursesForShift = ((trainingCourses ?? []) as any[]).filter((c: any) =>
+      c.is_required_for_all || (c.business_role_id && roleNameById.get(c.business_role_id) === shift.business_role)
+    );
+
     const maxForContract = (c: string | null): number => {
       if (c === "student") return Number(settings.max_weekly_student_hours);
       if (c === "flexi") return Number(settings.max_weekly_flexi_hours);
@@ -149,7 +177,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
     for (const p of profiles || []) {
       const roles = rolesByUser.get(p.id) || [];
       const has_role = roles.includes(shift.business_role);
-      if (!has_role) continue; // ignore les profils sans le rôle demandé
+      if (!has_role) continue;
 
       const studios = studiosByUser.get(p.id) || [];
       const has_studio =
@@ -165,11 +193,17 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       const is_saturated = weekly + shiftDurH > cap;
       const pending_proposal = pendingSet.has(p.id);
 
+      const doneCourses = completionsByUser.get(p.id) ?? new Set<string>();
+      const untrained_courses = requiredCoursesForShift
+        .filter((c: any) => !doneCourses.has(c.id))
+        .map((c: any) => ({ id: c.id, title: c.title, icon: c.icon }));
+      const not_trained = untrained_courses.length > 0;
+
       const reasons: string[] = [];
       if (!has_studio) reasons.push("pas rattaché au studio");
       if (!has_availability) reasons.push("aucune dispo sur le créneau");
-      if (is_saturated)
-        reasons.push(`saturé ${weekly.toFixed(1)}h/${cap}h cette semaine`);
+      if (is_saturated) reasons.push(`saturé ${weekly.toFixed(1)}h/${cap}h cette semaine`);
+      if (not_trained) reasons.push(`pas formé : ${untrained_courses.map((c) => c.title).join(", ")}`);
 
       const row: EligibleEmployee = {
         id: p.id,
@@ -186,10 +220,12 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
         weekly_hours: Number(weekly.toFixed(2)),
         max_weekly_hours: cap,
         pending_proposal,
+        not_trained,
+        untrained_courses,
         reasons,
       };
 
-      if (has_studio && has_availability && !is_saturated) eligible.push(row);
+      if (has_studio && has_availability && !is_saturated && !not_trained) eligible.push(row);
       else partial.push(row);
     }
 
