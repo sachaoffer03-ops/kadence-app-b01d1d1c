@@ -105,26 +105,41 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     return null;
   };
 
+  // Trouve le premier sous-créneau libre >= 4h dans la journée (entre 06:00 et 23:30)
+  const findFirstFreeSlot = (day: number): { start: string; end: string } | null => {
+    const MIN = 4 * 60; // 4 heures
+    const DAY_START = 6 * 60;    // 06:00 — éviter du créneau 00:00-06:00 par défaut
+    const DAY_END = 23 * 60 + 30; // 23:30
+    const list = (ranges[day] ?? [])
+      .map(r => ({ s: toMin(r.start), e: toMin(r.end) }))
+      .sort((a, b) => a.s - b.s);
+    let cursor = DAY_START;
+    for (const r of list) {
+      if (r.s - cursor >= MIN) {
+        const start = cursor;
+        const end = Math.min(start + Math.max(MIN, 4 * 60), r.s);
+        return { start: fmtMin(start), end: fmtMin(end) };
+      }
+      cursor = Math.max(cursor, r.e);
+    }
+    if (DAY_END - cursor >= MIN) {
+      const start = cursor;
+      const end = Math.min(start + 4 * 60, DAY_END);
+      return { start: fmtMin(start), end: fmtMin(end) };
+    }
+    return null;
+  };
+
   const addRange = async (day: number) => {
     if (locked) return;
-    // Cherche un créneau de 4h libre, sinon fallback 9h-13h
-    let newRange: Range = { start: "09:00", end: "13:00" };
-    const candidates: Range[] = [
-      { start: "09:00", end: "13:00" },
-      { start: "13:00", end: "17:00" },
-      { start: "17:00", end: "21:00" },
-      { start: "06:00", end: "09:00" },
-      { start: "21:00", end: "23:30" },
-    ];
-    const free = candidates.find(c => !overlapsExisting(day, c.start, c.end));
-    if (free) newRange = free;
-    else {
-      toast.error("Aucun créneau libre — ajuste les plages existantes");
+    const free = findFirstFreeSlot(day);
+    if (!free) {
+      toast.error("Cette journée est déjà entièrement couverte");
       return;
     }
     try {
-      const res: any = await createFn({ data: { avail_date: dateISO(day), start_time: newRange.start, end_time: newRange.end } });
-      setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...newRange, id: res.id }] }));
+      const res: any = await createFn({ data: { avail_date: dateISO(day), start_time: free.start, end_time: free.end } });
+      setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...free, id: res.id }] }));
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur de sauvegarde");
     }
