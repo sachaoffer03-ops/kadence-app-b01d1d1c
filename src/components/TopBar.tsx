@@ -1,10 +1,11 @@
 import { useRouterState, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Plus, Menu, LogOut } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Bell, Search, Plus, Menu, LogOut, CheckCheck } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import logo from "@/assets/kadence-logo.png";
 import { CreateShiftModal } from "@/components/CreateShiftModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getCategoryMeta, getPriorityMeta, formatRelativeFr } from "@/lib/notifications-meta";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -20,6 +21,7 @@ const pageTitles: Record<string, string> = {
   "/contingents": "Quotas étudiants",
   "/studios": "Studios & postes",
   "/reglages": "Réglages",
+  "/notifications": "Notifications",
 };
 
 interface NotifRow {
@@ -29,7 +31,12 @@ interface NotifRow {
   link: string | null;
   read_at: string | null;
   created_at: string;
+  priority: string | null;
+  category: string | null;
 }
+
+type NotifTab = "all" | "unread" | "urgent";
+
 
 export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
