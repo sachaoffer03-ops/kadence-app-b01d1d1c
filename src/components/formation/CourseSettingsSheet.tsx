@@ -118,10 +118,14 @@ export function CourseSettingsSheet({ open, onOpenChange, course, onSaved }: Pro
                 <div style={{ fontWeight: 500 }}>Par poste</div>
               </button>
               {type === "role" && (
-                <select value={roleId ?? ""} onChange={(e) => setRoleId(e.target.value || null)} className="w-full rounded-md mt-1" style={inputStyle}>
-                  <option value="">— Choisir un poste —</option>
-                  {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
+                <Select value={roleId ?? ""} onValueChange={(v) => setRoleId(v || null)}>
+                  <SelectTrigger className="mt-1 h-9 rounded-md text-[13px]" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+                    <SelectValue placeholder="Choisir un poste" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map(r => <SelectItem key={r.id} value={r.id} className="text-[13px]">{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               )}
             </div>
           </Field>
