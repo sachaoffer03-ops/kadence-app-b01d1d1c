@@ -314,7 +314,7 @@ function StaffChecklistPage() {
 
       {/* Sticky footer */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 px-4 py-3 border-t"
-        style={{ width: "100%", maxWidth: 480, backgroundColor: "#FAF8F4", borderColor: "rgba(0,0,0,0.06)" }}>
+        style={{ width: "100%", maxWidth: 480, paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))", backgroundColor: "#FAF8F4", borderColor: "rgba(0,0,0,0.06)" }}>
         <button onClick={() => allDone && setPhase("wrapup")} disabled={!allDone}
           className="w-full rounded-xl py-3.5 transition-opacity disabled:opacity-40"
           style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
