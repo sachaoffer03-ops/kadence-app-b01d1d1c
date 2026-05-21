@@ -189,7 +189,6 @@ export const deleteAvailability = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const today = new Date();
     const todayStr = todayIso();
     const admin = await isAdmin(supabase, userId);
 
@@ -213,19 +212,20 @@ export const deleteAvailability = createServerFn({ method: "POST" })
   });
 
 // =============================================================================
-// getAvailabilityDeadline : utilisé par l'UI pour le countdown
+// getAvailabilityDeadline : indicatif + état de publication du mois cible
 // =============================================================================
 export const getAvailabilityDeadline = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase } = context;
     const day = await getDeadlineDay(supabase);
-    // Mois cible courant pour la saisie = mois suivant le mois actuel
     const today = new Date();
     const target = new Date(today.getFullYear(), today.getMonth() + 1, 1);
     const deadline = new Date(today.getFullYear(), today.getMonth(), day, 23, 59, 59, 999);
     const msLeft = deadline.getTime() - today.getTime();
     const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+    const targetMonthFirst = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-01`;
+    const published = await isMonthLocked(supabase, targetMonthFirst);
     return {
       deadline_day: day,
       deadline_iso: deadline.toISOString(),
@@ -233,5 +233,6 @@ export const getAvailabilityDeadline = createServerFn({ method: "GET" })
       target_month: target.getMonth(), // 0-indexed
       days_left: daysLeft,
       passed: msLeft < 0,
+      planning_published: published,
     };
   });
