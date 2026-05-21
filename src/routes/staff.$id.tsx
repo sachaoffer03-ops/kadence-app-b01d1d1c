@@ -129,7 +129,7 @@ function EmployeeDetailPage() {
         type: "feedback_received",
         title: "Nouveau feedback reçu",
         body: `Tu as reçu une note ${rateValue}/5 sur un de tes shifts.`,
-        link: "/staff-app",
+        link: `/staff-app?tab=planning&shift=${shiftId}`,
         priority: "normal",
         category: "general",
       });
