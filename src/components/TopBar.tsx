@@ -83,7 +83,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
           (payload) => {
             const n = payload.new as NotifRow;
-            setNotifications((prev) => [n, ...prev].slice(0, 15));
+            setNotifications((prev) => [n, ...prev].slice(0, 20));
             toast(n.title, { description: n.body ?? undefined });
           },
         )
