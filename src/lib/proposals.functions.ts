@@ -49,18 +49,15 @@ export const sendProposals = createServerFn({ method: "POST" })
 
     // Notifications aux employés
     const dateLabel = new Date(shift.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
-    const notifs = data.userIds.map((uid) => {
-      const prop = rows.find((r) => r.user_id === uid);
-      return {
-        user_id: uid,
-        type: "shift_proposal",
-        title: "Nouvelle proposition de shift",
-        body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
-        link: employeeLink({ kind: "proposal", proposalId: (prop as any)?.id ?? data.shiftId }),
-        priority: "normal",
-        category: "shift",
-      };
-    });
+    const notifs = data.userIds.map((uid) => ({
+      user_id: uid,
+      type: "shift_proposal",
+      title: "Nouvelle proposition de shift",
+      body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
+      link: `/staff-app?tab=accueil&shift=${data.shiftId}`,
+      priority: "normal",
+      category: "shift",
+    }));
     await supabaseAdmin.from("notifications").insert(notifs);
 
     return { ok: true, count: data.userIds.length };
