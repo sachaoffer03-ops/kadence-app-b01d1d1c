@@ -181,7 +181,7 @@ export async function finalizeClosure(input: FinalizeClosureInput) {
         type: "shift_closed",
         title: "Shift clôturé",
         body: `${name} a clôturé son shift (${shift.business_role})`,
-        link: `/staff/${ownerId}`,
+        link: `/cloture?shift=${shift.id}`,
         priority: "info",
         category: "shift",
       }));
