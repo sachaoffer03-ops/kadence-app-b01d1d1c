@@ -309,7 +309,7 @@ async function runEngine(ctx: EngineCtx) {
 
   // ─── PHASE 0 — Chargement des données ─────────────────────────────────────
   const t_load = Date.now();
-  const [settingsRows, profilesRows, contractsRows, rolesRows, studiosRows, availsRows, templatesRows, existingShifts, kitchenRolesRows] = await Promise.all([
+  const [settingsRows, profilesRows, contractsRows, rolesRows, studiosRows, availsRows, templatesRows, existingShifts, kitchenRolesRows, trainingCoursesRows, trainingCompletionsRows, businessRolesRows] = await Promise.all([
     supabase.from("ai_planning_settings").select("*").order("updated_at", { ascending: false }).limit(1),
     fetchAll<any>(supabase.from("profiles").select("id, first_name, last_name, score, contract, status").eq("status", "active")),
     fetchAll<any>(supabase.from("user_contracts").select("user_id, contract")),
@@ -319,7 +319,36 @@ async function runEngine(ctx: EngineCtx) {
     fetchAll<any>(supabase.from("staffing_templates").select("*").in("studio_id", studioIds)),
     fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd).in("studio_id", studioIds)),
     fetchAll<any>(supabase.from("business_roles").select("name, is_kitchen").eq("is_kitchen", true)),
+    fetchAll<any>(supabase.from("training_courses").select("id, business_role_id, is_required_for_all, required_for_planning").eq("required_for_planning", true)),
+    fetchAll<any>(supabase.from("training_course_completions").select("user_id, course_id")),
+    fetchAll<any>(supabase.from("business_roles").select("id, name")),
   ]);
+
+  // Formation gating : per user → roles that they can't take because a required course is not completed
+  const roleNameById = new Map<string, string>((businessRolesRows ?? []).map((r: any) => [r.id, r.name]));
+  const completionsByUser = new Map<string, Set<string>>();
+  for (const c of trainingCompletionsRows ?? []) {
+    if (!completionsByUser.has(c.user_id)) completionsByUser.set(c.user_id, new Set());
+    completionsByUser.get(c.user_id)!.add(c.course_id);
+  }
+  // For each user, derive blocked role names
+  const blockedRolesByUser = new Map<string, Set<string>>();
+  // We'll compute lazily once we have employees; using a helper:
+  function computeBlockedRoles(uid: string, userRoles: Set<string>): Set<string> {
+    const blocked = new Set<string>();
+    const completed = completionsByUser.get(uid) ?? new Set<string>();
+    for (const course of trainingCoursesRows ?? []) {
+      if (completed.has(course.id)) continue;
+      if (course.is_required_for_all) {
+        // blocks ALL roles
+        for (const r of userRoles) blocked.add(r);
+      } else if (course.business_role_id) {
+        const rn = roleNameById.get(course.business_role_id);
+        if (rn) blocked.add(rn);
+      }
+    }
+    return blocked;
+  }
 
   // Set des rôles considérés "cuisine" (DB-driven, fallback sur le nom historique)
   const kitchenRoles = new Set<string>(
