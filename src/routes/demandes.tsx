@@ -1,10 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, X, ChevronDown, Send, Clock, Search } from "lucide-react";
+import {
+  Check, X, ChevronDown, Send, Clock, Search,
+  AlertCircle, CalendarX, ArrowRightLeft, Ban, Inbox, TrendingUp,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { sendReplacementProposals, cancelProposals } from "@/lib/proposals.functions";
+import {
+  getDemandesData,
+  acceptCancelRequest,
+  acceptTimeChangeRequest,
+  acceptUnavailabilityRequest,
+  refuseRequest,
+} from "@/lib/demandes.functions";
 
 export const Route = createFileRoute("/demandes")({
   component: DemandesPage,
@@ -13,12 +23,15 @@ export const Route = createFileRoute("/demandes")({
 
 type Urgency = "normal" | "urgent" | "critique";
 type Status = "pending" | "accepted" | "refused";
-type ReqType = "swap" | "cancel" | "time_change";
+type ReqType = "cancel" | "time_change" | "unavailable" | "swap";
 
 interface Row {
   id: string; user_id: string; shift_id: string | null;
   type: ReqType; reason: string; urgency: Urgency; status: Status;
-  created_at: string; admin_response: string | null;
+  created_at: string; resolved_at: string | null;
+  admin_response: string | null;
+  proposed_start_time: string | null; proposed_end_time: string | null;
+  proposed_start_date: string | null; proposed_end_date: string | null;
 }
 interface ProfileLite { id: string; first_name: string; last_name: string; status: string; }
 interface ShiftLite { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; }
@@ -32,8 +45,14 @@ const urgencyStyles: Record<Urgency, { bg: string; text: string; label: string }
   urgent: { bg: "var(--warning-bg)", text: "var(--warning-text)", label: "Urgent" },
   normal: { bg: "var(--muted)", text: "var(--muted-foreground)", label: "Normal" },
 };
-const TYPE_LABEL: Record<ReqType, string> = { swap: "Échange", cancel: "Annulation", time_change: "Changement d'horaire" };
+const TYPE_META: Record<ReqType, { label: string; icon: typeof CalendarX }> = {
+  cancel: { label: "Annulation", icon: Ban },
+  time_change: { label: "Changement d'horaire", icon: ArrowRightLeft },
+  unavailable: { label: "Indisponibilité", icon: CalendarX },
+  swap: { label: "Échange", icon: ArrowRightLeft },
+};
 const formatTime = (t: string) => t.slice(0, 5).replace(":", "h");
+const formatDate = (d: string) => new Date(d).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
 
 function elapsed(sentAt: string): string {
   const ms = Date.now() - new Date(sentAt).getTime();
@@ -45,31 +64,52 @@ function elapsed(sentAt: string): string {
   return `${Math.floor(h / 24)}j`;
 }
 
+function formatDuration(ms: number): string {
+  if (ms <= 0) return "—";
+  const h = ms / 3600000;
+  if (h < 1) return `${Math.round(ms / 60000)}min`;
+  if (h < 24) return `${h.toFixed(1)}h`;
+  return `${(h / 24).toFixed(1)}j`;
+}
+
 function DemandesPage() {
   const [requests, setRequests] = useState<Row[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({});
   const [shifts, setShifts] = useState<Record<string, ShiftLite>>({});
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [kpis, setKpis] = useState({ pending: 0, urgent: 0, treatedToday: 0, avgResolutionMs: 0 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [, force] = useState(0);
 
+  // Modals
+  const [timeChangeModal, setTimeChangeModal] = useState<Row | null>(null);
+  const [timeChangeStart, setTimeChangeStart] = useState("");
+  const [timeChangeEnd, setTimeChangeEnd] = useState("");
+  const [refuseModal, setRefuseModal] = useState<Row | null>(null);
+  const [refuseReason, setRefuseReason] = useState("");
+
   const sendFn = useServerFn(sendReplacementProposals);
   const cancelFn = useServerFn(cancelProposals);
+  const loadFn = useServerFn(getDemandesData);
+  const acceptCancelFn = useServerFn(acceptCancelRequest);
+  const acceptTimeFn = useServerFn(acceptTimeChangeRequest);
+  const acceptUnavailFn = useServerFn(acceptUnavailabilityRequest);
+  const refuseFn = useServerFn(refuseRequest);
 
   const loadAll = async () => {
-    const [{ data: rs }, { data: ps }, { data: ss }, { data: prs }] = await Promise.all([
-      supabase.from("modification_requests").select("*").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("id,first_name,last_name,status"),
-      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id"),
-      supabase.from("shift_proposals").select("id,user_id,status,sent_at,responded_at,replacement_request_id").not("replacement_request_id", "is", null),
-    ]);
-    if (rs) setRequests(rs as Row[]);
-    if (ps) setProfiles(Object.fromEntries(ps.map((p) => [p.id, p as ProfileLite])));
-    if (ss) setShifts(Object.fromEntries(ss.map((s) => [s.id, s as ShiftLite])));
-    if (prs) setProposals(prs as Proposal[]);
+    try {
+      const d = await loadFn({ data: {} });
+      setRequests(d.requests as Row[]);
+      setProfiles(Object.fromEntries((d.profiles as ProfileLite[]).map((p) => [p.id, p])));
+      setShifts(Object.fromEntries((d.shifts as ShiftLite[]).map((s) => [s.id, s])));
+      setProposals(d.proposals as Proposal[]);
+      setKpis(d.kpis);
+    } catch (e: any) {
+      toast.error(e.message || "Erreur chargement");
+    }
   };
 
   useEffect(() => {
@@ -80,6 +120,7 @@ function DemandesPage() {
       .subscribe();
     const tick = setInterval(() => force((n) => n + 1), 30000);
     return () => { supabase.removeChannel(ch); clearInterval(tick); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const order: Record<Urgency, number> = { critique: 0, urgent: 1, normal: 2 };
@@ -129,30 +170,74 @@ function DemandesPage() {
     finally { setBusy(false); }
   };
 
-  const refuse = async (id: string) => {
+  const acceptCancel = async (req: Row) => {
     setBusy(true);
-    const propIds = (propsByRequest[id] || []).filter((p) => p.status === "pending").map((p) => p.id);
-    if (propIds.length > 0) {
-      try { await cancelFn({ data: { proposalIds: propIds } }); } catch { /* ignore */ }
-    }
-    const { data: reqRow } = await supabase.from("modification_requests")
-      .select("user_id").eq("id", id).maybeSingle();
-    const { error } = await supabase.from("modification_requests").update({
-      status: "refused", resolved_at: new Date().toISOString(),
-    }).eq("id", id);
-    setBusy(false);
-    if (error) { toast.error("Erreur"); return; }
-    if (reqRow?.user_id) {
-      await supabase.from("notifications").insert({
-        user_id: reqRow.user_id,
-        type: "modif_rejected",
-        title: "Demande refusée",
-        body: "Ta demande de modification a été refusée.",
-        link: "/staff-app",
-      });
-    }
-    setExpandedId(null);
-    toast.success("Demande refusée");
+    try {
+      await acceptCancelFn({ data: { requestId: req.id, findReplacement: false } });
+      toast.success("Annulation acceptée — shift libéré");
+      setExpandedId(null);
+      loadAll();
+    } catch (e: any) { toast.error(e.message || "Erreur"); }
+    finally { setBusy(false); }
+  };
+
+  const openTimeChange = (req: Row) => {
+    setTimeChangeModal(req);
+    setTimeChangeStart((req.proposed_start_time ?? "").slice(0, 5));
+    setTimeChangeEnd((req.proposed_end_time ?? "").slice(0, 5));
+  };
+
+  const confirmTimeChange = async () => {
+    if (!timeChangeModal) return;
+    if (!timeChangeStart || !timeChangeEnd) { toast.error("Horaires requis"); return; }
+    if (timeChangeStart >= timeChangeEnd) { toast.error("Fin doit être après début"); return; }
+    setBusy(true);
+    try {
+      await acceptTimeFn({ data: {
+        requestId: timeChangeModal.id,
+        finalStart: timeChangeStart,
+        finalEnd: timeChangeEnd,
+      } });
+      toast.success("Horaire mis à jour");
+      setTimeChangeModal(null);
+      setExpandedId(null);
+      loadAll();
+    } catch (e: any) { toast.error(e.message || "Erreur"); }
+    finally { setBusy(false); }
+  };
+
+  const acceptUnavail = async (req: Row) => {
+    setBusy(true);
+    try {
+      await acceptUnavailFn({ data: { requestId: req.id } });
+      toast.success("Indisponibilité enregistrée");
+      setExpandedId(null);
+      loadAll();
+    } catch (e: any) { toast.error(e.message || "Erreur"); }
+    finally { setBusy(false); }
+  };
+
+  const openRefuse = (req: Row) => {
+    setRefuseModal(req);
+    setRefuseReason("");
+  };
+
+  const confirmRefuse = async () => {
+    if (!refuseModal) return;
+    if (!refuseReason.trim()) { toast.error("Motif requis"); return; }
+    setBusy(true);
+    try {
+      const propIds = (propsByRequest[refuseModal.id] || []).filter((p) => p.status === "pending").map((p) => p.id);
+      if (propIds.length > 0) {
+        try { await cancelFn({ data: { proposalIds: propIds } }); } catch { /* ignore */ }
+      }
+      await refuseFn({ data: { requestId: refuseModal.id, response: refuseReason.trim() } });
+      toast.success("Demande refusée");
+      setRefuseModal(null);
+      setExpandedId(null);
+      loadAll();
+    } catch (e: any) { toast.error(e.message || "Erreur"); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -160,8 +245,16 @@ function DemandesPage() {
       <div className="mb-5">
         <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 2 }}>Demandes de modification</h1>
         <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-          {pending.length} demande{pending.length > 1 ? "s" : ""} en attente
+          Annulations, changements d'horaire et indisponibilités à venir
         </p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <KpiCard icon={Inbox} label="En attente" value={kpis.pending.toString()} accent="var(--foreground)" />
+        <KpiCard icon={AlertCircle} label="Urgentes" value={kpis.urgent.toString()} accent={kpis.urgent > 0 ? "var(--danger-text)" : "var(--muted-foreground)"} />
+        <KpiCard icon={Check} label="Traitées aujourd'hui" value={kpis.treatedToday.toString()} accent="var(--success-text)" />
+        <KpiCard icon={TrendingUp} label="Temps moyen (30j)" value={formatDuration(kpis.avgResolutionMs)} accent="var(--muted-foreground)" />
       </div>
 
       {pending.length === 0 ? (
@@ -180,6 +273,7 @@ function DemandesPage() {
             const pendingProps = reqProps.filter((p) => p.status === "pending");
             const hasShift = !!sh;
             const sel = selected[req.id] || new Set<string>();
+            const TypeIcon = (TYPE_META[req.type] || TYPE_META.cancel).icon;
             const filteredEmps = allEmployees.filter((e) =>
               e.id !== req.user_id &&
               !reqProps.some((p) => p.user_id === e.id && p.status === "pending") &&
@@ -188,26 +282,34 @@ function DemandesPage() {
 
             return (
               <div key={req.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
-                <div className="grid px-5 py-3 items-center"
-                  style={{ gridTemplateColumns: "1fr 160px 120px 140px 60px", cursor: "pointer" }}
+                <div className="grid px-5 py-3 items-center gap-2"
+                  style={{ gridTemplateColumns: "1fr 180px 160px 160px 40px", cursor: "pointer" }}
                   onClick={() => setExpandedId(isExpanded ? null : req.id)}>
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: 30, height: 30, backgroundColor: "var(--muted)", fontSize: 10, fontWeight: 500 }}>{initials}</div>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{emp ? `${emp.first_name} ${emp.last_name}` : "—"}</div>
-                      <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{sh ? sh.business_role : "—"}</div>
+                    <div className="min-w-0">
+                      <div style={{ fontSize: 13, fontWeight: 500 }} className="truncate">{emp ? `${emp.first_name} ${emp.last_name}` : "—"}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted-foreground)" }} className="truncate">{elapsed(req.created_at)}</div>
                     </div>
                   </div>
-                  <div>
-                    {sh ? (
+                  <div className="min-w-0">
+                    {req.type === "unavailable" && req.proposed_start_date ? (
                       <>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{new Date(sh.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{formatDate(req.proposed_start_date)}</div>
+                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>→ {req.proposed_end_date ? formatDate(req.proposed_end_date) : "—"}</div>
+                      </>
+                    ) : sh ? (
+                      <>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{formatDate(sh.shift_date)}</div>
                         <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{formatTime(sh.start_time)} — {formatTime(sh.end_time)}</div>
                       </>
                     ) : <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Sans shift</span>}
                   </div>
-                  <div style={{ fontSize: 12 }}>{TYPE_LABEL[req.type]}</div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5" style={{ fontSize: 12 }}>
+                    <TypeIcon size={13} style={{ color: "var(--muted-foreground)" }} />
+                    {(TYPE_META[req.type] || TYPE_META.cancel).label}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: urg.bg, color: urg.text }}>{urg.label}</span>
                     {pendingProps.length > 0 && (
                       <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-bg, #FCE8E0)", color: "var(--coral-dark, #B85A3C)" }}>
@@ -225,13 +327,22 @@ function DemandesPage() {
                     <div className="rounded-lg p-4 mb-3" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}>
                       <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Motif</div>
                       <div style={{ fontSize: 13, lineHeight: 1.6 }}>"{req.reason}"</div>
+
+                      {req.type === "time_change" && req.proposed_start_time && req.proposed_end_time && (
+                        <div className="mt-3 flex items-center gap-2" style={{ fontSize: 12 }}>
+                          <span style={{ color: "var(--muted-foreground)" }}>Créneau proposé :</span>
+                          <span style={{ fontWeight: 500 }}>{formatTime(req.proposed_start_time)} — {formatTime(req.proposed_end_time)}</span>
+                          {sh && <span style={{ color: "var(--muted-foreground)" }}>(actuel : {formatTime(sh.start_time)} — {formatTime(sh.end_time)})</span>}
+                        </div>
+                      )}
                     </div>
 
-                    {hasShift && (
+                    {/* Replacement search — only for cancel + has shift */}
+                    {req.type === "cancel" && hasShift && (
                       <div className="rounded-lg p-4 mb-3" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}>
-                        <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 10 }}>Chercher un remplaçant</div>
+                        <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 10 }}>Chercher un remplaçant (optionnel)</div>
                         <p style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 10, lineHeight: 1.5 }}>
-                          Avant d'accepter, envoyez la proposition à d'autres employés. La demande sera acceptée automatiquement dès qu'un remplaçant accepte.
+                          Vous pouvez envoyer la proposition à d'autres employés. Si quelqu'un accepte, le shift lui est transféré automatiquement.
                         </p>
 
                         {reqProps.length > 0 && (
@@ -301,35 +412,37 @@ function DemandesPage() {
                       </div>
                     )}
 
+                    {/* Action bar */}
                     <div className="rounded-lg p-4" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}>
                       <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 8 }}>
-                        {hasShift
-                          ? "L'acceptation est automatique dès qu'un remplaçant accepte. Si personne n'est trouvé, vous pouvez refuser."
-                          : "Aucun shift à remplacer — vous pouvez répondre directement."}
+                        {req.type === "cancel" && hasShift && "Accepter libère le shift. Refuser ferme la demande."}
+                        {req.type === "time_change" && "Accepter met à jour les horaires du shift."}
+                        {req.type === "unavailable" && "Accepter enregistre l'indisponibilité et libère les shifts assignés sur la période."}
+                        {req.type === "cancel" && !hasShift && "Aucun shift à libérer — répondez directement."}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {!hasShift && (
-                          <button onClick={async (ev) => {
-                            ev.stopPropagation();
-                            const { error } = await supabase.from("modification_requests").update({
-                              status: "accepted", resolved_at: new Date().toISOString(),
-                            }).eq("id", req.id);
-                            if (error) { toast.error("Erreur"); return; }
-                            await supabase.from("notifications").insert({
-                              user_id: req.user_id,
-                              type: "modif_accepted",
-                              title: "Demande acceptée",
-                              body: "Ta demande de modification a été acceptée.",
-                              link: "/staff-app",
-                            });
-                            setExpandedId(null); toast.success("Demande acceptée");
-                          }}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {req.type === "cancel" && (
+                          <button onClick={() => acceptCancel(req)} disabled={busy}
                             className="rounded-md px-4 py-2 flex items-center gap-1.5"
                             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
-                            <Check size={14} /> Accepter
+                            <Check size={14} /> Accepter l'annulation
                           </button>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); refuse(req.id); }} disabled={busy}
+                        {req.type === "time_change" && (
+                          <button onClick={() => openTimeChange(req)} disabled={busy}
+                            className="rounded-md px-4 py-2 flex items-center gap-1.5"
+                            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+                            <Check size={14} /> Accepter le changement
+                          </button>
+                        )}
+                        {req.type === "unavailable" && (
+                          <button onClick={() => acceptUnavail(req)} disabled={busy}
+                            className="rounded-md px-4 py-2 flex items-center gap-1.5"
+                            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+                            <Check size={14} /> Enregistrer l'indispo
+                          </button>
+                        )}
+                        <button onClick={() => openRefuse(req)} disabled={busy}
                           className="rounded-md px-4 py-2 flex items-center gap-1.5"
                           style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
                           <X size={14} /> Refuser
@@ -355,7 +468,7 @@ function DemandesPage() {
                   style={{ borderBottom: i < handled.length - 1 ? "0.5px solid var(--border)" : "none", opacity: 0.6 }}>
                   <div className="flex-1">
                     <span style={{ fontSize: 13, fontWeight: 500 }}>{emp ? `${emp.first_name} ${emp.last_name}` : "—"}</span>
-                    <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}> · {TYPE_LABEL[req.type]}</span>
+                    <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}> · {(TYPE_META[req.type] || TYPE_META.cancel).label}</span>
                   </div>
                   <span className="rounded-full px-2 py-0.5" style={{
                     fontSize: 10, fontWeight: 500,
@@ -370,6 +483,101 @@ function DemandesPage() {
           </div>
         </>
       )}
+
+      {/* Modal: time change */}
+      {timeChangeModal && (
+        <Modal title="Valider le nouveau créneau" onClose={() => setTimeChangeModal(null)}>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12 }}>
+            Vous pouvez ajuster les horaires avant validation. Le shift sera mis à jour immédiatement.
+          </p>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label style={{ fontSize: 11, color: "var(--muted-foreground)", display: "block", marginBottom: 4 }}>Début</label>
+              <input type="time" value={timeChangeStart} onChange={(e) => setTimeChangeStart(e.target.value)}
+                className="w-full rounded-md px-3 py-2" style={{ fontSize: 13, border: "0.5px solid var(--border)" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "var(--muted-foreground)", display: "block", marginBottom: 4 }}>Fin</label>
+              <input type="time" value={timeChangeEnd} onChange={(e) => setTimeChangeEnd(e.target.value)}
+                className="w-full rounded-md px-3 py-2" style={{ fontSize: 13, border: "0.5px solid var(--border)" }} />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button onClick={() => setTimeChangeModal(null)} disabled={busy}
+              className="rounded-md px-4 py-2" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}>
+              Annuler
+            </button>
+            <button onClick={confirmTimeChange} disabled={busy}
+              className="rounded-md px-4 py-2" style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+              Confirmer
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: refuse */}
+      {refuseModal && (
+        <Modal title="Refuser la demande" onClose={() => setRefuseModal(null)}>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12 }}>
+            Indiquez le motif du refus. L'employé sera notifié.
+          </p>
+          <textarea
+            value={refuseReason}
+            onChange={(e) => setRefuseReason(e.target.value)}
+            placeholder="Motif du refus"
+            rows={4}
+            className="w-full rounded-md px-3 py-2 mb-4"
+            style={{ fontSize: 13, border: "0.5px solid var(--border)", resize: "vertical" }}
+          />
+          <div className="flex items-center justify-end gap-2">
+            <button onClick={() => setRefuseModal(null)} disabled={busy}
+              className="rounded-md px-4 py-2" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}>
+              Annuler
+            </button>
+            <button onClick={confirmRefuse} disabled={busy || !refuseReason.trim()}
+              className="rounded-md px-4 py-2"
+              style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--danger-text)", color: "var(--card)", opacity: refuseReason.trim() ? 1 : 0.4 }}>
+              Refuser
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function KpiCard({ icon: Icon, label, value, accent }: { icon: typeof Inbox; label: string; value: string; accent: string }) {
+  return (
+    <div className="rounded-xl p-4" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}>
+      <div className="flex items-center gap-2 mb-1.5">
+        <Icon size={14} style={{ color: "var(--muted-foreground)" }} />
+        <span style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 500, color: accent }}>{value}</div>
+    </div>
+  );
+}
+
+function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)",
+        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="rounded-xl"
+        style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)", maxWidth: 460, width: "100%", padding: 20 }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h2 style={{ fontSize: 15, fontWeight: 500 }}>{title}</h2>
+          <button onClick={onClose} style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }
