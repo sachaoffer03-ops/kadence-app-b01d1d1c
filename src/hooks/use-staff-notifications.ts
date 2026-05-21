@@ -10,6 +10,7 @@ export interface StaffNotif {
   body: string;
   date: string; // ISO
   read: boolean;
+  link?: string | null;
 }
 
 const lastSeenKey = (uid: string) => `staff-notif-lastseen:${uid}`;
@@ -76,6 +77,7 @@ export function useStaffNotifications(userId: string | undefined) {
         body: `Nouveau shift ${fmtShiftDate(s.shift_date, s.start_time)} · ${s.business_role}`,
         date: s.created_at,
         read: ts <= seenAt,
+        link: "/staff-app?tab=planning",
       });
     });
 
@@ -88,6 +90,7 @@ export function useStaffNotifications(userId: string | undefined) {
         body: r.admin_response || (accepted ? "L'admin a validé ta demande." : "L'admin a refusé ta demande."),
         date: r.resolved_at!,
         read: new Date(r.resolved_at!).getTime() <= seenAt,
+        link: "/staff-app?tab=accueil",
       });
     });
 
@@ -100,11 +103,11 @@ export function useStaffNotifications(userId: string | undefined) {
         body: c.length > 90 ? c.slice(0, 90) + "…" : (c || "Pièce jointe"),
         date: m.created_at,
         read: !!m.read_at || new Date(m.created_at).getTime() <= seenAt,
+        link: "/staff-app?tab=chat",
       });
     });
 
     (notifs || []).forEach((n: any) => {
-      // Éviter doublons : shift_published déjà couvert par la source shifts
       const isDuplicate =
         (n.type === "shift_published" || n.type === "planning_published") &&
         list.some((existing) => existing.kind === "shift");
@@ -116,6 +119,7 @@ export function useStaffNotifications(userId: string | undefined) {
         body: n.body || "",
         date: n.created_at,
         read: !!n.read_at || new Date(n.created_at).getTime() <= seenAt,
+        link: n.link || null,
       });
     });
 
