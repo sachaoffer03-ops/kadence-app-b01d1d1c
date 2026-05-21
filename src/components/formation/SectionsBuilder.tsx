@@ -9,6 +9,7 @@ import {
 } from "@/lib/formation.functions";
 import { ContentEditModal } from "./ContentEditModal";
 import { QuizEditModal } from "./QuizEditModal";
+import { PromptDialog, type PromptVariant } from "./PromptDialog";
 import { TYPE_COLOR, TYPE_LABEL, fmtDuration } from "./types";
 import type { CourseFull, ContentType } from "./types";
 
@@ -22,6 +23,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(sections.map((s) => s.id)));
   const [editing, setEditing] = useState<{ moduleId: string; type: ContentType; existing: any } | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<{ moduleId: string; existing: any } | null>(null);
+  const [promptDlg, setPromptDlg] = useState<{ variant: PromptVariant; initial?: string; onSubmit: (v: string) => Promise<void> } | null>(null);
 
   const createSec = useServerFn(createSection);
   const updateSec = useServerFn(updateSection);
@@ -40,18 +42,26 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
     setOpenSections(next);
   };
 
-  const handleAddSection = async () => {
-    const title = prompt("Titre de la section ?");
-    if (!title?.trim()) return;
-    try { await createSec({ data: { courseId, title: title.trim() } }); onChange(); }
-    catch (e: any) { toast.error(e.message); }
+  const handleAddSection = () => {
+    setPromptDlg({
+      variant: "section",
+      onSubmit: async (title: string) => {
+        try { await createSec({ data: { courseId, title } }); onChange(); }
+        catch (e: any) { toast.error(e.message); }
+      },
+    });
   };
 
-  const handleRenameSection = async (id: string, current: string) => {
-    const title = prompt("Nouveau titre ?", current);
-    if (!title?.trim() || title === current) return;
-    try { await updateSec({ data: { sectionId: id, title: title.trim() } }); onChange(); }
-    catch (e: any) { toast.error(e.message); }
+  const handleRenameSection = (id: string, current: string) => {
+    setPromptDlg({
+      variant: "rename",
+      initial: current,
+      onSubmit: async (title: string) => {
+        if (title === current) return;
+        try { await updateSec({ data: { sectionId: id, title } }); onChange(); }
+        catch (e: any) { toast.error(e.message); }
+      },
+    });
   };
 
   const handleDeleteSection = async (id: string) => {
@@ -69,18 +79,26 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
     catch (e: any) { toast.error(e.message); }
   };
 
-  const handleAddModule = async (sectionId: string) => {
-    const title = prompt("Titre du module ?");
-    if (!title?.trim()) return;
-    try { await createMod({ data: { sectionId, title: title.trim() } }); onChange(); }
-    catch (e: any) { toast.error(e.message); }
+  const handleAddModule = (sectionId: string) => {
+    setPromptDlg({
+      variant: "module",
+      onSubmit: async (title: string) => {
+        try { await createMod({ data: { sectionId, title } }); onChange(); }
+        catch (e: any) { toast.error(e.message); }
+      },
+    });
   };
 
-  const handleRenameModule = async (id: string, current: string) => {
-    const title = prompt("Nouveau titre ?", current);
-    if (!title?.trim() || title === current) return;
-    try { await updateMod({ data: { moduleId: id, title: title.trim() } }); onChange(); }
-    catch (e: any) { toast.error(e.message); }
+  const handleRenameModule = (id: string, current: string) => {
+    setPromptDlg({
+      variant: "rename",
+      initial: current,
+      onSubmit: async (title: string) => {
+        if (title === current) return;
+        try { await updateMod({ data: { moduleId: id, title } }); onChange(); }
+        catch (e: any) { toast.error(e.message); }
+      },
+    });
   };
 
   const handleDeleteModule = async (id: string) => {
@@ -242,6 +260,16 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
           moduleId={editingQuiz.moduleId}
           existing={editingQuiz.existing}
           onSaved={() => { setEditingQuiz(null); onChange(); }}
+        />
+      )}
+
+      {promptDlg && (
+        <PromptDialog
+          open
+          onOpenChange={(v) => !v && setPromptDlg(null)}
+          variant={promptDlg.variant}
+          initialValue={promptDlg.initial}
+          onSubmit={promptDlg.onSubmit}
         />
       )}
     </div>
