@@ -186,9 +186,9 @@ function EmployeeDetailPage() {
         </div>
       )}
 
-      <EmployeeStatsCard userId={emp.id} />
+      <EmployeeStatsCard userId={emp.id} onOpenFormation={() => setTab("formation")} />
 
-      <Tabs defaultValue="profil" className="w-full">
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="profil">Profil</TabsTrigger>
           <TabsTrigger value="formation">Formation</TabsTrigger>
