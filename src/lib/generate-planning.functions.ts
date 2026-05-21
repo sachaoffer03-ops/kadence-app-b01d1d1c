@@ -409,7 +409,10 @@ async function runEngine(ctx: EngineCtx) {
     arr.push({ startMin: t2m(a.start_time), endMin: t2m(a.end_time) });
     byDate.set(a.avail_date, arr);
   }
-  const availOn = (uid: string, date: string): AvailRange[] => availMap.get(uid)?.get(date) ?? [];
+  const availOn = (uid: string, date: string): AvailRange[] => {
+    if (isUnavailable(uid, date)) return [];
+    return availMap.get(uid)?.get(date) ?? [];
+  };
 
   logs.phases.load_ms = Date.now() - t_load;
   logs.employee_count = employees.size;
