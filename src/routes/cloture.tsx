@@ -1212,6 +1212,9 @@ function QuestionsSection({ studioId }: { studioId: string }) {
               <SortableQuestion
                 key={q.id}
                 q={q}
+                onChanged={(patch) =>
+                  setQuestions((prev) => prev.map((x) => (x.id === q.id ? { ...x, ...patch } : x)))
+                }
                 onDeleted={() => setQuestions((prev) => prev.filter((x) => x.id !== q.id))}
               />
             ))}
