@@ -832,104 +832,118 @@ async function applicableCoursesForUser(supabase: any, uid: string) {
   );
 }
 
+async function computeAssignedCoursesFor(supabase: any, userId: string) {
+  const applicable = await applicableCoursesForUser(supabase, userId);
+  if (applicable.length === 0) {
+    return { courses: [], summary: { totalCourses: 0, completedCourses: 0, totalModules: 0, completedModules: 0, progressPct: 0, lockedPlanning: false, blockingCourses: [] as any[], lastAccessAt: null as string | null } };
+  }
+  const courseIds = applicable.map((c: any) => c.id);
+
+  const [{ data: sections }, { data: completions }] = await Promise.all([
+    supabase.from("training_sections").select("id, course_id").in("course_id", courseIds),
+    supabase.from("training_course_completions").select("course_id, completed_at").eq("user_id", userId),
+  ]);
+  const sectionIds = ((sections ?? []) as any[]).map((s: any) => s.id);
+  const { data: modules } = sectionIds.length > 0
+    ? await supabase.from("training_modules").select("id, section_id").in("section_id", sectionIds)
+    : { data: [] as any[] };
+  const moduleIds = ((modules ?? []) as any[]).map((m: any) => m.id);
+  const [{ data: contents }, { data: quizzes }, { data: progress }, { data: attempts }] = await Promise.all([
+    moduleIds.length > 0 ? supabase.from("training_contents").select("id, module_id").in("module_id", moduleIds) : Promise.resolve({ data: [] }),
+    moduleIds.length > 0 ? supabase.from("training_quizzes").select("id, module_id").in("module_id", moduleIds) : Promise.resolve({ data: [] }),
+    supabase.from("training_content_progress").select("content_id, status, last_accessed_at").eq("user_id", userId),
+    supabase.from("training_quiz_attempts").select("quiz_id, passed").eq("user_id", userId),
+  ]);
+
+  const sectionToCourse = new Map<string, string>(((sections ?? []) as any[]).map((s: any) => [s.id, s.course_id]));
+  const modulesByCourse = new Map<string, any[]>();
+  for (const m of (modules ?? []) as any[]) {
+    const cid = sectionToCourse.get(m.section_id);
+    if (!cid) continue;
+    const arr = modulesByCourse.get(cid) ?? [];
+    arr.push(m);
+    modulesByCourse.set(cid, arr);
+  }
+  const contentsByModule = new Map<string, any[]>();
+  for (const c of (contents ?? []) as any[]) {
+    const arr = contentsByModule.get(c.module_id) ?? [];
+    arr.push(c);
+    contentsByModule.set(c.module_id, arr);
+  }
+  const quizByModule = new Map<string, any>();
+  for (const q of (quizzes ?? []) as any[]) quizByModule.set(q.module_id, q);
+  const progressByContent = new Map<string, any>(((progress ?? []) as any[]).map((p: any) => [p.content_id, p]));
+  const passedQuizzes = new Set(((attempts ?? []) as any[]).filter((a: any) => a.passed).map((a: any) => a.quiz_id));
+  const completedCourses = new Set(((completions ?? []) as any[]).map((c: any) => c.course_id));
+
+  let totalModulesAll = 0;
+  let completedModulesAll = 0;
+  let lastAccess: string | null = null;
+  for (const p of (progress ?? []) as any[]) {
+    if (p.last_accessed_at && (!lastAccess || p.last_accessed_at > lastAccess)) lastAccess = p.last_accessed_at;
+  }
+
+  const courseCards = applicable.map((course: any) => {
+    const mods = modulesByCourse.get(course.id) ?? [];
+    let modsDone = 0;
+    for (const m of mods) {
+      const cts = contentsByModule.get(m.id) ?? [];
+      const allCtsDone = cts.length > 0 && cts.every((c: any) => progressByContent.get(c.id)?.status === "completed");
+      const q = quizByModule.get(m.id);
+      const quizDone = !q || passedQuizzes.has(q.id);
+      if (allCtsDone && quizDone) modsDone++;
+    }
+    totalModulesAll += mods.length;
+    completedModulesAll += modsDone;
+    const isDone = completedCourses.has(course.id) || (mods.length > 0 && modsDone === mods.length);
+    const status = isDone ? "completed" : modsDone > 0 ? "in_progress" : "not_started";
+    return {
+      id: course.id,
+      title: course.title,
+      icon: course.icon,
+      color: course.color,
+      description: course.description,
+      business_role_id: course.business_role_id,
+      required_for_planning: course.required_for_planning,
+      moduleCount: mods.length,
+      completedModules: modsDone,
+      progressPct: mods.length > 0 ? Math.round((modsDone / mods.length) * 100) : 0,
+      status,
+    };
+  });
+
+  const blocking = courseCards.filter((c: any) => c.required_for_planning && c.status !== "completed");
+  return {
+    courses: courseCards,
+    summary: {
+      totalCourses: courseCards.length,
+      completedCourses: courseCards.filter((c: any) => c.status === "completed").length,
+      totalModules: totalModulesAll,
+      completedModules: completedModulesAll,
+      progressPct: totalModulesAll > 0 ? Math.round((completedModulesAll / totalModulesAll) * 100) : 0,
+      lockedPlanning: blocking.length > 0,
+      blockingCourses: blocking.map((c: any) => ({ id: c.id, title: c.title, icon: c.icon })),
+      lastAccessAt: lastAccess,
+    },
+  };
+}
+
 export const getMyAssignedCourses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const applicable = await applicableCoursesForUser(supabase, userId);
-    if (applicable.length === 0) {
-      return { courses: [], summary: { totalCourses: 0, completedCourses: 0, totalModules: 0, completedModules: 0, progressPct: 0, lockedPlanning: false, blockingCourses: [] as any[] } };
-    }
-    const courseIds = applicable.map((c: any) => c.id);
-
-    const [{ data: sections }, { data: completions }] = await Promise.all([
-      supabase.from("training_sections").select("id, course_id").in("course_id", courseIds),
-      supabase.from("training_course_completions").select("course_id, completed_at").eq("user_id", userId),
-    ]);
-    const sectionIds = ((sections ?? []) as any[]).map((s: any) => s.id);
-    const { data: modules } = sectionIds.length > 0
-      ? await supabase.from("training_modules").select("id, section_id").in("section_id", sectionIds)
-      : { data: [] as any[] };
-    const moduleIds = ((modules ?? []) as any[]).map((m: any) => m.id);
-    const [{ data: contents }, { data: quizzes }, { data: progress }, { data: attempts }] = await Promise.all([
-      moduleIds.length > 0 ? supabase.from("training_contents").select("id, module_id").in("module_id", moduleIds) : Promise.resolve({ data: [] }),
-      moduleIds.length > 0 ? supabase.from("training_quizzes").select("id, module_id").in("module_id", moduleIds) : Promise.resolve({ data: [] }),
-      supabase.from("training_content_progress").select("content_id, status, last_accessed_at").eq("user_id", userId),
-      supabase.from("training_quiz_attempts").select("quiz_id, passed").eq("user_id", userId),
-    ]);
-
-    const sectionToCourse = new Map<string, string>(((sections ?? []) as any[]).map((s: any) => [s.id, s.course_id]));
-    const modulesByCourse = new Map<string, any[]>();
-    for (const m of (modules ?? []) as any[]) {
-      const cid = sectionToCourse.get(m.section_id);
-      if (!cid) continue;
-      const arr = modulesByCourse.get(cid) ?? [];
-      arr.push(m);
-      modulesByCourse.set(cid, arr);
-    }
-    const contentsByModule = new Map<string, any[]>();
-    for (const c of (contents ?? []) as any[]) {
-      const arr = contentsByModule.get(c.module_id) ?? [];
-      arr.push(c);
-      contentsByModule.set(c.module_id, arr);
-    }
-    const quizByModule = new Map<string, any>();
-    for (const q of (quizzes ?? []) as any[]) quizByModule.set(q.module_id, q);
-    const progressByContent = new Map<string, any>(((progress ?? []) as any[]).map((p: any) => [p.content_id, p]));
-    const passedQuizzes = new Set(((attempts ?? []) as any[]).filter((a: any) => a.passed).map((a: any) => a.quiz_id));
-    const completedCourses = new Set(((completions ?? []) as any[]).map((c: any) => c.course_id));
-
-    let totalModulesAll = 0;
-    let completedModulesAll = 0;
-    let lastAccess: string | null = null;
-    for (const p of (progress ?? []) as any[]) {
-      if (p.last_accessed_at && (!lastAccess || p.last_accessed_at > lastAccess)) lastAccess = p.last_accessed_at;
-    }
-
-    const courseCards = applicable.map((course: any) => {
-      const mods = modulesByCourse.get(course.id) ?? [];
-      let modsDone = 0;
-      for (const m of mods) {
-        const cts = contentsByModule.get(m.id) ?? [];
-        const allCtsDone = cts.length > 0 && cts.every((c: any) => progressByContent.get(c.id)?.status === "completed");
-        const q = quizByModule.get(m.id);
-        const quizDone = !q || passedQuizzes.has(q.id);
-        if (allCtsDone && quizDone) modsDone++;
-      }
-      totalModulesAll += mods.length;
-      completedModulesAll += modsDone;
-      const isDone = completedCourses.has(course.id) || (mods.length > 0 && modsDone === mods.length);
-      const status = isDone ? "completed" : modsDone > 0 ? "in_progress" : "not_started";
-      return {
-        id: course.id,
-        title: course.title,
-        icon: course.icon,
-        color: course.color,
-        description: course.description,
-        business_role_id: course.business_role_id,
-        required_for_planning: course.required_for_planning,
-        moduleCount: mods.length,
-        completedModules: modsDone,
-        progressPct: mods.length > 0 ? Math.round((modsDone / mods.length) * 100) : 0,
-        status,
-      };
-    });
-
-    const blocking = courseCards.filter((c: any) => c.required_for_planning && c.status !== "completed");
-    return {
-      courses: courseCards,
-      summary: {
-        totalCourses: courseCards.length,
-        completedCourses: courseCards.filter((c: any) => c.status === "completed").length,
-        totalModules: totalModulesAll,
-        completedModules: completedModulesAll,
-        progressPct: totalModulesAll > 0 ? Math.round((completedModulesAll / totalModulesAll) * 100) : 0,
-        lockedPlanning: blocking.length > 0,
-        blockingCourses: blocking.map((c: any) => ({ id: c.id, title: c.title, icon: c.icon })),
-        lastAccessAt: lastAccess,
-      },
-    };
+    return computeAssignedCoursesFor(supabase, userId);
   });
+
+export const getAssignedCoursesForEmployee = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    return computeAssignedCoursesFor(supabase, data.userId);
+  });
+
 
 export const getCourseForEmployee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
