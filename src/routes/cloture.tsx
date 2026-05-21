@@ -596,7 +596,7 @@ function ChecklistEditor({ studioId, roleId, roleName, phase = "closing" }: { st
         >
           <Plus size={13} /> Ajouter un point
         </button>
-        <DuplicateButton items={items} currentRoleId={roleId} studioId={studioId} />
+        <DuplicateButton items={items} currentRoleId={roleId} studioId={studioId} phase={phase} />
       </div>
     </div>
   );
