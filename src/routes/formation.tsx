@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ type IndexData = Awaited<ReturnType<typeof getFormationIndex>>;
 const EMOJI_PICK = ["📚", "☕", "🍳", "🛎️", "🎓", "🌟", "🔧", "❤️", "🎯", "💡"];
 
 function FormationIndexPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [data, setData] = useState<IndexData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,10 @@ function FormationIndexPage() {
     const h = Math.floor(min / 60), m = min % 60;
     return m > 0 ? `${h}h ${String(m).padStart(2, "0")}` : `${h}h`;
   };
+
+  if (pathname !== "/formation") {
+    return <Outlet />;
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
@@ -93,7 +98,7 @@ function FormationIndexPage() {
           {data.courses.map((c) => {
             const accent = c.color ?? "#F0997B";
             return (
-              <button key={c.id} onClick={() => navigate({ to: "/formation/$courseId", params: { courseId: c.id } })}
+              <Link key={c.id} to="/formation/$courseId" params={{ courseId: c.id }} preload="intent"
                 className="rounded-xl border text-left transition-all hover:shadow-sm overflow-hidden flex flex-col"
                 style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
                 <div style={{ height: 4, backgroundColor: accent }} />
@@ -127,7 +132,7 @@ function FormationIndexPage() {
                     </div>
                   </div>
                 </div>
-              </button>
+              </Link>
             );
           })}
         </div>

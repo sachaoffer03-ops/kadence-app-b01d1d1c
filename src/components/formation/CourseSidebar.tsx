@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus } from "lucide-react";
 import { getFormationIndex, createCourse } from "@/lib/formation.functions";
@@ -30,9 +30,11 @@ export function CourseSidebar({ activeCourseId, refreshKey }: { activeCourseId: 
         {(data?.courses ?? []).map((c) => {
           const active = c.id === activeCourseId;
           return (
-            <button
+            <Link
               key={c.id}
-              onClick={() => navigate({ to: "/formation/$courseId", params: { courseId: c.id } })}
+              to="/formation/$courseId"
+              params={{ courseId: c.id }}
+              preload="intent"
               className="rounded-lg px-2.5 py-2 text-left flex items-center gap-2 transition-colors"
               style={{
                 backgroundColor: active ? "var(--foreground)" : "transparent",
@@ -45,7 +47,7 @@ export function CourseSidebar({ activeCourseId, refreshKey }: { activeCourseId: 
               <span style={{ fontSize: 11, opacity: active ? 0.7 : 0.6 }}>
                 {c.moduleCount}
               </span>
-            </button>
+            </Link>
           );
         })}
       </div>
