@@ -147,6 +147,27 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
     if (!studio) throw new Error("Aucun studio actif trouvé. Crée d'abord un studio.");
     log.push(`Studio principal: ${studio.name}`);
 
+    // Configure le studio démo pour le pointage : QR "DEMO5", graces, géofencing OFF
+    await supabaseAdmin.from("studios").update({
+      current_qr_code: "DEMO5",
+      clock_in_grace_period_min: 15,
+      clock_out_grace_period_min: 20,
+      clock_out_button_appears_before_min: 15,
+      geofencing_enabled: false,
+    }).eq("id", studio.id);
+    log.push("Studio configuré (QR DEMO5, graces 15/20, géofencing OFF)");
+
+    // S'assure qu'aucune publication de planning n'existe pour le mois courant (FIX 2 testable)
+    const today = new Date();
+    const monthStart = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-01`;
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const monthEnd = `${nextMonth.getFullYear()}-${pad(nextMonth.getMonth() + 1)}-${pad(new Date(nextMonth.getTime() - 86400000).getDate())}`;
+    await supabaseAdmin.from("planning_publications")
+      .delete()
+      .lte("period_start", monthEnd)
+      .gte("period_end", monthStart);
+    log.push("Publications de planning du mois courant purgées");
+
     // 2. Auth user
     const demoUserId = await ensureDemoAuthUser();
     log.push(`Auth user prêt: ${demoUserId}`);
