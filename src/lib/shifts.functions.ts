@@ -117,7 +117,7 @@ export const updateShift = createServerFn({ method: "POST" })
             type: "shift_removed",
             title: "Shift retiré",
             body: `Le shift du ${current.shift_date} ${String(current.start_time).slice(0,5)} a été réassigné.`,
-            link: "/staff-app",
+            link: employeeLink({ kind: "shift", shiftId: data.shiftId }),
             priority: "info",
             category: "shift",
           });
@@ -128,7 +128,7 @@ export const updateShift = createServerFn({ method: "POST" })
             type: "shift_added",
             title: "Nouveau shift",
             body: fmtRange,
-            link: "/staff-app",
+            link: employeeLink({ kind: "shift", shiftId: data.shiftId }),
             priority: "normal",
             category: "shift",
           });
@@ -139,7 +139,7 @@ export const updateShift = createServerFn({ method: "POST" })
           type: "shift_updated",
           title: "Shift modifié",
           body: fmtRange,
-          link: "/staff-app",
+          link: employeeLink({ kind: "shift", shiftId: data.shiftId }),
           priority: "info",
           category: "shift",
         });
