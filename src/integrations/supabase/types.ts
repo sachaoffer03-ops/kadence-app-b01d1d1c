@@ -1080,6 +1080,47 @@ export type Database = {
         }
         Relationships: []
       }
+      shift_clock_audit: {
+        Row: {
+          action: string
+          actor_id: string
+          after_value: Json | null
+          before_value: Json | null
+          created_at: string
+          id: string
+          note: string | null
+          shift_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          shift_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          shift_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_clock_audit_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shift_handoffs: {
         Row: {
           author_id: string
@@ -1198,6 +1239,7 @@ export type Database = {
       shifts: {
         Row: {
           business_role: string
+          clock_admin_note: string | null
           clocked_in_at: string | null
           clocked_out_at: string | null
           created_at: string
@@ -1218,6 +1260,7 @@ export type Database = {
         }
         Insert: {
           business_role: string
+          clock_admin_note?: string | null
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
@@ -1238,6 +1281,7 @@ export type Database = {
         }
         Update: {
           business_role?: string
+          clock_admin_note?: string | null
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
@@ -1450,6 +1494,7 @@ export type Database = {
           address: string | null
           capacity: number | null
           city: string | null
+          clock_in_grace_period_min: number
           clock_out_button_appears_before_min: number
           clock_out_grace_period_min: number
           clock_out_overdue_action: string
@@ -1483,6 +1528,7 @@ export type Database = {
           address?: string | null
           capacity?: number | null
           city?: string | null
+          clock_in_grace_period_min?: number
           clock_out_button_appears_before_min?: number
           clock_out_grace_period_min?: number
           clock_out_overdue_action?: string
@@ -1516,6 +1562,7 @@ export type Database = {
           address?: string | null
           capacity?: number | null
           city?: string | null
+          clock_in_grace_period_min?: number
           clock_out_button_appears_before_min?: number
           clock_out_grace_period_min?: number
           clock_out_overdue_action?: string
