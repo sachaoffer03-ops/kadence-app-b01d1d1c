@@ -382,6 +382,11 @@ async function runEngine(ctx: EngineCtx) {
   for (const r of rolesRows) employees.get(r.user_id)?.roles.add(r.role);
   for (const r of studiosRows) employees.get(r.user_id)?.studios.add(r.studio_id);
 
+  // Pré-calcul filtre formation : pour chaque employé, les rôles qu'il NE PEUT PAS prendre
+  for (const e of employees.values()) {
+    blockedRolesByUser.set(e.id, computeBlockedRoles(e.id, e.roles));
+  }
+
   // Disponibilités → Map<userId, Map<date, AvailRange[]>>
   const availMap = new Map<string, Map<string, AvailRange[]>>();
   for (const a of availsRows) {
