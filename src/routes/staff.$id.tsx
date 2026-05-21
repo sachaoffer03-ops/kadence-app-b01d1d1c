@@ -61,7 +61,9 @@ function EmployeeDetailPage() {
   const [saving, setSaving] = useState(false);
   const [breakdown, setBreakdown] = useState<Awaited<ReturnType<typeof getScoreBreakdown>> | null>(null);
   const [tab, setTab] = useState("profil");
+  const [unviewedDocs, setUnviewedDocs] = useState(0);
   const fetchBreakdown = useServerFn(getScoreBreakdown);
+  const fetchUnviewed = useServerFn(countUnviewedDocuments);
 
   const load = async () => {
     const [{ data: p }, { data: br }, { data: sts }, { data: us }, { data: uc }, { data: sh }, { data: sg }] = await Promise.all([
