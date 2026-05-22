@@ -22,6 +22,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { NotationTab } from "@/components/cloture/NotationTab";
 import type { ChecklistPhase } from "@/lib/checklists.helpers";
+import { useDraftState, useDirtySection, useDirtyCount, useBeforeUnloadIfDirty } from "@/hooks/use-draft-state";
+import { Save as SaveIcon, AlertCircle } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
