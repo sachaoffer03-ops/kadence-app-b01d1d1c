@@ -691,48 +691,74 @@ function ChecklistsSection({ studioId, phase = "closing" }: { studioId: string; 
   );
 }
 
+// In-flight cache: one ensure() per (studio, role, phase) per browser session
+// avoids race-condition double inserts when React mounts the component twice
+// (StrictMode, tab switching, etc.) and avoids re-creating after a duplicate
+// was dedupe'd elsewhere.
+const templateEnsureCache = new Map<string, Promise<any>>();
+
 function useTemplate(studioId: string, roleId: string, phase: ChecklistPhase = "closing") {
   const [template, setTemplate] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const ensure = useCallback(async () => {
+  const ensure = useCallback(async (force = false) => {
     setLoading(true);
-    const { data: existing } = await supabase
-      .from("checklist_templates")
-      .select("*")
-      .eq("studio_id", studioId)
-      .eq("business_role_id", roleId)
-      .eq("phase", phase)
-      .maybeSingle();
-    if (existing) {
-      setTemplate(existing);
-      setLoading(false);
-      return existing;
+    const key = `${studioId}::${roleId}::${phase}`;
+    if (force) templateEnsureCache.delete(key);
+    let p = templateEnsureCache.get(key);
+    if (!p) {
+      p = (async () => {
+        // SELECT first (ordered, limit 1) — survives even if duplicates remain
+        const { data: existing } = await supabase
+          .from("checklist_templates")
+          .select("*")
+          .eq("studio_id", studioId)
+          .eq("business_role_id", roleId)
+          .eq("phase", phase)
+          .order("created_at", { ascending: true })
+          .limit(1);
+        if (existing && existing.length > 0) return existing[0];
+
+        // INSERT — protected by unique index. On conflict re-read.
+        const { data: created, error } = await supabase
+          .from("checklist_templates")
+          .insert({
+            studio_id: studioId,
+            business_role_id: roleId,
+            name: phase === "opening" ? "Ouverture" : phase === "transition" ? "Transition" : "Clôture",
+            phase,
+            is_active: true,
+            is_blocking: true,
+          } as any)
+          .select("*")
+          .single();
+        if (error) {
+          const { data: again } = await supabase
+            .from("checklist_templates")
+            .select("*")
+            .eq("studio_id", studioId)
+            .eq("business_role_id", roleId)
+            .eq("phase", phase)
+            .order("created_at", { ascending: true })
+            .limit(1);
+          if (again && again.length > 0) return again[0];
+          toast.error(error.message);
+          return null;
+        }
+        return created;
+      })();
+      templateEnsureCache.set(key, p);
+      p.catch(() => templateEnsureCache.delete(key));
     }
-    const { data: created, error } = await supabase
-      .from("checklist_templates")
-      .insert({
-        studio_id: studioId,
-        business_role_id: roleId,
-        name: phase === "opening" ? "Ouverture" : phase === "transition" ? "Transition" : "Clôture",
-        phase,
-        is_active: true,
-        is_blocking: true,
-      } as any)
-      .select("*")
-      .single();
-    if (error) toast.error(error.message);
-    setTemplate(created ?? null);
+    const tpl = await p;
+    setTemplate(tpl);
     setLoading(false);
-    return created;
+    return tpl;
   }, [studioId, roleId, phase]);
 
   useEffect(() => { ensure(); }, [ensure]);
 
-  // NOTE: no realtime — admin edits stay authoritative until they save / reload.
-
-
-  return { template, loading, reload: ensure, setTemplate };
+  return { template, loading, reload: () => ensure(true), setTemplate };
 }
 
 function ChecklistEditor({ studioId, roleId, roleName, phase = "closing" }: { studioId: string; roleId: string; roleName: string; phase?: ChecklistPhase }) {
@@ -907,32 +933,53 @@ function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: 
         if (fresh && fresh.length > 0) freshItems = fresh as any[];
       }
 
-      // 3) Trouver/créer le template cible
-      let { data: tpl } = await supabase
+      // 3) Trouver/créer le template cible — via SELECT-then-insert protégé par l'index unique
+      let { data: tplRows } = await supabase
         .from("checklist_templates")
         .select("id")
         .eq("studio_id", studioId)
         .eq("business_role_id", target)
         .eq("phase", phase)
-        .maybeSingle();
+        .order("created_at", { ascending: true })
+        .limit(1);
+      let tpl: any = tplRows && tplRows.length > 0 ? tplRows[0] : null;
       if (!tpl) {
         const { data: created, error: cErr } = await supabase.from("checklist_templates").insert({
           studio_id: studioId, business_role_id: target, name: phase === "opening" ? "Ouverture" : phase === "transition" ? "Transition" : "Clôture", phase, is_active: true, is_blocking: true,
         } as any).select("id").single();
-        if (cErr) { toast.error(cErr.message); return; }
-        tpl = created as any;
+        if (cErr) {
+          // Conflit unique → relire
+          const { data: again } = await supabase
+            .from("checklist_templates").select("id")
+            .eq("studio_id", studioId).eq("business_role_id", target).eq("phase", phase)
+            .order("created_at", { ascending: true }).limit(1);
+          tpl = again && again.length > 0 ? again[0] : null;
+        } else {
+          tpl = created;
+        }
       }
-      if (!tpl) return;
+      if (!tpl) { toast.error("Impossible de créer le template cible"); return; }
 
-      // 4) Insérer les rows
+      // 3b) Trouver le plus grand order_index existant dans le template cible
+      const { data: lastRows } = await supabase
+        .from("checklist_template_items")
+        .select("order_index")
+        .eq("template_id", tpl.id)
+        .order("order_index", { ascending: false })
+        .limit(1);
+      const startIdx = ((lastRows?.[0] as any)?.order_index ?? -1) + 1;
+
+      // 4) Insérer les rows (append en fin de checklist cible)
       const rows = freshItems.map((it, idx) => ({
-        template_id: (tpl as any).id, label: it.label, description: it.description, is_required: it.is_required, order_index: idx,
+        template_id: tpl.id, label: it.label, description: it.description, is_required: it.is_required, order_index: startIdx + idx,
       }));
       if (rows.length > 0) {
         const { error } = await supabase.from("checklist_template_items").insert(rows as any);
         if (error) { toast.error(error.message); return; }
       }
-      toast.success(`Checklist dupliquée (${rows.length} item${rows.length > 1 ? "s" : ""})`);
+      // Invalider le cache pour que le poste cible relise depuis la DB
+      templateEnsureCache.delete(`${studioId}::${target}::${phase}`);
+      toast.success(`Checklist dupliquée (${rows.length} item${rows.length > 1 ? "s" : ""}). Ouvre l'onglet "${roles.find(r=>r.id===target)?.name ?? "cible"}" pour vérifier.`);
       setOpen(false);
       setTarget("");
       flashSaved();
