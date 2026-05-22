@@ -77,7 +77,7 @@ function addMinutes(time: string, delta: number): string {
 }
 
 // ============================================================
-// SAVED INDICATOR
+// SAVED INDICATOR (flash after each successful write)
 // ============================================================
 
 const SAVED_EVENT = "kadence-cloture-saved";
@@ -97,6 +97,58 @@ function useSavedFlash() {
   }, []);
   return flash;
 }
+
+// ============================================================
+// SAVE BUTTON — explicit, used by draft-state sections
+// ============================================================
+
+function SaveButton({ isDirty, saving, onSave, onRevert }: {
+  isDirty: boolean; saving: boolean; onSave: () => void; onRevert?: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {isDirty && onRevert && (
+        <button
+          type="button"
+          onClick={onRevert}
+          disabled={saving}
+          className="rounded-md px-2.5 py-1.5 border"
+          style={{ fontSize: 12, borderColor: "var(--border)", color: "var(--muted-foreground)", backgroundColor: "transparent" }}
+        >
+          Annuler
+        </button>
+      )}
+      {isDirty && (
+        <span
+          className="rounded-full px-2 py-0.5 flex items-center gap-1"
+          style={{
+            fontSize: 10, fontWeight: 500,
+            backgroundColor: "color-mix(in oklab, #f59e0b 18%, white)",
+            color: "#b45309",
+          }}
+        >
+          <AlertCircle size={10} /> Non enregistré
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={!isDirty || saving}
+        className="rounded-md px-3 py-1.5 flex items-center gap-1.5 transition-colors"
+        style={{
+          fontSize: 12, fontWeight: 500,
+          backgroundColor: isDirty ? "var(--coral)" : "var(--muted)",
+          color: isDirty ? "var(--coral-text)" : "var(--muted-foreground)",
+          opacity: saving ? 0.6 : 1,
+          cursor: !isDirty || saving ? "default" : "pointer",
+        }}
+      >
+        <SaveIcon size={13} /> {saving ? "Enregistrement…" : "Enregistrer"}
+      </button>
+    </div>
+  );
+}
+
 
 // ============================================================
 // MAIN PAGE
