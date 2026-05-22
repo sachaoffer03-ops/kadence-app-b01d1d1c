@@ -488,7 +488,7 @@ function useTemplate(studioId: string, roleId: string, phase: ChecklistPhase = "
       .insert({
         studio_id: studioId,
         business_role_id: roleId,
-        name: phase === "opening" ? "Ouverture" : "Clôture",
+        name: phase === "opening" ? "Ouverture" : phase === "transition" ? "Transition" : "Clôture",
         phase,
         is_active: true,
         is_blocking: true,
@@ -676,7 +676,7 @@ function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: 
         .maybeSingle();
       if (!tpl) {
         const { data: created, error: cErr } = await supabase.from("checklist_templates").insert({
-          studio_id: studioId, business_role_id: target, name: phase === "opening" ? "Ouverture" : "Clôture", phase, is_active: true, is_blocking: true,
+          studio_id: studioId, business_role_id: target, name: phase === "opening" ? "Ouverture" : phase === "transition" ? "Transition" : "Clôture", phase, is_active: true, is_blocking: true,
         } as any).select("id").single();
         if (cErr) { toast.error(cErr.message); return; }
         tpl = created as any;
