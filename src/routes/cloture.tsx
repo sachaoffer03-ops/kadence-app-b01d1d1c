@@ -173,6 +173,8 @@ function ClotureePage() {
   }, [loading, appRole]);
 
   const flash = useSavedFlash();
+  const dirtyCount = useBeforeUnloadIfDirty();
+
 
   // Legacy redirect: ?tab=opening was the old standalone opening tab; now lives under Checklists
   useEffect(() => {
