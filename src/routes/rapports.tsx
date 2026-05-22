@@ -299,12 +299,10 @@ function RapportsPage() {
                 </table>
               </div>
             </TabsContent>
-          </Tabs>
-        </main>
-      </div>
+      </Tabs>
 
       <EmployeeDetailSheet userId={openEmployee} from={filters.from} to={filters.to} onClose={() => setOpenEmployee(null)} />
       <ShiftDetailSheet shiftId={openShift} onClose={() => setOpenShift(null)} />
-    </div>
+    </main>
   );
 }
