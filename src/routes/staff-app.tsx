@@ -613,6 +613,8 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         onClose={() => setClockInShift(null)}
         shift={clockInShift}
         studios={studios}
+        userId={userId}
+        firstName={firstName}
         onCompleted={({ clockedInAt, minutesLate }) => {
           if (!clockInShift) return;
           setShifts((prev) => prev.map((s) => s.id === clockInShift.id ? { ...s, clocked_in_at: clockedInAt, minutes_late: minutesLate } : s));
@@ -791,6 +793,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
         onClose={() => setClockInShift(null)}
         shift={clockInShift}
         studios={studios}
+        userId={userId}
         onCompleted={({ clockedInAt, minutesLate }) => {
           if (!clockInShift) return;
           setShifts((prev) => prev.map((s) => s.id === clockInShift.id ? { ...s, clocked_in_at: clockedInAt, minutes_late: minutesLate } : s));
@@ -1194,6 +1197,7 @@ function PointageTab({ studios, userId }: { studios: Record<string, string>; use
         onClose={() => setClockInShift(null)}
         shift={clockInShift}
         studios={studios}
+        userId={userId}
         onCompleted={({ clockedInAt, minutesLate }) => {
           if (!clockInShift) return;
           setTodayShift((prev) => prev?.id === clockInShift.id ? { ...prev, clocked_in_at: clockedInAt, minutes_late: minutesLate } : prev);
