@@ -14,12 +14,12 @@ import {
   BarChart3,
   Building2,
   Settings,
-  
-
+  Bell,
   Eye,
   X,
 } from "lucide-react";
 import logo from "@/assets/kadence-logo.png";
+
 
 interface NavItem {
   label: string;
@@ -48,6 +48,7 @@ const navSections: NavSection[] = [
   {
     title: "Opérations",
     items: [
+      { label: "Notifications", to: "/notifications", icon: Bell },
       { label: "Demandes modif", to: "/demandes", icon: FileEdit },
       { label: "Signalements", to: "/signalements", icon: PackageSearch },
       { label: "Pointage", to: "/pointage", icon: Clock },
