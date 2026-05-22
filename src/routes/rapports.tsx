@@ -36,7 +36,6 @@ function RapportsPage() {
   const { appRole, loading } = useAuth();
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && appRole && appRole !== "admin" && appRole !== "manager") {
