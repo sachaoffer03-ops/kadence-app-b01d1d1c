@@ -477,38 +477,124 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
     if (shiftsErr) throw new Error(`shifts passés: ${shiftsErr.message}`);
     log.push(`${pastShifts.length} shifts passés clôturés`);
 
-    // 6b. Handoff fictif sur le dernier shift terminé de Clara
-    const { data: lastShift } = await supabaseAdmin
-      .from("shifts").select("id").eq("user_id", demoUserId)
-      .not("clocked_out_at", "is", null)
-      .order("shift_date", { ascending: false }).order("end_time", { ascending: false })
-      .limit(1).maybeSingle();
-    if (lastShift?.id) {
+    // 6b. Cascade Barista AUJOURD'HUI : Léa (08-13 done) → Clara (13-18 now) → Tom (18-22)
+    const now = new Date();
+    const todayStr = fmtDate(now);
+
+    // 6b-1. Ensure Léa + Tom demo employees
+    const leaId = await ensureExtraDemoEmployee({
+      email: "lea.demo@kadence.test", firstName: "Léa", lastName: "Bernard",
+      studioId: studio.id, businessRole: "Barista",
+    });
+    const tomId = await ensureExtraDemoEmployee({
+      email: "tom.demo@kadence.test", firstName: "Tom", lastName: "Lefevre",
+      studioId: studio.id, businessRole: "Barista",
+    });
+    // Purge their previous shifts/handoffs/submissions for idempotency
+    for (const uid of [leaId, tomId]) {
+      const { data: ss } = await supabaseAdmin.from("shifts").select("id").eq("user_id", uid);
+      const sids = (ss ?? []).map((s: any) => s.id);
+      if (sids.length) {
+        const { data: subs } = await supabaseAdmin.from("checklist_submissions").select("id").in("shift_id", sids);
+        const subIds = (subs ?? []).map((s: any) => s.id);
+        if (subIds.length) {
+          await supabaseAdmin.from("checklist_submission_items").delete().in("submission_id", subIds);
+          await supabaseAdmin.from("checklist_submission_photos").delete().in("submission_id", subIds);
+          await supabaseAdmin.from("checklist_submissions").delete().in("id", subIds);
+        }
+        await supabaseAdmin.from("shift_handoffs").delete().in("shift_id", sids);
+        await supabaseAdmin.from("shifts").delete().in("id", sids);
+      }
+    }
+    log.push("Léa + Tom (employés démo) prêts");
+
+    // 6b-2. Léa : 08:00-13:00 completed
+    const leaClockIn = new Date(`${todayStr}T08:00:00`);
+    const leaClockOut = new Date(`${todayStr}T13:02:00`);
+    const { data: leaShift } = await supabaseAdmin.from("shifts").insert({
+      user_id: leaId,
+      studio_id: studio.id,
+      business_role: "Barista",
+      shift_date: todayStr,
+      start_time: "08:00:00",
+      end_time: "13:00:00",
+      clocked_in_at: leaClockIn.toISOString(),
+      clocked_out_at: leaClockOut.toISOString(),
+      minutes_late: 0,
+      status: "completed",
+      published_at: addDays(today, -2).toISOString(),
+      is_manual: false,
+    }).select("id").single();
+
+    // Handoff fictif de Léa pour la relève
+    if (leaShift?.id) {
       await supabaseAdmin.from("shift_handoffs").insert({
-        shift_id: (lastShift as any).id,
-        author_id: demoUserId,
-        message: "Tout est en ordre, j'ai laissé la liste de courses sur le frigo.",
+        shift_id: (leaShift as any).id,
+        author_id: leaId,
+        message: "Machine OK, lait au frigo, journée tranquille.",
       });
-      log.push("Handoff de démo créé sur le dernier shift de Clara");
     }
 
-    // 7. 5 shifts futurs (dont 1 imminent)
-    const now = new Date();
-    const imminentStart = new Date(now.getTime() + 15 * 60_000);
-    const imminentEnd = new Date(now.getTime() + 4 * 60 * 60_000);
-    const futureShifts: any[] = [
-      {
-        user_id: demoUserId,
-        studio_id: studio.id,
-        business_role: "Barista",
-        shift_date: fmtDate(imminentStart),
-        start_time: fmtTime(imminentStart.getHours(), imminentStart.getMinutes()),
-        end_time: fmtTime(imminentEnd.getHours(), imminentEnd.getMinutes()),
-        status: "scheduled",
-        published_at: new Date(now.getTime() - 60 * 60_000).toISOString(),
-        is_manual: true,
-      },
-    ];
+    // Soumission checklist d'ouverture COMPLÉTÉE pour Léa
+    const { data: openTpl } = await supabaseAdmin
+      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", "Démo — Ouverture matin Barista").maybeSingle();
+    if (openTpl?.id && leaShift?.id) {
+      const { data: openItems } = await supabaseAdmin
+        .from("checklist_template_items").select("id").eq("template_id", (openTpl as any).id);
+      const { data: leaSub } = await supabaseAdmin.from("checklist_submissions").insert({
+        shift_id: (leaShift as any).id,
+        user_id: leaId,
+        template_id: (openTpl as any).id,
+        phase: "opening",
+        status: "completed",
+        submitted_at: leaClockOut.toISOString(),
+      } as any).select("id").single();
+      if (leaSub?.id && (openItems ?? []).length) {
+        await supabaseAdmin.from("checklist_submission_items").insert(
+          (openItems ?? []).map((it: any) => ({
+            submission_id: (leaSub as any).id,
+            template_item_id: it.id,
+            is_checked: true,
+            checked_at: leaClockOut.toISOString(),
+          }))
+        );
+      }
+    }
+    log.push("Léa : shift 08-13 complété + handoff + checklist d'ouverture");
+
+    // 6b-3. Clara : 13:00-18:00 scheduled, ajusté pour pouvoir pointer MAINTENANT
+    // start_time = now - 5 min pour rester dans la fenêtre de grâce
+    const claraStart = new Date(now.getTime() - 5 * 60_000);
+    const claraEnd = new Date(claraStart.getTime() + 5 * 60 * 60_000);
+    await supabaseAdmin.from("shifts").insert({
+      user_id: demoUserId,
+      studio_id: studio.id,
+      business_role: "Barista",
+      shift_date: todayStr,
+      start_time: fmtTime(claraStart.getHours(), claraStart.getMinutes()),
+      end_time: fmtTime(claraEnd.getHours(), claraEnd.getMinutes()),
+      status: "scheduled",
+      published_at: addDays(today, -2).toISOString(),
+      is_manual: true,
+    });
+    log.push("Clara : shift cascade transition (pointable maintenant)");
+
+    // 6b-4. Tom : 18:00-22:00 scheduled
+    await supabaseAdmin.from("shifts").insert({
+      user_id: tomId,
+      studio_id: studio.id,
+      business_role: "Barista",
+      shift_date: todayStr,
+      start_time: "18:00:00",
+      end_time: "22:00:00",
+      status: "scheduled",
+      published_at: addDays(today, -2).toISOString(),
+      is_manual: false,
+    });
+    log.push("Tom : shift 18-22 (relève de Clara)");
+
+    // 7. 4 shifts futurs supplémentaires pour Clara
+    const futureShifts: any[] = [];
     for (let i = 1; i <= 4; i++) {
       const d = addDays(today, i * 2);
       const startH = pick([8, 10, 14]);
@@ -528,6 +614,7 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
       .from("shifts").insert(futureShifts).select("id, shift_date");
     if (futureErr) throw new Error(`shifts futurs: ${futureErr.message}`);
     log.push(`${insertedFuture?.length ?? 0} shifts futurs créés`);
+
 
     const cancelTarget = insertedFuture?.[1]; // shift dans 2j pour la demande pending
 
