@@ -381,14 +381,20 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
     <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#FAF8F4" }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0" style={{ borderColor: "rgba(0,0,0,0.06)", paddingTop: "max(12px, env(safe-area-inset-top))" }}>
-        <button
-          onClick={() => step > 1 && step < 6 ? setStep((s) => (s - 1) as Step) : requestCloseWithConfirm()}
-          className="rounded-full p-2"
-          style={{ backgroundColor: "var(--muted)" }}
-          aria-label="Retour"
-        >
-          {step > 1 && step < 6 ? <ArrowLeft size={16} /> : <X size={16} />}
-        </button>
+        {(() => {
+          const minStep: Step = phase === "closing" ? 1 : phase === "transition" ? 2 : 4;
+          const canGoBack = step > minStep && step < 6;
+          return (
+            <button
+              onClick={() => (canGoBack ? setStep((s) => (s - 1) as Step) : requestCloseWithConfirm())}
+              className="rounded-full p-2"
+              style={{ backgroundColor: "var(--muted)" }}
+              aria-label={canGoBack ? "Retour" : "Fermer"}
+            >
+              {canGoBack ? <ArrowLeft size={16} /> : <X size={16} />}
+            </button>
+          );
+        })()}
         <Stepper step={step} />
         <div style={{ width: 32 }} />
       </div>
@@ -400,7 +406,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         {step === 3 && <Step3 role={shift.business_role} photos={photos} states={photoStates} onUpload={handlePhotoUpload} template={template} hasTemplate={!!template} />}
         {step === 4 && <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />}
         {step === 5 && <Step5 questions={closureQuestions} responses={questionResponses} setResponses={setQuestionResponses} submissionId={submissionId} />}
-        {step === 6 && <Step6 recap={recap} studios={studios} onClose={() => { onClose(); window.location.reload(); }} onRetry={runFinalize} finalizing={finalizing} />}
+        {step === 6 && <Step6 recap={recap} studios={studios} phase={phase} firstName={firstNameMe} onClose={() => { onClose(); window.location.reload(); }} onRetry={runFinalize} finalizing={finalizing} />}
       </div>
 
       {/* Footer (steps 1-5) */}
@@ -800,8 +806,9 @@ function Step5({ questions, responses, setResponses, submissionId }: {
 // ────────────────────────────────────────────────────────────────────────────
 // Step 6 — Bien joué !
 // ────────────────────────────────────────────────────────────────────────────
-function Step6({ recap, studios, onClose, onRetry, finalizing }: {
+function Step6({ recap, studios, phase, firstName, onClose, onRetry, finalizing }: {
   recap: Recap | null; studios: Record<string, string>;
+  phase: ChecklistPhase | null; firstName: string | null;
   onClose: () => void; onRetry: () => void; finalizing: boolean;
 }) {
   if (!recap) {
@@ -818,67 +825,101 @@ function Step6({ recap, studios, onClose, onRetry, finalizing }: {
   const workedH = Math.floor(recap.workedMin / 60);
   const workedM = recap.workedMin % 60;
   const checklistOk = recap.itemsTotal === 0 || recap.itemsChecked === recap.itemsTotal;
+
+  // Variant titles per phase
+  const title = phase === "transition" ? "Service transmis 👋"
+              : phase === null ? "Sortie enregistrée"
+              : "Bien joué ! Shift clôturé 🎉";
+  const subtitle = phase === "transition"
+    ? `Bonne fin de journée${firstName ? `, ${firstName}` : ""}.`
+    : phase === null ? "Ton pointage a bien été enregistré."
+    : `Bonne soirée${recap.firstName ? `, ${recap.firstName}` : firstName ? `, ${firstName}` : ""}. À très vite.`;
+
   return (
     <div className="px-5 py-6">
       <div className="flex flex-col items-center text-center mb-6">
         <div className="rounded-full flex items-center justify-center mb-4" style={{ width: 80, height: 80, backgroundColor: "var(--success-bg)" }}>
           <Check size={40} color="var(--success-text)" strokeWidth={2.2} />
         </div>
-        <div style={{ fontSize: 22, fontWeight: 500 }}>Bien joué ! Shift clôturé</div>
-        <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>
-          Bonne soirée{recap.firstName ? `, ${recap.firstName}` : ""}. À très vite.
-        </div>
+        <div style={{ fontSize: 22, fontWeight: 500 }}>{title}</div>
+        <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>{subtitle}</div>
       </div>
 
-      {/* Récap */}
-      <Card title="Récap de ton shift">
-        <Row label="Heures prestées" value={`${workedH}h${String(workedM).padStart(2, "0")}`} />
-        <Row label="Pointage entrée" value={recap.clockedInAt ? fmtHHMM(recap.clockedInAt) : "—"} />
-        <Row label="Pointage sortie" value={recap.clockedOutAt ? fmtHHMM(recap.clockedOutAt) : "—"} />
-        <Row label="Checklist" value={
-          recap.itemsTotal === 0 ? <span style={{ color: "var(--muted-foreground)" }}>—</span> :
-          checklistOk
-            ? <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>Complète</span>
-            : <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>Partielle</span>
-        } />
-        <Row label="Photos IA" value={`${recap.photosValidated} / ${recap.photosTotal}`} last />
-      </Card>
+      {/* Null phase : récap minimaliste pointage uniquement */}
+      {phase === null && (
+        <Card title="Pointage">
+          <Row label="Pointage entrée" value={recap.clockedInAt ? fmtHHMM(recap.clockedInAt) : "—"} />
+          <Row label="Pointage sortie" value={recap.clockedOutAt ? fmtHHMM(recap.clockedOutAt) : "—"} last />
+        </Card>
+      )}
 
-      {/* Gains */}
-      <Card title="Tes gains de ce shift">
-        <Row label="Rémunération" value={<span style={{ fontSize: 18, fontWeight: 500 }}>{fmtEUR(recap.earnings)}</span>} last />
-      </Card>
-
-      {/* Score */}
-      <Card title="Impact sur ton score">
-        <div className="flex items-center justify-between mb-3">
-          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Total</span>
-          <span style={{ fontSize: 22, fontWeight: 500, color: "var(--coral-dark)" }}>+{recap.score.total} pts</span>
-        </div>
-        <Row label="Ponctualité" value={`+${recap.score.ponctualite}`} />
-        <Row label="Checklist" value={`+${recap.score.checklist}`} />
-        <Row label="Photos" value={`+${recap.score.photos}`} last />
-      </Card>
-
-      {/* Next shift */}
-      <Card title="Ton prochain shift">
-        {recap.nextShift ? (
-          <div className="flex items-start gap-3">
-            <div className="rounded-md p-2" style={{ backgroundColor: "var(--coral-light)" }}>
-              <Calendar size={16} style={{ color: "var(--coral-dark)" }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" }}>{fmtDateLong(recap.nextShift.shift_date)}</div>
-              <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
-                {fmtTime(recap.nextShift.start_time)} → {fmtTime(recap.nextShift.end_time)} · {recap.nextShift.business_role}
-                {recap.nextShift.studio_id && studios[recap.nextShift.studio_id] && ` · ${studios[recap.nextShift.studio_id].replace("Skult ", "")}`}
-              </div>
-            </div>
+      {/* Transition : version allégée — heures + gains + handoff */}
+      {phase === "transition" && (
+        <>
+          <Card title="Récap de ton service">
+            <Row label="Heures prestées" value={`${workedH}h${String(workedM).padStart(2, "0")}`} />
+            <Row label="Pointage entrée" value={recap.clockedInAt ? fmtHHMM(recap.clockedInAt) : "—"} />
+            <Row label="Pointage sortie" value={recap.clockedOutAt ? fmtHHMM(recap.clockedOutAt) : "—"} last />
+          </Card>
+          <Card title="Tes gains de ce service">
+            <Row label="Rémunération" value={<span style={{ fontSize: 18, fontWeight: 500 }}>{fmtEUR(recap.earnings)}</span>} last />
+          </Card>
+          <div className="rounded-xl p-3 mb-3" style={{ backgroundColor: "#EAF4FB", border: "0.5px solid #BCD8EC", fontSize: 12, color: "#1F4E6E", lineHeight: 1.5 }}>
+            L'équipe suivante a été notifiée.
           </div>
-        ) : (
-          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift planifié pour le moment.</div>
-        )}
-      </Card>
+        </>
+      )}
+
+      {/* Closing : récap complet */}
+      {phase === "closing" && (
+        <>
+          <Card title="Récap de ton shift">
+            <Row label="Heures prestées" value={`${workedH}h${String(workedM).padStart(2, "0")}`} />
+            <Row label="Pointage entrée" value={recap.clockedInAt ? fmtHHMM(recap.clockedInAt) : "—"} />
+            <Row label="Pointage sortie" value={recap.clockedOutAt ? fmtHHMM(recap.clockedOutAt) : "—"} />
+            <Row label="Checklist" value={
+              recap.itemsTotal === 0 ? <span style={{ color: "var(--muted-foreground)" }}>—</span> :
+              checklistOk
+                ? <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>Complète</span>
+                : <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>Partielle</span>
+            } />
+            <Row label="Photos IA" value={`${recap.photosValidated} / ${recap.photosTotal}`} last />
+          </Card>
+
+          <Card title="Tes gains de ce shift">
+            <Row label="Rémunération" value={<span style={{ fontSize: 18, fontWeight: 500 }}>{fmtEUR(recap.earnings)}</span>} last />
+          </Card>
+
+          <Card title="Impact sur ton score">
+            <div className="flex items-center justify-between mb-3">
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Total</span>
+              <span style={{ fontSize: 22, fontWeight: 500, color: "var(--coral-dark)" }}>+{recap.score.total} pts</span>
+            </div>
+            <Row label="Ponctualité" value={`+${recap.score.ponctualite}`} />
+            <Row label="Checklist" value={`+${recap.score.checklist}`} />
+            <Row label="Photos" value={`+${recap.score.photos}`} last />
+          </Card>
+
+          <Card title="Ton prochain shift">
+            {recap.nextShift ? (
+              <div className="flex items-start gap-3">
+                <div className="rounded-md p-2" style={{ backgroundColor: "var(--coral-light)" }}>
+                  <Calendar size={16} style={{ color: "var(--coral-dark)" }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" }}>{fmtDateLong(recap.nextShift.shift_date)}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+                    {fmtTime(recap.nextShift.start_time)} → {fmtTime(recap.nextShift.end_time)} · {recap.nextShift.business_role}
+                    {recap.nextShift.studio_id && studios[recap.nextShift.studio_id] && ` · ${studios[recap.nextShift.studio_id].replace("Skult ", "")}`}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift planifié pour le moment.</div>
+            )}
+          </Card>
+        </>
+      )}
 
       <button onClick={onClose} className="w-full rounded-md py-3 mt-6"
         style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>

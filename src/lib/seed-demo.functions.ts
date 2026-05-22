@@ -48,6 +48,38 @@ async function ensureDemoAuthUser(): Promise<string> {
   return created.user.id;
 }
 
+// Ensure an additional demo employee (Léa, Tom…) exists with the full profile
+// stack required to be eligible for shifts (auth user, profile, role,
+// contract, studio, business_role).
+async function ensureExtraDemoEmployee(opts: {
+  email: string; firstName: string; lastName: string;
+  studioId: string; businessRole: string;
+}): Promise<string> {
+  const { email, firstName, lastName, studioId, businessRole } = opts;
+  const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
+  let userId = list?.users?.find((u: any) => u.email === email)?.id as string | undefined;
+  if (!userId) {
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email, password: DEMO_PASSWORD, email_confirm: true,
+      user_metadata: { first_name: firstName, last_name: lastName },
+    });
+    if (error || !created?.user) throw new Error(`Création user ${email}: ${error?.message ?? "inconnu"}`);
+    userId = created.user.id;
+  } else {
+    await supabaseAdmin.auth.admin.updateUserById(userId, { password: DEMO_PASSWORD, email_confirm: true });
+  }
+  await supabaseAdmin.from("profiles").upsert({
+    id: userId, email, first_name: firstName, last_name: lastName,
+    status: "active", contract: "CDI", studio_id: studioId,
+    is_test: true, is_protected: false, hourly_rate: 12.5, score: 8.0,
+  }, { onConflict: "id" });
+  await supabaseAdmin.from("user_roles").upsert({ user_id: userId, role: "employee" }, { onConflict: "user_id,role" });
+  await supabaseAdmin.from("user_contracts").upsert({ user_id: userId, contract: "CDI" }, { onConflict: "user_id,contract" });
+  await supabaseAdmin.from("user_studios").upsert({ user_id: userId, studio_id: studioId }, { onConflict: "user_id,studio_id" });
+  await supabaseAdmin.from("user_business_roles").upsert({ user_id: userId, role: businessRole }, { onConflict: "user_id,role" });
+  return userId!;
+}
+
 // Supprime toutes les données liées à un user demo (cascade manuel par sécurité)
 async function purgeDemoUserData(userId: string) {
   await supabaseAdmin.from("notifications").delete().eq("user_id", userId);
@@ -286,6 +318,37 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
       log.push("Template checklist d'ouverture déjà présent");
     }
 
+    // 4b-ter. Checklist de TRANSITION Barista (phase=transition)
+    const TRANS_TPL_NAME = "Démo — Transition Barista";
+    const { data: transExisting } = await supabaseAdmin
+      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", TRANS_TPL_NAME).maybeSingle();
+    if (!transExisting) {
+      const { data: transIns, error: transErr } = await supabaseAdmin.from("checklist_templates").insert({
+        studio_id: studio.id,
+        business_role_id: baristaBr?.id ?? null,
+        name: TRANS_TPL_NAME,
+        description: "Checklist rapide à faire entre deux shifts",
+        is_active: true,
+        is_blocking: false,
+        analyze_with_ai: false,
+        min_photos_required: 0,
+        phase: "transition",
+      } as any).select("id").single();
+      if (transErr) throw new Error(`transition template: ${transErr.message}`);
+      const transId = (transIns as any).id;
+      const { data: transPhotos } = await supabaseAdmin.from("checklist_template_photos").insert([
+        { template_id: transId, label: "État machine", description: "Photo de la machine au passage de relais", order_index: 0, is_required: false },
+      ]).select("id");
+      await supabaseAdmin.from("checklist_template_items").insert([
+        { template_id: transId, label: "Vérifier état machine", order_index: 0, is_required: true, photo_zone_id: (transPhotos as any)?.[0]?.id ?? null },
+        { template_id: transId, label: "Compter caisse intermédiaire", order_index: 1, is_required: true, photo_zone_id: null },
+      ]);
+      log.push("Template checklist de TRANSITION Barista créé (2 items + 1 photo)");
+    } else {
+      log.push("Template checklist de transition déjà présent");
+    }
+
+
     // 4c. Questions de clôture (5) pour le studio
     const { count: cqCount } = await supabaseAdmin
       .from("closure_questions").select("id", { count: "exact", head: true }).eq("studio_id", studio.id);
@@ -414,38 +477,124 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
     if (shiftsErr) throw new Error(`shifts passés: ${shiftsErr.message}`);
     log.push(`${pastShifts.length} shifts passés clôturés`);
 
-    // 6b. Handoff fictif sur le dernier shift terminé de Clara
-    const { data: lastShift } = await supabaseAdmin
-      .from("shifts").select("id").eq("user_id", demoUserId)
-      .not("clocked_out_at", "is", null)
-      .order("shift_date", { ascending: false }).order("end_time", { ascending: false })
-      .limit(1).maybeSingle();
-    if (lastShift?.id) {
+    // 6b. Cascade Barista AUJOURD'HUI : Léa (08-13 done) → Clara (13-18 now) → Tom (18-22)
+    const now = new Date();
+    const todayStr = fmtDate(now);
+
+    // 6b-1. Ensure Léa + Tom demo employees
+    const leaId = await ensureExtraDemoEmployee({
+      email: "lea.demo@kadence.test", firstName: "Léa", lastName: "Bernard",
+      studioId: studio.id, businessRole: "Barista",
+    });
+    const tomId = await ensureExtraDemoEmployee({
+      email: "tom.demo@kadence.test", firstName: "Tom", lastName: "Lefevre",
+      studioId: studio.id, businessRole: "Barista",
+    });
+    // Purge their previous shifts/handoffs/submissions for idempotency
+    for (const uid of [leaId, tomId]) {
+      const { data: ss } = await supabaseAdmin.from("shifts").select("id").eq("user_id", uid);
+      const sids = (ss ?? []).map((s: any) => s.id);
+      if (sids.length) {
+        const { data: subs } = await supabaseAdmin.from("checklist_submissions").select("id").in("shift_id", sids);
+        const subIds = (subs ?? []).map((s: any) => s.id);
+        if (subIds.length) {
+          await supabaseAdmin.from("checklist_submission_items").delete().in("submission_id", subIds);
+          await supabaseAdmin.from("checklist_submission_photos").delete().in("submission_id", subIds);
+          await supabaseAdmin.from("checklist_submissions").delete().in("id", subIds);
+        }
+        await supabaseAdmin.from("shift_handoffs").delete().in("shift_id", sids);
+        await supabaseAdmin.from("shifts").delete().in("id", sids);
+      }
+    }
+    log.push("Léa + Tom (employés démo) prêts");
+
+    // 6b-2. Léa : 08:00-13:00 completed
+    const leaClockIn = new Date(`${todayStr}T08:00:00`);
+    const leaClockOut = new Date(`${todayStr}T13:02:00`);
+    const { data: leaShift } = await supabaseAdmin.from("shifts").insert({
+      user_id: leaId,
+      studio_id: studio.id,
+      business_role: "Barista",
+      shift_date: todayStr,
+      start_time: "08:00:00",
+      end_time: "13:00:00",
+      clocked_in_at: leaClockIn.toISOString(),
+      clocked_out_at: leaClockOut.toISOString(),
+      minutes_late: 0,
+      status: "completed",
+      published_at: addDays(today, -2).toISOString(),
+      is_manual: false,
+    }).select("id").single();
+
+    // Handoff fictif de Léa pour la relève
+    if (leaShift?.id) {
       await supabaseAdmin.from("shift_handoffs").insert({
-        shift_id: (lastShift as any).id,
-        author_id: demoUserId,
-        message: "Tout est en ordre, j'ai laissé la liste de courses sur le frigo.",
+        shift_id: (leaShift as any).id,
+        author_id: leaId,
+        message: "Machine OK, lait au frigo, journée tranquille.",
       });
-      log.push("Handoff de démo créé sur le dernier shift de Clara");
     }
 
-    // 7. 5 shifts futurs (dont 1 imminent)
-    const now = new Date();
-    const imminentStart = new Date(now.getTime() + 15 * 60_000);
-    const imminentEnd = new Date(now.getTime() + 4 * 60 * 60_000);
-    const futureShifts: any[] = [
-      {
-        user_id: demoUserId,
-        studio_id: studio.id,
-        business_role: "Barista",
-        shift_date: fmtDate(imminentStart),
-        start_time: fmtTime(imminentStart.getHours(), imminentStart.getMinutes()),
-        end_time: fmtTime(imminentEnd.getHours(), imminentEnd.getMinutes()),
-        status: "scheduled",
-        published_at: new Date(now.getTime() - 60 * 60_000).toISOString(),
-        is_manual: true,
-      },
-    ];
+    // Soumission checklist d'ouverture COMPLÉTÉE pour Léa
+    const { data: openTpl } = await supabaseAdmin
+      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", "Démo — Ouverture matin Barista").maybeSingle();
+    if (openTpl?.id && leaShift?.id) {
+      const { data: openItems } = await supabaseAdmin
+        .from("checklist_template_items").select("id").eq("template_id", (openTpl as any).id);
+      const { data: leaSub } = await supabaseAdmin.from("checklist_submissions").insert({
+        shift_id: (leaShift as any).id,
+        user_id: leaId,
+        template_id: (openTpl as any).id,
+        phase: "opening",
+        status: "completed",
+        submitted_at: leaClockOut.toISOString(),
+      } as any).select("id").single();
+      if (leaSub?.id && (openItems ?? []).length) {
+        await supabaseAdmin.from("checklist_submission_items").insert(
+          (openItems ?? []).map((it: any) => ({
+            submission_id: (leaSub as any).id,
+            template_item_id: it.id,
+            is_checked: true,
+            checked_at: leaClockOut.toISOString(),
+          }))
+        );
+      }
+    }
+    log.push("Léa : shift 08-13 complété + handoff + checklist d'ouverture");
+
+    // 6b-3. Clara : 13:00-18:00 scheduled, ajusté pour pouvoir pointer MAINTENANT
+    // start_time = now - 5 min pour rester dans la fenêtre de grâce
+    const claraStart = new Date(now.getTime() - 5 * 60_000);
+    const claraEnd = new Date(claraStart.getTime() + 5 * 60 * 60_000);
+    await supabaseAdmin.from("shifts").insert({
+      user_id: demoUserId,
+      studio_id: studio.id,
+      business_role: "Barista",
+      shift_date: todayStr,
+      start_time: fmtTime(claraStart.getHours(), claraStart.getMinutes()),
+      end_time: fmtTime(claraEnd.getHours(), claraEnd.getMinutes()),
+      status: "scheduled",
+      published_at: addDays(today, -2).toISOString(),
+      is_manual: true,
+    });
+    log.push("Clara : shift cascade transition (pointable maintenant)");
+
+    // 6b-4. Tom : 18:00-22:00 scheduled
+    await supabaseAdmin.from("shifts").insert({
+      user_id: tomId,
+      studio_id: studio.id,
+      business_role: "Barista",
+      shift_date: todayStr,
+      start_time: "18:00:00",
+      end_time: "22:00:00",
+      status: "scheduled",
+      published_at: addDays(today, -2).toISOString(),
+      is_manual: false,
+    });
+    log.push("Tom : shift 18-22 (relève de Clara)");
+
+    // 7. 4 shifts futurs supplémentaires pour Clara
+    const futureShifts: any[] = [];
     for (let i = 1; i <= 4; i++) {
       const d = addDays(today, i * 2);
       const startH = pick([8, 10, 14]);
@@ -465,6 +614,7 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
       .from("shifts").insert(futureShifts).select("id, shift_date");
     if (futureErr) throw new Error(`shifts futurs: ${futureErr.message}`);
     log.push(`${insertedFuture?.length ?? 0} shifts futurs créés`);
+
 
     const cancelTarget = insertedFuture?.[1]; // shift dans 2j pour la demande pending
 
