@@ -751,14 +751,8 @@ function ChecklistEditor({ studioId, roleId, roleName, phase = "closing" }: { st
   }, [template?.id]);
 
   useEffect(() => { reload(); }, [reload]);
-  useEffect(() => {
-    if (!template?.id) return;
-    const ch = supabase.channel(`tpl-content-${template.id}-${Math.random()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "checklist_template_items", filter: `template_id=eq.${template.id}` }, () => reload())
-      .on("postgres_changes", { event: "*", schema: "public", table: "checklist_template_photos", filter: `template_id=eq.${template.id}` }, () => reload())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [template?.id, reload]);
+  // NOTE: no realtime — re-fetch happens after each explicit local mutation.
+
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
