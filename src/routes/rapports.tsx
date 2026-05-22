@@ -135,14 +135,9 @@ function RapportsPage() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: "var(--background)" }}>
-      <AppSidebar />
-      <MobileSidebar open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-      <div className="flex-1 md:ml-[220px] flex flex-col">
-        <TopBar onMenuToggle={() => setMobileNavOpen(true)} />
-        <main className="flex-1 p-4 md:p-6 max-w-[1400px] w-full mx-auto">
-          <h1 className="text-2xl font-medium mb-1">Rapports</h1>
-          <p className="text-sm text-[var(--muted-foreground)] mb-4">Vue d'ensemble de l'activité de l'équipe sur la période sélectionnée.</p>
+    <main className="p-4 md:p-6 max-w-[1400px] w-full mx-auto">
+      <h1 className="text-2xl font-medium mb-1">Rapports</h1>
+      <p className="text-sm text-[var(--muted-foreground)] mb-4">Vue d'ensemble de l'activité de l'équipe sur la période sélectionnée.</p>
 
           <FiltersBar
             preset={search.preset} from={filters.from} to={filters.to}
