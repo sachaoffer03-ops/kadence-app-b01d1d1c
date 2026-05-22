@@ -87,6 +87,21 @@ export function ClockInSheet({ open, onClose, shift, studios, userId, firstName,
     submitCode(full);
   };
 
+  if (done) {
+    return (
+      <OpeningFlow
+        open={true}
+        onClose={onClose}
+        shift={shift}
+        userId={userId}
+        studios={studios}
+        firstName={firstName ?? null}
+        clockedInAt={done.clockedInAt}
+        minutesLate={done.minutesLate}
+      />
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#FAF8F4" }}>
       <div
@@ -94,36 +109,14 @@ export function ClockInSheet({ open, onClose, shift, studios, userId, firstName,
         style={{ borderColor: "rgba(0,0,0,0.06)", paddingTop: "max(12px, env(safe-area-inset-top))" }}
       >
         <button onClick={onClose} aria-label="Fermer" className="rounded-full p-2 -ml-2">
-          {done ? <X size={20} /> : <ArrowLeft size={20} />}
+          <ArrowLeft size={20} />
         </button>
         <div style={{ fontSize: 13, fontWeight: 500 }}>Pointer mon arrivée</div>
         <div style={{ width: 36 }} />
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5" style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
-        {done ? (
-          <div className="flex flex-col items-center text-center py-10">
-            <div
-              className="rounded-full flex items-center justify-center mb-5"
-              style={{ width: 72, height: 72, backgroundColor: "var(--coral-light)" }}
-            >
-              <Check size={36} color="var(--coral-dark)" strokeWidth={1.8} />
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 500, marginBottom: 6 }}>Arrivée enregistrée</div>
-            <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 24, lineHeight: 1.5 }}>
-              {done.minutesLate > 0
-                ? `Tu es arrivé avec ${done.minutesLate} min de retard. Bon shift quand même !`
-                : "Bon shift !"}
-            </div>
-            <button
-              onClick={onClose}
-              className="rounded-md px-5 py-2.5"
-              style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}
-            >
-              Fermer
-            </button>
-          </div>
-        ) : (
+        {(
           <>
             <span
               className="inline-block rounded-full px-2.5 py-1 mb-3"
