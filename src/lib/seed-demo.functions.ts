@@ -255,6 +255,37 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
       log.push("Template checklist Barista déjà présent");
     }
 
+    // 4b-bis. Checklist d'OUVERTURE Barista (phase=opening)
+    const OPEN_TPL_NAME = "Démo — Ouverture matin Barista";
+    const { data: openExisting } = await supabaseAdmin
+      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", OPEN_TPL_NAME).maybeSingle();
+    if (!openExisting) {
+      const { data: openIns, error: openErr } = await supabaseAdmin.from("checklist_templates").insert({
+        studio_id: studio.id,
+        business_role_id: baristaBr?.id ?? null,
+        name: OPEN_TPL_NAME,
+        description: "Checklist à faire en arrivant le matin",
+        is_active: true,
+        is_blocking: false,
+        analyze_with_ai: false,
+        min_photos_required: 1,
+        phase: "opening",
+      } as any).select("id").single();
+      if (openErr) throw new Error(`opening template: ${openErr.message}`);
+      const openId = (openIns as any).id;
+      const { data: openPhotos } = await supabaseAdmin.from("checklist_template_photos").insert([
+        { template_id: openId, label: "Comptoir au démarrage", description: "Photo du comptoir à l'arrivée", order_index: 0, is_required: true },
+      ]).select("id");
+      await supabaseAdmin.from("checklist_template_items").insert([
+        { template_id: openId, label: "Vérifier que la machine à café est en route", order_index: 0, is_required: true, photo_zone_id: null },
+        { template_id: openId, label: "Compter le fond de caisse (200€)", order_index: 1, is_required: true, photo_zone_id: null },
+        { template_id: openId, label: "Lire les notes de l'équipe précédente", order_index: 2, is_required: true, photo_zone_id: (openPhotos as any)?.[0]?.id ?? null },
+      ]);
+      log.push("Template checklist d'OUVERTURE Barista créé (3 items + 1 photo)");
+    } else {
+      log.push("Template checklist d'ouverture déjà présent");
+    }
+
     // 4c. Questions de clôture (5) pour le studio
     const { count: cqCount } = await supabaseAdmin
       .from("closure_questions").select("id", { count: "exact", head: true }).eq("studio_id", studio.id);
