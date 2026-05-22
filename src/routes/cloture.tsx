@@ -234,6 +234,158 @@ function EmptyCard({ text }: { text: string }) {
   );
 }
 
+// ============================================================
+// CHECKLISTS TAB — 3 phases empilées par poste
+// ============================================================
+
+const PHASE_META: Record<ChecklistPhase, { label: string; icon: any; color: string; bg: string; desc: string }> = {
+  opening:    { label: "Ouverture",  icon: Sunrise,        color: "var(--coral-dark)", bg: "var(--coral-light)",                     desc: "Premier shift de la journée sur ce poste." },
+  transition: { label: "Transition", icon: ArrowRightLeft, color: "#4338CA",            bg: "color-mix(in oklab, #4338CA 12%, white)", desc: "Quand un employé prend le relais d'un autre sur le même poste." },
+  closing:    { label: "Fermeture",  icon: Sunset,         color: "var(--success-text)", bg: "var(--success-bg)",                     desc: "Dernier shift de la journée sur ce poste." },
+};
+
+function ChecklistsTab({ studioId }: { studioId: string }) {
+  const { roles } = useBusinessRoles({ onlyActive: true });
+  const [activeRoleId, setActiveRoleId] = useState<string | null>(null);
+  useEffect(() => { if (!activeRoleId && roles.length > 0) setActiveRoleId(roles[0].id); }, [roles, activeRoleId]);
+  const activeRole = roles.find((r) => r.id === activeRoleId) ?? null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div
+        className="rounded-lg px-4 py-3 flex items-start gap-3"
+        style={{ backgroundColor: "color-mix(in oklab, #60a5fa 10%, white)", fontSize: 12, lineHeight: 1.6 }}
+      >
+        <Sparkles size={14} style={{ color: "#1d4ed8", marginTop: 2, flexShrink: 0 }} />
+        <div>
+          Configure une checklist par poste et par moment du service (ouverture, transition, fermeture). Le système détecte automatiquement à chaque pointage quelle checklist appliquer. Crée une checklist de transition si plusieurs employés s'enchaînent sur ce poste dans la journée. Les photos sont analysées par l'IA pour vérifier ce qu'on ne peut pas constater verbalement.
+        </div>
+      </div>
+
+      <div className="rounded-lg border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+        <div className="flex flex-wrap gap-1.5 mb-1">
+          {roles.map((r) => {
+            const isActive = r.id === activeRoleId;
+            const st = getRoleStyle(r.name);
+            return (
+              <button
+                key={r.id}
+                onClick={() => setActiveRoleId(r.id)}
+                className="rounded-md px-3 py-1.5 flex items-center gap-2 transition-all"
+                style={{
+                  fontSize: 12, fontWeight: 500,
+                  backgroundColor: isActive ? st.bg : "transparent",
+                  color: isActive ? st.text : "var(--muted-foreground)",
+                  border: `1px solid ${isActive ? st.dot : "var(--border)"}`,
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: st.dot }} />
+                {r.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {activeRole && (
+        <div className="flex flex-col gap-3">
+          {(["opening", "transition", "closing"] as ChecklistPhase[]).map((phase) => (
+            <PhaseAccordion
+              key={`${activeRole.id}-${phase}`}
+              studioId={studioId}
+              roleId={activeRole.id}
+              roleName={activeRole.name}
+              phase={phase}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PhaseAccordion({ studioId, roleId, roleName, phase }: { studioId: string; roleId: string; roleName: string; phase: ChecklistPhase }) {
+  const [open, setOpen] = useState(phase === "opening");
+  const [counts, setCounts] = useState<{ items: number; photos: number } | null>(null);
+  const meta = PHASE_META[phase];
+
+  // Lazy count: lit le template + counts items/photos sans monter l'éditeur
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: tpl } = await supabase
+        .from("checklist_templates")
+        .select("id")
+        .eq("studio_id", studioId)
+        .eq("business_role_id", roleId)
+        .eq("phase", phase)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!tpl) { setCounts({ items: 0, photos: 0 }); return; }
+      const [{ count: ic }, { count: pc }] = await Promise.all([
+        supabase.from("checklist_template_items").select("id", { count: "exact", head: true }).eq("template_id", (tpl as any).id),
+        supabase.from("checklist_template_photos").select("id", { count: "exact", head: true }).eq("template_id", (tpl as any).id),
+      ]);
+      if (!cancelled) setCounts({ items: ic ?? 0, photos: pc ?? 0 });
+    })();
+    return () => { cancelled = true; };
+  }, [studioId, roleId, phase, open]);
+
+  const Icon = meta.icon;
+  const badge = counts
+    ? (counts.items === 0 && counts.photos === 0
+        ? "Vide"
+        : `${counts.items} item${counts.items > 1 ? "s" : ""} · ${counts.photos} photo${counts.photos > 1 ? "s" : ""}`)
+    : "…";
+
+  return (
+    <section className="rounded-lg border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full px-5 py-4 flex items-center gap-3 text-left"
+      >
+        <div className="rounded-md p-2 flex items-center justify-center" style={{ backgroundColor: meta.bg }}>
+          <Icon size={16} strokeWidth={1.8} style={{ color: meta.color }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span style={{ fontSize: 14, fontWeight: 500 }}>{meta.label}</span>
+            <span
+              className="rounded-full px-2 py-0.5"
+              style={{ fontSize: 10, fontWeight: 500, backgroundColor: counts && (counts.items > 0 || counts.photos > 0) ? meta.bg : "var(--muted)", color: counts && (counts.items > 0 || counts.photos > 0) ? meta.color : "var(--muted-foreground)" }}
+            >
+              {badge}
+            </span>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{meta.desc}</div>
+        </div>
+        {open ? <ChevronDown size={16} style={{ color: "var(--muted-foreground)" }} /> : <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />}
+      </button>
+      {open && (
+        <div className="border-t p-5 flex flex-col gap-6" style={{ borderColor: "var(--border)" }}>
+          <div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Items à cocher
+            </div>
+            <ChecklistEditor studioId={studioId} roleId={roleId} roleName={roleName} phase={phase} />
+          </div>
+          <div className="border-t pt-5" style={{ borderColor: "var(--border)" }}>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Photos & analyse IA
+            </div>
+            <InlinePhotosEditor studioId={studioId} roleId={roleId} roleName={roleName} phase={phase} />
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Inline version of PhotosSection — no card wrapper, no role tabs (parent already scopes by role).
+function InlinePhotosEditor({ studioId, roleId, roleName, phase }: { studioId: string; roleId: string; roleName: string; phase: ChecklistPhase }) {
+  return <PhotosEditor studioId={studioId} roleId={roleId} roleName={roleName} phase={phase} />;
+}
+
 function SectionCard({ icon: Icon, title, subtitle, right, children }: {
   icon: any; title: string; subtitle?: string; right?: React.ReactNode; children: React.ReactNode;
 }) {
