@@ -820,14 +820,19 @@ function SortableItem({ item, photos, onDeleted }: { item: any; photos: any[]; o
     opacity: isDragging ? 0.5 : 1,
   };
   const [label, setLabel] = useState(item.label);
-  useEffect(() => setLabel(item.label), [item.label]);
+  const lastSavedRef = useRef(item.label);
+  useEffect(() => { setLabel(item.label); lastSavedRef.current = item.label; }, [item.id, item.label]);
 
-  const saveLabel = async (v: string) => {
-    if (v === item.label) return;
+  const saveLabel = useCallback(async (v: string) => {
+    if (v === lastSavedRef.current) return;
+    lastSavedRef.current = v;
     const { error } = await supabase.from("checklist_template_items").update({ label: v } as any).eq("id", item.id);
-    if (error) toast.error(`Erreur : ${error.message}`); else { flashSaved(); toast.success("✓ Item enregistré"); }
-  };
+    if (error) toast.error(`Erreur : ${error.message}`); else flashSaved();
+  }, [item.id]);
 
+  // Auto-save débounce — évite de perdre les modifs si l'utilisateur clique
+  // sur « Dupliquer » ou change de poste avant d'avoir blur le champ.
+  const debouncedSave = useDebouncedCallback(saveLabel, 500);
 
   const setPhoto = async (v: string) => {
     const photo_zone_id = v === "__none__" ? null : v;
@@ -850,8 +855,11 @@ function SortableItem({ item, photos, onDeleted }: { item: any; photos: any[]; o
       </button>
       <input
         value={label}
-        onChange={(e) => setLabel(e.target.value)}
+        onChange={(e) => { setLabel(e.target.value); debouncedSave(e.target.value); }}
         onBlur={(e) => saveLabel(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+        }}
         className="flex-1 px-2 py-1 rounded"
         style={{ fontSize: 13, backgroundColor: "transparent", border: "none", outline: "none" }}
       />
@@ -881,6 +889,25 @@ function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: 
     if (!target || busy) return;
     setBusy(true);
     try {
+      // 1) Forcer la persistance des champs en cours d'édition (blur l'élément actif)
+      //    + laisser le temps au debounce de flush
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      await new Promise((r) => setTimeout(r, 600));
+
+      // 2) Relire les items source à jour depuis la DB (au cas où le state parent
+      //    serait obsolète, on duplique toujours la dernière version persistée)
+      const sourceTplId = items[0]?.template_id;
+      let freshItems = items;
+      if (sourceTplId) {
+        const { data: fresh } = await supabase
+          .from("checklist_template_items")
+          .select("*")
+          .eq("template_id", sourceTplId)
+          .order("order_index");
+        if (fresh && fresh.length > 0) freshItems = fresh as any[];
+      }
+
+      // 3) Trouver/créer le template cible
       let { data: tpl } = await supabase
         .from("checklist_templates")
         .select("id")
@@ -896,14 +923,16 @@ function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: 
         tpl = created as any;
       }
       if (!tpl) return;
-      const rows = items.map((it, idx) => ({
+
+      // 4) Insérer les rows
+      const rows = freshItems.map((it, idx) => ({
         template_id: (tpl as any).id, label: it.label, description: it.description, is_required: it.is_required, order_index: idx,
       }));
       if (rows.length > 0) {
         const { error } = await supabase.from("checklist_template_items").insert(rows as any);
         if (error) { toast.error(error.message); return; }
       }
-      toast.success("Checklist dupliquée");
+      toast.success(`Checklist dupliquée (${rows.length} item${rows.length > 1 ? "s" : ""})`);
       setOpen(false);
       setTarget("");
       flashSaved();
