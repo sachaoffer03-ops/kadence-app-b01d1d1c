@@ -5,8 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
-import { AppSidebar, MobileSidebar } from "@/components/AppSidebar";
-import { TopBar } from "@/components/TopBar";
 import { FiltersBar, presetToRange, type Preset } from "@/components/reports/FiltersBar";
 import { KpiCard } from "@/components/reports/KpiCard";
 import { Sparkline } from "@/components/reports/Sparkline";
