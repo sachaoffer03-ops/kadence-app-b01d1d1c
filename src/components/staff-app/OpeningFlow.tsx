@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Camera, PartyPopper, Loader2, MessageSquareQuote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto } from "@/lib/checklists.helpers";
+import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, type ChecklistPhase } from "@/lib/checklists.helpers";
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
 
 export interface OpeningShiftRow {
