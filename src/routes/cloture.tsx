@@ -120,6 +120,14 @@ function ClotureePage() {
 
   const flash = useSavedFlash();
 
+  // Legacy redirect: ?tab=opening was the old standalone opening tab; now lives under Checklists
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("tab") === "opening") {
+      navigate({ search: (prev: any) => ({ ...prev, tab: "checklists" }) });
+    }
+  }, [navigate]);
+
   // Notify admin of overdue clock-outs on page load (silent fire-and-forget)
   const notifyOverdue = useServerFn(notifyOverdueClockOutsFn);
   useEffect(() => {
@@ -143,7 +151,7 @@ function ClotureePage() {
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 500, marginBottom: 2 }}>Clôture</h1>
           <p style={{ fontSize: 13, color: "var(--muted-foreground)", maxWidth: 720 }}>
-            Configure le parcours de clôture des shifts et comment ces actions impactent le score des employés.
+            Configure le parcours de pointage, les checklists par moment de service, et la notation.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -157,7 +165,7 @@ function ClotureePage() {
           >
             ✓ Enregistré
           </span>
-          {tab === "config" && (
+          {(tab === "config" || tab === "checklists") && (
             <Select value={studioId ?? ""} onValueChange={(v) => setStudioId(v)}>
               <SelectTrigger className="w-[200px]"><SelectValue placeholder="Studio" /></SelectTrigger>
               <SelectContent>
@@ -172,7 +180,7 @@ function ClotureePage() {
 
       <Tabs
         value={tab}
-        onValueChange={(v) => navigate({ search: (prev: any) => ({ ...prev, tab: v as "config" | "opening" | "notation" }) })}
+        onValueChange={(v) => navigate({ search: (prev: any) => ({ ...prev, tab: v as "config" | "checklists" | "notation" }) })}
         className="w-full"
       >
         <TabsList className="mb-5">
@@ -180,9 +188,9 @@ function ClotureePage() {
             <SettingsIcon size={14} strokeWidth={1.8} />
             Configuration
           </TabsTrigger>
-          <TabsTrigger value="opening" className="gap-2">
-            <Sunrise size={14} strokeWidth={1.8} />
-            Ouverture
+          <TabsTrigger value="checklists" className="gap-2">
+            <ListChecks size={14} strokeWidth={1.8} />
+            Checklists
           </TabsTrigger>
           <TabsTrigger value="notation" className="gap-2">
             <BarChart3 size={14} strokeWidth={1.8} />
@@ -196,28 +204,17 @@ function ClotureePage() {
           ) : (
             <div className="flex flex-col gap-5">
               <ClockOutSection studio={studio} />
-              <ChecklistsSection studioId={studio.id} phase="closing" />
-              <PhotosSection studioId={studio.id} phase="closing" />
               <QrSection studio={studio} />
               <QuestionsSection studioId={studio.id} />
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="opening" className="mt-0">
+        <TabsContent value="checklists" className="mt-0">
           {!studio ? (
-            <EmptyCard text="Sélectionne un studio pour configurer l'ouverture." />
+            <EmptyCard text="Sélectionne un studio pour configurer les checklists." />
           ) : (
-            <div className="flex flex-col gap-5">
-              <div className="rounded-lg border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-                <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Checklist d'ouverture</div>
-                <div style={{ fontSize: 12, color: "var(--muted-foreground)", maxWidth: 700, lineHeight: 1.5 }}>
-                  Ce que tes employés doivent faire dès leur arrivée au studio, juste après le scan du QR, avant de commencer leur service.
-                </div>
-              </div>
-              <ChecklistsSection studioId={studio.id} phase="opening" />
-              <PhotosSection studioId={studio.id} phase="opening" />
-            </div>
+            <ChecklistsTab studioId={studio.id} />
           )}
         </TabsContent>
 
