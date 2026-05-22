@@ -86,6 +86,8 @@ const minutesTo = (date: Date, hhmm: string) => {
 
 export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted }: Props) {
   const [step, setStep] = useState<Step>(1);
+  const [phase, setPhase] = useState<ChecklistPhase | null>("closing");
+  const [firstNameMe, setFirstNameMe] = useState<string | null>(null);
   const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
   const [items, setItems] = useState<ChecklistTemplateItem[]>([]);
   const [photos, setPhotos] = useState<ChecklistTemplatePhoto[]>([]);
