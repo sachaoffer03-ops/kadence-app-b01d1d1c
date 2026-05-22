@@ -318,6 +318,37 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
       log.push("Template checklist d'ouverture déjà présent");
     }
 
+    // 4b-ter. Checklist de TRANSITION Barista (phase=transition)
+    const TRANS_TPL_NAME = "Démo — Transition Barista";
+    const { data: transExisting } = await supabaseAdmin
+      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", TRANS_TPL_NAME).maybeSingle();
+    if (!transExisting) {
+      const { data: transIns, error: transErr } = await supabaseAdmin.from("checklist_templates").insert({
+        studio_id: studio.id,
+        business_role_id: baristaBr?.id ?? null,
+        name: TRANS_TPL_NAME,
+        description: "Checklist rapide à faire entre deux shifts",
+        is_active: true,
+        is_blocking: false,
+        analyze_with_ai: false,
+        min_photos_required: 0,
+        phase: "transition",
+      } as any).select("id").single();
+      if (transErr) throw new Error(`transition template: ${transErr.message}`);
+      const transId = (transIns as any).id;
+      const { data: transPhotos } = await supabaseAdmin.from("checklist_template_photos").insert([
+        { template_id: transId, label: "État machine", description: "Photo de la machine au passage de relais", order_index: 0, is_required: false },
+      ]).select("id");
+      await supabaseAdmin.from("checklist_template_items").insert([
+        { template_id: transId, label: "Vérifier état machine", order_index: 0, is_required: true, photo_zone_id: (transPhotos as any)?.[0]?.id ?? null },
+        { template_id: transId, label: "Compter caisse intermédiaire", order_index: 1, is_required: true, photo_zone_id: null },
+      ]);
+      log.push("Template checklist de TRANSITION Barista créé (2 items + 1 photo)");
+    } else {
+      log.push("Template checklist de transition déjà présent");
+    }
+
+
     // 4c. Questions de clôture (5) pour le studio
     const { count: cqCount } = await supabaseAdmin
       .from("closure_questions").select("id", { count: "exact", head: true }).eq("studio_id", studio.id);
