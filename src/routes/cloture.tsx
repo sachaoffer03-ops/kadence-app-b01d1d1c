@@ -1389,6 +1389,7 @@ const QR_RENEWAL_OPTIONS = [
 ];
 
 function QrSection({ studio }: { studio: any }) {
+  const updateStudioConfig = useServerFn(updateStudioClosureConfig);
   const initial = useMemo(() => ({
     renewal: studio.qr_renewal_seconds ?? 60,
     currentCode: studio.current_qr_code ?? "",
@@ -1402,11 +1403,10 @@ function QrSection({ studio }: { studio: any }) {
   const save = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from("studios").update({
+      await updateStudioConfig({ data: { studioId: studio.id, patch: {
         qr_renewal_seconds: draft.renewal,
         current_qr_code: draft.currentCode || null,
-      }).eq("id", studio.id);
-      if (error) throw error;
+      } } });
       confirmSaved(draft);
       flashSaved();
       toast.success("✓ QR code enregistré");
@@ -1483,6 +1483,7 @@ const RESPONSE_TYPES: Record<string, string> = {
 };
 
 function QuestionsSection({ studioId }: { studioId: string }) {
+  const saveQuestionsConfig = useServerFn(saveClosureQuestionsConfig);
   const { draft: questions, setDraft: setQuestions, saved, isDirty, confirmSaved, revert, reset } = useDraftState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -1526,20 +1527,14 @@ function QuestionsSection({ studioId }: { studioId: string }) {
   const save = async () => {
     setSaving(true);
     try {
-      const savedIds = new Set(saved.filter((q) => q.id).map((q) => q.id));
-      const draftIds = new Set(questions.filter((q) => q.id).map((q) => q.id));
-      const removedIds = [...savedIds].filter((id) => !draftIds.has(id));
-
-      await Promise.all(removedIds.map((id) => supabase.from("closure_questions" as any).delete().eq("id", id)));
-      for (const [order_index, q] of questions.entries()) {
-        const payload = { question_text: q.question_text, response_type: q.response_type, order_index };
-        const { error } = q.id
-          ? await supabase.from("closure_questions" as any).update(payload as any).eq("id", q.id)
-          : await supabase.from("closure_questions" as any).insert({ studio_id: studioId, ...payload } as any);
-        if (error) throw error;
-      }
-
-      const fresh = await loadQuestions();
+      const fresh = await saveQuestionsConfig({ data: {
+        studioId,
+        questions: questions.map((q) => ({
+          id: q.id,
+          question_text: String(q.question_text ?? "").trim() || "Question sans titre",
+          response_type: q.response_type,
+        })),
+      } });
       confirmSaved(fresh);
       flashSaved();
       toast.success("✓ Questions enregistrées");
