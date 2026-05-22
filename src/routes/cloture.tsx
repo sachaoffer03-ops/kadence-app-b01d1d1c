@@ -555,45 +555,49 @@ const OVERDUE_LABELS: Record<string, string> = {
 };
 
 function ClockOutSection({ studio }: { studio: any }) {
-  const [local, setLocal] = useState({
+  const initial = useMemo(() => ({
     graceIn: studio.clock_in_grace_period_min ?? 15,
     before: studio.clock_out_button_appears_before_min ?? 15,
     grace: studio.clock_out_grace_period_min ?? 20,
     action: studio.clock_out_overdue_action ?? "notify_manager",
-  });
-  useEffect(() => {
-    setLocal({
-      graceIn: studio.clock_in_grace_period_min ?? 15,
-      before: studio.clock_out_button_appears_before_min ?? 15,
-      grace: studio.clock_out_grace_period_min ?? 20,
-      action: studio.clock_out_overdue_action ?? "notify_manager",
-    });
-  }, [studio.id, studio.clock_in_grace_period_min, studio.clock_out_button_appears_before_min, studio.clock_out_grace_period_min, studio.clock_out_overdue_action]);
+  }), [studio.id, studio.clock_in_grace_period_min, studio.clock_out_button_appears_before_min, studio.clock_out_grace_period_min, studio.clock_out_overdue_action]);
+  const { draft, setDraft, isDirty, confirmSaved, revert, reset } = useDraftState(initial);
+  useEffect(() => { reset(initial); }, [initial, reset]);
+  useDirtySection(`clockout-${studio.id}`, isDirty);
+  const [saving, setSaving] = useState(false);
 
-  const save = async (patch: Partial<typeof local>) => {
-    const next = { ...local, ...patch };
-    setLocal(next);
-    const dbPatch: any = {};
-    if (patch.graceIn !== undefined) dbPatch.clock_in_grace_period_min = patch.graceIn;
-    if (patch.before !== undefined) dbPatch.clock_out_button_appears_before_min = patch.before;
-    if (patch.grace !== undefined) dbPatch.clock_out_grace_period_min = patch.grace;
-    if (patch.action !== undefined) dbPatch.clock_out_overdue_action = patch.action;
-    const { error } = await supabase.from("studios").update(dbPatch).eq("id", studio.id);
-    if (error) toast.error(error.message); else flashSaved();
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("studios").update({
+        clock_in_grace_period_min: draft.graceIn,
+        clock_out_button_appears_before_min: draft.before,
+        clock_out_grace_period_min: draft.grace,
+        clock_out_overdue_action: draft.action,
+      }).eq("id", studio.id);
+      if (error) throw error;
+      confirmSaved(draft);
+      flashSaved();
+      toast.success("✓ Configuration du pointage enregistrée");
+    } catch (e: any) {
+      toast.error(`Erreur : ${e.message ?? e}`);
+    } finally {
+      setSaving(false);
+    }
   };
-  const saveDebounced = useDebouncedCallback((patch: Partial<typeof local>) => save(patch), 500);
 
   return (
     <SectionCard
       icon={Clock}
       title="Configuration du pointage"
       subtitle="Tolérance à l'arrivée et à la sortie. Ces réglages alimentent la page Pointage et les notifications proactives envoyées au manager."
+      right={<SaveButton isDirty={isDirty} saving={saving} onSave={save} onRevert={revert} />}
     >
       <div className="flex flex-wrap gap-5">
         <Field label="Tolérance retard à l'arrivée">
           <NumInput
-            value={local.graceIn}
-            onChange={(n) => { setLocal({ ...local, graceIn: n }); saveDebounced({ graceIn: n }); }}
+            value={draft.graceIn}
+            onChange={(n) => setDraft({ ...draft, graceIn: n })}
             suffix="min après l'heure de début"
           />
           <p style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
@@ -602,20 +606,20 @@ function ClockOutSection({ studio }: { studio: any }) {
         </Field>
         <Field label="Le bouton de sortie apparaît">
           <NumInput
-            value={local.before}
-            onChange={(n) => { setLocal({ ...local, before: n }); saveDebounced({ before: n }); }}
+            value={draft.before}
+            onChange={(n) => setDraft({ ...draft, before: n })}
             suffix="min avant la fin du shift"
           />
         </Field>
         <Field label="Pointage de sortie attendu au plus tard">
           <NumInput
-            value={local.grace}
-            onChange={(n) => { setLocal({ ...local, grace: n }); saveDebounced({ grace: n }); }}
+            value={draft.grace}
+            onChange={(n) => setDraft({ ...draft, grace: n })}
             suffix="min après la fin prévue"
           />
         </Field>
         <Field label="Au-delà">
-          <Select value={local.action} onValueChange={(v) => save({ action: v })}>
+          <Select value={draft.action} onValueChange={(v) => setDraft({ ...draft, action: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {Object.entries(OVERDUE_LABELS).map(([k, v]) => (
@@ -631,13 +635,14 @@ function ClockOutSection({ studio }: { studio: any }) {
         style={{ backgroundColor: "color-mix(in oklab, #60a5fa 10%, white)", borderLeft: "3px solid #60a5fa", fontSize: 12, lineHeight: 1.6 }}
       >
         <span style={{ fontWeight: 500 }}>Exemple : </span>
-        un shift commence à <b>08h00</b>. Si l'employé n'a pas pointé à <b>{addMinutes("08:00", local.graceIn)}</b>, l'admin est notifié.
-        Il se termine à <b>22h00</b> : le bouton « Terminer mon shift » apparaît dès <b>{addMinutes("22:00", -local.before)}</b>.
-        S'il n'a pas scanné le QR à <b>{addMinutes("22:00", local.grace)}</b>, <b>{OVERDUE_LABELS[local.action].toLowerCase()}</b>.
+        un shift commence à <b>08h00</b>. Si l'employé n'a pas pointé à <b>{addMinutes("08:00", draft.graceIn)}</b>, l'admin est notifié.
+        Il se termine à <b>22h00</b> : le bouton « Terminer mon shift » apparaît dès <b>{addMinutes("22:00", -draft.before)}</b>.
+        S'il n'a pas scanné le QR à <b>{addMinutes("22:00", draft.grace)}</b>, <b>{OVERDUE_LABELS[draft.action].toLowerCase()}</b>.
       </div>
     </SectionCard>
   );
 }
+
 
 // ============================================================
 // SECTION B — CHECKLISTS PER ROLE
