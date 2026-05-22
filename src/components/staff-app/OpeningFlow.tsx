@@ -282,10 +282,10 @@ export function OpeningFlow({ open, onClose, shift, userId, studios, firstName, 
               Étape 2 sur {totalSteps}
             </div>
             <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4, letterSpacing: "-0.01em" }}>
-              Checklist d'ouverture
+              {checklistTitle}
             </div>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 6 }}>
-              Coche chaque tâche réalisée avant d'ouvrir.
+              {phase === "transition" ? "Coche chaque tâche de relève avant de reprendre le poste." : "Coche chaque tâche réalisée avant d'ouvrir."}
             </div>
 
             <div className="mt-5 flex flex-col gap-2">
