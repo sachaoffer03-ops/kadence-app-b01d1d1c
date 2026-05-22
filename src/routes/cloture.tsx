@@ -1388,14 +1388,36 @@ const QR_RENEWAL_OPTIONS = [
 ];
 
 function QrSection({ studio }: { studio: any }) {
-  const update = async (patch: any) => {
-    const { error } = await supabase.from("studios").update(patch).eq("id", studio.id);
-    if (error) toast.error(error.message); else flashSaved();
+  const initial = useMemo(() => ({
+    renewal: studio.qr_renewal_seconds ?? 60,
+    currentCode: studio.current_qr_code ?? "",
+  }), [studio.id, studio.qr_renewal_seconds, studio.current_qr_code]);
+  const { draft, setDraft, isDirty, confirmSaved, revert, reset } = useDraftState(initial);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { reset(initial); }, [initial, reset]);
+  useDirtySection(`qr-${studio.id}`, isDirty);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("studios").update({
+        qr_renewal_seconds: draft.renewal,
+        current_qr_code: draft.currentCode || null,
+      }).eq("id", studio.id);
+      if (error) throw error;
+      confirmSaved(draft);
+      flashSaved();
+      toast.success("✓ QR code enregistré");
+    } catch (e: any) {
+      toast.error(`Erreur : ${e.message ?? e}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const regenerate = async () => {
-    await update({ current_qr_code: randomCode(5) });
-    toast.success("Code régénéré");
+    setDraft({ ...draft, currentCode: randomCode(5) });
   };
 
   return (
@@ -1403,10 +1425,11 @@ function QrSection({ studio }: { studio: any }) {
       icon={QrCode}
       title="QR code de clôture"
       subtitle="Un QR code unique s'affiche sur la tablette posée à l'accueil du studio. Il change automatiquement à l'intervalle ci-dessous pour empêcher qu'un employé pointe à distance."
+      right={<SaveButton isDirty={isDirty} saving={saving} onSave={save} onRevert={revert} />}
     >
       <div className="flex flex-wrap gap-5">
         <Field label="Renouvellement du code">
-          <Select value={String(studio.qr_renewal_seconds ?? 60)} onValueChange={(v) => update({ qr_renewal_seconds: parseInt(v, 10) })}>
+          <Select value={String(draft.renewal)} onValueChange={(v) => setDraft({ ...draft, renewal: parseInt(v, 10) })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {QR_RENEWAL_OPTIONS.map((o) => <SelectItem key={o.v} value={String(o.v)}>{o.l}</SelectItem>)}
@@ -1430,12 +1453,12 @@ function QrSection({ studio }: { studio: any }) {
         <div style={{ flex: 1, minWidth: 240 }}>
           <div style={{ fontWeight: 500, marginBottom: 2 }}>Code actuellement affiché sur la tablette de <b>{studio.name}</b></div>
           <div style={{ color: "var(--muted-foreground)" }}>
-            C'est le code que l'employé scanne (ou tape) à la fin de son shift. Il se renouvelle automatiquement toutes les {studio.qr_renewal_seconds ?? 60} secondes.
+            C'est le code que l'employé scanne (ou tape) à la fin de son shift. Il se renouvelle automatiquement toutes les {draft.renewal} secondes.
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="px-2.5 py-1.5 rounded" style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 14, backgroundColor: "var(--background)", color: "var(--foreground)", border: "1px solid var(--border)" }}>
-            {studio.current_qr_code ?? "—"}
+            {draft.currentCode || "—"}
           </span>
           <button onClick={regenerate}
             className="rounded-md border px-3 py-1.5 flex items-center gap-1.5"
