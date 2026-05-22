@@ -122,6 +122,10 @@ export function OpeningFlow({ open, onClose, shift, userId, studios, firstName, 
   const hasChecklist = !!template && items.length > 0;
   const hasPhotos = !!template && photos.length > 0;
   const totalSteps: Step = (hasPhotos ? 3 : hasChecklist ? 2 : 1) as Step;
+  const checklistTitle = phase === "transition"
+    ? `Transition ${shift.business_role}`
+    : `Ouverture ${shift.business_role}`;
+  const ctaStart = phase === "transition" ? "Commencer la transition →" : "Commencer ma checklist d'ouverture →";
 
   const itemsBlocked = items.some((i) => i.is_required && !itemStates[i.id]);
   const photosBlocked = photos.some((p) => p.is_required && photoStates[p.id]?.status !== "done");
