@@ -1505,7 +1505,9 @@ function SortableQuestion({ q, onChanged, onDeleted }: { q: any; onChanged?: (pa
       <button {...attributes} {...listeners} className="cursor-grab touch-none" style={{ color: "var(--muted-foreground)" }}>
         <GripVertical size={14} />
       </button>
-      <input value={text} onChange={(e) => { setText(e.target.value); saveText(e.target.value); }}
+      <input value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={(e) => saveText(e.target.value)}
         className="flex-1 px-2 py-1 rounded"
         style={{ fontSize: 13, backgroundColor: "transparent", border: "none", outline: "none" }} />
       <Select value={q.response_type} onValueChange={setType}>
