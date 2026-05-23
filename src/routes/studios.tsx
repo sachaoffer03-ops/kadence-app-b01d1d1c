@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
   Check,
+  QrCode,
 } from "lucide-react";
 import {
   roleColors,
