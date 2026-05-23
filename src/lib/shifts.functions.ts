@@ -244,7 +244,8 @@ export const publishPlanning = createServerFn({ method: "POST" })
       .object({
         startDate: z.string().regex(DATE),
         endDate: z.string().regex(DATE),
-        studioId: z.string().uuid().optional(), // si fourni : ne publie que ce studio
+        studioId: z.string().uuid().optional(), // legacy single studio
+        studioIds: z.array(z.string().uuid()).optional(), // multi-studio publish
         // Si false (défaut) → bloque si une publication existe déjà sur la période.
         // Le client doit confirmer (true) pour republier.
         confirmRepublish: z.boolean().optional(),
@@ -254,6 +255,10 @@ export const publishPlanning = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+
+    const studioIds = (data.studioIds && data.studioIds.length > 0)
+      ? data.studioIds
+      : (data.studioId ? [data.studioId] : []);
 
     // 0. Garde-fou anti-double-publication : signale si une publication existe
     // déjà qui chevauche la période. L'admin doit confirmer pour republier.
@@ -286,7 +291,7 @@ export const publishPlanning = createServerFn({ method: "POST" })
       .not("user_id", "is", null)
       .gte("shift_date", data.startDate)
       .lte("shift_date", data.endDate);
-    if (data.studioId) q = q.eq("studio_id", data.studioId);
+    if (studioIds.length > 0) q = q.in("studio_id", studioIds);
     const { data: drafts, error: e1 } = await q;
     if (e1) throw new Error(e1.message);
 
