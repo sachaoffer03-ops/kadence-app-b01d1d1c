@@ -177,17 +177,14 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     return () => clearInterval(t);
   }, []);
 
-  // Auto-ouverture de la sheet propositions si ?proposals=1 dans l'URL
+  // Redirection vers la page dédiée si ?proposals=1 dans l'URL
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("proposals") === "1") {
-      setProposalsOpen(true);
-      params.delete("proposals");
-      const qs = params.toString();
-      window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+      navigate({ to: "/staff-app/propositions" });
     }
-  }, []);
+  }, [navigate]);
 
   function handleStartClockIn(s: ShiftRow) {
     if (s.clocked_in_at) { toast.info("Arrivée déjà pointée"); return; }
