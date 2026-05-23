@@ -24,6 +24,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(sections.map((s) => s.id)));
   const [editing, setEditing] = useState<{ moduleId: string; type: ContentType; existing: any } | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<{ moduleId: string; existing: any } | null>(null);
+  const [previewing, setPreviewing] = useState<{ title: string; kind: "content" | "quiz"; data: any } | null>(null);
   const [promptDlg, setPromptDlg] = useState<{ variant: PromptVariant; initial?: string; onSubmit: (v: string) => Promise<void> } | null>(null);
 
   const createSec = useServerFn(createSection);
