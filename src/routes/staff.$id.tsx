@@ -18,6 +18,9 @@ import { countUnviewedDocuments } from "@/lib/documents.functions";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    edit: search.edit === 1 || search.edit === "1" ? 1 : undefined,
+  }),
   head: () => ({ meta: [{ title: "Profil employé — Kadence" }] }),
 });
 
@@ -43,6 +46,7 @@ const initials = (f: string, l: string) => `${(f?.[0] || "").toUpperCase()}${(l?
 
 function EmployeeDetailPage() {
   const { id } = Route.useParams();
+  const { edit } = Route.useSearch();
   const { user, appRole } = useAuth();
   const canRate = appRole === "admin" || appRole === "manager";
   const [emp, setEmp] = useState<Profile | null>(null);
@@ -111,6 +115,12 @@ function EmployeeDetailPage() {
   useEffect(() => {
     fetchUnviewed({ data: { userId: id } }).then(r => setUnviewedDocs(r.count)).catch(() => setUnviewedDocs(0));
   }, [id, tab]);
+  useEffect(() => {
+    if (edit === 1) {
+      setTab("profil");
+      toast.info("Mode édition — clique sur « Modifier » à côté du taux horaire", { duration: 4000 });
+    }
+  }, [edit]);
 
   const submitRating = async (shiftId: string) => {
     if (!user) return;

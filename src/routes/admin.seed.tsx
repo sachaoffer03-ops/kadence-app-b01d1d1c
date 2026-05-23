@@ -280,12 +280,12 @@ function EmployeeCard({ emp, password, busy, onCopy, onRegen, onSwitch }: {
 
       {exists && profile && (
         <div className="grid grid-cols-2 gap-1.5">
-          <Link to="/staff/$userId" params={{ userId: profile.id }}
+          <Link to="/staff/$id" params={{ id: profile.id }}
             className="rounded-md border px-2 py-1.5 flex items-center justify-center gap-1 hover:bg-[var(--muted)]"
             style={{ fontSize: 11, fontWeight: 500, borderColor: "var(--border)" }}>
             <User size={11} /> Profil admin
           </Link>
-          <Link to="/staff/$userId" params={{ userId: profile.id }} search={{ edit: 1 } as any}
+          <Link to="/staff/$id" params={{ id: profile.id }} search={{ edit: 1 }}
             className="rounded-md border px-2 py-1.5 flex items-center justify-center gap-1 hover:bg-[var(--muted)]"
             style={{ fontSize: 11, fontWeight: 500, borderColor: "var(--border)" }}>
             <Pencil size={11} /> Modifier
