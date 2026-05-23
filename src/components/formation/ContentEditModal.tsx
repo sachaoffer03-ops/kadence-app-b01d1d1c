@@ -207,11 +207,9 @@ export function ContentEditModal({ open, onOpenChange, courseId, moduleId, type,
             </Field>
           )}
 
-          {type !== "quiz" && (
-            <PreviewFrame>
-              <ContentPreview content={{ type, title, url, external_url: externalUrl, text_content: textContent, duration_seconds: duration }} />
-            </PreviewFrame>
-          )}
+          <PreviewFrame>
+            <ContentPreview content={{ type, title, url, external_url: externalUrl, text_content: textContent, duration_seconds: duration }} />
+          </PreviewFrame>
         </div>
 
         <div className="flex items-center justify-end gap-2 px-7 py-4" style={{ borderTop: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}>
