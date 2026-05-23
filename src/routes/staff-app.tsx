@@ -448,10 +448,13 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
                 const endDt = new Date(next.shift_date + "T" + next.end_time);
                 const openAt = endDt.getTime() - beforeMin * 60_000;
                 const overdueAt = endDt.getTime() + graceMin * 60_000;
-                const canClockOut = nowTs >= openAt;
+                // Fenêtre normale (avant fin de shift) OU garde-fou : 30 min après clock-in
+                const clockedInTs = next.clocked_in_at ? new Date(next.clocked_in_at).getTime() : null;
+                const safeOpenAt = clockedInTs ? clockedInTs + 30 * 60_000 : Infinity;
+                const canClockOut = nowTs >= openAt || nowTs >= safeOpenAt;
                 const isOverdue = nowTs >= overdueAt;
                 if (!canClockOut) {
-                  const minsLeft = Math.max(1, Math.ceil((openAt - nowTs) / 60_000));
+                  const minsLeft = Math.max(1, Math.ceil((Math.min(openAt, safeOpenAt) - nowTs) / 60_000));
                   return (
                     <div
                       className="mt-4 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
@@ -471,6 +474,7 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
                   </button>
                 );
               })()}
+
               {state === "future" && next && !isToday && (
                 <button
                   onClick={() => setShiftDetail(next)}
