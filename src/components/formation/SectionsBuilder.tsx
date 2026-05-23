@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Video, FileText, Image as ImageIcon, HelpCircle, ArrowUp, ArrowDown } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Video, FileText, Image as ImageIcon, HelpCircle, ArrowUp, ArrowDown, Eye } from "lucide-react";
 import { toast } from "sonner";
 import {
   createSection, updateSection, deleteSection, reorderSections,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/formation.functions";
 import { ContentEditModal } from "./ContentEditModal";
 import { QuizEditModal } from "./QuizEditModal";
+import { PreviewModal } from "./PreviewModal";
 import { PromptDialog, type PromptVariant } from "./PromptDialog";
 import { TYPE_COLOR, TYPE_LABEL, fmtDuration } from "./types";
 import type { CourseFull, ContentType } from "./types";
@@ -23,6 +24,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(sections.map((s) => s.id)));
   const [editing, setEditing] = useState<{ moduleId: string; type: ContentType; existing: any } | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<{ moduleId: string; existing: any } | null>(null);
+  const [previewing, setPreviewing] = useState<{ title: string; kind: "content" | "quiz"; data: any } | null>(null);
   const [promptDlg, setPromptDlg] = useState<{ variant: PromptVariant; initial?: string; onSubmit: (v: string) => Promise<void> } | null>(null);
 
   const createSec = useServerFn(createSection);
@@ -187,6 +189,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
                             </span>
                             <IconBtn onClick={() => moveContent(mod.id, mod.contents, ci, -1)} disabled={ci === 0}><ArrowUp size={11} /></IconBtn>
                             <IconBtn onClick={() => moveContent(mod.id, mod.contents, ci, 1)} disabled={ci === mod.contents.length - 1}><ArrowDown size={11} /></IconBtn>
+                            <IconBtn onClick={() => setPreviewing({ title: c.title, kind: "content", data: c })}><Eye size={11} /></IconBtn>
                             <IconBtn onClick={() => setEditing({ moduleId: mod.id, type: c.type, existing: c })}><Pencil size={11} /></IconBtn>
                             <IconBtn onClick={() => handleDeleteContent(c.id)} danger><Trash2 size={11} /></IconBtn>
                           </div>
@@ -199,6 +202,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
                           <HelpCircle size={12} style={{ color: "#8B5CF6" }} />
                           <span style={{ fontSize: 12, flex: 1 }}>Quiz · {mod.quiz.questions.length} question{mod.quiz.questions.length !== 1 ? "s" : ""}</span>
                           <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>≥ {mod.quiz.passing_score}%</span>
+                          <IconBtn onClick={() => setPreviewing({ title: `Quiz · ${mod.title}`, kind: "quiz", data: mod.quiz })}><Eye size={11} /></IconBtn>
                           <IconBtn onClick={() => setEditingQuiz({ moduleId: mod.id, existing: mod.quiz })}><Pencil size={11} /></IconBtn>
                         </div>
                       )}
@@ -270,6 +274,16 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
           variant={promptDlg.variant}
           initialValue={promptDlg.initial}
           onSubmit={promptDlg.onSubmit}
+        />
+      )}
+
+      {previewing && (
+        <PreviewModal
+          open
+          onOpenChange={(v) => !v && setPreviewing(null)}
+          title={previewing.title}
+          kind={previewing.kind}
+          data={previewing.data}
         />
       )}
     </div>
