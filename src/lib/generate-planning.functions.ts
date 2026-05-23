@@ -860,7 +860,7 @@ async function runEngine(ctx: EngineCtx) {
 
   // Reconstruire les "shifts finaux" à partir des cellules
   const finalShifts: Array<{
-    user_id: string; studio_id: string; business_role: string;
+    user_id: string | null; studio_id: string; business_role: string;
     shift_date: string; start_time: string; end_time: string;
     status: string; is_locked: boolean; is_manual: boolean;
   }> = [];
@@ -868,7 +868,30 @@ async function runEngine(ctx: EngineCtx) {
     let i = 0;
     while (i < req.cells.length) {
       const c = req.cells[i];
-      if (c.blocked || c.userId === null) { i++; continue; }
+      if (c.blocked) { i++; continue; }
+
+      if (c.userId === null) {
+        // Trou matérialisé : shift vide (user_id = null) pour /trous
+        let j = i;
+        while (j < req.cells.length - 1 &&
+               req.cells[j + 1].userId === null &&
+               !req.cells[j + 1].blocked &&
+               req.cells[j + 1].startMin === req.cells[j].endMin) j++;
+        finalShifts.push({
+          user_id: null,
+          studio_id: req.studio_id,
+          business_role: req.role,
+          shift_date: req.date,
+          start_time: `${m2t(req.cells[i].startMin)}:00`,
+          end_time: `${m2t(req.cells[j].endMin)}:00`,
+          status: "open",
+          is_locked: false,
+          is_manual: false,
+        });
+        i = j + 1;
+        continue;
+      }
+
       const uid = c.userId;
       let j = i;
       while (j < req.cells.length - 1 &&
@@ -889,6 +912,7 @@ async function runEngine(ctx: EngineCtx) {
       i = j + 1;
     }
   }
+
 
   // Validation : pas de shift < min, pas de chevauchement (sécurité)
   const validation: string[] = [];
@@ -991,7 +1015,7 @@ async function runEngine(ctx: EngineCtx) {
   return {
     status,
     coverage_rate: +coverage.toFixed(4),
-    shifts_generated: dryRun ? finalShifts.length : inserted,
+    shifts_generated: finalShifts.filter((sh) => sh.user_id !== null).length,
     total_slots_needed: totalSlotsNeeded,
     total_slots_covered: totalSlotsCovered,
     holes,
