@@ -593,49 +593,67 @@ async function purgeAllDemoChecklistTemplates() {
   await supabaseAdmin.from("checklist_templates").delete().in("id", ids);
 }
 
-async function createAllChecklistTemplates(studioId: string) {
+async function createAllChecklistTemplates(studioId: string): Promise<{ ok: number; failed: { name: string; error: string }[] }> {
+  let ok = 0;
+  const failed: { name: string; error: string }[] = [];
   for (const def of CHECKLISTS) {
-    const { data: br } = await supabaseAdmin
-      .from("business_roles").select("id").eq("name", def.role).maybeSingle();
-    const brId = br?.id ?? null;
-    const { data: tpl, error } = await supabaseAdmin.from("checklist_templates").insert({
-      studio_id: studioId,
-      business_role_id: brId,
-      name: def.name,
-      description: def.description,
-      phase: def.phase,
-      is_active: true,
-      is_blocking: def.phase === "closing",
-      analyze_with_ai: def.analyze_with_ai,
-      ai_validation_threshold: def.ai_validation_threshold,
-      ai_detection_hint: def.ai_detection_hint ?? null,
-      min_photos_required: def.min_photos_required,
-    } as any).select("id").single();
-    if (error) throw new Error(`template ${def.name}: ${error.message}`);
-    const tplId = tpl!.id;
-    // Photos
-    let photoMap = new Map<string, string>();
-    if (def.photos.length) {
-      const { data: photoRows } = await supabaseAdmin.from("checklist_template_photos").insert(
-        def.photos.map((p, i) => ({
-          template_id: tplId, label: p.label, description: p.description,
-          is_required: p.is_required, order_index: i,
+    try {
+      const { data: br } = await supabaseAdmin
+        .from("business_roles").select("id").eq("name", def.role).maybeSingle();
+      const brId = br?.id ?? null;
+
+      // Free the slot (studio_id, business_role_id, phase) — unique constraint
+      let q = supabaseAdmin.from("checklist_templates").select("id")
+        .eq("studio_id", studioId).eq("phase", def.phase);
+      q = brId ? q.eq("business_role_id", brId) : q.is("business_role_id", null);
+      const { data: existing } = await q;
+      const exIds = (existing ?? []).map((t: any) => t.id);
+      if (exIds.length) {
+        await supabaseAdmin.from("checklist_template_items").delete().in("template_id", exIds);
+        await supabaseAdmin.from("checklist_template_photos").delete().in("template_id", exIds);
+        await supabaseAdmin.from("checklist_templates").delete().in("id", exIds);
+      }
+
+      const { data: tpl, error } = await supabaseAdmin.from("checklist_templates").insert({
+        studio_id: studioId,
+        business_role_id: brId,
+        name: def.name,
+        description: def.description,
+        phase: def.phase,
+        is_active: true,
+        is_blocking: def.phase === "closing",
+        analyze_with_ai: def.analyze_with_ai,
+        ai_validation_threshold: def.ai_validation_threshold,
+        ai_detection_hint: def.ai_detection_hint ?? null,
+        min_photos_required: def.min_photos_required,
+      } as any).select("id").single();
+      if (error) throw new Error(error.message);
+      const tplId = tpl!.id;
+
+      let photoMap = new Map<string, string>();
+      if (def.photos.length) {
+        const { data: photoRows } = await supabaseAdmin.from("checklist_template_photos").insert(
+          def.photos.map((p, i) => ({
+            template_id: tplId, label: p.label, description: p.description,
+            is_required: p.is_required, order_index: i,
+          }))
+        ).select("id, label");
+        photoMap = new Map((photoRows ?? []).map((p: any) => [p.label, p.id]));
+      }
+      const photoIds = Array.from(photoMap.values());
+      await supabaseAdmin.from("checklist_template_items").insert(
+        def.items.map((label, i) => ({
+          template_id: tplId, label, order_index: i, is_required: true,
+          photo_zone_id: photoIds[i] ?? null,
         }))
-      ).select("id, label");
-      photoMap = new Map((photoRows ?? []).map((p: any) => [p.label, p.id]));
+      );
+      ok++;
+    } catch (e: any) {
+      console.error(`[seed-demo] template ${def.name} failed:`, e?.message);
+      failed.push({ name: def.name, error: e?.message ?? String(e) });
     }
-    // Items: si on a des photos, on associe le 1er item à la 1ère photo, etc., sinon null
-    const photoIds = Array.from(photoMap.values());
-    await supabaseAdmin.from("checklist_template_items").insert(
-      def.items.map((label, i) => ({
-        template_id: tplId,
-        label,
-        order_index: i,
-        is_required: true,
-        photo_zone_id: photoIds[i] ?? null,
-      }))
-    );
   }
+  return { ok, failed };
 }
 
 // ────────────────────────────────────────────────────────────────
