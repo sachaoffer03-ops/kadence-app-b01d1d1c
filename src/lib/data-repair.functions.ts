@@ -95,3 +95,50 @@ export const giveAllRolesToAllEmployees = createServerFn({ method: "POST" })
     }
     return { employees: employees.length, roles_added: added, roles_total: allRoles.length };
   });
+
+export const validateAllRequiredTrainingsForEmployees = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId, supabase } = context;
+    await assertAdmin(supabase, userId);
+
+    const { data: requiredCourses } = await supabaseAdmin
+      .from("training_courses")
+      .select("id, title")
+      .eq("required_for_planning", true);
+
+    if (!requiredCourses || requiredCourses.length === 0) {
+      return { employees: 0, required_courses: 0, validated: 0, message: "Aucune formation obligatoire trouvée" };
+    }
+
+    const { data: adminRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    const adminIds = new Set((adminRoles ?? []).map((r: any) => r.user_id));
+
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("status", "active");
+    const employees = (profiles ?? []).filter((p: any) => !adminIds.has(p.id));
+
+    let validated = 0;
+    for (const emp of employees) {
+      const { data: existing } = await supabaseAdmin
+        .from("training_course_completions")
+        .select("course_id")
+        .eq("user_id", emp.id);
+      const existingSet = new Set((existing ?? []).map((r: any) => r.course_id));
+      const missing = requiredCourses.filter((c: any) => !existingSet.has(c.id));
+      if (missing.length > 0) {
+        await supabaseAdmin.from("training_course_completions").insert(
+          missing.map((c: any) => ({ user_id: emp.id, course_id: c.id, completed_at: new Date().toISOString() }))
+        );
+        validated += missing.length;
+      }
+    }
+
+    return { employees: employees.length, required_courses: requiredCourses.length, validated };
+  });
+
