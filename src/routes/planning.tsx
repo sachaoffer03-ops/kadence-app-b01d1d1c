@@ -719,13 +719,15 @@ function PlanningCalendarPage() {
     const start = weekDays[0];
     const end = weekDays[6];
     const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const studioEntry = Array.from(studioMap.entries()).find(([_id, name]) => name === selectedStudio);
+    const studioIds = Array.from(selectedStudios)
+      .map((name) => Array.from(studioMap.entries()).find(([_id, n]) => n === name)?.[0])
+      .filter((id): id is string => !!id);
     try {
       const res: any = await publishPlanningFn({
         data: {
           startDate: toISO(start),
           endDate: toISO(end),
-          ...(studioEntry ? { studioId: studioEntry[0] } : {}),
+          ...(studioIds.length > 0 ? { studioIds } : {}),
           ...(force ? { confirmRepublish: true } : {}),
         },
       });
