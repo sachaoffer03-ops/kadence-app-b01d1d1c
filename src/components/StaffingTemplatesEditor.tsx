@@ -121,7 +121,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
         <div className="rounded-lg p-3 flex items-start gap-2" style={{ backgroundColor: "var(--info-bg)" }}>
           <Info size={14} style={{ color: "var(--info-text)", marginTop: 2, flexShrink: 0 }} />
           <div style={{ fontSize: 11, color: "var(--info-text)", lineHeight: 1.5 }}>
-            Tes modifications sont enregistrées immédiatement. Pour les appliquer au planning existant, va sur <a href="/planning/generate" style={{ textDecoration: "underline", fontWeight: 500 }}>Planning › Générer</a> et choisis la période à recalculer.
+            Tes modifications sont enregistrées immédiatement. Pour les appliquer au planning existant, va sur <a href="/planning" style={{ textDecoration: "underline", fontWeight: 500 }}>Planning</a> et lance une nouvelle génération.
           </div>
         </div>
       )}

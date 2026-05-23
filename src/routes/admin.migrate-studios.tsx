@@ -145,7 +145,7 @@ function MigrateStudiosPage() {
               ))}
             </ul>
           </div>
-          <Link to="/planning/generate"><Button>Aller à la génération de planning <ArrowRight size={14} className="ml-1" /></Button></Link>
+          <Link to="/planning"><Button>Voir le planning <ArrowRight size={14} className="ml-1" /></Button></Link>
         </Card>
       )}
     </div>

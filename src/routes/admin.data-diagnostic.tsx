@@ -44,7 +44,7 @@ function DataDiagnosticPage() {
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <Link to="/planning/generate" className="flex items-center gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 4 }}>
+          <Link to="/planning" className="flex items-center gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 4 }}>
             <ArrowLeft size={12} /> Retour
           </Link>
           <h1 style={{ fontSize: 22, fontWeight: 500 }}>Diagnostic données</h1>

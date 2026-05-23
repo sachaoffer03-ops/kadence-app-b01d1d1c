@@ -70,7 +70,7 @@ function SeederPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
-      <Link to="/planning/generate" className="flex items-center gap-1 mb-4" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+      <Link to="/planning" className="flex items-center gap-1 mb-4" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
         <ArrowLeft size={12} /> Retour
       </Link>
       <Link to="/admin/migrate-studios" className="inline-block mb-4 ml-3" style={{ fontSize: 12, color: "var(--primary)" }}>
@@ -191,13 +191,6 @@ function SeederPage() {
             {kitchenResult.skipped.map((s: string, i: number) => (
               <div key={i} style={{ color: "var(--muted-foreground)", fontSize: 12, marginTop: 4 }}>· {s}</div>
             ))}
-            <button
-              onClick={() => navigate({ to: "/planning/generate" })}
-              className="mt-4 rounded-xl px-4 py-2 flex items-center gap-2"
-              style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", border: "none" }}
-            >
-              Relancer une génération de planning <ArrowRight size={14} />
-            </button>
           </div>
         )}
       </div>
@@ -243,13 +236,6 @@ function ResultPanel({ result, navigate }: { result: any; navigate: any }) {
       </Section>
 
       <div className="flex gap-3 mt-5">
-        <button
-          onClick={() => navigate({ to: "/planning/generate" })}
-          className="flex-1 rounded-xl px-4 py-3 flex items-center justify-center gap-2"
-          style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", border: "none" }}
-        >
-          Aller à la génération de planning <ArrowRight size={14} />
-        </button>
         <Link to="/staff" className="flex-1 rounded-xl px-4 py-3 flex items-center justify-center"
           style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)", textAlign: "center" }}>
           Voir les employés

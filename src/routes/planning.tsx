@@ -940,10 +940,10 @@ function PlanningCalendarPage() {
           </div>
           <Link
             to="/planning/generate"
-            className="rounded-md px-4 py-2 flex items-center gap-1.5 transition-colors"
-            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff", textDecoration: "none" }}
+            className="rounded-xl flex items-center gap-2 transition-colors"
+            style={{ height: 40, padding: "0 20px", fontSize: 13, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", textDecoration: "none" }}
           >
-            <Sparkle size={13} /> Générer
+            <Sparkles size={16} /> Générer un planning
           </Link>
         </div>
       </div>
