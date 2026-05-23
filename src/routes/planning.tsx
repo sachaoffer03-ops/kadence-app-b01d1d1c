@@ -892,8 +892,9 @@ function PlanningCalendarPage() {
                 style={{
                   fontSize: 12,
                   fontWeight: 500,
-                  backgroundColor: active ? "var(--foreground)" : "transparent",
-                  color: active ? "var(--card)" : "var(--muted-foreground)",
+                  backgroundColor: active ? "#fff" : "transparent",
+                  color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                  boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
                   textTransform: "capitalize",
                 }}
               >
