@@ -809,12 +809,32 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
 
       {/* Navigateur de période */}
       <div className="flex items-center gap-2 mb-2">
-        <button onClick={shiftPrev} className="rounded-full p-1.5" style={{ border: "0.5px solid var(--border)", backgroundColor: "#fff" }} aria-label="Précédent">
-          <ChevronLeft size={14} />
+        <button onClick={shiftPrev} className="rounded-full p-2.5" style={{ border: "0.5px solid var(--border)", backgroundColor: "#fff" }} aria-label="Précédent">
+          <ChevronLeft size={18} />
         </button>
-        <div className="flex-1 text-center" style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" }}>{rangeLabel}</div>
-        <button onClick={shiftNext} className="rounded-full p-1.5" style={{ border: "0.5px solid var(--border)", backgroundColor: "#fff" }} aria-label="Suivant">
-          <ChevronRight size={14} />
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className="flex-1 flex items-center justify-center gap-2 rounded-full py-2 px-3 transition-colors"
+              style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize", border: "0.5px solid var(--border)", backgroundColor: "#fff" }}
+              aria-label="Choisir une date"
+            >
+              <CalendarDays size={14} style={{ color: "var(--muted-foreground)" }} />
+              <span>{rangeLabel}</span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="center">
+            <CalendarPicker
+              mode="single"
+              selected={cursor}
+              onSelect={(d) => { if (d) setCursor(d); }}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+        <button onClick={shiftNext} className="rounded-full p-2.5" style={{ border: "0.5px solid var(--border)", backgroundColor: "#fff" }} aria-label="Suivant">
+          <ChevronRight size={18} />
         </button>
       </div>
 
