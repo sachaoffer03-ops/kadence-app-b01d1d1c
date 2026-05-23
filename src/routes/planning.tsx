@@ -57,6 +57,7 @@ interface PlanningShift {
   phone?: string;
   note?: string;
   isDraft?: boolean;
+  unpublished?: boolean;
   isLocked?: boolean;
   isManual?: boolean;
   conflict?: boolean; // overlap with another shift of same employee
@@ -560,6 +561,7 @@ function PlanningCalendarPage() {
           pointage: ptg,
           phone: row.profiles?.phone ?? undefined,
           isDraft: row.status === "draft",
+          unpublished: !!row.user_id && !row.published_at,
           isLocked: !!row.is_locked,
           isManual: !!row.is_manual,
           conflict: conflictIds.has(row.id),
@@ -709,7 +711,7 @@ function PlanningCalendarPage() {
     }
   };
 
-  const draftCount = useMemo(() => studioShifts.filter((s) => s.isDraft).length, [studioShifts]);
+  const draftCount = useMemo(() => studioShifts.filter((s) => s.unpublished).length, [studioShifts]);
   const conflictCount = useMemo(() => studioShifts.filter((s) => s.conflict).length, [studioShifts]);
   const [publishOpen, setPublishOpen] = useState(false);
 
@@ -972,13 +974,13 @@ function PlanningCalendarPage() {
             <FileEdit size={18} style={{ color: "var(--coral-dark)" }} />
             <div className="flex flex-col gap-0.5">
               <span style={{ fontWeight: 600, color: "var(--coral-dark)", fontSize: 14 }}>
-                {draftCount > 0 && `${draftCount} shift${draftCount > 1 ? "s" : ""} en brouillon`}
+                {draftCount > 0 && `${draftCount} shift${draftCount > 1 ? "s" : ""} à publier`}
                 {draftCount > 0 && conflictCount > 0 && " · "}
                 {conflictCount > 0 && `${conflictCount} conflit${conflictCount > 1 ? "s" : ""} détecté${conflictCount > 1 ? "s" : ""}`}
               </span>
               {draftCount > 0 && (
                 <span style={{ fontSize: 11, color: "var(--coral-dark)", opacity: 0.85 }}>
-                  Non visibles par les employés — publie pour les notifier
+                  Les employés ne sont pas encore notifiés — publie pour leur envoyer
                 </span>
               )}
             </div>
@@ -1091,7 +1093,7 @@ function PlanningCalendarPage() {
               <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{weekRangeLabel}</div>
             </div>
             <div className="px-5 py-4" style={{ fontSize: 13, color: "var(--foreground)" }}>
-              Tu vas publier <strong>{draftCount} shift{draftCount > 1 ? "s" : ""} en brouillon</strong>. Les employés concernés recevront une notification dans l'app.
+              Tu vas publier <strong>{draftCount} shift{draftCount > 1 ? "s" : ""} non encore notifié{draftCount > 1 ? "s" : ""}</strong>. Les employés concernés recevront une notification dans l'app.
               {conflictCount > 0 && (
                 <div className="mt-3 rounded-md px-3 py-2 flex items-center gap-2" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger-text)", fontSize: 11 }}>
                   <AlertTriangle size={12} /> {conflictCount} conflit{conflictCount > 1 ? "s" : ""} non résolu{conflictCount > 1 ? "s" : ""} — vérifie avant de publier.
