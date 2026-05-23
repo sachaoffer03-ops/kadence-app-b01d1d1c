@@ -778,9 +778,8 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked")
         .eq("user_id", userId)
-        .not("published_at", "is", null)
         .gte("shift_date", toISO(rangeStart)).lte("shift_date", toISO(rangeEnd))
         .order("shift_date").order("start_time");
       if (data) setShifts(data);
