@@ -173,6 +173,31 @@ function DemandesPage() {
     finally { setBusy(false); }
   };
 
+  const toggleSelectShift = (reqId: string, shiftId: string, uid: string) => {
+    const key = `${reqId}:${shiftId}`;
+    setSelectedShift((prev) => {
+      const cur = new Set(prev[key] || []);
+      cur.has(uid) ? cur.delete(uid) : cur.add(uid);
+      return { ...prev, [key]: cur };
+    });
+  };
+
+  const sendProposalsForShift = async (reqId: string, shiftId: string) => {
+    const key = `${reqId}:${shiftId}`;
+    const ids = Array.from(selectedShift[key] || []);
+    if (ids.length === 0) { toast.error("Sélectionnez au moins un employé"); return; }
+    setBusy(true);
+    try {
+      const r = await sendFn({ data: { requestId: reqId, userIds: ids, shiftId } });
+      toast.success(`${r.count} proposition${r.count > 1 ? "s" : ""} envoyée${r.count > 1 ? "s" : ""}`);
+      setSelectedShift((prev) => ({ ...prev, [key]: new Set() }));
+      setOpenShiftPanel((prev) => ({ ...prev, [key]: false }));
+      loadAll();
+    } catch (e: any) { toast.error(e.message || "Erreur"); }
+    finally { setBusy(false); }
+  };
+
+
   const acceptCancel = async (req: Row) => {
     setBusy(true);
     try {
