@@ -583,10 +583,18 @@ async function insertJuneAvailabilities(userId: string, pattern: AvailPattern) {
   if (rows.length) await supabaseAdmin.from("availabilities").insert(rows);
 }
 
-async function purgeAllDemoChecklistTemplates() {
-  const { data: tpls } = await supabaseAdmin
-    .from("checklist_templates").select("id").like("name", "Démo%");
-  const ids = (tpls ?? []).map((t: any) => t.id);
+async function purgeAllDemoChecklistTemplates(studioId?: string) {
+  // Purge by studio if known (frees all slots), fallback to name-based "Démo%"
+  let ids: string[] = [];
+  if (studioId) {
+    const { data } = await supabaseAdmin
+      .from("checklist_templates").select("id").eq("studio_id", studioId);
+    ids = (data ?? []).map((t: any) => t.id);
+  } else {
+    const { data } = await supabaseAdmin
+      .from("checklist_templates").select("id").like("name", "Démo%");
+    ids = (data ?? []).map((t: any) => t.id);
+  }
   if (!ids.length) return;
   await supabaseAdmin.from("checklist_template_items").delete().in("template_id", ids);
   await supabaseAdmin.from("checklist_template_photos").delete().in("template_id", ids);
