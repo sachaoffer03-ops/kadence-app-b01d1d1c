@@ -10,6 +10,30 @@ async function assertAdmin(supabase: any, userId: string) {
   if (!ok) throw new Error("Action réservée aux admins/managers");
 }
 
+// ----- LIRE MES PROPOSITIONS PENDING (bypass RLS via service role) -----
+export const getMyPendingProposals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+
+    const { data, error } = await supabaseAdmin
+      .from("shift_proposals")
+      .select("id, status, sent_at, replacement_request_id, shift:shifts(id, shift_date, start_time, end_time, business_role, studio_id, user_id)")
+      .eq("user_id", userId)
+      .eq("status", "pending")
+      .order("sent_at", { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    const filtered = (data || []).filter((p: any) => {
+      if (!p.shift) return false;
+      if (p.replacement_request_id) return p.shift.user_id !== userId;
+      return !p.shift.user_id;
+    });
+
+    return { proposals: filtered };
+  });
+
 // ----- ENVOYER DES PROPOSITIONS -----
 export const sendProposals = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
