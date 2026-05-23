@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type StaffNotifKind = "shift" | "request" | "message";
+export type StaffNotifKind = "shift" | "request" | "message" | "proposal";
 
 export interface StaffNotif {
   id: string;
