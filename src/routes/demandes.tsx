@@ -36,7 +36,7 @@ interface Row {
 interface ProfileLite { id: string; first_name: string; last_name: string; status: string; }
 interface ShiftLite { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; }
 interface Proposal {
-  id: string; user_id: string; status: string; sent_at: string;
+  id: string; shift_id: string; user_id: string; status: string; sent_at: string;
   responded_at: string | null; replacement_request_id: string | null;
 }
 
