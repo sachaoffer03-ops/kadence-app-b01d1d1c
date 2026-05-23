@@ -358,6 +358,44 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
     if (finalizing || !shift) return;
     setFinalizing(true);
     try {
+      // Persist "Avant de partir" data — best-effort, all optional
+      const handoffTrim = handoffMessage.trim();
+      const reportTrim = adminReportMessage.trim();
+      const ratingCommentTrim = selfRatingComment.trim();
+      const beforeLeaveWrites: Promise<any>[] = [];
+      if (handoffTrim) {
+        beforeLeaveWrites.push(
+          supabase.from("shift_handoffs").insert({
+            shift_id: shift.id,
+            author_id: userId,
+            message: handoffTrim.slice(0, 500),
+          }),
+        );
+      }
+      if (reportTrim) {
+        beforeLeaveWrites.push(
+          supabase.from("shift_reports").insert({
+            shift_id: shift.id,
+            author_id: userId,
+            message: reportTrim.slice(0, 500),
+            resolved: false,
+          }),
+        );
+      }
+      if (selfRating > 0) {
+        beforeLeaveWrites.push(
+          supabase.from("feedbacks").insert({
+            shift_id: shift.id,
+            author_id: userId,
+            rating: selfRating,
+            message: ratingCommentTrim ? ratingCommentTrim.slice(0, 200) : null,
+          }),
+        );
+      }
+      if (beforeLeaveWrites.length > 0) {
+        await Promise.allSettled(beforeLeaveWrites);
+      }
+
       const responses = closureQuestions.map((q) => {
         const r = questionResponses[q.id] ?? {};
         return {
@@ -381,6 +419,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
       setFinalizing(false);
     }
   };
+
 
 
   // ─── Render ──────────────────────────────────────────────────────────────
