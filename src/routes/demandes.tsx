@@ -80,6 +80,9 @@ function DemandesPage() {
   const [kpis, setKpis] = useState({ pending: 0, urgent: 0, treatedToday: 0, avgResolutionMs: 0 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
+  // pour les demandes unavailable : sélection par shift (clé = `${reqId}:${shiftId}`)
+  const [selectedShift, setSelectedShift] = useState<Record<string, Set<string>>>({});
+  const [openShiftPanel, setOpenShiftPanel] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [, force] = useState(0);
