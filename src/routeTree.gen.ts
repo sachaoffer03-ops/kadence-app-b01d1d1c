@@ -36,6 +36,7 @@ import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
+import { Route as DisplayStudioIdRouteImport } from './routes/display.$studioId'
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminSeedRouteImport } from './routes/admin.seed'
 import { Route as AdminQaTestSuiteRouteImport } from './routes/admin.qa-test-suite'
@@ -183,6 +184,11 @@ const FormationCourseIdRoute = FormationCourseIdRouteImport.update({
   path: '/$courseId',
   getParentRoute: () => FormationRoute,
 } as any)
+const DisplayStudioIdRoute = DisplayStudioIdRouteImport.update({
+  id: '/display/$studioId',
+  path: '/display/$studioId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSeederRoute = AdminSeederRouteImport.update({
   id: '/admin/seeder',
   path: '/admin/seeder',
@@ -273,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
+  '/display/$studioId': typeof DisplayStudioIdRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
@@ -312,6 +319,7 @@ export interface FileRoutesByTo {
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
+  '/display/$studioId': typeof DisplayStudioIdRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
@@ -353,6 +361,7 @@ export interface FileRoutesById {
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
+  '/display/$studioId': typeof DisplayStudioIdRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
@@ -395,6 +404,7 @@ export interface FileRouteTypes {
     | '/admin/qa-test-suite'
     | '/admin/seed'
     | '/admin/seeder'
+    | '/display/$studioId'
     | '/formation/$courseId'
     | '/planning/generate'
     | '/staff/$id'
@@ -434,6 +444,7 @@ export interface FileRouteTypes {
     | '/admin/qa-test-suite'
     | '/admin/seed'
     | '/admin/seeder'
+    | '/display/$studioId'
     | '/formation/$courseId'
     | '/planning/generate'
     | '/staff/$id'
@@ -474,6 +485,7 @@ export interface FileRouteTypes {
     | '/admin/qa-test-suite'
     | '/admin/seed'
     | '/admin/seeder'
+    | '/display/$studioId'
     | '/formation/$courseId'
     | '/planning/generate'
     | '/staff/$id'
@@ -515,6 +527,7 @@ export interface RootRouteChildren {
   AdminQaTestSuiteRoute: typeof AdminQaTestSuiteRoute
   AdminSeedRoute: typeof AdminSeedRoute
   AdminSeederRoute: typeof AdminSeederRoute
+  DisplayStudioIdRoute: typeof DisplayStudioIdRoute
   ApiPublicStudioQrStudioIdRoute: typeof ApiPublicStudioQrStudioIdRoute
 }
 
@@ -709,6 +722,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FormationCourseIdRouteImport
       parentRoute: typeof FormationRoute
     }
+    '/display/$studioId': {
+      id: '/display/$studioId'
+      path: '/display/$studioId'
+      fullPath: '/display/$studioId'
+      preLoaderRoute: typeof DisplayStudioIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/seeder': {
       id: '/admin/seeder'
       path: '/admin/seeder'
@@ -860,6 +880,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminQaTestSuiteRoute: AdminQaTestSuiteRoute,
   AdminSeedRoute: AdminSeedRoute,
   AdminSeederRoute: AdminSeederRoute,
+  DisplayStudioIdRoute: DisplayStudioIdRoute,
   ApiPublicStudioQrStudioIdRoute: ApiPublicStudioQrStudioIdRoute,
 }
 export const routeTree = rootRouteImport
