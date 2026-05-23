@@ -261,13 +261,13 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
     }): Promise<{ id: string; created: boolean }> {
       const { data: existing } = await supabaseAdmin
         .from("checklist_templates").select("id")
-        .eq("studio_id", studio.id)
+        .eq("studio_id", studio!.id)
         .eq("phase", opts.phase)
         .eq(baristaBrId ? "business_role_id" : "name", baristaBrId ?? opts.name)
         .maybeSingle();
       if (existing?.id) return { id: existing.id, created: false };
       const { data: ins, error: tplErr } = await supabaseAdmin.from("checklist_templates").insert({
-        studio_id: studio.id,
+        studio_id: studio!.id,
         business_role_id: baristaBrId,
         name: opts.name,
         description: opts.description,
