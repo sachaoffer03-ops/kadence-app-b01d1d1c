@@ -490,7 +490,7 @@ export async function getShiftDetail(args: { shiftId: string }) {
       supabaseAdmin.from("checklist_template_items").select("id,label,order_index,photo_zone_id").eq("template_id", sub.template_id).order("order_index"),
       supabaseAdmin.from("checklist_submission_items").select("template_item_id,is_checked,checked_at").eq("submission_id", sub.id),
       supabaseAdmin.from("checklist_template_photos").select("id,label,order_index,reference_photo_url").eq("template_id", sub.template_id).order("order_index"),
-      supabaseAdmin.from("checklist_submission_photos").select("template_photo_id,photo_url,ai_validation_status,ai_validation_message").eq("submission_id", sub.id),
+      supabaseAdmin.from("checklist_submission_photos").select("id,template_photo_id,photo_url,ai_validation_status,ai_validation_message,admin_override_by,admin_override_at,admin_override_reason").eq("submission_id", sub.id),
       supabaseAdmin.from("closure_question_responses").select("question_id,stars_value,yesno_value,text_value").eq("submission_id", sub.id),
     ]);
     templateItems = (r1.data ?? []) as any[];
