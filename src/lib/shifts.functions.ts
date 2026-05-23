@@ -278,11 +278,12 @@ export const publishPlanning = createServerFn({ method: "POST" })
       }
     }
 
-    // 1. Récupère les drafts à publier
+    // 1. Récupère les shifts à publier (assignés mais jamais publiés)
     let q = supabase
       .from("shifts")
       .select("id, user_id, shift_date, start_time, end_time, studio_id")
-      .eq("status", "draft")
+      .is("published_at", null)
+      .not("user_id", "is", null)
       .gte("shift_date", data.startDate)
       .lte("shift_date", data.endDate);
     if (data.studioId) q = q.eq("studio_id", data.studioId);
