@@ -561,6 +561,7 @@ function PlanningCalendarPage() {
           pointage: ptg,
           phone: row.profiles?.phone ?? undefined,
           isDraft: row.status === "draft",
+          unpublished: !!row.user_id && !row.published_at,
           isLocked: !!row.is_locked,
           isManual: !!row.is_manual,
           conflict: conflictIds.has(row.id),
