@@ -102,6 +102,48 @@ function TrousPage() {
     [holes, filterRole],
   );
 
+  const search = Route.useSearch();
+  const studioFilter = useMemo(
+    () => (search.studios ? new Set(search.studios.split(",").map((s) => s.trim()).filter(Boolean)) : null),
+    [search.studios],
+  );
+  const weekFilter = search.week;
+  const weekRange = useMemo(() => {
+    if (!weekFilter) return null;
+    const start = weekFilter;
+    const d = new Date(weekFilter + "T00:00:00");
+    if (isNaN(d.getTime())) return null;
+    d.setDate(d.getDate() + 6);
+    const end = d.toISOString().slice(0, 10);
+    return { start, end };
+  }, [weekFilter]);
+
+  // Resolve studio ids matching name filter
+  const studioIdsFilter = useMemo(() => {
+    if (!studioFilter) return null;
+    const ids = new Set<string>();
+    studios.forEach((name, id) => {
+      const short = name.replace(/^Skult\s+/i, "").toLowerCase();
+      if (studioFilter.has(name) || studioFilter.has(short) || studioFilter.has(name.toLowerCase())) {
+        ids.add(id);
+      }
+    });
+    return ids;
+  }, [studios, studioFilter]);
+
+  const scoped = useMemo(() => {
+    return holes.filter((h) => {
+      if (studioIdsFilter && (!h.studio_id || !studioIdsFilter.has(h.studio_id))) return false;
+      if (weekRange && (h.shift_date < weekRange.start || h.shift_date > weekRange.end)) return false;
+      return true;
+    });
+  }, [holes, studioIdsFilter, weekRange]);
+
+  const filtered = useMemo(
+    () => scoped.filter((h) => filterRole === "tous" || h.business_role === filterRole),
+    [scoped, filterRole],
+  );
+
   const proposalsByShift = useMemo(() => {
     const m = new Map<string, Proposal[]>();
     proposals.forEach((p) => { const a = m.get(p.shift_id) || []; a.push(p); m.set(p.shift_id, a); });
