@@ -18,7 +18,7 @@ export const getMyPendingProposals = createServerFn({ method: "GET" })
 
     const { data, error } = await supabaseAdmin
       .from("shift_proposals")
-      .select("id, status, sent_at, replacement_request_id, shift:shifts(id, shift_date, start_time, end_time, business_role, studio_id, user_id)")
+      .select("id, status, sent_at, replacement_request_id, sent_by, shift:shifts(id, shift_date, start_time, end_time, business_role, studio_id, user_id, notes)")
       .eq("user_id", userId)
       .eq("status", "pending")
       .order("sent_at", { ascending: false });
@@ -31,7 +31,27 @@ export const getMyPendingProposals = createServerFn({ method: "GET" })
       return !p.shift.user_id;
     });
 
-    return { proposals: filtered };
+    // Enrichir avec studio (nom, adresse, ville) et expéditeur (prénom)
+    const studioIds = Array.from(new Set(filtered.map((p: any) => p.shift.studio_id).filter(Boolean)));
+    const senderIds = Array.from(new Set(filtered.map((p: any) => p.sent_by).filter(Boolean)));
+    const [{ data: studios }, { data: senders }] = await Promise.all([
+      studioIds.length
+        ? supabaseAdmin.from("studios").select("id, name, short_name, address, city").in("id", studioIds as string[])
+        : Promise.resolve({ data: [] as any[] }),
+      senderIds.length
+        ? supabaseAdmin.from("profiles").select("id, first_name, last_name").in("id", senderIds as string[])
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const studioMap = Object.fromEntries((studios || []).map((s: any) => [s.id, s]));
+    const senderMap = Object.fromEntries((senders || []).map((s: any) => [s.id, s]));
+
+    const enriched = filtered.map((p: any) => ({
+      ...p,
+      studio: p.shift.studio_id ? studioMap[p.shift.studio_id] || null : null,
+      sender: p.sent_by ? senderMap[p.sent_by] || null : null,
+    }));
+
+    return { proposals: enriched };
   });
 
 // ----- ENVOYER DES PROPOSITIONS -----
@@ -78,7 +98,7 @@ export const sendProposals = createServerFn({ method: "POST" })
       type: "shift_proposal",
       title: "📨 Proposition de shift à accepter",
       body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
-      link: `/staff-app?tab=accueil&proposals=1`,
+      link: `/staff-app/propositions`,
       priority: "normal",
       category: "shift",
     }));
@@ -250,7 +270,7 @@ export const sendReplacementProposals = createServerFn({ method: "POST" })
       type: "shift_proposal",
       title: "Proposition de remplacement",
       body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
-      link: `/staff-app?tab=accueil&proposals=1`,
+      link: `/staff-app/propositions`,
       priority: "normal",
       category: "shift",
     }));

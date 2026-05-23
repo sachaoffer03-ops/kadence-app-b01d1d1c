@@ -34,6 +34,7 @@ import { Route as ActivationRouteImport } from './routes/activation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
+import { Route as StaffAppPropositionsRouteImport } from './routes/staff-app.propositions'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
 import { Route as DisplayStudioIdRouteImport } from './routes/display.$studioId'
@@ -174,6 +175,11 @@ const StaffIdRoute = StaffIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => StaffRoute,
 } as any)
+const StaffAppPropositionsRoute = StaffAppPropositionsRouteImport.update({
+  id: '/propositions',
+  path: '/propositions',
+  getParentRoute: () => StaffAppRoute,
+} as any)
 const PlanningGenerateRoute = PlanningGenerateRouteImport.update({
   id: '/generate',
   path: '/generate',
@@ -267,7 +273,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
   '/staff': typeof StaffRouteWithChildren
-  '/staff-app': typeof StaffAppRoute
+  '/staff-app': typeof StaffAppRouteWithChildren
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/admin/audit': typeof AdminAuditRoute
@@ -282,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/display/$studioId': typeof DisplayStudioIdRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
+  '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
@@ -307,7 +314,7 @@ export interface FileRoutesByTo {
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
-  '/staff-app': typeof StaffAppRoute
+  '/staff-app': typeof StaffAppRouteWithChildren
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/admin/audit': typeof AdminAuditRoute
@@ -322,6 +329,7 @@ export interface FileRoutesByTo {
   '/display/$studioId': typeof DisplayStudioIdRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
+  '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
@@ -349,7 +357,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
   '/staff': typeof StaffRouteWithChildren
-  '/staff-app': typeof StaffAppRoute
+  '/staff-app': typeof StaffAppRouteWithChildren
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
   '/admin/audit': typeof AdminAuditRoute
@@ -364,6 +372,7 @@ export interface FileRoutesById {
   '/display/$studioId': typeof DisplayStudioIdRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
+  '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
@@ -407,6 +416,7 @@ export interface FileRouteTypes {
     | '/display/$studioId'
     | '/formation/$courseId'
     | '/planning/generate'
+    | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff/'
     | '/staff/checklist/$shiftId'
@@ -447,6 +457,7 @@ export interface FileRouteTypes {
     | '/display/$studioId'
     | '/formation/$courseId'
     | '/planning/generate'
+    | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff'
     | '/staff/checklist/$shiftId'
@@ -488,6 +499,7 @@ export interface FileRouteTypes {
     | '/display/$studioId'
     | '/formation/$courseId'
     | '/planning/generate'
+    | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff/'
     | '/staff/checklist/$shiftId'
@@ -515,7 +527,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignalementsRoute: typeof SignalementsRoute
   StaffRoute: typeof StaffRouteWithChildren
-  StaffAppRoute: typeof StaffAppRoute
+  StaffAppRoute: typeof StaffAppRouteWithChildren
   StudiosRoute: typeof StudiosRoute
   TrousRoute: typeof TrousRoute
   AdminAuditRoute: typeof AdminAuditRoute
@@ -708,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffIdRouteImport
       parentRoute: typeof StaffRoute
     }
+    '/staff-app/propositions': {
+      id: '/staff-app/propositions'
+      path: '/propositions'
+      fullPath: '/staff-app/propositions'
+      preLoaderRoute: typeof StaffAppPropositionsRouteImport
+      parentRoute: typeof StaffAppRoute
+    }
     '/planning/generate': {
       id: '/planning/generate'
       path: '/generate'
@@ -847,6 +866,18 @@ const StaffRouteChildren: StaffRouteChildren = {
 
 const StaffRouteWithChildren = StaffRoute._addFileChildren(StaffRouteChildren)
 
+interface StaffAppRouteChildren {
+  StaffAppPropositionsRoute: typeof StaffAppPropositionsRoute
+}
+
+const StaffAppRouteChildren: StaffAppRouteChildren = {
+  StaffAppPropositionsRoute: StaffAppPropositionsRoute,
+}
+
+const StaffAppRouteWithChildren = StaffAppRoute._addFileChildren(
+  StaffAppRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivationRoute: ActivationRoute,
@@ -868,7 +899,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignalementsRoute: SignalementsRoute,
   StaffRoute: StaffRouteWithChildren,
-  StaffAppRoute: StaffAppRoute,
+  StaffAppRoute: StaffAppRouteWithChildren,
   StudiosRoute: StudiosRoute,
   TrousRoute: TrousRoute,
   AdminAuditRoute: AdminAuditRoute,

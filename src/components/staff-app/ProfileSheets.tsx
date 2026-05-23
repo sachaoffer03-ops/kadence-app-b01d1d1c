@@ -394,7 +394,7 @@ export function NotificationsSheet({ open, onClose, userId, studios, onNavigate 
   const handleNotifClick = (n: typeof items[number]) => {
     onClose();
     if (n.kind === "proposal") {
-      window.location.assign("/staff-app?tab=accueil&proposals=1");
+      window.location.assign("/staff-app/propositions");
       return;
     }
     if (n.link) {

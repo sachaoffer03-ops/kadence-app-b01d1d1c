@@ -18,7 +18,7 @@ export function employeeLink(input: EmployeeKind): string {
       return `/staff-app?tab=${tab}&shift=${input.shiftId}`;
     }
     case "proposal":
-      return `/staff-app?tab=accueil&proposal=${input.proposalId}`;
+      return `/staff-app/propositions`;
     case "request":
       return `/staff-app?tab=planning&request=${input.requestId}`;
     case "thread":
