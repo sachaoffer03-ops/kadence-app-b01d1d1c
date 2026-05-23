@@ -186,6 +186,14 @@ function AppShell() {
   useEffect(() => {
     if (loading) return;
     const appMode = getAppMode();
+    const host = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+    // En preview Lovable / dev, on autorise l'admin à voir l'espace employé
+    // (sinon impossible de prévisualiser /staff-app depuis le compte admin).
+    const isPreviewHost =
+      host.endsWith(".lovableproject.com") ||
+      host.endsWith(".lovable.app") ||
+      host === "localhost" ||
+      host === "127.0.0.1";
 
     if (!session && !isPublic) {
       navigate({ to: "/login" });
@@ -198,7 +206,8 @@ function AppShell() {
       const isEmployeeSpace = appMode === "employee";
 
       // Mauvais espace pour ce rôle → déconnexion + message
-      if (isEmployeeSpace && !userIsEmployee) {
+      // (skip sur preview pour permettre aux admins de tester l'espace employé)
+      if (!isPreviewHost && isEmployeeSpace && !userIsEmployee) {
         toast.error("Ce compte est administrateur. Utilisez un compte employé pour app.shyft.flashsite.fr");
         if (isStaffApp) {
           navigate({ to: "/dashboard" });
@@ -225,11 +234,13 @@ function AppShell() {
         return;
       }
       // Admin sur staff-app → renvoie vers dashboard
-      if (!userIsEmployee && isStaffApp) {
+      // (skip sur preview pour permettre la prévisualisation)
+      if (!isPreviewHost && !userIsEmployee && isStaffApp) {
         navigate({ to: "/dashboard" });
       }
     }
   }, [loading, session, appRole, currentPath, isPublic, isStaffApp, isActivationPreview, navigate]);
+
 
   if (loading && !isPublic) {
     return (
