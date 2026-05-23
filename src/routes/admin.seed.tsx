@@ -189,11 +189,32 @@ function SeedDemoPage() {
       )}
 
       {!loading && status?.anyExists && (
-        <button onClick={() => setShowDelete(true)} disabled={!!busy}
-          className="w-full rounded-xl border px-4 py-3 flex items-center justify-center gap-2 disabled:opacity-50"
-          style={{ fontSize: 13, fontWeight: 500, borderColor: "#DC262644", backgroundColor: "#FEF2F2", color: "#B91C1C" }}>
-          <Trash2 size={16} /> Tout supprimer
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={async () => {
+              if (!confirm("Supprimer TOUS les employés qui ne sont pas les 5 démo ? (les profils protégés sont préservés)")) return;
+              setBusy("purge-others");
+              try {
+                const r = await purgeOthers({ data: { confirm: "DELETE" } });
+                toast.success(`${r.deleted} employé(s) supprimé(s)`, {
+                  description: r.failed.length ? `${r.failed.length} échec(s)` : undefined,
+                });
+                await load();
+              } catch (e: any) { toast.error(e?.message); }
+              finally { setBusy(null); }
+            }}
+            disabled={!!busy}
+            className="w-full rounded-xl border px-4 py-3 flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{ fontSize: 13, fontWeight: 500, borderColor: "#F59E0B44", backgroundColor: "#FFFBEB", color: "#B45309" }}>
+            {busy === "purge-others" ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+            Supprimer tous les autres employés (garder uniquement les 5 démo)
+          </button>
+          <button onClick={() => setShowDelete(true)} disabled={!!busy}
+            className="w-full rounded-xl border px-4 py-3 flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{ fontSize: 13, fontWeight: 500, borderColor: "#DC262644", backgroundColor: "#FEF2F2", color: "#B91C1C" }}>
+            <Trash2 size={16} /> Tout supprimer (y compris les 5 démo)
+          </button>
+        </div>
       )}
 
       {showDelete && (
