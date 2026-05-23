@@ -483,8 +483,14 @@ function StudiosPage() {
           {activeSubTab === 1 && (
             <PointageTab
               row={currentRow}
-              onPatch={(patch) => queueInfoPatch(currentRow.id, patch)}
-              onCommit={() => flushPatch(currentRow.id)}
+              onSave={async (patch) => {
+                try {
+                  await dbUpdateStudio(currentRow.id, patch);
+                  await reload();
+                } catch (e: any) {
+                  toast.error("Sauvegarde impossible", { description: e?.message ?? "" });
+                }
+              }}
             />
           )}
           {activeSubTab === 2 && (
