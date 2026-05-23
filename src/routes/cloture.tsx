@@ -1457,7 +1457,7 @@ function QrSection({ studio }: { studio: any }) {
             C'est le code que l'employé scanne (ou tape) à la fin de son shift. Il se renouvelle automatiquement toutes les {draft.renewal} secondes.
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="px-2.5 py-1.5 rounded" style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 14, backgroundColor: "var(--background)", color: "var(--foreground)", border: "1px solid var(--border)" }}>
             {draft.currentCode || "—"}
           </span>
@@ -1466,7 +1466,22 @@ function QrSection({ studio }: { studio: any }) {
             style={{ fontSize: 12, borderColor: "var(--border)", backgroundColor: "var(--background)" }}>
             <RefreshCw size={13} /> Régénérer maintenant
           </button>
+          <a
+            href={`/display/${studio.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md px-3 py-1.5 flex items-center gap-1.5"
+            style={{ fontSize: 12, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}
+          >
+            <QrCode size={13} /> Ouvrir l'écran d'affichage
+          </a>
         </div>
+      </div>
+      <div
+        className="mt-3 rounded-md px-3 py-2"
+        style={{ fontSize: 11, color: "var(--muted-foreground)", backgroundColor: "var(--background)", border: "1px dashed var(--border)" }}
+      >
+        Ouvre cette page en plein écran sur l'ordi/tablette posé à la caisse de <b>{studio.name}</b>. Le QR s'y régénère tout seul toutes les {draft.renewal} secondes — aucune connexion admin nécessaire sur cet écran.
       </div>
     </SectionCard>
   );

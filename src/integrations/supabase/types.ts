@@ -1600,6 +1600,7 @@ export type Database = {
           phone: string | null
           postal_code: string | null
           qr_display_support: string
+          qr_generated_at: string | null
           qr_renewal_seconds: number
           role_hours: Json
           short_name: string | null
@@ -1634,6 +1635,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           qr_display_support?: string
+          qr_generated_at?: string | null
           qr_renewal_seconds?: number
           role_hours?: Json
           short_name?: string | null
@@ -1668,6 +1670,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           qr_display_support?: string
+          qr_generated_at?: string | null
           qr_renewal_seconds?: number
           role_hours?: Json
           short_name?: string | null

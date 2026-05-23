@@ -36,6 +36,7 @@ import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
+import { Route as DisplayStudioIdRouteImport } from './routes/display.$studioId'
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminSeedRouteImport } from './routes/admin.seed'
 import { Route as AdminQaTestSuiteRouteImport } from './routes/admin.qa-test-suite'
@@ -46,6 +47,7 @@ import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
 import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as StaffChecklistShiftIdRouteImport } from './routes/staff.checklist.$shiftId'
+import { Route as ApiPublicStudioQrStudioIdRouteImport } from './routes/api/public/studio-qr.$studioId'
 
 const TrousRoute = TrousRouteImport.update({
   id: '/trous',
@@ -182,6 +184,11 @@ const FormationCourseIdRoute = FormationCourseIdRouteImport.update({
   path: '/$courseId',
   getParentRoute: () => FormationRoute,
 } as any)
+const DisplayStudioIdRoute = DisplayStudioIdRouteImport.update({
+  id: '/display/$studioId',
+  path: '/display/$studioId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSeederRoute = AdminSeederRouteImport.update({
   id: '/admin/seeder',
   path: '/admin/seeder',
@@ -232,6 +239,12 @@ const StaffChecklistShiftIdRoute = StaffChecklistShiftIdRouteImport.update({
   path: '/checklist/$shiftId',
   getParentRoute: () => StaffRoute,
 } as any)
+const ApiPublicStudioQrStudioIdRoute =
+  ApiPublicStudioQrStudioIdRouteImport.update({
+    id: '/api/public/studio-qr/$studioId',
+    path: '/api/public/studio-qr/$studioId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -266,11 +279,13 @@ export interface FileRoutesByFullPath {
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
+  '/display/$studioId': typeof DisplayStudioIdRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
+  '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -304,11 +319,13 @@ export interface FileRoutesByTo {
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
+  '/display/$studioId': typeof DisplayStudioIdRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
+  '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -344,11 +361,13 @@ export interface FileRoutesById {
   '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
+  '/display/$studioId': typeof DisplayStudioIdRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
+  '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -385,11 +404,13 @@ export interface FileRouteTypes {
     | '/admin/qa-test-suite'
     | '/admin/seed'
     | '/admin/seeder'
+    | '/display/$studioId'
     | '/formation/$courseId'
     | '/planning/generate'
     | '/staff/$id'
     | '/staff/'
     | '/staff/checklist/$shiftId'
+    | '/api/public/studio-qr/$studioId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -423,11 +444,13 @@ export interface FileRouteTypes {
     | '/admin/qa-test-suite'
     | '/admin/seed'
     | '/admin/seeder'
+    | '/display/$studioId'
     | '/formation/$courseId'
     | '/planning/generate'
     | '/staff/$id'
     | '/staff'
     | '/staff/checklist/$shiftId'
+    | '/api/public/studio-qr/$studioId'
   id:
     | '__root__'
     | '/'
@@ -462,11 +485,13 @@ export interface FileRouteTypes {
     | '/admin/qa-test-suite'
     | '/admin/seed'
     | '/admin/seeder'
+    | '/display/$studioId'
     | '/formation/$courseId'
     | '/planning/generate'
     | '/staff/$id'
     | '/staff/'
     | '/staff/checklist/$shiftId'
+    | '/api/public/studio-qr/$studioId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -502,6 +527,8 @@ export interface RootRouteChildren {
   AdminQaTestSuiteRoute: typeof AdminQaTestSuiteRoute
   AdminSeedRoute: typeof AdminSeedRoute
   AdminSeederRoute: typeof AdminSeederRoute
+  DisplayStudioIdRoute: typeof DisplayStudioIdRoute
+  ApiPublicStudioQrStudioIdRoute: typeof ApiPublicStudioQrStudioIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -695,6 +722,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FormationCourseIdRouteImport
       parentRoute: typeof FormationRoute
     }
+    '/display/$studioId': {
+      id: '/display/$studioId'
+      path: '/display/$studioId'
+      fullPath: '/display/$studioId'
+      preLoaderRoute: typeof DisplayStudioIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/seeder': {
       id: '/admin/seeder'
       path: '/admin/seeder'
@@ -764,6 +798,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/staff/checklist/$shiftId'
       preLoaderRoute: typeof StaffChecklistShiftIdRouteImport
       parentRoute: typeof StaffRoute
+    }
+    '/api/public/studio-qr/$studioId': {
+      id: '/api/public/studio-qr/$studioId'
+      path: '/api/public/studio-qr/$studioId'
+      fullPath: '/api/public/studio-qr/$studioId'
+      preLoaderRoute: typeof ApiPublicStudioQrStudioIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -839,17 +880,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminQaTestSuiteRoute: AdminQaTestSuiteRoute,
   AdminSeedRoute: AdminSeedRoute,
   AdminSeederRoute: AdminSeederRoute,
+  DisplayStudioIdRoute: DisplayStudioIdRoute,
+  ApiPublicStudioQrStudioIdRoute: ApiPublicStudioQrStudioIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
