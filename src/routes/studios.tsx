@@ -56,7 +56,6 @@ export const Route = createFileRoute("/studios")({
 
 const subTabs = [
   "Informations",
-  "Pointage",
   "Besoins en staff",
   "Exceptions",
 ] as const;
@@ -481,22 +480,9 @@ function StudiosPage() {
             />
           )}
           {activeSubTab === 1 && (
-            <PointageTab
-              row={currentRow}
-              onSave={async (patch) => {
-                try {
-                  await dbUpdateStudio(currentRow.id, patch);
-                  await reload();
-                } catch (e: any) {
-                  toast.error("Sauvegarde impossible", { description: e?.message ?? "" });
-                }
-              }}
-            />
-          )}
-          {activeSubTab === 2 && (
             <StaffingTemplatesEditor lockedStudioName={studio} />
           )}
-          {activeSubTab === 3 && <ExceptionsTab studio={studio} />}
+          {activeSubTab === 2 && <ExceptionsTab studio={studio} />}
         </>
       ) : null}
 
@@ -560,206 +546,6 @@ const editableFields: { key: keyof StudioInfo; label: string; icon: React.Elemen
   { key: "surface", label: "Surface", icon: SlidersHorizontal },
 ];
 
-/* ------------------------------------------------------------------ */
-/* Onglet Pointage : géofencing, tolérances, QR                       */
-/* ------------------------------------------------------------------ */
-function PointageTab({
-  row,
-  onSave,
-}: {
-  row: StudioRow;
-  onSave: (patch: Partial<StudioRow>) => Promise<void>;
-}) {
-  const [geo, setGeo] = useState<boolean>(row.geofencing_enabled ?? true);
-  const [radius, setRadius] = useState<number>(row.geofencing_radius_m ?? 50);
-  const [lat, setLat] = useState<string>(row.lat != null ? String(row.lat) : "");
-  const [lng, setLng] = useState<string>(row.lng != null ? String(row.lng) : "");
-  const [inGrace, setInGrace] = useState<number>(row.clock_in_grace_period_min ?? 15);
-  const [outGrace, setOutGrace] = useState<number>(row.clock_out_grace_period_min ?? 20);
-  const [outBefore, setOutBefore] = useState<number>(row.clock_out_button_appears_before_min ?? 15);
-  const [qrRenew, setQrRenew] = useState<number>(row.qr_renewal_seconds ?? 60);
-  const [saving, setSaving] = useState(false);
-
-  // Resync quand on change de studio
-  useEffect(() => {
-    setGeo(row.geofencing_enabled ?? true);
-    setRadius(row.geofencing_radius_m ?? 50);
-    setLat(row.lat != null ? String(row.lat) : "");
-    setLng(row.lng != null ? String(row.lng) : "");
-    setInGrace(row.clock_in_grace_period_min ?? 15);
-    setOutGrace(row.clock_out_grace_period_min ?? 20);
-    setOutBefore(row.clock_out_button_appears_before_min ?? 15);
-    setQrRenew(row.qr_renewal_seconds ?? 60);
-  }, [row.id]);
-
-  const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("Géolocalisation non disponible sur ce navigateur");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(pos.coords.latitude.toFixed(6));
-        setLng(pos.coords.longitude.toFixed(6));
-        toast.success("Position récupérée");
-      },
-      () => toast.error("Impossible de récupérer la position"),
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
-  };
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      const latNum = lat.trim() === "" ? null : Number(lat);
-      const lngNum = lng.trim() === "" ? null : Number(lng);
-      await onSave({
-        geofencing_enabled: geo,
-        geofencing_radius_m: radius,
-        lat: latNum,
-        lng: lngNum,
-        clock_in_grace_period_min: inGrace,
-        clock_out_grace_period_min: outGrace,
-        clock_out_button_appears_before_min: outBefore,
-        qr_renewal_seconds: qrRenew,
-      } as any);
-      toast.success("Réglages sauvegardés");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const sectionStyle: React.CSSProperties = {
-    backgroundColor: "var(--card)",
-    border: "0.5px solid var(--border)",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-  };
-  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", marginBottom: 6, display: "block" };
-  const inputStyle: React.CSSProperties = {
-    fontSize: 13, padding: "8px 10px", borderRadius: 8,
-    border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: "100%",
-  };
-
-  return (
-    <div className="max-w-2xl">
-      <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 4 }}>Pointage</div>
-      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 20 }}>
-        Configure le géofencing, les tolérances de pointage et le rafraîchissement du QR.
-      </div>
-
-      {/* Géofencing */}
-      <div style={sectionStyle}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Géofencing</div>
-            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
-              Exige que l'employé soit physiquement sur place pour pointer.
-            </div>
-          </div>
-          <button
-            onClick={() => setGeo(!geo)}
-            className="rounded-full transition-colors"
-            style={{
-              width: 40, height: 22, padding: 2,
-              backgroundColor: geo ? "var(--coral)" : "var(--muted)",
-              position: "relative",
-            }}
-            aria-label="Activer géofencing"
-          >
-            <div style={{
-              width: 18, height: 18, borderRadius: "50%", backgroundColor: "#fff",
-              transform: geo ? "translateX(18px)" : "translateX(0)",
-              transition: "transform 0.18s ease",
-            }} />
-          </button>
-        </div>
-
-        {geo && (
-          <>
-            <div className="mb-3">
-              <label style={labelStyle}>Rayon autorisé (mètres)</label>
-              <input type="number" min={10} max={1000} value={radius}
-                onChange={(e) => setRadius(Number(e.target.value) || 0)} style={inputStyle} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label style={labelStyle}>Latitude</label>
-                <input type="text" value={lat} onChange={(e) => setLat(e.target.value)}
-                  placeholder="50.8503" style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Longitude</label>
-                <input type="text" value={lng} onChange={(e) => setLng(e.target.value)}
-                  placeholder="4.3517" style={inputStyle} />
-              </div>
-            </div>
-
-            <button onClick={useMyLocation}
-              className="rounded-md px-3 py-1.5"
-              style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
-              <MapPin size={12} className="inline mr-1" /> Utiliser ma position actuelle
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Tolérances */}
-      <div style={sectionStyle}>
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 12 }}>Tolérances de pointage</div>
-
-        <div className="mb-3">
-          <label style={labelStyle}>Tolérance clock-in (min avant le shift)</label>
-          <input type="number" min={0} max={60} value={inGrace}
-            onChange={(e) => setInGrace(Number(e.target.value) || 0)} style={inputStyle} />
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
-            L'employé peut pointer dès {inGrace} min avant son shift.
-          </div>
-        </div>
-
-        <div className="mb-3">
-          <label style={labelStyle}>Bouton clock-out visible (min avant la fin)</label>
-          <input type="number" min={0} max={60} value={outBefore}
-            onChange={(e) => setOutBefore(Number(e.target.value) || 0)} style={inputStyle} />
-        </div>
-
-        <div>
-          <label style={labelStyle}>Délai de grâce clock-out (min après la fin)</label>
-          <input type="number" min={0} max={120} value={outGrace}
-            onChange={(e) => setOutGrace(Number(e.target.value) || 0)} style={inputStyle} />
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
-            Au-delà, le manager est notifié.
-          </div>
-        </div>
-      </div>
-
-      {/* QR */}
-      <div style={sectionStyle}>
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 12 }}>QR code de pointage</div>
-        <label style={labelStyle}>Rafraîchissement du QR (secondes)</label>
-        <input type="number" min={15} max={300} value={qrRenew}
-          onChange={(e) => setQrRenew(Number(e.target.value) || 60)} style={inputStyle} />
-        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
-          Un nouveau code est généré toutes les {qrRenew} secondes.
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <button onClick={save} disabled={saving}
-          className="rounded-md px-4 py-2"
-          style={{
-            fontSize: 13, fontWeight: 500,
-            backgroundColor: "var(--foreground)", color: "var(--card)",
-            opacity: saving ? 0.5 : 1,
-          }}>
-          {saving ? "Sauvegarde…" : "Enregistrer"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 
 function InformationsTab({
