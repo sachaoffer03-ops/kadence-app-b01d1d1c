@@ -1507,7 +1507,7 @@ function QrSection({ studio }: { studio: any }) {
             <RefreshCw size={13} /> Régénérer maintenant
           </button>
           <a
-            href={`/display/${studio.id}`}
+            href={`https://admin.shyft.flashsite.fr/display/${studio.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-md px-3 py-1.5 flex items-center gap-1.5"
