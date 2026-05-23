@@ -328,7 +328,7 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
         { label: "Lire les notes de l'équipe précédente", order_index: 2, is_required: true, photo_zone_id: p.get("Comptoir au démarrage") ?? null },
       ],
     });
-    log.push(openTpl.created ? "Template checklist d'OUVERTURE Barista créé" : "Template checklist d'ouverture déjà présent");
+    log.push(openTplRes.created ? "Template checklist d'OUVERTURE Barista créé" : "Template checklist d'ouverture déjà présent");
 
     const transTpl = await ensureTemplate({
       name: "Démo — Transition Barista",
