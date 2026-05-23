@@ -101,8 +101,10 @@ async function notifyEmployee(userId: string, reqType: string, status: "accepted
     type: "modification_request_resolved",
     title: status === "accepted" ? "Demande acceptée" : "Demande refusée",
     body,
-    link: requestId ? `/staff-app?tab=planning&request=${requestId}` : "/staff-app?tab=planning",
-    priority: "info",
+    link: requestId
+      ? `/staff-app?openRequests=1&request=${requestId}`
+      : "/staff-app?openRequests=1",
+    priority: "normal",
     category: "request",
   });
 }
