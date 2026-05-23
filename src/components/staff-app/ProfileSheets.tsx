@@ -387,17 +387,17 @@ export function NotificationsSheet({ open, onClose, userId, studios, onNavigate 
     if (kind === "shift") return Calendar;
     if (kind === "request") return ReplaceIcon;
     if (kind === "message") return MessageCircle;
+    if (kind === "proposal") return Send;
     return Bell;
   };
 
   const handleNotifClick = (n: typeof items[number]) => {
     onClose();
+    if (n.kind === "proposal") {
+      window.location.assign("/staff-app?tab=accueil&proposals=1");
+      return;
+    }
     if (n.link) {
-      // Tous les liens internes employé pointent vers /staff-app?... → recharger pour set tab
-      if (n.link.startsWith("/staff-app")) {
-        window.location.assign(n.link);
-        return;
-      }
       window.location.assign(n.link);
       return;
     }
