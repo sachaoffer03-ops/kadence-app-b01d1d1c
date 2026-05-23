@@ -23,6 +23,7 @@ function fmtShiftDate(iso: string, start?: string) {
 
 function kindFromType(type: string | null | undefined): StaffNotifKind {
   const t = (type || "").toLowerCase();
+  if (t.includes("proposal") || t.includes("proposition")) return "proposal";
   if (t.includes("message")) return "message";
   if (t.includes("request") || t.includes("demande") || t.includes("modification")) return "request";
   return "shift";
