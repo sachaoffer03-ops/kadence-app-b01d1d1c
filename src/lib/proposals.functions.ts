@@ -54,7 +54,7 @@ export const sendProposals = createServerFn({ method: "POST" })
       type: "shift_proposal",
       title: "Nouvelle proposition de shift",
       body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
-      link: `/staff-app?tab=accueil&shift=${data.shiftId}`,
+      link: `/staff-app?tab=accueil&proposals=1`,
       priority: "normal",
       category: "shift",
     }));
@@ -226,7 +226,7 @@ export const sendReplacementProposals = createServerFn({ method: "POST" })
       type: "shift_proposal",
       title: "Proposition de remplacement",
       body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
-      link: `/staff-app?tab=accueil&shift=${targetShiftId}`,
+      link: `/staff-app?tab=accueil&proposals=1`,
       priority: "normal",
       category: "shift",
     }));
