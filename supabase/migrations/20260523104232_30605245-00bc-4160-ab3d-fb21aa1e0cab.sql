@@ -1,0 +1,1 @@
+ALTER TABLE public.studios ADD COLUMN IF NOT EXISTS qr_generated_at timestamptz;
