@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Check, Lock, Circle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { getCourseForEmployee } from "@/lib/formation.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { ModulePlayer } from "./ModulePlayer";
 import type { CourseDetail, DetailModule } from "./types";
 
@@ -18,12 +19,32 @@ export function CourseDetailView({ courseId, firstName, initials, onBack, onCour
   const [data, setData] = useState<CourseDetail | null>(null);
   const [openModule, setOpenModule] = useState<{ module: DetailModule; review: boolean } | null>(null);
   const getCourse = useServerFn(getCourseForEmployee);
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = async () => {
     try { setData(await getCourse({ data: { courseId } })); }
     catch (e: any) { toast.error(e.message); onBack(); }
   };
   useEffect(() => { load(); }, [courseId]);
+
+  // Realtime: rafraîchir si l'admin ajoute/modifie un contenu, module ou section
+  useEffect(() => {
+    const scheduleReload = () => {
+      if (reloadTimer.current) clearTimeout(reloadTimer.current);
+      reloadTimer.current = setTimeout(() => { load(); }, 400);
+    };
+    const channel = supabase
+      .channel(`course-${courseId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "training_contents" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "training_modules" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "training_sections" }, scheduleReload)
+      .subscribe();
+    return () => {
+      if (reloadTimer.current) clearTimeout(reloadTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [courseId]);
+
 
   if (!data) return <div className="p-6 text-center" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement…</div>;
 
