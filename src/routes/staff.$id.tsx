@@ -14,6 +14,7 @@ import { EmployeeStatsCard } from "@/components/EmployeeStatsCard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmployeeFormationTab } from "@/components/staff/EmployeeFormationTab";
 import { EmployeeDocumentsTab } from "@/components/staff/EmployeeDocumentsTab";
+import { EmployeeProposalsCard } from "@/components/staff/EmployeeProposalsCard";
 import { countUnviewedDocuments } from "@/lib/documents.functions";
 
 export const Route = createFileRoute("/staff/$id")({
@@ -275,6 +276,7 @@ function EmployeeDetailPage() {
 
           <WorkedHoursAdminCard userId={emp.id} hourlyRate={emp.hourly_rate} />
           <ClockedShiftsTable userId={emp.id} />
+          <EmployeeProposalsCard userId={emp.id} studios={studios} />
 
 
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
