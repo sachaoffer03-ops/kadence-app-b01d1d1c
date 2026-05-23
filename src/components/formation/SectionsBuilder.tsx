@@ -189,6 +189,7 @@ export function SectionsBuilder({ courseId, sections, onChange }: Props) {
                             </span>
                             <IconBtn onClick={() => moveContent(mod.id, mod.contents, ci, -1)} disabled={ci === 0}><ArrowUp size={11} /></IconBtn>
                             <IconBtn onClick={() => moveContent(mod.id, mod.contents, ci, 1)} disabled={ci === mod.contents.length - 1}><ArrowDown size={11} /></IconBtn>
+                            <IconBtn onClick={() => setPreviewing({ title: c.title, kind: "content", data: c })}><Eye size={11} /></IconBtn>
                             <IconBtn onClick={() => setEditing({ moduleId: mod.id, type: c.type, existing: c })}><Pencil size={11} /></IconBtn>
                             <IconBtn onClick={() => handleDeleteContent(c.id)} danger><Trash2 size={11} /></IconBtn>
                           </div>
