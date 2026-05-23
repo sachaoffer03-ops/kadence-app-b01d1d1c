@@ -8,9 +8,18 @@ import { getRoleStyle, hhmm, fullName } from "@/lib/staff-helpers";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
 import { sendProposals, cancelProposals } from "@/lib/proposals.functions";
 
+interface TrousSearch {
+  studios?: string;
+  week?: string;
+}
+
 export const Route = createFileRoute("/trous")({
   component: TrousPage,
   head: () => ({ meta: [{ title: "Trous à combler — Kadence" }] }),
+  validateSearch: (search: Record<string, unknown>): TrousSearch => ({
+    studios: typeof search.studios === "string" ? search.studios : undefined,
+    week: typeof search.week === "string" ? search.week : undefined,
+  }),
 });
 
 interface Hole {
