@@ -452,7 +452,22 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         {step === 2 && <Step2 role={shift.business_role} items={items} photos={photos} itemStates={itemStates} onToggle={toggleItem} onJumpPhoto={() => setStep(3)} hasTemplate={!!template} />}
         {step === 3 && <Step3 role={shift.business_role} photos={photos} states={photoStates} onUpload={handlePhotoUpload} template={template} hasTemplate={!!template} />}
         {step === 4 && <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />}
-        {step === 5 && <Step5 questions={closureQuestions} responses={questionResponses} setResponses={setQuestionResponses} submissionId={submissionId} />}
+        {step === 5 && <Step5
+          questions={closureQuestions}
+          responses={questionResponses}
+          setResponses={setQuestionResponses}
+          submissionId={submissionId}
+          handoffMessage={handoffMessage}
+          setHandoffMessage={setHandoffMessage}
+          adminReportMessage={adminReportMessage}
+          setAdminReportMessage={setAdminReportMessage}
+          selfRating={selfRating}
+          setSelfRating={setSelfRating}
+          selfRatingComment={selfRatingComment}
+          setSelfRatingComment={setSelfRatingComment}
+          phase={phase}
+        />}
+
         {step === 6 && <Step6 recap={recap} studios={studios} phase={phase} firstName={firstNameMe} onClose={() => { onClose(); window.location.reload(); }} onRetry={runFinalize} finalizing={finalizing} />}
       </div>
 
