@@ -737,32 +737,44 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
         await supabaseAdmin.auth.admin.deleteUser(u.id).catch(() => {});
       }
     }
-    await purgeAllDemoChecklistTemplates();
-    log.push("Templates checklist 'Démo%' purgés");
-
-    // 2. Studio + business roles + studio_business_roles
+    // 2. Studio + business roles
     const studio = await ensureStudio();
     log.push(`Studio configuré: ${studio.name}`);
     await ensureBusinessRoles(studio.id);
     log.push("Business roles configurés (Barista/Accueil/Host/Cuisine)");
 
-    // 3. Création des 5 employés
+    // Purge TOUS les templates du studio démo (libère tous les slots uniques)
+    await purgeAllDemoChecklistTemplates(studio.id);
+    log.push("Templates checklist du studio démo purgés");
+
+    // 3. Création des 5 employés (résilient : on continue sur erreur)
     const createdEmployees: { email: string; id: string }[] = [];
+    const failedEmployees: { email: string; error: string }[] = [];
     for (const cfg of EMPLOYEES) {
-      const { id } = await createOrUpdateEmployee(cfg, studio.id, userId);
-      createdEmployees.push({ email: cfg.email, id });
-      log.push(`Employé créé: ${cfg.first_name} ${cfg.last_name} (${cfg.contract})`);
+      try {
+        const { id } = await createOrUpdateEmployee(cfg, studio.id, userId);
+        createdEmployees.push({ email: cfg.email, id });
+        log.push(`Employé OK: ${cfg.first_name} ${cfg.last_name} (${cfg.contract})`);
+      } catch (e: any) {
+        console.error(`[seed-demo] employee ${cfg.email} failed:`, e?.message);
+        failedEmployees.push({ email: cfg.email, error: e?.message ?? String(e) });
+        log.push(`❌ Employé ${cfg.first_name}: ${e?.message ?? "erreur"}`);
+      }
     }
 
-    // 4. Checklists templates
-    await createAllChecklistTemplates(studio.id);
-    log.push(`${CHECKLISTS.length} templates checklist créés (3 phases × 4 rôles)`);
+    // 4. Checklists templates (résilient)
+    const tplResult = await createAllChecklistTemplates(studio.id);
+    log.push(`Templates: ${tplResult.ok}/${CHECKLISTS.length} OK${tplResult.failed.length ? ` (${tplResult.failed.length} erreur(s))` : ""}`);
+    for (const f of tplResult.failed) log.push(`❌ Template ${f.name}: ${f.error}`);
 
     return {
-      ok: true,
+      ok: failedEmployees.length === 0 && tplResult.failed.length === 0,
       log,
       duration_ms: Date.now() - t0,
       employees: createdEmployees,
+      failed_employees: failedEmployees,
+      templates_ok: tplResult.ok,
+      templates_failed: tplResult.failed,
       password: DEMO_PASSWORD,
     };
   });
