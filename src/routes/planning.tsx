@@ -57,6 +57,7 @@ interface PlanningShift {
   phone?: string;
   note?: string;
   isDraft?: boolean;
+  unpublished?: boolean;
   isLocked?: boolean;
   isManual?: boolean;
   conflict?: boolean; // overlap with another shift of same employee
