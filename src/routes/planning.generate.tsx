@@ -1,18 +1,37 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Check, AlertTriangle, ArrowRight, AlertCircle, Info, History, X, Eye, Send, Undo2, Globe, ShieldAlert } from "lucide-react";
+import {
+  Sparkles, ArrowLeft, AlertCircle, Loader2, Check, X, Eye, History,
+  Send, Globe, Undo2, ShieldAlert, AlertTriangle, Info,
+} from "lucide-react";
 import { toast } from "sonner";
 import { generatePlanning, listPlanningRuns, cancelPlanningRun } from "@/lib/generate-planning.functions";
-import { markPlanningForReview, publishPlanning, unpublishPlanning, revertPlanningToDraft, getPlanningRun } from "@/lib/planning-workflow.functions";
+import {
+  markPlanningForReview, publishPlanning, unpublishPlanning, revertPlanningToDraft, getPlanningRun,
+} from "@/lib/planning-workflow.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/planning/generate")({
   component: GeneratePlanningPage,
   head: () => ({ meta: [{ title: "Générer le planning — Kadence" }] }),
 });
 
-const MONTHS_FR = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+const MONTHS_FR = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
 
 interface Hole {
   studio_id: string; studio_name: string; date: string;
@@ -35,15 +54,12 @@ interface GenerateResult {
   solver_logs?: any;
 }
 
-const LOADER_STEPS = [
-  "Chargement des données…",
-  "Analyse des disponibilités…",
-  "Construction du planning…",
-  "Optimisation locale…",
-  "Finalisation…",
-];
-
-function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+interface StudioInfo {
+  id: string;
+  name: string;
+  employees: number;
+  templates: number;
+}
 
 function GeneratePlanningPage() {
   const navigate = useNavigate();
@@ -52,50 +68,75 @@ function GeneratePlanningPage() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
-  const [studios, setStudios] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedStudios, setSelectedStudios] = useState<Set<string>>(new Set());
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [studios, setStudios] = useState<StudioInfo[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // advanced
+  const [advOpen, setAdvOpen] = useState(false);
   const [preserveManual, setPreserveManual] = useState(true);
   const [preserveLocked, setPreserveLocked] = useState(true);
   const [dryRun, setDryRun] = useState(false);
+
   const [state, setState] = useState<"idle" | "generating" | "done" | "error">("idle");
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
-  const [stepIdx, setStepIdx] = useState(0);
-  const [showHistory, setShowHistory] = useState(false);
+
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
-    supabase.from("studios").select("id, name").order("name").then(({ data }) => {
-      const arr = (data ?? []) as Array<{ id: string; name: string }>;
+    (async () => {
+      const [{ data: studiosRaw }, { data: links }, { data: tmpls }] = await Promise.all([
+        supabase.from("studios").select("id, name").order("name"),
+        supabase.from("user_studios").select("studio_id"),
+        supabase.from("staffing_templates").select("studio_id"),
+      ]);
+      const empCount = new Map<string, number>();
+      (links ?? []).forEach((l: any) => empCount.set(l.studio_id, (empCount.get(l.studio_id) ?? 0) + 1));
+      const tmplCount = new Map<string, number>();
+      (tmpls ?? []).forEach((t: any) => tmplCount.set(t.studio_id, (tmplCount.get(t.studio_id) ?? 0) + 1));
+      const arr: StudioInfo[] = (studiosRaw ?? []).map((s: any) => ({
+        id: s.id, name: s.name,
+        employees: empCount.get(s.id) ?? 0,
+        templates: tmplCount.get(s.id) ?? 0,
+      }));
       setStudios(arr);
-      setSelectedStudios(new Set(arr.map((s) => s.id)));
-    });
+      setSelected(new Set(arr.filter((s) => s.templates > 0).map((s) => s.id)));
+    })();
   }, []);
 
-  useEffect(() => {
-    if (state !== "generating") return;
-    const id = setInterval(() => setStepIdx((i) => Math.min(i + 1, LOADER_STEPS.length - 1)), 4000);
-    return () => clearInterval(id);
-  }, [state]);
+  const selectedWithTemplates = useMemo(
+    () => Array.from(selected).filter((id) => (studios.find((s) => s.id === id)?.templates ?? 0) > 0),
+    [selected, studios],
+  );
+  const canGenerate = selectedWithTemplates.length > 0;
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const selectAll = () => setSelected(new Set(studios.filter((s) => s.templates > 0).map((s) => s.id)));
+  const selectNone = () => setSelected(new Set());
 
   const start = async () => {
     setState("generating");
-    setStepIdx(0);
     setErrorMsg("");
     try {
       const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
       const res = await generate({
         data: {
           month_start_date: monthStart,
-          studio_ids: Array.from(selectedStudios),
+          studio_ids: Array.from(selected),
           preserve_manual: preserveManual,
           preserve_locked: preserveLocked,
           dry_run: dryRun,
         },
       });
-      setResult(res as GenerateResult);
-      setState("done");
       const r = res as GenerateResult;
+      setResult(r);
+      setState("done");
       toast.success(`${r.shifts_generated} shifts générés (${Math.round(r.coverage_rate * 100)}% de couverture)`);
     } catch (e: any) {
       setErrorMsg(e?.message || "Erreur lors de la génération");
@@ -103,29 +144,20 @@ function GeneratePlanningPage() {
     }
   };
 
-  const toggleStudio = (id: string) => {
-    setSelectedStudios((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
+  // ─── Loading state ────────────────────────────────────────────────────────
   if (state === "generating") {
     return (
       <div className="p-4 md:p-6 flex items-center justify-center" style={{ minHeight: "calc(100vh - 52px)" }}>
         <div className="text-center" style={{ maxWidth: 420 }}>
-          <div className="rounded-full mx-auto flex items-center justify-center mb-4" style={{ width: 56, height: 56, backgroundColor: "var(--coral-light)" }}>
-            <Sparkles size={24} style={{ color: "var(--coral-dark)" }} className="animate-pulse" />
-          </div>
+          <Loader2 size={36} className="animate-spin mx-auto mb-4" style={{ color: "var(--primary)" }} />
           <h2 style={{ fontSize: 18, fontWeight: 500, marginBottom: 6 }}>Génération en cours…</h2>
-          <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 4 }}>{LOADER_STEPS[stepIdx]}</p>
-          <p style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Peut prendre 30-90 secondes</p>
+          <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Peut prendre 30 à 90 secondes.</p>
         </div>
       </div>
     );
   }
 
+  // ─── Error state ──────────────────────────────────────────────────────────
   if (state === "error") {
     return (
       <div className="p-4 md:p-6 flex items-center justify-center" style={{ minHeight: "calc(100vh - 52px)" }}>
@@ -134,125 +166,235 @@ function GeneratePlanningPage() {
             <AlertCircle size={28} style={{ color: "var(--danger-text)" }} />
           </div>
           <h1 style={{ fontSize: 20, fontWeight: 500, marginBottom: 8 }}>Génération impossible</h1>
-          <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 16 }}>{errorMsg}</p>
-          <button onClick={() => setState("idle")} className="rounded-md px-4 py-2"
-            style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)" }}>
-            Retour
-          </button>
+          <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 20 }}>{errorMsg}</p>
+          <Button variant="outline" onClick={() => setState("idle")}>Retour</Button>
         </div>
       </div>
     );
   }
 
+  // ─── Done state ───────────────────────────────────────────────────────────
   if (state === "done" && result) {
-    return <ResultView r={result} onClose={() => { setState("idle"); setResult(null); }} navigate={navigate} />;
+    return (
+      <ResultView
+        r={result}
+        navigate={navigate}
+        onReset={() => { setState("idle"); setResult(null); }}
+      />
+    );
   }
 
-  // idle
-  const monthStartPreview = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  // ─── Idle (form) ──────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 500 }}>Générer le planning</h1>
-          <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>1 mois (4 semaines) à partir du 1er du mois choisi</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link to="/admin/data-diagnostic"
-            className="rounded-md px-3 py-2 flex items-center gap-2"
-            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
-            Diagnostic
-          </Link>
-          <button onClick={() => setShowHistory(true)}
-            className="rounded-md px-3 py-2 flex items-center gap-2"
-            style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
-            <History size={14} /> Historique
-          </button>
-        </div>
-      </div>
+    <div className="p-4 md:p-8 max-w-3xl mx-auto pb-16">
+      {/* Header */}
+      <Link to="/planning" className="inline-flex items-center gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+        <ArrowLeft size={12} /> Retour au planning
+      </Link>
+      <h1 style={{ fontSize: 28, fontWeight: 500, marginTop: 16 }}>Générer le planning</h1>
+      <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 6, marginBottom: 32 }}>
+        Construis un planning complet pour le mois et les studios de ton choix. L'algorithme s'occupe du reste.
+      </p>
 
-      <div className="rounded-xl border p-6 mb-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", maxWidth: 640 }}>
-        <div className="mb-5">
-          <label style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Mois cible</label>
-          <div className="flex gap-2 mt-2">
-            <select value={month} onChange={(e) => setMonth(Number(e.target.value))}
-              className="rounded-md px-3 py-2 outline-none flex-1"
-              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
-              {MONTHS_FR.map((m, i) => <option key={i} value={i}>{m}</option>)}
-            </select>
-            <select value={year} onChange={(e) => setYear(Number(e.target.value))}
-              className="rounded-md px-3 py-2 outline-none"
-              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
-              {[today.getFullYear(), today.getFullYear() + 1].map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
-          <p style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 6 }}>Période : du {monthStartPreview} au +27 jours</p>
+      {/* How it works */}
+      <Card className="p-6 mb-6 rounded-2xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <HowStep emoji="🎯" title="Filtrage"
+            desc="Pour chaque créneau ouvert, l'algo identifie les employés qui ont le bon rôle, le bon studio et une disponibilité qui couvre l'horaire." />
+          <HowStep emoji="⭐" title="Scoring"
+            desc="Chaque candidat reçoit un score basé sur sa performance, sa fiabilité et son ancienneté. Les meilleurs profils sont placés en priorité sur les shifts clés." />
+          <HowStep emoji="⚖️" title="Équité"
+            desc="Plus un employé a déjà été choisi cette semaine, plus son score baisse. Le planning reste juste et évite les sur-sollicitations." />
         </div>
+      </Card>
 
-        <div className="mb-5">
-          <label style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Studios</label>
-          <div className="flex flex-col gap-2 mt-2">
-            {studios.map((st) => (
-              <label key={st.id} className="flex items-center gap-2 cursor-pointer rounded-md px-3 py-2"
-                style={{ fontSize: 13, backgroundColor: selectedStudios.has(st.id) ? "var(--coral-light)" : "var(--muted)" }}>
-                <input type="checkbox" checked={selectedStudios.has(st.id)} onChange={() => toggleStudio(st.id)} />
-                {st.name}
-              </label>
-            ))}
-          </div>
+      {/* Période */}
+      <Card className="p-6 mb-6 rounded-2xl">
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 12 }}>Quelle période veux-tu générer ?</div>
+        <div className="flex gap-3">
+          <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+            <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {MONTHS_FR.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+            <SelectTrigger style={{ width: 120 }}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {[today.getFullYear(), today.getFullYear() + 1].map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+        <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 10 }}>
+          Le planning couvrira les 4 ou 5 semaines du mois choisi.
+        </p>
+      </Card>
 
-        <div className="mb-5">
-          <button onClick={() => setAdvancedOpen((v) => !v)}
-            className="text-left flex items-center gap-1"
-            style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>
-            {advancedOpen ? "▾" : "▸"} Options avancées
-          </button>
-          {advancedOpen && (
-            <div className="flex flex-col gap-2 mt-3 pl-4">
-              <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 12 }}>
-                <input type="checkbox" checked={preserveManual} onChange={(e) => setPreserveManual(e.target.checked)} />
-                Préserver les shifts manuels
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 12 }}>
-                <input type="checkbox" checked={preserveLocked} onChange={(e) => setPreserveLocked(e.target.checked)} />
-                Préserver les shifts publiés (lockés)
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 12 }}>
-                <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-                Simuler sans écrire (dry-run)
-              </label>
-            </div>
+      {/* Studios */}
+      <Card className="p-6 mb-6 rounded-2xl">
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 12 }}>Pour quels studios ?</div>
+        <div className="flex flex-col gap-1">
+          {studios.length === 0 && (
+            <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement des studios…</div>
           )}
+          {studios.map((s) => {
+            const noTmpl = s.templates === 0;
+            const checked = selected.has(s.id);
+            return (
+              <label
+                key={s.id}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5"
+                style={{
+                  cursor: noTmpl ? "not-allowed" : "pointer",
+                  opacity: noTmpl ? 0.6 : 1,
+                  border: "0.5px solid var(--border)",
+                  backgroundColor: checked && !noTmpl ? "var(--accent)" : "transparent",
+                }}
+              >
+                <Checkbox
+                  checked={checked}
+                  disabled={noTmpl}
+                  onCheckedChange={() => !noTmpl && toggle(s.id)}
+                />
+                <span style={{ fontSize: 14, flex: 1 }}>{s.name}</span>
+                {noTmpl ? (
+                  <Badge variant="outline" style={{ fontSize: 11, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)", borderColor: "transparent" }}>
+                    ⚠ Pas de besoins configurés
+                  </Badge>
+                ) : (
+                  <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                    {s.employees} employé{s.employees > 1 ? "s" : ""} rattaché{s.employees > 1 ? "s" : ""}
+                  </span>
+                )}
+              </label>
+            );
+          })}
         </div>
+        <div className="flex gap-4 mt-3">
+          <button onClick={selectAll} className="hover:underline" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            Tout sélectionner
+          </button>
+          <button onClick={selectNone} className="hover:underline" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            Tout désélectionner
+          </button>
+        </div>
+      </Card>
 
-        <button onClick={start}
-          disabled={selectedStudios.size === 0}
-          className="rounded-md px-6 py-3 flex items-center gap-2 transition-colors disabled:opacity-50"
-          style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
-          <Sparkles size={16} /> Générer le planning
+      {/* Generate button */}
+      <button
+        onClick={start}
+        disabled={!canGenerate}
+        className="w-full rounded-2xl flex items-center justify-center gap-2 transition"
+        style={{
+          height: 56, fontSize: 16, fontWeight: 500,
+          backgroundColor: "var(--primary)", color: "var(--primary-foreground)",
+          border: "none",
+          opacity: canGenerate ? 1 : 0.4,
+          cursor: canGenerate ? "pointer" : "not-allowed",
+        }}
+      >
+        <Sparkles size={18} /> Générer le planning
+      </button>
+
+      {/* Footer ghost links */}
+      <div className="flex items-center justify-center gap-6 mt-8">
+        <button onClick={() => setHistoryOpen(true)} className="hover:underline flex items-center gap-1.5"
+          style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          <History size={12} /> Voir l'historique
+        </button>
+        <Link to="/admin/data-diagnostic" className="hover:underline"
+          style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          Diagnostic des données
+        </Link>
+        <button onClick={() => setAdvOpen(true)} className="hover:underline"
+          style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          Paramètres avancés
         </button>
       </div>
 
-      <div className="rounded-lg p-3 flex items-start gap-2" style={{ backgroundColor: "var(--info-bg)", maxWidth: 640 }}>
-        <Info size={14} style={{ color: "var(--info-text)", marginTop: 2, flexShrink: 0 }} />
-        <div style={{ fontSize: 11, color: "var(--info-text)", lineHeight: 1.5 }}>
-          Les besoins sont lus depuis <Link to="/reglages" style={{ textDecoration: "underline" }}>Réglages › Besoins par studio</Link>. L'algorithme respecte les plafonds hebdo, le repos 11h et privilégie les meilleurs scores. Tie-breaker équité quand les scores sont proches (&lt; 0.5 d'écart).
-        </div>
-      </div>
+      {/* Advanced settings dialog */}
+      <Dialog open={advOpen} onOpenChange={setAdvOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Paramètres avancés</DialogTitle>
+            <DialogDescription>À ne toucher que si tu sais ce que tu fais.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-5 py-2">
+            <AdvancedToggle
+              label="Préserver les shifts créés à la main"
+              desc="Les shifts créés manuellement ne seront pas écrasés."
+              checked={preserveManual} onChange={setPreserveManual}
+            />
+            <AdvancedToggle
+              label="Préserver les shifts publiés"
+              desc="Les shifts déjà envoyés aux employés ne seront pas modifiés."
+              checked={preserveLocked} onChange={setPreserveLocked}
+            />
+            <AdvancedToggle
+              label="Mode simulation (dry-run)"
+              desc="Affiche le résultat sans rien enregistrer en base."
+              checked={dryRun} onChange={setDryRun}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdvOpen(false)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {showHistory && <HistoryModal onClose={() => setShowHistory(false)} />}
+      {historyOpen && <HistoryModal onClose={() => setHistoryOpen(false)} />}
     </div>
   );
 }
 
-// ─── Vue résultat ───────────────────────────────────────────────────────────
-function ResultView({ r, onClose, navigate }: { r: GenerateResult; onClose: () => void; navigate: any }) {
+function HowStep({ emoji, title, desc }: { emoji: string; title: string; desc: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 28, marginBottom: 8 }}>{emoji}</div>
+      <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{title}</div>
+      <div style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.5 }}>{desc}</div>
+    </div>
+  );
+}
+
+function AdvancedToggle({
+  label, desc, checked, onChange,
+}: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex-1">
+        <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>{desc}</div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+// ─── Result view ────────────────────────────────────────────────────────────
+function ResultView({ r, navigate, onReset }: { r: GenerateResult; navigate: any; onReset: () => void }) {
   const cancel = useServerFn(cancelPlanningRun);
   const [cancelling, setCancelling] = useState(false);
-  const coveragePct = Math.round(r.coverage_rate * 100);
-  const statusColor = r.status === "success" ? "var(--success-text)" : r.status === "partial" ? "var(--warning-text)" : "var(--danger-text)";
-  const statusBg = r.status === "success" ? "var(--success-bg)" : r.status === "partial" ? "var(--warning-bg)" : "var(--danger-bg)";
+
+  const pct = Math.round(r.coverage_rate * 100);
+  const pctColor = pct >= 80 ? "var(--success-text, #16a34a)" : pct >= 50 ? "var(--warning-text, #d97706)" : "var(--danger-text, #dc2626)";
+
+  // mini-stats
+  const employeesUsed = useMemo(() => {
+    const set = new Set<string>();
+    (r.solver_logs?.assignments ?? []).forEach((a: any) => { if (a?.user_id) set.add(a.user_id); });
+    return set.size;
+  }, [r]);
+  const hoursTotal = useMemo(() => {
+    return (r.solver_logs?.assignments ?? []).reduce((sum: number, a: any) => {
+      if (!a?.start_time || !a?.end_time) return sum;
+      const [sh, sm] = String(a.start_time).split(":").map(Number);
+      const [eh, em] = String(a.end_time).split(":").map(Number);
+      return sum + Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60);
+    }, 0);
+  }, [r]);
 
   const doCancel = async () => {
     if (!confirm("Supprimer tous les shifts générés par ce run ? (les shifts manuels et publiés sont conservés)")) return;
@@ -260,37 +402,55 @@ function ResultView({ r, onClose, navigate }: { r: GenerateResult; onClose: () =
     try {
       const res: any = await cancel({ data: { run_id: r.planning_run_id } });
       toast.success(`${res.deleted} shifts supprimés`);
-      onClose();
-    } catch (e: any) {
-      toast.error(e?.message || "Erreur");
-    } finally {
-      setCancelling(false);
-    }
+      onReset();
+    } catch (e: any) { toast.error(e?.message || "Erreur"); }
+    finally { setCancelling(false); }
   };
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="rounded-xl p-5 mb-5 flex items-center gap-4" style={{ backgroundColor: statusBg }}>
-        <div className="rounded-full flex items-center justify-center" style={{ width: 48, height: 48, backgroundColor: "var(--card)" }}>
-          {r.status === "success" ? <Check size={24} style={{ color: statusColor }} /> : <AlertTriangle size={24} style={{ color: statusColor }} />}
+    <div className="p-4 md:p-8 max-w-3xl mx-auto pb-16">
+      <Link to="/planning" className="inline-flex items-center gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+        <ArrowLeft size={12} /> Retour au planning
+      </Link>
+      <h1 style={{ fontSize: 28, fontWeight: 500, marginTop: 16, marginBottom: 32 }}>Résultat de la génération</h1>
+
+      {/* Big stat */}
+      <Card className="p-8 mb-6 rounded-2xl text-center">
+        <div style={{ fontSize: 72, fontWeight: 300, color: pctColor, lineHeight: 1 }}>{pct}%</div>
+        <div style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 8 }}>
+          {r.shifts_generated} shift{r.shifts_generated > 1 ? "s" : ""} généré{r.shifts_generated > 1 ? "s" : ""} sur {r.total_slots_needed} créneau{r.total_slots_needed > 1 ? "x" : ""} ouvert{r.total_slots_needed > 1 ? "s" : ""}
         </div>
-        <div className="flex-1">
-          <div style={{ fontSize: 24, fontWeight: 500, color: statusColor }}>
-            {coveragePct}% couvert
-          </div>
-          <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-            {r.total_slots_covered} / {r.total_slots_needed} créneaux · {r.shifts_generated} shifts générés · {(r.duration_ms / 1000).toFixed(1)}s
-          </div>
-        </div>
+      </Card>
+
+      {/* Mini stats */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <MiniStat label="Employés utilisés" value={employeesUsed > 0 ? String(employeesUsed) : "—"} />
+        <MiniStat label="Heures réparties" value={hoursTotal > 0 ? `${Math.round(hoursTotal)}h` : "—"} />
+        <MiniStat label="Trous restants" value={String(r.holes.length)} />
       </div>
 
+      {/* CTA buttons */}
+      <div className="flex gap-3 mb-8">
+        <button onClick={() => navigate({ to: "/planning" })}
+          className="flex-1 rounded-2xl flex items-center justify-center gap-2"
+          style={{ height: 48, fontSize: 14, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", border: "none" }}>
+          Voir le planning
+        </button>
+        <button onClick={onReset}
+          className="flex-1 rounded-2xl"
+          style={{ height: 48, fontSize: 14, fontWeight: 500, backgroundColor: "var(--card)", color: "var(--foreground)", border: "0.5px solid var(--border)" }}>
+          Régénérer
+        </button>
+      </div>
+
+      {/* Holes (kept for ops, collapsed in a discreet card) */}
       {r.holes.length > 0 && (
-        <div className="rounded-xl border p-5 mb-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+        <Card className="p-5 mb-5 rounded-2xl">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle size={14} style={{ color: "var(--warning-text)" }} />
-            <span style={{ fontSize: 13, fontWeight: 500 }}>{r.holes.length} trou{r.holes.length > 1 ? "s" : ""}</span>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{r.holes.length} trou{r.holes.length > 1 ? "s" : ""} non couvert{r.holes.length > 1 ? "s" : ""}</span>
           </div>
-          <div className="flex flex-col gap-1.5 max-h-[400px] overflow-y-auto">
+          <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto">
             {r.holes.slice(0, 50).map((h, i) => (
               <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 flex-wrap" style={{ backgroundColor: "var(--warning-bg)" }}>
                 <span style={{ fontSize: 12, fontWeight: 500, minWidth: 110 }}>{new Date(h.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}</span>
@@ -300,18 +460,19 @@ function ResultView({ r, onClose, navigate }: { r: GenerateResult; onClose: () =
                 <span style={{ fontSize: 11, color: "var(--warning-text)", marginLeft: "auto" }}>{h.reason}</span>
               </div>
             ))}
-            {r.holes.length > 50 && <div style={{ fontSize: 11, color: "var(--muted-foreground)", padding: 8 }}>+ {r.holes.length - 50} autres trous</div>}
+            {r.holes.length > 50 && <div style={{ fontSize: 11, color: "var(--muted-foreground)", padding: 8 }}>+ {r.holes.length - 50} autres</div>}
           </div>
-        </div>
+        </Card>
       )}
 
+      {/* Alerts */}
       {r.alerts.length > 0 && (
-        <div className="rounded-xl border p-5 mb-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+        <Card className="p-5 mb-5 rounded-2xl">
           <div className="flex items-center gap-2 mb-3">
             <Info size={14} />
             <span style={{ fontSize: 13, fontWeight: 500 }}>Alertes ({r.alerts.length})</span>
           </div>
-          <div className="flex flex-col gap-1.5 max-h-[300px] overflow-y-auto">
+          <div className="flex flex-col gap-1.5 max-h-[280px] overflow-y-auto">
             {r.alerts.map((a, i) => {
               const bg = a.severity === "error" ? "var(--danger-bg)" : a.severity === "warning" ? "var(--warning-bg)" : "var(--info-bg)";
               const fg = a.severity === "error" ? "var(--danger-text)" : a.severity === "warning" ? "var(--warning-text)" : "var(--info-text)";
@@ -324,25 +485,15 @@ function ResultView({ r, onClose, navigate }: { r: GenerateResult; onClose: () =
               );
             })}
           </div>
-        </div>
+        </Card>
       )}
 
       <WorkflowPanel runId={r.planning_run_id} />
 
-      <div className="flex items-center gap-3 flex-wrap mt-5">
-        <button onClick={() => navigate({ to: "/planning" })}
-          className="rounded-md px-6 py-3 flex items-center gap-2"
-          style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
-          Voir le planning <ArrowRight size={16} />
-        </button>
-        <button onClick={onClose}
-          className="rounded-md px-6 py-3"
-          style={{ fontSize: 14, fontWeight: 500, border: "0.5px solid var(--border)" }}>
-          Relancer
-        </button>
+      <div className="flex justify-end mt-5">
         <button onClick={doCancel} disabled={cancelling}
-          className="rounded-md px-6 py-3 ml-auto"
-          style={{ fontSize: 13, fontWeight: 500, color: "var(--danger-text)", border: "0.5px solid var(--border)" }}>
+          className="rounded-md px-4 py-2"
+          style={{ fontSize: 12, fontWeight: 500, color: "var(--danger-text)", border: "0.5px solid var(--border)" }}>
           {cancelling ? "Suppression…" : "Annuler cette génération"}
         </button>
       </div>
@@ -350,7 +501,16 @@ function ResultView({ r, onClose, navigate }: { r: GenerateResult; onClose: () =
   );
 }
 
-// ─── Panneau workflow publication ──────────────────────────────────────────
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl p-4" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+      <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 500 }}>{value}</div>
+    </div>
+  );
+}
+
+// ─── Workflow publication panel (preserved business logic) ──────────────────
 function WorkflowPanel({ runId }: { runId: string }) {
   const fetchRun = useServerFn(getPlanningRun);
   const markReview = useServerFn(markPlanningForReview);
@@ -382,15 +542,11 @@ function WorkflowPanel({ runId }: { runId: string }) {
     finally { setBusy(false); }
   };
 
-  const badge = (
-    <WorkflowBadge status={ws} />
-  );
-
   return (
-    <div className="rounded-xl border p-5 mb-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+    <Card className="p-5 mb-5 rounded-2xl">
       <div className="flex items-center gap-2 mb-3">
         <span style={{ fontSize: 13, fontWeight: 500 }}>Statut publication</span>
-        {badge}
+        <WorkflowBadge status={ws} />
       </div>
 
       {ws === "published" && (
@@ -411,74 +567,68 @@ function WorkflowPanel({ runId }: { runId: string }) {
 
       <div className="flex flex-wrap gap-2">
         {ws === "draft" && (
-          <button disabled={busy} onClick={() => wrap(() => markReview({ data: { planning_run_id: runId } }), "Marqué pour validation")}
-            className="rounded-md px-4 py-2 flex items-center gap-2"
-            style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}>
+          <Button variant="secondary" size="sm" disabled={busy}
+            onClick={() => wrap(() => markReview({ data: { planning_run_id: runId } }), "Marqué pour validation")}>
             <Send size={14} /> Marquer pour validation
-          </button>
+          </Button>
         )}
         {ws === "review" && (
           <>
-            <button disabled={busy} onClick={() => wrap(() => publish({ data: { planning_run_id: runId } }), "Planning publié")}
-              className="rounded-md px-4 py-2 flex items-center gap-2"
-              style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--success-text)", color: "#fff" }}>
+            <Button size="sm" disabled={busy}
+              onClick={() => wrap(() => publish({ data: { planning_run_id: runId } }), "Planning publié")}
+              style={{ backgroundColor: "var(--success-text)", color: "#fff" }}>
               <Globe size={14} /> Publier
-            </button>
-            <button disabled={busy} onClick={() => wrap(() => revert({ data: { planning_run_id: runId } }), "Retour en brouillon")}
-              className="rounded-md px-4 py-2 flex items-center gap-2"
-              style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+            </Button>
+            <Button variant="outline" size="sm" disabled={busy}
+              onClick={() => wrap(() => revert({ data: { planning_run_id: runId } }), "Retour en brouillon")}>
               <Undo2 size={14} /> Retour en brouillon
-            </button>
+            </Button>
           </>
         )}
         {ws === "published" && (
-          <button disabled={busy} onClick={() => setShowUnpub(true)}
-            className="rounded-md px-4 py-2 flex items-center gap-2"
-            style={{ fontSize: 13, fontWeight: 500, color: "var(--danger-text)", border: "0.5px solid var(--danger-text)" }}>
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => setShowUnpub(true)}
+            style={{ color: "var(--danger-text)", borderColor: "var(--danger-text)" }}>
             <ShieldAlert size={14} /> Dépublier
-          </button>
+          </Button>
         )}
         {ws === "unpublished" && (
           <>
-            <button disabled={busy} onClick={() => wrap(() => markReview({ data: { planning_run_id: runId } }), "Re-soumis à validation")}
-              className="rounded-md px-4 py-2 flex items-center gap-2"
-              style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}>
+            <Button variant="secondary" size="sm" disabled={busy}
+              onClick={() => wrap(() => markReview({ data: { planning_run_id: runId } }), "Re-soumis à validation")}>
               <Send size={14} /> Re-soumettre à validation
-            </button>
-            <button disabled={busy} onClick={() => wrap(() => revert({ data: { planning_run_id: runId } }), "Retour en brouillon")}
-              className="rounded-md px-4 py-2 flex items-center gap-2"
-              style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+            </Button>
+            <Button variant="outline" size="sm" disabled={busy}
+              onClick={() => wrap(() => revert({ data: { planning_run_id: runId } }), "Retour en brouillon")}>
               <Undo2 size={14} /> Retour brouillon
-            </button>
+            </Button>
           </>
         )}
       </div>
 
-      {showUnpub && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} onClick={() => setShowUnpub(false)}>
-          <div className="rounded-xl bg-white p-5 w-full" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Dépublier le planning</div>
-            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12 }}>
+      <Dialog open={showUnpub} onOpenChange={setShowUnpub}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dépublier le planning</DialogTitle>
+            <DialogDescription>
               Les shifts seront déverrouillés et repasseront en brouillon. L'historique de publication est conservé.
-            </div>
-            <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Raison de la dépublication (obligatoire)"
-              className="w-full rounded-md p-2" style={{ fontSize: 13, border: "0.5px solid var(--border)", minHeight: 80 }} />
-            <div className="flex gap-2 mt-3 justify-end">
-              <button onClick={() => setShowUnpub(false)} className="rounded-md px-3 py-2" style={{ fontSize: 13, border: "0.5px solid var(--border)" }}>Annuler</button>
-              <button disabled={busy || reason.trim().length < 3}
-                onClick={async () => {
-                  await wrap(() => unpublish({ data: { planning_run_id: runId, reason: reason.trim() } }), "Planning dépublié");
-                  setShowUnpub(false); setReason("");
-                }}
-                className="rounded-md px-3 py-2 disabled:opacity-50"
-                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--danger-text)", color: "#fff" }}>
-                Confirmer la dépublication
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            </DialogDescription>
+          </DialogHeader>
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Raison de la dépublication (obligatoire)"
+            className="w-full rounded-md p-2" style={{ fontSize: 13, border: "0.5px solid var(--border)", minHeight: 80 }} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUnpub(false)}>Annuler</Button>
+            <Button disabled={busy || reason.trim().length < 3}
+              onClick={async () => {
+                await wrap(() => unpublish({ data: { planning_run_id: runId, reason: reason.trim() } }), "Planning dépublié");
+                setShowUnpub(false); setReason("");
+              }}
+              style={{ backgroundColor: "var(--danger-text)", color: "#fff" }}>
+              Confirmer la dépublication
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }
 
@@ -493,7 +643,7 @@ function WorkflowBadge({ status }: { status: "draft" | "review" | "published" | 
   return <span className="rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: bg, color: fg }}>{label}</span>;
 }
 
-// ─── Modal historique ───────────────────────────────────────────────────────
+// ─── History modal ──────────────────────────────────────────────────────────
 function HistoryModal({ onClose }: { onClose: () => void }) {
   const list = useServerFn(listPlanningRuns);
   const [runs, setRuns] = useState<any[]>([]);
@@ -506,7 +656,7 @@ function HistoryModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} onClick={onClose}>
-      <div className="rounded-xl bg-white w-full" style={{ maxWidth: 800, maxHeight: "85vh", overflow: "hidden", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
+      <div className="rounded-2xl bg-white w-full" style={{ maxWidth: 800, maxHeight: "85vh", overflow: "hidden", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
           <div style={{ fontSize: 15, fontWeight: 500 }}>Historique des générations</div>
           <button onClick={onClose} className="rounded-full p-1.5" style={{ backgroundColor: "var(--muted)" }}><X size={14} /></button>
