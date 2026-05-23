@@ -743,7 +743,13 @@ function PlanningCalendarPage() {
       toast.error(e.message ?? "Erreur");
     }
   };
-  const handlePublish = () => setPublishOpen(true);
+  const handlePublish = () => {
+    if (draftCount === 0) {
+      toast.info("Rien à publier — tous les shifts sont déjà publiés");
+      return;
+    }
+    setPublishOpen(true);
+  };
 
   const handleMoveShift = async (shiftId: string, newDay: number, newSlot: number) => {
     const def = timeSlotDefs[newSlot];
@@ -966,33 +972,31 @@ function PlanningCalendarPage() {
         </span>
       </div>
 
-      {/* Banner publication — CTA principal */}
-      {(draftCount > 0 || conflictCount > 0) && (
-        <div className="rounded-xl border mb-3 px-5 py-4 flex items-center justify-between gap-4 flex-wrap"
-          style={{ borderColor: "var(--coral)", backgroundColor: "var(--coral-light)", borderWidth: 1.5 }}>
-          <div className="flex items-center gap-3" style={{ fontSize: 13 }}>
-            <FileEdit size={18} style={{ color: "var(--coral-dark)" }} />
-            <div className="flex flex-col gap-0.5">
-              <span style={{ fontWeight: 600, color: "var(--coral-dark)", fontSize: 14 }}>
-                {draftCount > 0 && `${draftCount} shift${draftCount > 1 ? "s" : ""} à publier`}
-                {draftCount > 0 && conflictCount > 0 && " · "}
-                {conflictCount > 0 && `${conflictCount} conflit${conflictCount > 1 ? "s" : ""} détecté${conflictCount > 1 ? "s" : ""}`}
-              </span>
-              {draftCount > 0 && (
-                <span style={{ fontSize: 11, color: "var(--coral-dark)", opacity: 0.85 }}>
-                  Les employés ne sont pas encore notifiés — publie pour leur envoyer
-                </span>
-              )}
-            </div>
+      {/* Bandeau publication — toujours visible */}
+      <div className="rounded-xl border mb-3 px-5 py-3 flex items-center justify-between gap-4 flex-wrap"
+        style={{ borderColor: draftCount > 0 ? "var(--coral)" : "var(--border)", backgroundColor: draftCount > 0 ? "var(--coral-light)" : "var(--card)", borderWidth: 1.5 }}>
+        <div className="flex items-center gap-3" style={{ fontSize: 13 }}>
+          <FileEdit size={18} style={{ color: draftCount > 0 ? "var(--coral-dark)" : "var(--muted-foreground)" }} />
+          <div className="flex flex-col gap-0.5">
+            <span style={{ fontWeight: 600, color: draftCount > 0 ? "var(--coral-dark)" : "var(--foreground)", fontSize: 14 }}>
+              {draftCount > 0
+                ? `${draftCount} shift${draftCount > 1 ? "s" : ""} à publier`
+                : "Aucun shift à publier"}
+              {conflictCount > 0 && ` · ${conflictCount} conflit${conflictCount > 1 ? "s" : ""}`}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              {draftCount > 0
+                ? "Les employés ne sont pas encore notifiés — publie pour leur envoyer"
+                : "Tous les shifts de la semaine sont déjà publiés"}
+            </span>
           </div>
-          {draftCount > 0 && (
-            <button onClick={handlePublish} className="rounded-lg px-5 py-2.5 transition-transform hover:scale-[1.02]"
-              style={{ fontSize: 13, fontWeight: 600, backgroundColor: "var(--coral)", color: "#fff", boxShadow: "0 4px 12px -2px color-mix(in oklab, var(--coral) 50%, transparent)" }}>
-              Publier la semaine →
-            </button>
-          )}
         </div>
-      )}
+        <button onClick={handlePublish} className="rounded-lg px-5 py-2.5 transition-transform hover:scale-[1.02]"
+          style={{ fontSize: 13, fontWeight: 600, backgroundColor: draftCount > 0 ? "var(--coral)" : "var(--muted)", color: draftCount > 0 ? "#fff" : "var(--muted-foreground)", boxShadow: draftCount > 0 ? "0 4px 12px -2px color-mix(in oklab, var(--coral) 50%, transparent)" : "none" }}>
+          Publier la semaine →
+        </button>
+      </div>
+
 
       {/* Zoom slider (vue calendrier) */}
       <PlanningCalendar
