@@ -10,14 +10,15 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
   validateSearch: (s: Record<string, unknown>) => ({
     mode: s.mode === "employee" || s.mode === "app" || s.mode === "admin" ? s.mode : undefined,
+    email: typeof s.email === "string" ? s.email : undefined,
   }),
   head: () => ({ meta: [{ title: "Connexion — Kadence" }] }),
 });
 
 function LoginPage() {
-  const { mode: searchMode } = Route.useSearch();
+  const { mode: searchMode, email: searchEmail } = Route.useSearch();
   const { session, appRole, loading: authLoading } = useAuth();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchEmail ?? "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "forgot">("login");
