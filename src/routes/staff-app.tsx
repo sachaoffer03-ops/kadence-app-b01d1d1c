@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { toast } from "sonner";
 import {
-  Home, Calendar, User, ChevronRight, Clock, GraduationCap, ArrowLeft, CheckSquare,
+  Home, Calendar, User, ChevronRight, ChevronLeft, Clock, GraduationCap, ArrowLeft, CheckSquare,
   AlertCircle, Replace, Inbox, MessageCircle, CalendarCheck, CheckCircle2, Phone,
   MapPin, Cake, CreditCard, Hash, Mail, Bell, Sparkles, QrCode
 } from "lucide-react";
@@ -692,18 +692,62 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
     setEndShift(s);
   }
 
+  // Mode de vue + curseur de période
+  const [view, setView] = useState<"week" | "month">("week");
+  const [cursor, setCursor] = useState<Date>(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
+  });
+
+  const toISO = (d: Date) => {
+    const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, "0"); const da = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${da}`;
+  };
+
+  const { rangeStart, rangeEnd, rangeLabel } = useMemo(() => {
+    if (view === "week") {
+      // Lundi → Dimanche
+      const c = new Date(cursor);
+      const dow = (c.getDay() + 6) % 7;
+      const start = new Date(c); start.setDate(c.getDate() - dow);
+      const end = new Date(start); end.setDate(start.getDate() + 6);
+      const sameMonth = start.getMonth() === end.getMonth();
+      const label = sameMonth
+        ? `${start.getDate()} – ${end.getDate()} ${end.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`
+        : `${start.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} – ${end.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}`;
+      return { rangeStart: start, rangeEnd: end, rangeLabel: label };
+    }
+    const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+    const label = cursor.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    return { rangeStart: start, rangeEnd: end, rangeLabel: label };
+  }, [view, cursor]);
+
   const days = useMemo(() => {
     const arr: { iso: string; label: string }[] = [];
-    const d = new Date();
-    for (let i = 0; i < 14; i++) {
-      const di = new Date(d); di.setDate(d.getDate() + i);
+    const d = new Date(rangeStart);
+    while (d <= rangeEnd) {
       arr.push({
-        iso: di.toISOString().slice(0, 10),
-        label: di.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }),
+        iso: toISO(d),
+        label: d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }),
       });
+      d.setDate(d.getDate() + 1);
     }
     return arr;
-  }, []);
+  }, [rangeStart, rangeEnd]);
+
+  const shiftPrev = () => {
+    const c = new Date(cursor);
+    if (view === "week") c.setDate(c.getDate() - 7);
+    else c.setMonth(c.getMonth() - 1);
+    setCursor(c);
+  };
+  const shiftNext = () => {
+    const c = new Date(cursor);
+    if (view === "week") c.setDate(c.getDate() + 7);
+    else c.setMonth(c.getMonth() + 1);
+    setCursor(c);
+  };
+  const goToday = () => { const d = new Date(); d.setHours(0,0,0,0); setCursor(d); };
 
   useEffect(() => {
     const load = async () => {
@@ -711,7 +755,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
         .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late")
         .eq("user_id", userId)
         .not("published_at", "is", null)
-        .gte("shift_date", days[0].iso).lte("shift_date", days[days.length - 1].iso)
+        .gte("shift_date", toISO(rangeStart)).lte("shift_date", toISO(rangeEnd))
         .order("shift_date").order("start_time");
       if (data) setShifts(data);
       setLoading(false);
@@ -724,9 +768,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [userId]);
-
-  const monthLabel = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }, [userId, rangeStart, rangeEnd]);
 
   const hasAnyShift = shifts.length > 0;
 
@@ -736,11 +778,49 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
     return !acc || p > acc ? p : acc;
   }, null);
 
+  const today = toISO(new Date());
+  const isCurrentPeriod = today >= toISO(rangeStart) && today <= toISO(rangeEnd);
+
   return (
     <div className="px-5 pt-6">
-      <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 4 }}>Mon planning</div>
+      <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 12 }}>Mon planning</div>
+
+      {/* Toggle Semaine / Mois */}
+      <div className="inline-flex rounded-full p-0.5 mb-3" style={{ backgroundColor: "var(--muted)" }}>
+        {([["week", "Semaine"], ["month", "Mois"]] as const).map(([v, l]) => {
+          const active = view === v;
+          return (
+            <button key={v} onClick={() => setView(v)}
+              className="rounded-full px-4 py-1.5 transition-colors"
+              style={{
+                fontSize: 12, fontWeight: 500,
+                backgroundColor: active ? "#fff" : "transparent",
+                color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+              }}>
+              {l}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Navigateur de période */}
+      <div className="flex items-center gap-2 mb-2">
+        <button onClick={shiftPrev} className="rounded-full p-1.5" style={{ border: "0.5px solid var(--border)", backgroundColor: "#fff" }} aria-label="Précédent">
+          <ChevronLeft size={14} />
+        </button>
+        <div className="flex-1 text-center" style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" }}>{rangeLabel}</div>
+        <button onClick={shiftNext} className="rounded-full p-1.5" style={{ border: "0.5px solid var(--border)", backgroundColor: "#fff" }} aria-label="Suivant">
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <span style={{ fontSize: 12, color: "var(--muted-foreground)", textTransform: "capitalize" }}>{monthLabel}</span>
+        {!isCurrentPeriod && (
+          <button onClick={goToday} className="rounded-full px-2.5 py-0.5" style={{ fontSize: 10, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "#fff", color: "var(--muted-foreground)" }}>
+            Aujourd'hui
+          </button>
+        )}
         {latestPub && (
           <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>
             Publié le {new Date(latestPub).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
@@ -753,9 +833,9 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
           <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, backgroundColor: "var(--coral-light)" }}>
             <Sparkles size={20} style={{ color: "var(--coral-dark)" }} />
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>Aucun planning publié</div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>Aucun shift sur cette période</div>
           <div style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, maxWidth: 280 }}>
-            Tes shifts s'afficheront ici dès que l'admin aura publié le planning du mois.
+            Change de {view === "week" ? "semaine" : "mois"} avec les flèches ou attends que l'admin publie le planning.
           </div>
         </div>
       ) : (
