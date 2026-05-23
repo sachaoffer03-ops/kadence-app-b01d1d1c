@@ -743,7 +743,13 @@ function PlanningCalendarPage() {
       toast.error(e.message ?? "Erreur");
     }
   };
-  const handlePublish = () => setPublishOpen(true);
+  const handlePublish = () => {
+    if (draftCount === 0) {
+      toast.info("Rien à publier — tous les shifts sont déjà publiés");
+      return;
+    }
+    setPublishOpen(true);
+  };
 
   const handleMoveShift = async (shiftId: string, newDay: number, newSlot: number) => {
     const def = timeSlotDefs[newSlot];
