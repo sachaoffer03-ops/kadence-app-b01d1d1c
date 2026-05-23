@@ -74,15 +74,18 @@ function SignalementsPage() {
       setDismissing((d) => ({ ...d, [id]: "fade" }));
       await new Promise((r) => setTimeout(r, 300));
     }
-    const { error } = await supabase.from("signalements").update({
+    const patch = {
       resolved: val,
       resolved_at: val ? new Date().toISOString() : null,
       resolved_by: val ? user?.id ?? null : null,
-    }).eq("id", id);
+    };
+    const { error } = await supabase.from("signalements").update(patch).eq("id", id);
     if (error) {
       setDismissing((d) => { const n = { ...d }; delete n[id]; return n; });
       toast.error("Erreur"); return;
     }
+    setItems((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } as Row : r));
+    setDismissing((d) => { const n = { ...d }; delete n[id]; return n; });
     toast.success(val ? "Signalement résolu" : "Signalement rouvert");
   };
 
