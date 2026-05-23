@@ -1093,7 +1093,7 @@ function PlanningCalendarPage() {
               <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{weekRangeLabel}</div>
             </div>
             <div className="px-5 py-4" style={{ fontSize: 13, color: "var(--foreground)" }}>
-              Tu vas publier <strong>{draftCount} shift{draftCount > 1 ? "s" : ""} en brouillon</strong>. Les employés concernés recevront une notification dans l'app.
+              Tu vas publier <strong>{draftCount} shift{draftCount > 1 ? "s" : ""} non encore notifié{draftCount > 1 ? "s" : ""}</strong>. Les employés concernés recevront une notification dans l'app.
               {conflictCount > 0 && (
                 <div className="mt-3 rounded-md px-3 py-2 flex items-center gap-2" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger-text)", fontSize: 11 }}>
                   <AlertTriangle size={12} /> {conflictCount} conflit{conflictCount > 1 ? "s" : ""} non résolu{conflictCount > 1 ? "s" : ""} — vérifie avant de publier.
