@@ -97,10 +97,6 @@ function TrousPage() {
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
   }, []);
 
-  const filtered = useMemo(
-    () => holes.filter((h) => filterRole === "tous" || h.business_role === filterRole),
-    [holes, filterRole],
-  );
 
   const search = Route.useSearch();
   const studioFilter = useMemo(
