@@ -535,8 +535,9 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
     }
 
     // Soumission checklist d'ouverture COMPLÉTÉE pour Léa
-    const { data: openTpl } = await supabaseAdmin
-      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", "Démo — Ouverture matin Barista").maybeSingle();
+    const { data: openTplExisting } = await supabaseAdmin
+      .from("checklist_templates").select("id").eq("studio_id", studio!.id).eq("phase", "opening").maybeSingle();
+    const openTpl = openTplExisting;
     if (openTpl?.id && leaShift?.id) {
       const { data: openItems } = await supabaseAdmin
         .from("checklist_template_items").select("id").eq("template_id", (openTpl as any).id);
