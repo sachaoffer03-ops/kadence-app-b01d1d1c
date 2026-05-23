@@ -236,13 +236,6 @@ function ResultPanel({ result, navigate }: { result: any; navigate: any }) {
       </Section>
 
       <div className="flex gap-3 mt-5">
-        <button
-          onClick={() => navigate({ to: "/planning/generate" })}
-          className="flex-1 rounded-xl px-4 py-3 flex items-center justify-center gap-2"
-          style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", border: "none" }}
-        >
-          Aller à la génération de planning <ArrowRight size={14} />
-        </button>
         <Link to="/staff" className="flex-1 rounded-xl px-4 py-3 flex items-center justify-center"
           style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)", textAlign: "center" }}>
           Voir les employés
