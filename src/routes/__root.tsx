@@ -171,6 +171,11 @@ function AppShell() {
 
   const isPublic = currentPath === "/" || PUBLIC_ROUTES.some((p) => currentPath.startsWith(p));
   const isStaffApp = currentPath.startsWith("/staff-app") || currentPath.startsWith("/staff/checklist");
+  const isDisplay = currentPath.startsWith("/display");
+
+  if (isDisplay) {
+    return <Outlet />;
+  }
   // Allow admins to view the activation page in preview mode (?preview=...)
   const isActivationPreview =
     currentPath.startsWith("/activation") &&
