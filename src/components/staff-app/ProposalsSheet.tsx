@@ -30,33 +30,27 @@ function elapsed(sentAt: string): string {
 
 export function useProposals(userId: string) {
   const [proposals, setProposals] = useState<ProposalView[]>([]);
+  const fetchFn = useServerFn(getMyPendingProposals);
 
   const load = async () => {
-    console.log("[DEBUG useProposals] userId reçu:", userId);
-    const { data, error } = await supabase
-      .from("shift_proposals")
-      .select("id,status,sent_at,replacement_request_id,shift:shifts!inner(id,shift_date,start_time,end_time,business_role,studio_id,user_id)")
-      .eq("user_id", userId)
-      .eq("status", "pending")
-      .order("sent_at", { ascending: false });
-    console.log("[DEBUG useProposals] raw rows:", data?.length ?? 0, "error:", error);
-    // On accepte : (a) trous classiques (shift libre) ; (b) remplacements (shift encore assigné à l'employé d'origine)
-    const list = (data || []).filter((p: any) => {
-      if (!p.shift) return false;
-      if (p.replacement_request_id) return p.shift.user_id !== userId; // pas à soi-même
-      return !p.shift.user_id;
-    }) as ProposalView[];
-    console.log("[DEBUG useProposals] after filter:", list.length);
-    setProposals(list);
+    try {
+      const res = await fetchFn();
+      setProposals((res.proposals || []) as ProposalView[]);
+    } catch (e) {
+      console.error("[useProposals] error:", e);
+      setProposals([]);
+    }
   };
 
   useEffect(() => {
+    if (!userId) return;
     load();
     const ch = supabase
       .channel(`proposals-${userId}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shift_proposals", filter: `user_id=eq.${userId}` }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   return { proposals, reload: load };
