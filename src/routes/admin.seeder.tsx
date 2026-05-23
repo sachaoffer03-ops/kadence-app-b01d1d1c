@@ -2,10 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { DevOnly } from "@/components/DevOnly";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, ArrowLeft, Check, AlertTriangle, ArrowRight, Loader2, ChefHat } from "lucide-react";
+import { Sparkles, ArrowLeft, Check, AlertTriangle, ArrowRight, Loader2, ChefHat, Link2, Tag } from "lucide-react";
 import { seedFakeData, addKitchenWeekendStaff } from "@/lib/seed.functions";
-import { linkAllEmployeesToAllStudios } from "@/lib/data-repair.functions";
-import { Link2 } from "lucide-react";
+import { linkAllEmployeesToAllStudios, giveAllRolesToAllEmployees } from "@/lib/data-repair.functions";
 
 export const Route = createFileRoute("/admin/seeder")({
   component: () => (<DevOnly label="Le seeder de données fictives"><SeederPage /></DevOnly>),
@@ -28,6 +27,24 @@ function SeederPage() {
   const [linkState, setLinkState] = useState<"idle" | "running" | "done" | "error">("idle");
   const [linkResult, setLinkResult] = useState<any>(null);
   const [linkErr, setLinkErr] = useState("");
+
+  const giveRoles = useServerFn(giveAllRolesToAllEmployees);
+  const [rolesState, setRolesState] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [rolesResult, setRolesResult] = useState<any>(null);
+  const [rolesErr, setRolesErr] = useState("");
+
+  const handleGiveRoles = async () => {
+    if (!confirm("Donner TOUS les rôles métier actifs à TOUS les employés (non-admins) ?")) return;
+    setRolesState("running"); setRolesErr(""); setRolesResult(null);
+    try {
+      const r = await giveRoles();
+      setRolesResult(r);
+      setRolesState("done");
+    } catch (e: any) {
+      setRolesErr(e?.message || "Erreur");
+      setRolesState("error");
+    }
+  };
 
   const handleLinkAll = async () => {
     if (!confirm("Rattacher tous les employés (non-admins) à TOUS les studios ?")) return;
@@ -122,6 +139,36 @@ function SeederPage() {
           </div>
         )}
       </div>
+
+      <div className="mb-4">
+        <button
+          onClick={handleGiveRoles}
+          disabled={rolesState === "running"}
+          className="w-full rounded-xl px-6 py-4 flex items-center justify-center gap-3 transition"
+          style={{
+            fontSize: 14, fontWeight: 500,
+            backgroundColor: rolesState === "running" ? "var(--muted)" : "var(--card)",
+            color: "var(--foreground)",
+            cursor: rolesState === "running" ? "wait" : "pointer",
+            border: "0.5px solid var(--border)",
+          }}
+        >
+          {rolesState === "running" ? <Loader2 size={18} className="animate-spin" /> : <Tag size={18} />}
+          {rolesState === "running" ? "Attribution en cours…" : "Donner tous les rôles métier à tous les employés"}
+        </button>
+        {rolesState === "error" && (
+          <div className="mt-3 rounded-xl border p-3" style={{ borderColor: "var(--danger-border, #ef4444)", backgroundColor: "var(--danger-bg, #fef2f2)", fontSize: 12 }}>
+            <span style={{ fontFamily: "monospace", color: "var(--danger-text, #b91c1c)" }}>{rolesErr}</span>
+          </div>
+        )}
+        {rolesState === "done" && rolesResult && (
+          <div className="mt-3 rounded-xl border p-3 flex items-center gap-2" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)", fontSize: 13 }}>
+            <Check size={14} style={{ color: "var(--success-text, #16a34a)" }} />
+            <span>{rolesResult.employees} employé(s) · {rolesResult.roles_total} rôle(s) actifs · <strong>{rolesResult.roles_added}</strong> attribution(s) ajoutée(s)</span>
+          </div>
+        )}
+      </div>
+
 
       <button
         onClick={handleClick}
