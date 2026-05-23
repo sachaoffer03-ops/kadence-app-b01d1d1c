@@ -490,7 +490,7 @@ export async function getShiftDetail(args: { shiftId: string }) {
       supabaseAdmin.from("checklist_template_items").select("id,label,order_index,photo_zone_id").eq("template_id", sub.template_id).order("order_index"),
       supabaseAdmin.from("checklist_submission_items").select("template_item_id,is_checked,checked_at").eq("submission_id", sub.id),
       supabaseAdmin.from("checklist_template_photos").select("id,label,order_index,reference_photo_url").eq("template_id", sub.template_id).order("order_index"),
-      supabaseAdmin.from("checklist_submission_photos").select("template_photo_id,photo_url,ai_validation_status,ai_validation_message").eq("submission_id", sub.id),
+      supabaseAdmin.from("checklist_submission_photos").select("id,template_photo_id,photo_url,ai_validation_status,ai_validation_message,admin_override_by,admin_override_at,admin_override_reason").eq("submission_id", sub.id),
       supabaseAdmin.from("closure_question_responses").select("question_id,stars_value,yesno_value,text_value").eq("submission_id", sub.id),
     ]);
     templateItems = (r1.data ?? []) as any[];
@@ -544,16 +544,27 @@ export async function getShiftDetail(args: { shiftId: string }) {
         photoUrl: photo?.photo_url ?? null,
       };
     }),
-    photos: templatePhotos.map((p: any) => {
+    photos: await Promise.all(templatePhotos.map(async (p: any) => {
       const row = photoMap.get(p.id);
+      const sign = async (path: string | null | undefined) => {
+        if (!path) return null;
+        if (path.startsWith("http")) return path;
+        const { data } = await supabaseAdmin.storage.from("checklist-photos").createSignedUrl(path, 3600);
+        return data?.signedUrl ?? null;
+      };
       return {
-        id: p.id, label: p.label,
-        url: row?.photo_url ?? null,
+        id: p.id,
+        submissionPhotoId: row?.id ?? null,
+        label: p.label,
+        url: await sign(row?.photo_url),
+        reference: await sign(p.reference_photo_url),
         status: row?.ai_validation_status ?? null,
         reason: row?.ai_validation_message ?? null,
-        reference: p.reference_photo_url ?? null,
+        overrideBy: row?.admin_override_by ?? null,
+        overrideAt: row?.admin_override_at ?? null,
+        overrideReason: row?.admin_override_reason ?? null,
       };
-    }),
+    })),
     closureResponses: questions.map((q: any) => {
       const r = respMap.get(q.id);
       return {

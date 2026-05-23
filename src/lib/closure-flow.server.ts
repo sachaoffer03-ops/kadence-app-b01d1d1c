@@ -461,3 +461,48 @@ export async function notifyOverdueClockOuts() {
   }
   return { processed: shifts.length, notified, at: nowIso };
 }
+
+// --- overrideRejectedPhoto -------------------------------------------------
+
+export type OverrideRejectedPhotoInput = {
+  submissionPhotoId: string;
+  actorId: string;
+  reason?: string | null;
+};
+
+export async function overrideRejectedPhoto(input: OverrideRejectedPhotoInput) {
+  // Only admin/manager
+  const { data: roles } = await supabaseAdmin
+    .from("user_roles").select("role").eq("user_id", input.actorId);
+  const elevated = (roles ?? []).some((r: any) => r.role === "admin" || r.role === "manager");
+  if (!elevated) throw new Error("Réservé aux admins / managers");
+
+  const { data: photo, error } = await supabaseAdmin
+    .from("checklist_submission_photos")
+    .select("id, ai_validation_status, submission_id")
+    .eq("id", input.submissionPhotoId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!photo) throw new Error("Photo introuvable");
+
+  const reason = (input.reason ?? "").trim().slice(0, 280) || null;
+  const nowIso = new Date().toISOString();
+  const message = reason
+    ? `Validée manuellement par l'admin : ${reason}`
+    : "Validée manuellement par l'admin.";
+
+  const { error: upErr } = await supabaseAdmin
+    .from("checklist_submission_photos")
+    .update({
+      ai_validation_status: "validated",
+      ai_validation_message: message,
+      ai_validated_at: nowIso,
+      admin_override_by: input.actorId,
+      admin_override_at: nowIso,
+      admin_override_reason: reason,
+    } as any)
+    .eq("id", input.submissionPhotoId);
+  if (upErr) throw new Error(upErr.message);
+
+  return { ok: true, photoId: input.submissionPhotoId, validatedAt: nowIso };
+}

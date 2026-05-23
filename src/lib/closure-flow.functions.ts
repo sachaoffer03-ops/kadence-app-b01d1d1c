@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { validateClockOut, finalizeClosure, analyzeClosurePhoto, notifyOverdueClockOuts } from "./closure-flow.server";
+import { validateClockOut, finalizeClosure, analyzeClosurePhoto, notifyOverdueClockOuts, overrideRejectedPhoto } from "./closure-flow.server";
 
 const validateSchema = z.object({
   shiftId: z.string().uuid(),
@@ -55,4 +55,20 @@ export const notifyOverdueClockOutsFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     return notifyOverdueClockOuts();
+  });
+
+const overrideSchema = z.object({
+  submissionPhotoId: z.string().uuid(),
+  reason: z.string().max(280).nullable().optional(),
+});
+
+export const overrideRejectedPhotoFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => overrideSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    return overrideRejectedPhoto({
+      submissionPhotoId: data.submissionPhotoId,
+      actorId: context.userId,
+      reason: data.reason ?? null,
+    });
   });

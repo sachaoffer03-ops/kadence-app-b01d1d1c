@@ -814,7 +814,7 @@ function ChecklistEditor({ studioId, roleId, roleName, phase = "closing" }: { st
         <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-1.5">
             {items.map((it) => (
-              <SortableItem key={it.id} item={it} photos={photos} onDeleted={() => setItems((prev) => prev.filter((x) => x.id !== it.id))} />
+              <SortableItem key={it.id} item={it} onDeleted={() => setItems((prev) => prev.filter((x) => x.id !== it.id))} />
             ))}
           </div>
         </SortableContext>
@@ -839,7 +839,7 @@ function ChecklistEditor({ studioId, roleId, roleName, phase = "closing" }: { st
   );
 }
 
-function SortableItem({ item, photos, onDeleted }: { item: any; photos: any[]; onDeleted?: () => void }) {
+function SortableItem({ item, onDeleted }: { item: any; photos?: any[]; onDeleted?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -857,15 +857,7 @@ function SortableItem({ item, photos, onDeleted }: { item: any; photos: any[]; o
     if (error) toast.error(`Erreur : ${error.message}`); else flashSaved();
   }, [item.id]);
 
-  // Auto-save débounce — évite de perdre les modifs si l'utilisateur clique
-  // sur « Dupliquer » ou change de poste avant d'avoir blur le champ.
   const debouncedSave = useDebouncedCallback(saveLabel, 500);
-
-  const setPhoto = async (v: string) => {
-    const photo_zone_id = v === "__none__" ? null : v;
-    const { error } = await supabase.from("checklist_template_items").update({ photo_zone_id } as any).eq("id", item.id);
-    if (error) toast.error(error.message); else flashSaved();
-  };
 
   const remove = async () => {
     onDeleted?.();
@@ -890,21 +882,13 @@ function SortableItem({ item, photos, onDeleted }: { item: any; photos: any[]; o
         className="flex-1 px-2 py-1 rounded"
         style={{ fontSize: 13, backgroundColor: "transparent", border: "none", outline: "none" }}
       />
-      {photos.length > 0 && (
-        <Select value={item.photo_zone_id ?? "__none__"} onValueChange={setPhoto}>
-          <SelectTrigger className="w-[180px] h-8"><SelectValue placeholder="Lier une photo…" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">Aucune photo liée</SelectItem>
-            {photos.map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      )}
       <button onClick={remove} className="rounded p-1 hover:bg-muted" style={{ color: "var(--muted-foreground)" }}>
         <X size={14} />
       </button>
     </div>
   );
 }
+
 
 function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: { items: any[]; currentRoleId: string; studioId: string; phase?: ChecklistPhase }) {
   const { roles } = useBusinessRoles({ onlyActive: true });
@@ -1159,34 +1143,89 @@ function PhotosEditor({ studioId, roleId, roleName, phase = "closing" }: { studi
   );
 }
 
+function useSignedRef(path: string | null | undefined) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!path) { setUrl(null); return; }
+    supabase.storage.from("checklist-photos").createSignedUrl(path, 3600).then(({ data }) => {
+      if (!cancelled) setUrl(data?.signedUrl ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [path]);
+  return url;
+}
+
+function PhotoReferencePreview({ path, pendingFile }: { path: string | null | undefined; pendingFile: File | null }) {
+  const signed = useSignedRef(pendingFile ? null : path);
+  const [localUrl, setLocalUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingFile) { setLocalUrl(null); return; }
+    const u = URL.createObjectURL(pendingFile);
+    setLocalUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [pendingFile]);
+  const url = localUrl ?? signed;
+  if (!url) {
+    return (
+      <div className="mt-1 rounded border flex items-center justify-center" style={{ height: 120, borderColor: "var(--border)", backgroundColor: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)" }}>
+        Aucune image de référence
+      </div>
+    );
+  }
+  return (
+    <div className="mt-1 rounded border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
+      <img src={url} alt="référence" className="w-full object-contain" style={{ maxHeight: 220 }} />
+    </div>
+  );
+}
+
 function PhotoCard({ photo, onEdit }: { photo: any; onEdit: () => void }) {
+  const refUrl = useSignedRef(photo.reference_photo_url);
   const toggle = async () => {
     const { error } = await supabase.from("checklist_template_photos").update({ is_required: !photo.is_required } as any).eq("id", photo.id);
     if (error) toast.error(error.message); else flashSaved();
   };
   return (
     <div className="rounded-lg border p-3" style={{ backgroundColor: "var(--background)", borderColor: "var(--border)" }}>
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div style={{ fontSize: 13, fontWeight: 500 }}>{photo.label}</div>
-        <button onClick={onEdit} style={{ color: "var(--muted-foreground)" }}><Pencil size={13} /></button>
+      <div className="flex gap-3 mb-1.5">
+        <button
+          onClick={onEdit}
+          className="flex-shrink-0 w-16 h-16 rounded border overflow-hidden flex items-center justify-center"
+          style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}
+          title="Modifier la photo de référence"
+        >
+          {refUrl ? (
+            <img src={refUrl} alt={photo.label} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[9px] text-center leading-tight px-1" style={{ color: "var(--muted-foreground)" }}>Pas de réf.</span>
+          )}
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div style={{ fontSize: 13, fontWeight: 500 }} className="truncate">{photo.label}</div>
+            <button onClick={onEdit} style={{ color: "var(--muted-foreground)" }}><Pencil size={13} /></button>
+          </div>
+          {photo.description && (
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, lineHeight: 1.4 }} className="line-clamp-2">{photo.description}</div>
+          )}
+          <button
+            onClick={toggle}
+            className="mt-1.5 rounded-full px-2 py-0.5"
+            style={{
+              fontSize: 10, fontWeight: 500,
+              backgroundColor: photo.is_required ? "var(--coral-light)" : "var(--muted)",
+              color: photo.is_required ? "var(--coral-text)" : "var(--muted-foreground)",
+            }}
+          >
+            {photo.is_required ? "Obligatoire" : "Optionnelle"}
+          </button>
+        </div>
       </div>
-      {photo.description && (
-        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 8, lineHeight: 1.4 }}>{photo.description}</div>
-      )}
-      <button
-        onClick={toggle}
-        className="rounded-full px-2 py-0.5"
-        style={{
-          fontSize: 10, fontWeight: 500,
-          backgroundColor: photo.is_required ? "var(--coral-light)" : "var(--muted)",
-          color: photo.is_required ? "var(--coral-text)" : "var(--muted-foreground)",
-        }}
-      >
-        {photo.is_required ? "Obligatoire" : "Optionnelle"}
-      </button>
     </div>
   );
 }
+
 
 function PhotoEditModal({ photo, isNew, onClose, onSaved, onDeleted }: {
   photo: any; isNew: boolean; onClose: () => void;
@@ -1277,7 +1316,12 @@ function PhotoEditModal({ photo, isNew, onClose, onSaved, onDeleted }: {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{isNew ? "Nouvelle zone photo" : "Modifier la zone"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{isNew ? "Nouvelle zone photo" : "Modifier la zone"}</DialogTitle>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, lineHeight: 1.5 }}>
+            Le <b>nom</b> et la <b>description</b> seront affichés à l'employé au moment de prendre la photo (ex : « Frigo — prends-le en photo bien rangé »).
+          </div>
+        </DialogHeader>
         <div className="flex flex-col gap-3">
           <div>
             <label style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Nom</label>
@@ -1297,20 +1341,16 @@ function PhotoEditModal({ photo, isNew, onClose, onSaved, onDeleted }: {
           </label>
           <div>
             <label style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Photo de référence</label>
-            <div className="mt-1 flex items-center gap-2">
+            <PhotoReferencePreview path={photo.reference_photo_url} pendingFile={pendingFile} />
+            <div className="mt-2 flex items-center gap-2">
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
                 className="rounded-md border px-3 py-1.5 flex items-center gap-1.5"
                 style={{ fontSize: 12, borderColor: "var(--border)" }}
               >
-                <Upload size={13} /> {uploading ? "Upload…" : "Choisir une image"}
+                <Upload size={13} /> {uploading ? "Upload…" : (photo.reference_photo_url || pendingFile ? "Remplacer" : "Choisir une image")}
               </button>
-              {(photo.reference_photo_url || pendingFile) && (
-                <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-                  ✓ {pendingFile ? pendingFile.name : "déjà uploadée"}
-                </span>
-              )}
             </div>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => {
               const f = e.target.files?.[0]; if (f) chooseFile(f);

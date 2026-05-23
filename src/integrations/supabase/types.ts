@@ -193,6 +193,9 @@ export type Database = {
       }
       checklist_submission_photos: {
         Row: {
+          admin_override_at: string | null
+          admin_override_by: string | null
+          admin_override_reason: string | null
           ai_validated_at: string | null
           ai_validation_message: string | null
           ai_validation_status: string | null
@@ -203,6 +206,9 @@ export type Database = {
           uploaded_at: string | null
         }
         Insert: {
+          admin_override_at?: string | null
+          admin_override_by?: string | null
+          admin_override_reason?: string | null
           ai_validated_at?: string | null
           ai_validation_message?: string | null
           ai_validation_status?: string | null
@@ -213,6 +219,9 @@ export type Database = {
           uploaded_at?: string | null
         }
         Update: {
+          admin_override_at?: string | null
+          admin_override_by?: string | null
+          admin_override_reason?: string | null
           ai_validated_at?: string | null
           ai_validation_message?: string | null
           ai_validation_status?: string | null

@@ -1,95 +1,67 @@
-# Notifications cliquables → page liée
+## Constat actuel
 
-## Constat
+Dans `/cloture` → Checklists, aujourd'hui :
+- Chaque item peut être **lié à une zone photo** via un menu déroulant « Lier une photo ». L'employé doit prendre la photo pour cocher l'item.
+- La section « Photos & analyse IA » liste les zones photo (label + description + obligatoire/optionnelle) **sans afficher la vignette de référence**.
+- Quand l'IA refuse une photo, **l'admin n'a aucun moyen de la valider manuellement** : `ShiftDetailSheet` affiche juste une grille de vignettes, sans le statut IA ni bouton d'action.
 
-J'ai audité tous les endroits qui insèrent dans `notifications` (≈25 sites) et les deux endroits qui les affichent (TopBar admin + EmployeeNotifsWidget). Trois problèmes :
+## Ce qu'on veut
 
-1. **Liens trop génériques** : la majorité pointent vers `/staff-app` ou `/staff-app?tab=xxx` — donc on retombe sur l'Accueil sans contexte.
-2. **Liens jamais lus** : `staff-app` n'interprète **pas** `?tab=…` (seul `?openDocs=1` est géré). Les liens `?tab=planning` / `?tab=accueil` / `?tab=chat` posés par `use-staff-notifications` ne font rien.
-3. **Pas de deep-link ressource** : aucun lien ne porte d'ID (shift, demande, formation, document). Impossible d'ouvrir directement le bon sheet/élément.
-
-Symétrie admin / employé attendue par l'utilisateur : chaque notif = 1 ressource = 1 clic = bonne page + bon élément ouvert.
+1. Items et photos = **deux étapes indépendantes**. Un item est un simple texte à cocher (frigo nettoyé, sol balayé…), sans champ photo. Les zones photo vivent uniquement dans la section « Photos & analyse IA » avec leur propre nom + description (qui devient le message affiché à l'employé : « Frigo — prends en photo le frigo bien rangé »).
+2. Côté admin, dans chaque carte de zone photo, **afficher la vignette de la photo de référence** uploadée (preview immédiat, plus juste un « ✓ déjà uploadée »).
+3. Côté admin, dans le rapport d'un shift, **lister chaque photo soumise avec son statut IA** (validée / refusée + raison) et un bouton **« Valider manuellement »** pour forcer l'acceptation d'une photo refusée à tort (ex. il manque vraiment du lait, l'employé ne peut rien y faire).
 
 ## Plan
 
-### 1. Convention de deep-link (table)
+### 1. Page `/cloture` → onglet Checklists (`src/routes/cloture.tsx`)
 
-| Évènement | Destinataire | Lien |
-|---|---|---|
-| Shift assigné / modifié / supprimé | employé | `/staff-app?tab=planning&shift=<id>` |
-| Rappel "shift dans 1h / commence" | employé | `/staff-app?tab=accueil&shift=<id>` |
-| Nouveau message chat | employé | `/staff-app?tab=chat&thread=<id>` |
-| Document à signer | employé | `/staff-app?tab=profil&openDocs=1&doc=<id>` |
-| Formation assignée / rappel | employé | `/staff-app?tab=formation&course=<id>` |
-| Proposition shift (offre) | employé | `/staff-app?tab=accueil&proposal=<id>` |
-| Réponse à demande modif | employé | `/staff-app?tab=planning&request=<id>` |
-| Checklist clôture manquée | employé | `/staff-app?tab=accueil&shift=<id>` |
-| Récap fin de shift | employé | `/staff-app?tab=profil` (déjà ok) |
-| Clôture soumise par X | admin | `/cloture?submission=<id>` |
-| Demande de modif reçue | admin | `/demandes?request=<id>` |
-| Proposition / swap à valider | admin | `/trous?proposal=<id>` |
-| Pointage anormal | admin | `/pointage?shift=<id>` |
-| Formation terminée | admin | `/staff/<userId>?tab=formation` |
-| Document uploadé par employé | admin | `/staff/<userId>?tab=documents` |
-| Feedback employé | admin | `/feedbacks?id=<id>` |
-| Nouveau staff inscrit | admin | `/staff/<userId>` |
+- **Items** : retirer le `<Select>` « Lier une photo… » dans `SortableItem` (lignes ~893-901). On garde le champ `photo_zone_id` en base pour la compat mais l'UI ne l'expose plus, et on ne le set plus à la création.
+- **Carte zone photo (`PhotoCard`)** : ajouter, en haut de la carte, un carré aperçu (~80×80) avec la photo de référence si `reference_photo_url` est définie (URL signée via le bucket `checklist-photos`), sinon un placeholder « Pas d'image de référence ». Au clic sur la vignette → ouvre le modal d'édition.
+- **Modal `PhotoEditModal`** : remplacer le simple « ✓ déjà uploadée » par une **vraie preview** de l'image actuelle (URL signée) + bouton « Remplacer ». Indique clairement que le `Nom` + `Description` seront ceux affichés à l'employé au moment de prendre la photo.
 
-Règle d'or : **toujours un lien non-null**, **toujours un ID dans la query** quand une ressource existe.
+### 2. Validation manuelle côté admin
 
-### 2. Backend — mettre à jour les inserts
+Côté base : on réutilise les colonnes existantes de `checklist_submission_photos` (`ai_validation_status`, `ai_validation_message`, `ai_validated_at`). On ajoute via migration trois colonnes pour tracer l'override :
+- `admin_override_by uuid`
+- `admin_override_at timestamptz`
+- `admin_override_reason text`
 
-Modifier les 25 sites repérés pour produire le lien selon la table ci-dessus :
-- `src/lib/shifts.functions.ts` (6 inserts) — ajouter `&shift=<id>`
-- `src/lib/proposals.functions.ts` (5 inserts) — `proposal=<id>` côté employé, `/trous?proposal=` côté admin
-- `src/lib/formation.functions.ts` (3 inserts) — `course=<id>`, et côté admin `/staff/<userId>?tab=formation`
-- `src/lib/documents.functions.ts` — `doc=<id>`
-- `src/lib/demandes.functions.ts` — `request=<id>` côté employé, `/demandes?request=` côté admin
-- `src/lib/closure-flow.server.ts` — `submission=<id>` pour admin, `shift=<id>` pour employé
-- `src/lib/planning-workflow.functions.ts` — `shift=<id>`
-- `src/lib/pointage.functions.ts` — `shift=<id>`
-- `src/hooks/use-checklists.ts` — `shift=<id>`
-- `src/hooks/use-staff-notifications.ts` — corriger les liens fallback
-- `src/routes/feedbacks.tsx`, `src/routes/staff.$id.tsx` — ajouter ID
-- `src/lib/seed-demo.functions.ts` — aligner les liens de démo
+Et on met à jour la policy UPDATE pour autoriser admin/manager (déjà couvert par la policy ALL existante via `has_role`).
 
-### 3. Frontend — interpréter les liens
+### 3. `ShiftDetailSheet` (`src/components/reports/ShiftDetailSheet.tsx`)
 
-**`src/routes/staff-app.tsx`** : au mount + à chaque changement d'URL, lire les query params et :
-- `?tab=<accueil|planning|pointage|formation|chat|profil>` → `setTab(...)`
-- `?shift=<id>` → ouvrir le sheet détail shift (Planning ou Accueil selon contexte)
-- `?proposal=<id>` → ouvrir ProposalsSheet sur cette offre
-- `?request=<id>` → ouvrir RequestModificationSheet en mode lecture
-- `?thread=<id>` → ouvrir ChatSheet sur ce thread
-- `?course=<id>` → ouvrir FormationHub sur ce cours
-- `?doc=<id>` → ouvrir EmployeeDocumentsTab sur ce doc
-- Après lecture, faire `history.replaceState` pour nettoyer la query (comme déjà fait pour `openDocs`).
+Refondre le bloc « Photos » pour afficher pour chaque photo soumise :
+- vignette
+- label de la zone (frigo, plonge…)
+- badge de statut : ✅ Validée IA / ⚠️ Refusée IA / ✋ Validée manuellement
+- raison renvoyée par l'IA (`ai_validation_message`)
+- si statut = `rejected` : bouton **« Valider manuellement »** qui ouvre un petit prompt (raison courte facultative), puis appelle un nouveau serverFn `overrideRejectedPhoto({ photoId, reason })` qui :
+  - bascule `ai_validation_status` à `validated`
+  - remplit `admin_override_by/at/reason`
+  - écrit `ai_validation_message = "Validée manuellement par l'admin : <raison>"`
 
-**Pages admin** (`/cloture`, `/demandes`, `/trous`, `/pointage`, `/feedbacks`, `/staff/$id`) : lire le query param correspondant et ouvrir/scroller vers l'item ciblé (sheet ou highlight).
+Le serverFn vit dans `src/lib/closure-flow.functions.ts` + helper dans `closure-flow.server.ts` (déjà le bon emplacement, contient déjà la logique IA). Il vérifie via `requireSupabaseAuth` que l'appelant est admin/manager.
 
-### 4. Click handlers — garantir la navigation
+Côté `reports.server.ts` (qui alimente `ShiftDetailSheet`), exposer les nouveaux champs (`reason`, `overrideBy`, `overrideAt`) dans la map des photos.
 
-- **`TopBar.tsx`** (admin) : si `n.link` null, fallback intelligent par `category` (`planning`→`/planning`, `shift`→`/pointage`, `request`→`/demandes`, `training`→`/formation`, `document`→`/staff`, `pointage`→`/pointage`, `general`→`/dashboard`). Plus jamais de notif inerte.
-- **`EmployeeNotifsWidget.tsx`** : même fallback côté employé (`→ /staff-app?tab=<dérivé de category>`).
-- Les deux marquent `read_at` avant de naviguer (déjà le cas).
+### 4. Effet sur le scoring
 
-### 5. Tests manuels
-
-- Notif "shift assigné" employé → ouvre Planning + sheet du bon shift
-- Notif "demande modif" admin → ouvre `/demandes` avec ligne surlignée
-- Notif "document à signer" → ouvre profil + sheet docs + doc ouvert
-- Notif "nouveau message" → ouvre Chat sur le bon thread
-- Notif sans link explicite → fallback de catégorie OK
+`calculate_profile_score` lit déjà uniquement `ai_validation_status`. Une override → `status='validated'` → l'employé regagne automatiquement les points perdus, sans logique supplémentaire à écrire.
 
 ## Détails techniques
 
-- Pas de migration DB : `link` existe déjà (text nullable). On la remplit mieux.
-- Ajout d'un helper `src/lib/notif-links.ts` exportant `employeeLink({...})` et `adminLink({...})` pour centraliser la convention et éviter la dérive entre les 25 sites d'insertion.
-- Le parsing query côté `staff-app` passe par un seul `useEffect` au top-level du composant (pas dans chaque Tab) qui dispatch vers les setters d'état appropriés.
-- Pour les pages admin, helper `useOpenFromQuery(param, onOpen)` dans `src/hooks/` pour factoriser.
-- Aucun changement de business logic : on n'ajoute/supprime aucune notif, on rend juste chaque notif actionnable.
+- Migration SQL :
+  ```sql
+  ALTER TABLE public.checklist_submission_photos
+    ADD COLUMN admin_override_by uuid,
+    ADD COLUMN admin_override_at timestamptz,
+    ADD COLUMN admin_override_reason text;
+  ```
+- Nouveau serverFn `overrideRejectedPhoto` avec validation Zod `{ photoId: uuid, reason: string.max(280).optional() }`.
+- URL signée pour les vignettes : `supabase.storage.from("checklist-photos").createSignedUrl(path, 3600)` (déjà le pattern utilisé dans `use-checklists.ts`).
+- Pas de breaking change : `checklist_template_items.photo_zone_id` reste en base, simplement plus exposé dans l'UI admin et ignoré dans le flow employé (il l'est déjà — `ClosureFlow` traite items et photos comme deux listes parallèles).
 
 ## Hors scope
 
-- Pas de refactor du système de notifications (catégories, priorités).
-- Pas de nouvelle page admin notifs (juste la cloche, comme demandé précédemment).
-- Pas de changement de design des items notif.
+- Pas de modification de `ClosureFlow` côté employé : il sépare déjà items (checkboxes) et photos (upload). La seule chose qui change pour l'employé : il ne voit plus de photo « collée » à un item, uniquement le label + description que l'admin a saisis dans la zone photo.
+- Pas de refonte du moteur IA ni du seuil.
