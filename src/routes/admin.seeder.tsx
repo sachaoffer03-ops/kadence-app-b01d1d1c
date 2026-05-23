@@ -24,6 +24,24 @@ function SeederPage() {
   const [kitchenResult, setKitchenResult] = useState<any>(null);
   const [kitchenErr, setKitchenErr] = useState("");
 
+  const linkAll = useServerFn(linkAllEmployeesToAllStudios);
+  const [linkState, setLinkState] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [linkResult, setLinkResult] = useState<any>(null);
+  const [linkErr, setLinkErr] = useState("");
+
+  const handleLinkAll = async () => {
+    if (!confirm("Rattacher tous les employés (non-admins) à TOUS les studios ?")) return;
+    setLinkState("running"); setLinkErr(""); setLinkResult(null);
+    try {
+      const r = await linkAll();
+      setLinkResult(r);
+      setLinkState("done");
+    } catch (e: any) {
+      setLinkErr(e?.message || "Erreur");
+      setLinkState("error");
+    }
+  };
+
   const handleClick = async () => {
     if (!confirm("Cela va SUPPRIMER tous les profils existants (sauf admins et comptes marqués protégés) puis créer ~30 employés fictifs. Continuer ?")) return;
     setState("running"); setErr(""); setResult(null);
