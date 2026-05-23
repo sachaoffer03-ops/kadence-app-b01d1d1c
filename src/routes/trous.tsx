@@ -100,7 +100,7 @@ function TrousPage() {
 
   const search = Route.useSearch();
   const studioFilter = useMemo(
-    () => (search.studios ? new Set(search.studios.split(",").map((s) => s.trim()).filter(Boolean)) : null),
+    () => (search.studios ? new Set(search.studios.split(",").map((s: string) => s.trim()).filter(Boolean)) : null),
     [search.studios],
   );
   const weekFilter = search.week;
