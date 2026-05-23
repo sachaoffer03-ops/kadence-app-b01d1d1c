@@ -36,7 +36,7 @@ interface Row {
 interface ProfileLite { id: string; first_name: string; last_name: string; status: string; }
 interface ShiftLite { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; }
 interface Proposal {
-  id: string; user_id: string; status: string; sent_at: string;
+  id: string; shift_id: string; user_id: string; status: string; sent_at: string;
   responded_at: string | null; replacement_request_id: string | null;
 }
 
@@ -80,6 +80,9 @@ function DemandesPage() {
   const [kpis, setKpis] = useState({ pending: 0, urgent: 0, treatedToday: 0, avgResolutionMs: 0 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
+  // pour les demandes unavailable : sélection par shift (clé = `${reqId}:${shiftId}`)
+  const [selectedShift, setSelectedShift] = useState<Record<string, Set<string>>>({});
+  const [openShiftPanel, setOpenShiftPanel] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [, force] = useState(0);
@@ -169,6 +172,31 @@ function DemandesPage() {
     catch (e: any) { toast.error(e.message || "Erreur"); }
     finally { setBusy(false); }
   };
+
+  const toggleSelectShift = (reqId: string, shiftId: string, uid: string) => {
+    const key = `${reqId}:${shiftId}`;
+    setSelectedShift((prev) => {
+      const cur = new Set(prev[key] || []);
+      cur.has(uid) ? cur.delete(uid) : cur.add(uid);
+      return { ...prev, [key]: cur };
+    });
+  };
+
+  const sendProposalsForShift = async (reqId: string, shiftId: string) => {
+    const key = `${reqId}:${shiftId}`;
+    const ids = Array.from(selectedShift[key] || []);
+    if (ids.length === 0) { toast.error("Sélectionnez au moins un employé"); return; }
+    setBusy(true);
+    try {
+      const r = await sendFn({ data: { requestId: reqId, userIds: ids, shiftId } });
+      toast.success(`${r.count} proposition${r.count > 1 ? "s" : ""} envoyée${r.count > 1 ? "s" : ""}`);
+      setSelectedShift((prev) => ({ ...prev, [key]: new Set() }));
+      setOpenShiftPanel((prev) => ({ ...prev, [key]: false }));
+      loadAll();
+    } catch (e: any) { toast.error(e.message || "Erreur"); }
+    finally { setBusy(false); }
+  };
+
 
   const acceptCancel = async (req: Row) => {
     setBusy(true);
@@ -336,6 +364,118 @@ function DemandesPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* UNAVAILABLE — bloc par shift de la période */}
+                    {req.type === "unavailable" && req.proposed_start_date && req.proposed_end_date && (() => {
+                      const periodShifts = Object.values(shifts)
+                        .filter((s) => s.shift_date >= req.proposed_start_date! && s.shift_date <= req.proposed_end_date!)
+                        .filter((s) => {
+                          // shift appartient à l'employé de la demande OU a été transféré (proposition acceptée pour ce shift+req)
+                          const props = (propsByRequest[req.id] || []).filter((p) => p.shift_id === s.id);
+                          const acceptedHere = props.find((p) => p.status === "accepted");
+                          const ownedByEmp = (s as any).user_id === req.user_id;
+                          return ownedByEmp || !!acceptedHere;
+                        })
+                        .sort((a, b) => (a.shift_date + a.start_time).localeCompare(b.shift_date + b.start_time));
+                      const allReplaced = periodShifts.length > 0 && periodShifts.every((s) =>
+                        (propsByRequest[req.id] || []).some((p) => p.shift_id === s.id && p.status === "accepted"),
+                      );
+                      return (
+                        <div className="rounded-lg p-4 mb-3" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}>
+                          <div className="flex items-center justify-between mb-3">
+                            <div style={{ fontSize: 12, fontWeight: 500 }}>
+                              Shifts à remplacer ({periodShifts.length})
+                            </div>
+                            {allReplaced && (
+                              <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>
+                                Tous remplacés
+                              </span>
+                            )}
+                          </div>
+                          {periodShifts.length === 0 ? (
+                            <div className="text-center py-4" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                              Aucun shift planifié sur cette période.
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              {periodShifts.map((s) => {
+                                const props = (propsByRequest[req.id] || []).filter((p) => p.shift_id === s.id);
+                                const accepted = props.find((p) => p.status === "accepted");
+                                const pendingForShift = props.filter((p) => p.status === "pending");
+                                const key = `${req.id}:${s.id}`;
+                                const isOpen = !!openShiftPanel[key];
+                                const sel = selectedShift[key] || new Set<string>();
+                                const candidates = allEmployees.filter((e) =>
+                                  e.id !== req.user_id &&
+                                  !pendingForShift.some((p) => p.user_id === e.id),
+                                );
+                                return (
+                                  <div key={s.id} className="rounded-md" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}>
+                                    <div className="flex items-center gap-2 px-3 py-2" style={{ fontSize: 12 }}>
+                                      <div className="flex-1 min-w-0">
+                                        <div style={{ fontWeight: 500 }}>{formatDate(s.shift_date)} · {formatTime(s.start_time)}–{formatTime(s.end_time)}</div>
+                                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{s.business_role}</div>
+                                      </div>
+                                      {accepted ? (
+                                        <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>
+                                          ✓ {profiles[accepted.user_id]?.first_name ?? "Remplaçant"}
+                                        </span>
+                                      ) : pendingForShift.length > 0 ? (
+                                        <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
+                                          {pendingForShift.length} en attente
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={() => setOpenShiftPanel((p) => ({ ...p, [key]: !isOpen }))}
+                                          className="rounded-md px-3 py-1"
+                                          style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
+                                        >
+                                          {isOpen ? "Annuler" : "Trouver un remplaçant"}
+                                        </button>
+                                      )}
+                                    </div>
+                                    {pendingForShift.length > 0 && (
+                                      <div className="px-3 pb-2 flex flex-col gap-1">
+                                        {pendingForShift.map((p) => (
+                                          <div key={p.id} className="flex items-center gap-2 px-2 py-1 rounded" style={{ fontSize: 11, backgroundColor: "var(--card)" }}>
+                                            <span className="flex-1 truncate">{profiles[p.user_id] ? `${profiles[p.user_id].first_name} ${profiles[p.user_id].last_name}` : "—"}</span>
+                                            <span style={{ color: "var(--muted-foreground)" }}>{elapsed(p.sent_at)}</span>
+                                            <button onClick={() => cancelOne(p.id)} disabled={busy} style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Annuler</button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {isOpen && !accepted && pendingForShift.length === 0 && (
+                                      <div className="px-3 pb-3">
+                                        <div className="rounded-md max-h-40 overflow-y-auto mb-2" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+                                          {candidates.map((e) => {
+                                            const isSel = sel.has(e.id);
+                                            return (
+                                              <label key={e.id} className="flex items-center gap-2 px-3 py-1.5 cursor-pointer" style={{ fontSize: 12, borderBottom: "0.5px solid var(--border)" }}>
+                                                <input type="checkbox" checked={isSel} onChange={() => toggleSelectShift(req.id, s.id, e.id)} />
+                                                <span>{e.first_name} {e.last_name}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                        <button
+                                          onClick={() => sendProposalsForShift(req.id, s.id)}
+                                          disabled={busy || sel.size === 0}
+                                          className="rounded-md px-3 py-1.5 flex items-center gap-1.5"
+                                          style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)", opacity: sel.size === 0 ? 0.4 : 1 }}
+                                        >
+                                          <Send size={11} /> Envoyer ({sel.size})
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Replacement search — available for any type with a shift */}
                     {hasShift && (

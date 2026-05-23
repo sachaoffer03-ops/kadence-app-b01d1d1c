@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS modreq_notify ON public.modification_requests;
