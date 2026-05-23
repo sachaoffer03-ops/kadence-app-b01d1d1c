@@ -775,6 +775,29 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
     return () => { supabase.removeChannel(channel); };
   }, [userId, rangeStart, rangeEnd]);
 
+  // Deep-link : ?shift=<id> ouvre le shift correspondant
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("shift");
+    if (!sid) return;
+    (async () => {
+      const { data: s } = await supabase.from("shifts")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked")
+        .eq("id", sid).eq("user_id", userId).maybeSingle();
+      if (!s) { toast.error("Shift introuvable"); }
+      else {
+        const d = new Date(s.shift_date + "T00:00:00");
+        setCursor(d);
+        setShiftDetail(s as ShiftRow);
+      }
+      params.delete("shift");
+      const ns = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (ns ? `?${ns}` : ""));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   const hasAnyShift = shifts.length > 0;
 
   const latestPub = shifts.reduce<string | null>((acc, s: any) => {
