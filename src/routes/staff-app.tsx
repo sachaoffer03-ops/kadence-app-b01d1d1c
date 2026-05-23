@@ -873,17 +873,28 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
         )}
       </div>
 
-      {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : !hasAnyShift ? (
+      {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : !hasAnyShift ? (() => {
+        const periodLabel = rangeLabel;
+        const isPast = toISO(rangeEnd) < today;
+        const isFuture = toISO(rangeStart) > today;
+        const msg = isPast
+          ? `Aucun shift travaillé en ${periodLabel}`
+          : isFuture
+          ? `Aucun shift planifié pour ${periodLabel} — l'admin n'a pas encore généré ou n'a rien planifié pour toi sur cette période`
+          : `Aucun shift sur cette période`;
+        return (
         <div className="rounded-xl px-5 py-6 flex flex-col items-center text-center gap-2" style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)" }}>
           <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, backgroundColor: "var(--coral-light)" }}>
             <Sparkles size={20} style={{ color: "var(--coral-dark)" }} />
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>Aucun shift sur cette période</div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4, textTransform: "capitalize" }}>{msg}</div>
           <div style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, maxWidth: 280 }}>
-            Change de {view === "week" ? "semaine" : "mois"} avec les flèches ou attends que l'admin publie le planning.
+            Change de {view === "week" ? "semaine" : "mois"} avec les flèches pour explorer d'autres périodes.
           </div>
         </div>
-      ) : (
+        );
+      })()
+      : (
         <div className="flex flex-col gap-2">
           {days.map(day => {
             const dayShifts = shifts.filter((s) => s.shift_date === day.iso);
