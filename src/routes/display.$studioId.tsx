@@ -125,70 +125,8 @@ function DisplayPage() {
           <div style={{ fontSize: 14, color: "rgba(26,26,26,0.4)" }}>Chargement…</div>
         ) : (
           <>
-            {/* Nom du studio */}
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: "rgba(26,26,26,0.55)",
-                textTransform: "uppercase",
-                letterSpacing: "0.18em",
-                marginBottom: 14,
-              }}
-            >
-              {data.studioName}
-            </div>
-
-            {/* Titre */}
-            <h1
-              style={{
-                fontSize: 38,
-                fontWeight: 400,
-                margin: 0,
-                marginBottom: 44,
-                letterSpacing: "-0.02em",
-                color: "#1a1a1a",
-              }}
-            >
-              Pointage du jour
-            </h1>
-
-            {/* QR avec anneau de progression */}
-            <div style={{ position: "relative", marginBottom: 44 }}>
-              {/* Anneau de progression */}
-              <svg
-                width={460}
-                height={460}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  transform: "rotate(-90deg)",
-                  pointerEvents: "none",
-                }}
-              >
-                <circle
-                  cx={230}
-                  cy={230}
-                  r={224}
-                  fill="none"
-                  stroke="rgba(26,26,26,0.06)"
-                  strokeWidth={2}
-                />
-                <circle
-                  cx={230}
-                  cy={230}
-                  r={224}
-                  fill="none"
-                  stroke="#F0997B"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 224}
-                  strokeDashoffset={2 * Math.PI * 224 * (1 - progress)}
-                  style={{ transition: "stroke-dashoffset 1s linear" }}
-                />
-              </svg>
-
-              {/* Carte QR */}
+            {/* QR */}
+            <div style={{ marginBottom: 36 }}>
               <div
                 style={{
                   width: 460,
@@ -210,6 +148,19 @@ function DisplayPage() {
                   fgColor="#1a1a1a"
                 />
               </div>
+            </div>
+
+            {/* Studio */}
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 500,
+                color: "rgba(26,26,26,0.55)",
+                letterSpacing: "0.04em",
+                marginBottom: 28,
+              }}
+            >
+              {data.studioName}
             </div>
 
             {/* Code manuel */}
@@ -244,30 +195,38 @@ function DisplayPage() {
         )}
       </div>
 
-      {/* Footer minimal */}
-      <div
-        style={{
-          padding: "0 40px 28px",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 8,
-          fontSize: 11,
-          color: "rgba(26,26,26,0.35)",
-          letterSpacing: "0.04em",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        <span
+      {/* Footer — barre de progression fine */}
+      <div style={{ padding: "0 40px 24px" }}>
+        <div
           style={{
-            display: "inline-block",
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            backgroundColor: data ? "#F0997B" : "rgba(26,26,26,0.2)",
+            height: 2,
+            width: "100%",
+            backgroundColor: "rgba(26,26,26,0.06)",
+            borderRadius: 2,
+            overflow: "hidden",
+            marginBottom: 10,
           }}
-        />
-        {data ? `Nouveau code dans ${secondsLeft}s` : "En attente"}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${Math.max(0, Math.min(1, progress)) * 100}%`,
+              backgroundColor: "rgba(26,26,26,0.35)",
+              transition: "width 1s linear",
+            }}
+          />
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: "rgba(26,26,26,0.4)",
+            textAlign: "center",
+            letterSpacing: "0.04em",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {data ? `Nouveau code dans ${secondsLeft}s` : "En attente"}
+        </div>
       </div>
     </div>
   );
