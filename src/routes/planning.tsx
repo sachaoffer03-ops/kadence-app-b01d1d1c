@@ -974,13 +974,13 @@ function PlanningCalendarPage() {
             <FileEdit size={18} style={{ color: "var(--coral-dark)" }} />
             <div className="flex flex-col gap-0.5">
               <span style={{ fontWeight: 600, color: "var(--coral-dark)", fontSize: 14 }}>
-                {draftCount > 0 && `${draftCount} shift${draftCount > 1 ? "s" : ""} en brouillon`}
+                {draftCount > 0 && `${draftCount} shift${draftCount > 1 ? "s" : ""} à publier`}
                 {draftCount > 0 && conflictCount > 0 && " · "}
                 {conflictCount > 0 && `${conflictCount} conflit${conflictCount > 1 ? "s" : ""} détecté${conflictCount > 1 ? "s" : ""}`}
               </span>
               {draftCount > 0 && (
                 <span style={{ fontSize: 11, color: "var(--coral-dark)", opacity: 0.85 }}>
-                  Non visibles par les employés — publie pour les notifier
+                  Les employés ne sont pas encore notifiés — publie pour leur envoyer
                 </span>
               )}
             </div>
