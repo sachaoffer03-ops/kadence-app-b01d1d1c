@@ -422,9 +422,9 @@ async function purgeUserData(userId: string) {
   await supabaseAdmin.from("shift_proposals").delete().eq("user_id", userId);
   await supabaseAdmin.from("employee_documents").delete().eq("user_id", userId);
   await supabaseAdmin.from("availabilities").delete().eq("user_id", userId);
-  await supabaseAdmin.from("training_content_progress").delete().eq("user_id", userId).catch(() => {});
-  await supabaseAdmin.from("training_course_completions").delete().eq("user_id", userId).catch(() => {});
-  await supabaseAdmin.from("training_quiz_attempts").delete().eq("user_id", userId).catch(() => {});
+  try { await supabaseAdmin.from("training_content_progress").delete().eq("user_id", userId); } catch {}
+  try { await supabaseAdmin.from("training_course_completions").delete().eq("user_id", userId); } catch {}
+  try { await supabaseAdmin.from("training_quiz_attempts").delete().eq("user_id", userId); } catch {}
   await supabaseAdmin.from("feedbacks").delete().eq("author_id", userId);
   const { data: shifts } = await supabaseAdmin.from("shifts").select("id").eq("user_id", userId);
   const shiftIds = (shifts ?? []).map((s: any) => s.id);
