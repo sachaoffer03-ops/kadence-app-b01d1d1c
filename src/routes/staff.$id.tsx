@@ -18,6 +18,9 @@ import { countUnviewedDocuments } from "@/lib/documents.functions";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    edit: search.edit === 1 || search.edit === "1" ? 1 : undefined,
+  }),
   head: () => ({ meta: [{ title: "Profil employé — Kadence" }] }),
 });
 
