@@ -557,6 +557,29 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         </button>
       )}
 
+      {/* Encart proposition de shift — ultra visible */}
+      {proposals.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setProposalsOpen(true)}
+          className="w-full rounded-2xl p-5 mb-4 text-left"
+          style={{ border: "2px solid var(--coral)", backgroundColor: "var(--coral-light, #fef2f0)" }}
+        >
+          <div className="flex items-center gap-3">
+            <div style={{ fontSize: 32, lineHeight: 1 }}>📨</div>
+            <div className="flex-1">
+              <div style={{ fontSize: 16, fontWeight: 600, color: "var(--coral-dark)" }}>
+                {proposals.length} proposition{proposals.length > 1 ? "s" : ""} en attente
+              </div>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>
+                Tape pour voir les détails et accepter ou refuser
+              </div>
+            </div>
+            <ChevronRight size={20} style={{ color: "var(--coral)" }} />
+          </div>
+        </button>
+      )}
+
       {/* Notifications importantes (urgent + normal) */}
       <EmployeeNotifsWidget userId={userId} />
 

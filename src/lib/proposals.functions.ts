@@ -52,7 +52,7 @@ export const sendProposals = createServerFn({ method: "POST" })
     const notifs = data.userIds.map((uid) => ({
       user_id: uid,
       type: "shift_proposal",
-      title: "Nouvelle proposition de shift",
+      title: "📨 Proposition de shift à accepter",
       body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
       link: `/staff-app?tab=accueil&proposals=1`,
       priority: "normal",
