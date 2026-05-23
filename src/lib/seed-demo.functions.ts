@@ -245,108 +245,107 @@ export const resetDemoEnvironment = createServerFn({ method: "POST" })
     ], { onConflict: "user_id,role" });
     log.push("Profil + rôles + studio configurés");
 
-    // 4b. Checklist template Barista (idempotent par nom+studio)
-    const TPL_NAME = "Démo — Ouverture Barista";
-    let { data: tplExisting } = await supabaseAdmin
-      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", TPL_NAME).maybeSingle();
-    let templateId = tplExisting?.id as string | undefined;
+    // 4b. Checklist template Barista (idempotent par studio+role+phase = clé unique DB)
     const { data: baristaBr } = await supabaseAdmin
       .from("business_roles").select("id").eq("name", "Barista").maybeSingle();
-    if (!templateId) {
+    const baristaBrId = baristaBr?.id ?? null;
+
+    async function ensureTemplate(opts: {
+      name: string;
+      description: string;
+      phase: "opening" | "transition" | "closing";
+      is_blocking: boolean;
+      min_photos_required: number;
+      photos: { label: string; description: string; order_index: number; is_required: boolean }[];
+      items: (photoByLabel: Map<string, string>) => { label: string; order_index: number; is_required: boolean; photo_zone_id: string | null }[];
+    }): Promise<{ id: string; created: boolean }> {
+      const { data: existing } = await supabaseAdmin
+        .from("checklist_templates").select("id")
+        .eq("studio_id", studio.id)
+        .eq("phase", opts.phase)
+        .eq(baristaBrId ? "business_role_id" : "name", baristaBrId ?? opts.name)
+        .maybeSingle();
+      if (existing?.id) return { id: existing.id, created: false };
       const { data: ins, error: tplErr } = await supabaseAdmin.from("checklist_templates").insert({
         studio_id: studio.id,
-        business_role_id: baristaBr?.id ?? null,
-        name: TPL_NAME,
-        description: "Checklist d'ouverture pour test démo",
+        business_role_id: baristaBrId,
+        name: opts.name,
+        description: opts.description,
         is_active: true,
-        is_blocking: true,
+        is_blocking: opts.is_blocking,
         analyze_with_ai: false,
-        min_photos_required: 3,
-      }).select("id").single();
-      if (tplErr) throw new Error(`template: ${tplErr.message}`);
-      templateId = ins.id;
-      // 6 items + 3 zones photo
-      const photos = [
-        { template_id: templateId, label: "Comptoir propre", description: "Vue d'ensemble du comptoir", order_index: 0, is_required: true },
-        { template_id: templateId, label: "Machine espresso", description: "Photo de la machine prête", order_index: 1, is_required: true },
-        { template_id: templateId, label: "Vitrine pâtisseries", description: "Vitrine remplie", order_index: 2, is_required: true },
-      ];
-      const { data: photoRows } = await supabaseAdmin.from("checklist_template_photos").insert(photos).select("id, label");
-      const photoByLabel = new Map((photoRows ?? []).map((p: any) => [p.label, p.id]));
-      const items = [
-        { template_id: templateId, label: "Allumer la machine espresso", order_index: 0, is_required: true, photo_zone_id: photoByLabel.get("Machine espresso") ?? null },
-        { template_id: templateId, label: "Nettoyer le comptoir", order_index: 1, is_required: true, photo_zone_id: photoByLabel.get("Comptoir propre") ?? null },
-        { template_id: templateId, label: "Vérifier le stock de lait", order_index: 2, is_required: true, photo_zone_id: null },
-        { template_id: templateId, label: "Préparer la vitrine pâtisseries", order_index: 3, is_required: true, photo_zone_id: photoByLabel.get("Vitrine pâtisseries") ?? null },
-        { template_id: templateId, label: "Ouvrir la caisse", order_index: 4, is_required: true, photo_zone_id: null },
-        { template_id: templateId, label: "Vérifier les températures frigos", order_index: 5, is_required: false, photo_zone_id: null },
-      ];
-      await supabaseAdmin.from("checklist_template_items").insert(items);
-      log.push("Template checklist Barista créé (6 items + 3 zones photo)");
-    } else {
-      log.push("Template checklist Barista déjà présent");
+        min_photos_required: opts.min_photos_required,
+        phase: opts.phase,
+      } as any).select("id").single();
+      if (tplErr) throw new Error(`template ${opts.phase}: ${tplErr.message}`);
+      const templateId = ins.id as string;
+      const photoRows = opts.photos.length
+        ? (await supabaseAdmin.from("checklist_template_photos")
+            .insert(opts.photos.map(p => ({ ...p, template_id: templateId })))
+            .select("id, label")).data ?? []
+        : [];
+      const photoByLabel = new Map<string, string>((photoRows as any[]).map(p => [p.label, p.id]));
+      const items = opts.items(photoByLabel).map(i => ({ ...i, template_id: templateId }));
+      if (items.length) await supabaseAdmin.from("checklist_template_items").insert(items);
+      return { id: templateId, created: true };
     }
 
-    // 4b-bis. Checklist d'OUVERTURE Barista (phase=opening)
-    const OPEN_TPL_NAME = "Démo — Ouverture matin Barista";
-    const { data: openExisting } = await supabaseAdmin
-      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", OPEN_TPL_NAME).maybeSingle();
-    if (!openExisting) {
-      const { data: openIns, error: openErr } = await supabaseAdmin.from("checklist_templates").insert({
-        studio_id: studio.id,
-        business_role_id: baristaBr?.id ?? null,
-        name: OPEN_TPL_NAME,
-        description: "Checklist à faire en arrivant le matin",
-        is_active: true,
-        is_blocking: false,
-        analyze_with_ai: false,
-        min_photos_required: 1,
-        phase: "opening",
-      } as any).select("id").single();
-      if (openErr) throw new Error(`opening template: ${openErr.message}`);
-      const openId = (openIns as any).id;
-      const { data: openPhotos } = await supabaseAdmin.from("checklist_template_photos").insert([
-        { template_id: openId, label: "Comptoir au démarrage", description: "Photo du comptoir à l'arrivée", order_index: 0, is_required: true },
-      ]).select("id");
-      await supabaseAdmin.from("checklist_template_items").insert([
-        { template_id: openId, label: "Vérifier que la machine à café est en route", order_index: 0, is_required: true, photo_zone_id: null },
-        { template_id: openId, label: "Compter le fond de caisse (200€)", order_index: 1, is_required: true, photo_zone_id: null },
-        { template_id: openId, label: "Lire les notes de l'équipe précédente", order_index: 2, is_required: true, photo_zone_id: (openPhotos as any)?.[0]?.id ?? null },
-      ]);
-      log.push("Template checklist d'OUVERTURE Barista créé (3 items + 1 photo)");
-    } else {
-      log.push("Template checklist d'ouverture déjà présent");
-    }
+    const closingTpl = await ensureTemplate({
+      name: "Démo — Ouverture Barista",
+      description: "Checklist d'ouverture pour test démo",
+      phase: "closing",
+      is_blocking: true,
+      min_photos_required: 3,
+      photos: [
+        { label: "Comptoir propre", description: "Vue d'ensemble du comptoir", order_index: 0, is_required: true },
+        { label: "Machine espresso", description: "Photo de la machine prête", order_index: 1, is_required: true },
+        { label: "Vitrine pâtisseries", description: "Vitrine remplie", order_index: 2, is_required: true },
+      ],
+      items: (p) => [
+        { label: "Allumer la machine espresso", order_index: 0, is_required: true, photo_zone_id: p.get("Machine espresso") ?? null },
+        { label: "Nettoyer le comptoir", order_index: 1, is_required: true, photo_zone_id: p.get("Comptoir propre") ?? null },
+        { label: "Vérifier le stock de lait", order_index: 2, is_required: true, photo_zone_id: null },
+        { label: "Préparer la vitrine pâtisseries", order_index: 3, is_required: true, photo_zone_id: p.get("Vitrine pâtisseries") ?? null },
+        { label: "Ouvrir la caisse", order_index: 4, is_required: true, photo_zone_id: null },
+        { label: "Vérifier les températures frigos", order_index: 5, is_required: false, photo_zone_id: null },
+      ],
+    });
+    const templateId = closingTpl.id;
+    log.push(closingTpl.created ? "Template checklist Barista créé (6 items + 3 zones photo)" : "Template checklist Barista déjà présent");
 
-    // 4b-ter. Checklist de TRANSITION Barista (phase=transition)
-    const TRANS_TPL_NAME = "Démo — Transition Barista";
-    const { data: transExisting } = await supabaseAdmin
-      .from("checklist_templates").select("id").eq("studio_id", studio.id).eq("name", TRANS_TPL_NAME).maybeSingle();
-    if (!transExisting) {
-      const { data: transIns, error: transErr } = await supabaseAdmin.from("checklist_templates").insert({
-        studio_id: studio.id,
-        business_role_id: baristaBr?.id ?? null,
-        name: TRANS_TPL_NAME,
-        description: "Checklist rapide à faire entre deux shifts",
-        is_active: true,
-        is_blocking: false,
-        analyze_with_ai: false,
-        min_photos_required: 0,
-        phase: "transition",
-      } as any).select("id").single();
-      if (transErr) throw new Error(`transition template: ${transErr.message}`);
-      const transId = (transIns as any).id;
-      const { data: transPhotos } = await supabaseAdmin.from("checklist_template_photos").insert([
-        { template_id: transId, label: "État machine", description: "Photo de la machine au passage de relais", order_index: 0, is_required: false },
-      ]).select("id");
-      await supabaseAdmin.from("checklist_template_items").insert([
-        { template_id: transId, label: "Vérifier état machine", order_index: 0, is_required: true, photo_zone_id: (transPhotos as any)?.[0]?.id ?? null },
-        { template_id: transId, label: "Compter caisse intermédiaire", order_index: 1, is_required: true, photo_zone_id: null },
-      ]);
-      log.push("Template checklist de TRANSITION Barista créé (2 items + 1 photo)");
-    } else {
-      log.push("Template checklist de transition déjà présent");
-    }
+    const openTpl = await ensureTemplate({
+      name: "Démo — Ouverture matin Barista",
+      description: "Checklist à faire en arrivant le matin",
+      phase: "opening",
+      is_blocking: false,
+      min_photos_required: 1,
+      photos: [
+        { label: "Comptoir au démarrage", description: "Photo du comptoir à l'arrivée", order_index: 0, is_required: true },
+      ],
+      items: (p) => [
+        { label: "Vérifier que la machine à café est en route", order_index: 0, is_required: true, photo_zone_id: null },
+        { label: "Compter le fond de caisse (200€)", order_index: 1, is_required: true, photo_zone_id: null },
+        { label: "Lire les notes de l'équipe précédente", order_index: 2, is_required: true, photo_zone_id: p.get("Comptoir au démarrage") ?? null },
+      ],
+    });
+    log.push(openTpl.created ? "Template checklist d'OUVERTURE Barista créé" : "Template checklist d'ouverture déjà présent");
+
+    const transTpl = await ensureTemplate({
+      name: "Démo — Transition Barista",
+      description: "Checklist rapide à faire entre deux shifts",
+      phase: "transition",
+      is_blocking: false,
+      min_photos_required: 0,
+      photos: [
+        { label: "État machine", description: "Photo de la machine au passage de relais", order_index: 0, is_required: false },
+      ],
+      items: (p) => [
+        { label: "Vérifier état machine", order_index: 0, is_required: true, photo_zone_id: p.get("État machine") ?? null },
+        { label: "Compter caisse intermédiaire", order_index: 1, is_required: true, photo_zone_id: null },
+      ],
+    });
+    log.push(transTpl.created ? "Template checklist de TRANSITION Barista créé" : "Template checklist de transition déjà présent");
+
 
 
     // 4c. Questions de clôture (5) pour le studio
