@@ -285,22 +285,24 @@ export function BusinessRolesEditor({ lockedStudioId }: { lockedStudioId?: strin
         </div>
       </div>
 
-      {/* Sélecteur de studio */}
-      <div className="rounded-xl border p-3 flex items-center gap-3 flex-wrap"
-        style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-        <Building2 size={16} style={{ color: "var(--muted-foreground)" }} />
-        <div style={{ fontSize: 12, fontWeight: 500 }}>Studio</div>
-        <select
-          value={studioId ?? ""}
-          onChange={(e) => setStudioId(e.target.value || null)}
-          className="rounded-md px-2 py-1.5"
-          style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
-        >
-          {studios.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-      </div>
+      {/* Sélecteur de studio — masqué en mode verrouillé */}
+      {!lockedStudioId && (
+        <div className="rounded-xl border p-3 flex items-center gap-3 flex-wrap"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+          <Building2 size={16} style={{ color: "var(--muted-foreground)" }} />
+          <div style={{ fontSize: 12, fontWeight: 500 }}>Studio</div>
+          <select
+            value={studioId ?? ""}
+            onChange={(e) => setStudioId(e.target.value || null)}
+            className="rounded-md px-2 py-1.5"
+            style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
+          >
+            {studios.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
