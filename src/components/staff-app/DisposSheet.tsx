@@ -42,7 +42,8 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [ranges, setRanges] = useState<Record<number, Range[]>>({});
   const [loading, setLoading] = useState(true);
   const [validated, setValidated] = useState(false);
-  const [deadline, setDeadline] = useState<{ days_left: number; passed: boolean; deadline_day: number; planning_published?: boolean } | null>(null);
+  const [deadline, setDeadline] = useState<{ days_left: number; passed: boolean; deadline_day: number; planning_published?: boolean; deadline_iso?: string } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const createFn = useServerFn(createAvailability);
   const updateFn = useServerFn(updateAvailability);
@@ -82,8 +83,29 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     })();
   }, [open, userId, year, month, daysInMonth]);
 
+  // Tick du compte à rebours
+  useEffect(() => {
+    if (!open) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [open]);
+
+  const deadlineMs = deadline?.deadline_iso ? new Date(deadline.deadline_iso).getTime() : null;
+  const msLeft = deadlineMs ? deadlineMs - now : null;
+  const deadlinePassed = msLeft !== null ? msLeft <= 0 : !!deadline?.passed;
   const planningPublished = deadline?.planning_published ?? false;
-  const locked = validated || planningPublished;
+  const locked = planningPublished || deadlinePassed;
+
+  const formatCountdown = (ms: number) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const days = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (days > 0) return `${days}j ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m`;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  };
+
 
   // Convertit "HH:MM" en minutes pour comparaison
   const toMin = (t: string) => {
