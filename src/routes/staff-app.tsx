@@ -116,6 +116,15 @@ function StaffAppPage() {
     if (!loading && !user) navigate({ to: "/login" });
   }, [loading, user, navigate]);
 
+  // Redirection deep-link : ?proposals=1 (ancienne notif) → page dédiée
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("proposals") === "1") {
+      navigate({ to: "/staff-app/propositions", replace: true } as any);
+    }
+  }, [navigate]);
+
   if (loading || !user) return <div className="p-8" style={{ fontSize: 13 }}>Chargement…</div>;
 
   return (
