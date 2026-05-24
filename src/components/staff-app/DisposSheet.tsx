@@ -215,17 +215,38 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     toast.success("Dispos envoyées pour " + monthLabel);
   };
 
+  const deadlineLabel = deadlineMs
+    ? new Date(deadlineMs).toLocaleDateString("fr-FR", { day: "2-digit", month: "long" }) + " à 23:59"
+    : `jour ${deadline?.deadline_day ?? "?"} à 23:59`;
+
   return (
     <Sheet open={open} onClose={onClose} title={`Dispos · ${monthLabel}`}>
-      {validated ? (
-        <div className="rounded-xl px-4 py-6 flex flex-col items-center gap-3 mb-3" style={{ backgroundColor: "var(--success-bg)" }}>
-          <CheckCircle2 size={36} style={{ color: "var(--success-text)" }} />
+      {/* Bannière statut : verrouillé / compte à rebours / à remplir */}
+      {locked ? (
+        <div className="rounded-xl px-3 py-3 mb-3 flex items-start gap-2" style={{ backgroundColor: "var(--danger-bg)" }}>
+          <Lock size={14} style={{ color: "var(--danger-text)", marginTop: 1 }} />
+          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--danger-text)", lineHeight: 1.5 }}>
+            {planningPublished
+              ? <>Le planning de <span style={{ textTransform: "capitalize" }}>{monthLabel}</span> est publié. Tu ne peux plus modifier tes dispos. Pour signaler une indisponibilité, fais une demande de modification depuis l'accueil.</>
+              : <>Deadline dépassée pour <span style={{ textTransform: "capitalize" }}>{monthLabel}</span>. Pour tout changement, fais une demande de modification depuis l'accueil.</>}
+          </span>
+        </div>
+      ) : validated ? (
+        <div className="rounded-xl px-4 py-4 flex flex-col items-center gap-2 mb-3" style={{ backgroundColor: "var(--success-bg)" }}>
+          <CheckCircle2 size={28} style={{ color: "var(--success-text)" }} />
           <div style={{ fontSize: 14, fontWeight: 500, color: "var(--success-text)" }}>Dispos envoyées</div>
-          <div style={{ fontSize: 12, color: "var(--success-text)", textAlign: "center", textTransform: "capitalize" }}>
-            Tes dispos pour {monthLabel} ont été envoyées.
-          </div>
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)", textAlign: "center" }}>
-            L'admin va générer le planning sous 24-48h. Tu pourras à nouveau modifier tes dispos le mois prochain.
+          {msLeft !== null && (
+            <div style={{ fontSize: 12, color: "var(--success-text)", textAlign: "center" }}>
+              Tu peux encore modifier jusqu'au <strong>{deadlineLabel}</strong>
+            </div>
+          )}
+          {msLeft !== null && (
+            <div style={{ fontSize: 20, fontWeight: 600, color: "var(--success-text)", fontVariantNumeric: "tabular-nums" }}>
+              {formatCountdown(msLeft)}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", textAlign: "center", lineHeight: 1.4 }}>
+            Après la deadline, toute modification passera par une demande à l'admin.
           </div>
         </div>
       ) : (
@@ -233,29 +254,13 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
           <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12, lineHeight: 1.5 }}>
             Indique tes plages horaires de disponibilité pour <span style={{ textTransform: "capitalize" }}>{monthLabel}</span>. Tu peux ajouter plusieurs plages par jour.
           </div>
-          {planningPublished ? (
-            <div className="rounded-xl px-3 py-3 mb-2 flex items-start gap-2" style={{ backgroundColor: "var(--danger-bg)" }}>
-              <Lock size={14} style={{ color: "var(--danger-text)", marginTop: 1 }} />
-              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--danger-text)", lineHeight: 1.5 }}>
-                Le planning de <span style={{ textTransform: "capitalize" }}>{monthLabel}</span> est publié. Tu ne peux plus modifier tes dispos. Pour signaler une indisponibilité, fais une demande de modification depuis l'accueil.
+          {msLeft !== null && (
+            <div className="rounded-xl px-3 py-2 mb-2 flex items-center justify-between gap-2" style={{ backgroundColor: "var(--muted)" }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>
+                Deadline : {deadlineLabel}
               </span>
-            </div>
-          ) : deadline && (
-            <div
-              className="rounded-xl px-3 py-2 mb-2 flex items-center gap-2"
-              style={{ backgroundColor: deadline.passed ? "var(--warning-bg)" : "var(--muted)" }}
-            >
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: deadline.passed ? "var(--warning-text)" : "var(--muted-foreground)",
-                  lineHeight: 1.4,
-                }}
-              >
-                {deadline.passed
-                  ? `Deadline indicative dépassée (jour ${deadline.deadline_day}). Tu peux encore modifier jusqu'à la publication du planning.`
-                  : `Deadline indicative : jour ${deadline.deadline_day} du mois. Tu peux modifier jusqu'à la publication du planning.`}
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--coral)", fontVariantNumeric: "tabular-nums" }}>
+                {formatCountdown(msLeft)}
               </span>
             </div>
           )}
@@ -270,7 +275,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       {loading ? (
         <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
       ) : (
-        <div className="flex flex-col gap-1.5 mb-3" style={{ opacity: validated ? 0.6 : 1, pointerEvents: validated ? "none" : "auto" }}>
+        <div className="flex flex-col gap-1.5 mb-3" style={{ opacity: locked ? 0.6 : 1, pointerEvents: locked ? "none" : "auto" }}>
           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
             const dow = DAY_NAMES[new Date(year, month, day).getDay()];
             const dayRanges = ranges[day] ?? [];
@@ -327,9 +332,10 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
         </div>
       )}
 
-      {!validated && !loading && (
+      {!validated && !loading && !locked && (
         <PrimaryButton onClick={validate}>Valider mes dispos</PrimaryButton>
       )}
     </Sheet>
   );
 }
+
