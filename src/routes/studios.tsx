@@ -734,8 +734,9 @@ function InformationsTab({
           )}
         </div>
       </div>
+    </div>
 
-      {/* Bloc "Postes actifs" déplacé vers l'onglet "Rôles métier" — voir BusinessRolesEditor */}
+    {/* Bloc "Postes actifs" déplacé vers l'onglet "Rôles métier" — voir BusinessRolesEditor */}
 
     <div
       className="mt-4 rounded-xl border p-5 flex items-center justify-between"
