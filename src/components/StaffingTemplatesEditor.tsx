@@ -298,8 +298,9 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
         )}
 
         <button onClick={addRow}
+          disabled={ROLES.length === 0}
           className="mt-3 rounded-md px-3 py-2 flex items-center gap-2 transition-colors"
-          style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+          style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", opacity: ROLES.length === 0 ? 0.5 : 1, cursor: ROLES.length === 0 ? "not-allowed" : "pointer" }}>
           <Plus size={13} /> Ajouter un besoin
         </button>
       </div>
