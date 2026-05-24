@@ -145,6 +145,15 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
           {filtered.length} créneau{filtered.length > 1 ? "x" : ""} · {totalShifts} shift{totalShifts > 1 ? "s" : ""}/semaine
         </div>
 
+        {ROLES.length === 0 && studioId && (
+          <div className="rounded-lg p-3 mb-3" style={{ backgroundColor: "var(--warn-bg, var(--muted))", border: "0.5px solid var(--border)" }}>
+            <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>⚠️ Aucun rôle configuré pour ce studio.</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+              Va dans l'onglet « Information » pour activer les rôles métier de ce studio avant de configurer les besoins de staff.
+            </div>
+          </div>
+        )}
+
         {filtered.length === 0 ? (
           <div className="rounded-lg p-6 text-center" style={{ backgroundColor: "var(--muted)" }}>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun besoin défini. Ajoutez le premier ci-dessous.</div>
