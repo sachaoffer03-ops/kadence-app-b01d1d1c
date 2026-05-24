@@ -23,6 +23,7 @@ import { FormationNotifBanner } from "@/components/staff-app/formation/Formation
 import { ChatPanel } from "@/components/staff-app/ChatPanel";
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSheet";
+import { ProposalsInline } from "@/components/staff-app/ProposalsInline";
 import { WorkedHoursEmployeeCard, EmployeeLastShifts } from "@/components/WorkedHoursCard";
 import { MyStatsCard } from "@/components/staff-app/MyStatsCard";
 import { EmployeeNotifsWidget } from "@/components/staff-app/EmployeeNotifsWidget";
@@ -315,6 +316,8 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
           )}
         </button>
       </div>
+
+      <ProposalsInline userId={userId} studios={studios} />
 
       {/* Carte sombre — prochain shift en vedette */}
       {(() => {
