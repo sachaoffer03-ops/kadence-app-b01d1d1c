@@ -207,23 +207,30 @@ export function InviteEmployeeModal({ open, onClose, onCreated }: Props) {
 
             <div>
               <label style={labelStyle}>Rôles métier *</label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {BUSINESS_ROLES.map((r) => {
-                  const active = roles.has(r);
-                  return (
-                    <button key={r} type="button" onClick={() => toggleRole(r)}
-                      className="px-3 py-1.5 rounded-md border"
-                      style={{
-                        fontSize: 13, fontWeight: 500,
-                        backgroundColor: active ? "var(--foreground)" : "var(--card)",
-                        color: active ? "var(--card)" : "var(--foreground)",
-                        borderColor: active ? "var(--foreground)" : "var(--border)",
-                      }}>
-                      {r}
-                    </button>
-                  );
-                })}
-              </div>
+              {availableRoles.length === 0 ? (
+                <div className="mt-2 rounded-md px-3 py-2"
+                  style={{ fontSize: 12, color: "var(--muted-foreground)", border: "0.5px dashed var(--border)" }}>
+                  Sélectionne d'abord au moins un studio configuré avec des rôles.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {availableRoles.map((r: string) => {
+                    const active = roles.has(r);
+                    return (
+                      <button key={r} type="button" onClick={() => toggleRole(r)}
+                        className="px-3 py-1.5 rounded-md border"
+                        style={{
+                          fontSize: 13, fontWeight: 500,
+                          backgroundColor: active ? "var(--foreground)" : "var(--card)",
+                          color: active ? "var(--card)" : "var(--foreground)",
+                          borderColor: active ? "var(--foreground)" : "var(--border)",
+                        }}>
+                        {r}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
