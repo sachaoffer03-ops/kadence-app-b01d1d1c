@@ -151,7 +151,7 @@ function StaffAppPage() {
           { id: "planning" as Tab, label: "Planning", icon: Calendar },
           { id: "pointage" as Tab, label: "Pointage", icon: Clock },
           { id: "formation" as Tab, label: "Formation", icon: GraduationCap },
-          { id: "chat" as Tab, label: "Chat", icon: MessageCircle },
+          { id: "chat" as Tab, label: "Assistant IA", icon: Bot },
           { id: "profil" as Tab, label: "Profil", icon: User },
         ]).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-3 px-1" style={{ minHeight: 56, flex: 1 }}>
