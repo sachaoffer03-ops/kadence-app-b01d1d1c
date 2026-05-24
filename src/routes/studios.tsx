@@ -576,8 +576,6 @@ const editableFields: { key: keyof StudioInfo; label: string; icon: React.Elemen
   { key: "manager", label: "Responsable", icon: User },
   { key: "phone", label: "Téléphone", icon: Phone },
   { key: "email", label: "Email", icon: Mail },
-  { key: "capacity", label: "Capacité", icon: Users },
-  { key: "surface", label: "Surface", icon: SlidersHorizontal },
 ];
 
 
