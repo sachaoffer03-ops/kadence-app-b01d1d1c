@@ -1,71 +1,111 @@
-## Plan — Fix 5 bugs critiques
+# Emails Kadence — plan d'implémentation
 
-### Bug 1 — Bouton "Pointer ma sortie" sur l'Accueil (rapide)
+Tu m'as confirmé :
 
-**Cause** : dans `AccueilTab` de `src/routes/staff-app.tsx` (l.451), la condition est `canClockOut = nowTs >= openAt` où `openAt = endTime - clock_out_button_appears_before_min`. Sur le shift démo Clara (18:02→23:02), il faut attendre 22:47 pour que le bouton s'active, alors que le tab Pointage (l.1138) l'active dès que `clocked_in_at` existe.
+- Domaine : **shyft.flashsite.fr** (sous-domaine `notify.shyft.flashsite.fr` pour l'envoi)
+- 4 événements à brancher : invitation, notifs urgentes, planning publié, demandes/swaps
+- Fréquence : 1 email par événement (instantané)
 
-**Fix** : ajouter une fenêtre alternative `nowTs >= clockedInAt + 30 min`. Le bouton devient actif si :
-- `nowTs ≥ shift_end - before_min` (fenêtre normale), OU
-- `nowTs ≥ clocked_in_at + 30 min` (garde-fou pour shifts courts/démo).
+L'idée : on pose **l'infra une bonne fois**, puis on construit les 4 templates **un par un, ensemble**, pour que tu valides chaque design avant qu'on passe au suivant.
 
-Texte du badge "dans X min" affiché uniquement si AUCUNE des 2 conditions n'est vraie.
+---
 
-### Bug 2 — Checklist au pointage d'arrivée
+## Étape 0 — Préparer le domaine d'envoi (one-shot, ~5 min)
 
-**Investigation** : `ClockInSheet` rend déjà `<OpeningFlow>` quand `done` est set (l.86-101). `OpeningFlow` appelle déjà `detectChecklistMoment` + `findApplicableTemplate`. Donc le flow existe mais doit échouer silencieusement.
+Tu cliques sur le bouton de config, tu colles `shyft.flashsite.fr`, tu choisis `notify` comme sous-domaine. Tu vas chez ton registrar (OVH/Cloudflare/etc.) et tu colles 2 lignes NS que je te donnerai. Vérif DNS automatique (24–72h max, souvent en quelques minutes).
 
-**Fix** :
-1. Vérifier dans `OpeningFlow` que même si `phase === null` ou `template === null`, l'écran Bienvenue (Step 1) s'affiche **toujours** avec un CTA "Commencer mon service →". C'est déjà le cas (l.265-277) — vérifier que `loading` se résout bien.
-2. Ajouter un log+toast côté `ClockInSheet` si la transition vers OpeningFlow échoue.
-3. Vérifier que pour Clara (role Barista), il existe bien un template `phase=transition` ou `phase=opening`. Si non, c'est un problème de seed → fix le seed démo pour garantir au moins un template par rôle.
-4. Tester réellement après reset seed.
+Ensuite je mets en place automatiquement :
 
-### Bug 3 — Étape "Avant de partir" dans ClosureFlow (gros morceau)
+- La file d'attente d'emails (retry auto en cas d'erreur réseau, anti-spam)
+- La table de désinscription (1-clic, conforme RGPD)
+- Le log d'envois (qui a reçu quoi, statut livraison)
+- La page `/unsubscribe` brandée Skult
 
-**Fix** : ajouter une nouvelle étape dans `src/components/staff-app/ClosureFlow.tsx`, juste avant l'étape récap finale, **toujours visible** (closing OU transition) :
+---
 
-3 sections dans un seul écran scrollable :
-- **Note pour l'équipe suivante** (handoff) — textarea, sauvé dans `shift_handoffs`
-- **Feedback admin privé** — textarea, sauvé dans `shift_reports` (resolved=false)
-- **Comment s'est passé ton shift** — rating 1-5★ + commentaire court, sauvé dans `feedbacks`
+## Étape 1 — Charte visuelle email (avant tout template)
 
-Tout optionnel. Bouton "Continuer →" passe à l'étape récap finale. Stepper incrémenté.
+Je crée un **template de base partagé** avec :
 
-Tables existent déjà (`shift_handoffs`, `shift_reports`, `feedbacks`) — pas de migration.
+- Fond blanc cassé `#FAFAF8`
+- Logo Kadence en header
+- Typo Inter, accent coral `#F0997B`
+- Footer signature «   Kadence — Skult Studios » + lien désabo
+- Boutons d'action coral, rayon 8px, pas d'emoji, pas de majuscules
+- Responsive mobile (90% des employés ouvrent sur tel)
 
-### Bug 4 — Vidéo formation invisible côté employé
+Ce template sera réutilisé par les 4 emails — on garantit une cohérence visuelle.
 
-**Investigation rapide** : vérifier la query côté `FormationHub` / `CourseDetailView`. Si la query filtre `is_published=true` au niveau parcours mais pas au niveau contenu, c'est OK ; le problème est le cache.
+---
 
-**Fix** :
-1. Forcer un refetch au montage du composant CourseDetailView (déjà sans cache stale).
-2. Ajouter un subscribe realtime sur `training_contents` filtré par les modules du parcours actuel pour rafraîchir live.
-3. S'assurer que le parcours est `is_published=true` (vérification côté admin, pas de code à changer).
+## Étape 2 — On code les 4 templates ensemble, 1 par 1
 
-### Bug 5a — Bouton "Trouver un remplaçant" sur toutes les demandes pending
+À chaque template, je te montre :
 
-**Fix** : dans `src/routes/demandes.tsx`, ajouter le bouton "Trouver un remplaçant" pour toutes les demandes pending (cancel, time_change, unavailable). Au clic, ouvrir une modal de sélection d'employés éligibles (réutiliser logique existante de `proposals.functions.ts > sendReplacementProposals`).
+1. Le déclencheur exact (« cet email part quand X se passe »)
+2. Le sujet de l'email
+3. Le contenu (titre, corps, CTA)
+4. Une preview du rendu
 
-### Bug 5b — Masquer accept/refuse si propositions actives
+Tu valides → je passe au suivant.
 
-**Fix** : dans `src/routes/demandes.tsx`, pour chaque demande pending avec au moins une `shift_proposals` `status=pending` :
-- Masquer boutons "Accepter" / "Refuser"
-- Afficher "Recherche de remplaçant en cours" + liste des propositions + leur statut
-- Bouton "Annuler les propositions" qui ré-affiche les actions standard
+### Template A — Invitation employé
 
-Si toutes les propositions sont declined/expired → ré-afficher accept/refuse.
+- **Déclenche** : admin clique « Inviter » dans Staff
+- **Destinataire** : nouveau collaborateur
+- **Existe déjà** (edge function `send-invitation` avec HTML inline) → **on refait propre** via le système Lovable, lien d'activation conservé
+- **Sujet** : « Bienvenue chez Skult — active ton compte »
+- **CTA** : bouton coral « Activer mon compte » + lien fallback
 
-### Hors scope (rappel)
-- Pas de modif moteur IA planning
-- Pas de modif scoring
-- Pas de modif `proposals.functions.ts` (race-safe)
-- Pas de modif `/cloture`
+### Template B — Notification urgente / RH
 
-### Ordre d'exécution
-1. Bug 1 (5 min, surgical)
-2. Bug 5a+5b (UI demandes)
-3. Bug 3 (étape Avant de partir)
-4. Bug 2 (investigation + ajustement OpeningFlow)
-5. Bug 4 (realtime training_contents)
+- **Déclenche** : nouvelle ligne dans `notifications` avec `priority = 'urgent'`
+- **Destinataire** : l'employé concerné
+- **Sujet** : « [Urgent] {titre de la notif} »
+- **Contenu** : titre + corps de la notif + bouton « Ouvrir dans Kadence » vers le lien associé
+- **Anti-spam** : 1 seul email par notif, jamais de double envoi
 
-Estimation totale : ~12-15 tool calls.
+### Template C — Planning publié
+
+- **Déclenche** : admin clique « Publier le planning » (workflow `planning-workflow`)
+- **Destinataire** : chaque employé qui a au moins 1 shift dans la semaine publiée
+- **Sujet** : « Ton planning de la semaine du {date} »
+- **Contenu** : récap des shifts (jour, heure, studio, poste) + CTA « Voir mon planning »
+- **Anti-spam** : 1 email par employé par publication, même si republication
+
+### Template D — Demandes & propositions de swap
+
+3 sous-cas dans le même template, variante par type :
+
+- **D1** : nouvelle proposition reçue → « {Prénom} te propose un échange de shift »
+- **D2** : ta demande de modif est validée → « Ta demande du {date} est acceptée »
+- **D3** : ta demande de modif est refusée → « Ta demande du {date} n'a pas été retenue »
+- **CTA** : bouton « Répondre » / « Voir le détail »
+
+---
+
+## Étape 3 — Logs & contrôle
+
+Après publication, dans **Cloud → Emails** tu pourras voir :
+
+- Qui a reçu quoi, quand
+- Échecs (mauvaise adresse, boîte pleine)
+- Liste des désabonnés (auto-bloqués pour les futurs envois)
+
+Les emails d'activation/invitation **passent toujours** même si l'employé s'est désabonné des notifs (légalement nécessaires).
+
+---
+
+## Détails techniques (pour mémoire)
+
+- Stack : Lovable Emails (Mailgun derrière, géré par Lovable) — pas de clé API à gérer, pas de Resend manuel
+- Code des templates : React Email (`.tsx`) dans `src/lib/email-templates/`
+- Envoi : appel à `/lovable/email/transactional/send` via un helper `sendTransactionalEmail()` côté serveur
+- L'edge function `send-invitation` actuelle sera migrée vers ce nouveau flow puis supprimée
+- Chaque envoi a un `idempotencyKey` → impossible d'envoyer 2x le même email même en cas de retry
+
+---
+
+## Ce que je te demande maintenant
+
+Approuve ce plan, et je commence par **Étape 0 (domaine)** + **Étape 1 (template de base brandé)**. Une fois le domaine en vérification, on enchaîne directement sur le **Template A (invitation)** ensemble, et on valide design + texte avant de passer aux suivants.
