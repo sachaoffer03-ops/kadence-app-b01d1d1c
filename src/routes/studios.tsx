@@ -48,6 +48,7 @@ import {
   type RoleSchedule,
 } from "@/hooks/use-studios";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/studios")({
   component: StudiosPage,
@@ -250,13 +251,33 @@ function StudiosPage() {
 
   const onAddCustomRole = async (name: string) => {
     if (!currentRow) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
     try {
-      await addRoleToStudio(currentRow.id, name);
+      // 1) Crée la ligne globale dans business_roles si elle n'existe pas
+      const { data: existing } = await supabase
+        .from("business_roles")
+        .select("id")
+        .ilike("name", trimmed)
+        .maybeSingle();
+      if (!existing) {
+        const { error: eIns } = await supabase.from("business_roles").insert({
+          name: trimmed,
+          color: "#888888",
+          position: 999,
+          is_active: true,
+        });
+        if (eIns) throw eIns;
+      }
+      // 2) Lie le rôle au studio courant
+      await addRoleToStudio(currentRow.id, trimmed);
       reloadRoles();
+      toast.success(`Poste "${trimmed}" ajouté`);
     } catch (e: any) {
       toast.error("Ajout impossible", { description: e?.message ?? "" });
     }
   };
+
 
   const onRemoveCustomRole = async (name: string) => {
     if (!currentRow) return;
@@ -833,11 +854,12 @@ function InformationsTab({
                 if (e.key === "Enter") submitNewRole();
               }}
               placeholder="Ex. Pâtissier"
-              className="flex-1 rounded-md px-2 py-1.5"
+              className="flex-1 rounded-md px-2 py-1.5 outline-none"
               style={{
                 fontSize: 12,
                 border: "0.5px solid var(--border)",
-                backgroundColor: "var(--card)",
+                backgroundColor: "var(--background)",
+                color: "var(--foreground)",
               }}
             />
             <button
