@@ -48,6 +48,7 @@ import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
 import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as StaffChecklistShiftIdRouteImport } from './routes/staff.checklist.$shiftId'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicStudioQrStudioIdRouteImport } from './routes/api/public/studio-qr.$studioId'
 
 const TrousRoute = TrousRouteImport.update({
@@ -245,6 +246,12 @@ const StaffChecklistShiftIdRoute = StaffChecklistShiftIdRouteImport.update({
   path: '/checklist/$shiftId',
   getParentRoute: () => StaffRoute,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicStudioQrStudioIdRoute =
   ApiPublicStudioQrStudioIdRouteImport.update({
     id: '/api/public/studio-qr/$studioId',
@@ -293,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/staff/': typeof StaffIndexRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -334,6 +342,7 @@ export interface FileRoutesByTo {
   '/staff': typeof StaffIndexRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -377,6 +386,7 @@ export interface FileRoutesById {
   '/staff/': typeof StaffIndexRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -421,6 +431,7 @@ export interface FileRouteTypes {
     | '/staff/'
     | '/staff/checklist/$shiftId'
     | '/api/public/studio-qr/$studioId'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -462,6 +473,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/staff/checklist/$shiftId'
     | '/api/public/studio-qr/$studioId'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
@@ -504,6 +516,7 @@ export interface FileRouteTypes {
     | '/staff/'
     | '/staff/checklist/$shiftId'
     | '/api/public/studio-qr/$studioId'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -542,6 +555,7 @@ export interface RootRouteChildren {
   DisplayStudioIdRoute: typeof DisplayStudioIdRoute
   StaffAppPropositionsRoute: typeof StaffAppPropositionsRoute
   ApiPublicStudioQrStudioIdRoute: typeof ApiPublicStudioQrStudioIdRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -819,6 +833,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffChecklistShiftIdRouteImport
       parentRoute: typeof StaffRoute
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/studio-qr/$studioId': {
       id: '/api/public/studio-qr/$studioId'
       path: '/api/public/studio-qr/$studioId'
@@ -903,6 +924,7 @@ const rootRouteChildren: RootRouteChildren = {
   DisplayStudioIdRoute: DisplayStudioIdRoute,
   StaffAppPropositionsRoute: StaffAppPropositionsRoute,
   ApiPublicStudioQrStudioIdRoute: ApiPublicStudioQrStudioIdRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
