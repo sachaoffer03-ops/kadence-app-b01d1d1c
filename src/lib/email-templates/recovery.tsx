@@ -1,69 +1,45 @@
 import * as React from 'react'
-
+import { Button, Heading, Hr, Section, Text } from '@react-email/components'
+import EmailLayout from '@/emails/layout/EmailLayout'
 import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Text,
-} from '@react-email/components'
+  ctaButton,
+  ctaSection,
+  h1,
+  hr,
+  muted,
+  paragraph,
+} from '@/emails/_styles'
 
 interface RecoveryEmailProps {
-  siteName: string
-  confirmationUrl: string
+  siteName?: string
+  confirmationUrl?: string
 }
 
 export const RecoveryEmail = ({
-  siteName,
-  confirmationUrl,
+  confirmationUrl = '#',
 }: RecoveryEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>Reset your password for {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Reset your password</Heading>
-        <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Reset Password
-        </Button>
-        <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this
-          email. Your password will not be changed.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
+  <EmailLayout
+    studioName="Skult Studios"
+    preview="Réinitialise ton mot de passe Kadence"
+  >
+    <Heading style={h1}>Mot de passe oublié ?</Heading>
+    <Text style={paragraph}>Salut,</Text>
+    <Text style={paragraph}>
+      Tu as demandé à réinitialiser ton mot de passe Kadence. Clique sur le
+      bouton ci-dessous pour en choisir un nouveau.
+    </Text>
+    <Section style={ctaSection}>
+      <Button href={confirmationUrl} style={ctaButton}>
+        Réinitialiser mon mot de passe
+      </Button>
+    </Section>
+    <Hr style={hr} />
+    <Text style={muted}>
+      Ce lien est valide pendant 1 heure. Si ce n'est pas toi qui as fait
+      cette demande, ignore simplement cet email — ton mot de passe restera
+      inchangé.
+    </Text>
+  </EmailLayout>
 )
 
 export default RecoveryEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
