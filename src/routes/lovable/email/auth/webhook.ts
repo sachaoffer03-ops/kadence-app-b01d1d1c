@@ -4,37 +4,28 @@ import { parseEmailWebhookPayload } from '@lovable.dev/email-js'
 import { WebhookError, verifyWebhookRequest } from '@lovable.dev/webhooks-js'
 import { createClient } from '@supabase/supabase-js'
 import { createFileRoute } from '@tanstack/react-router'
-import { SignupEmail } from '@/lib/email-templates/signup'
 import { InviteEmail } from '@/lib/email-templates/invite'
-import { MagicLinkEmail } from '@/lib/email-templates/magic-link'
 import { RecoveryEmail } from '@/lib/email-templates/recovery'
-import { EmailChangeEmail } from '@/lib/email-templates/email-change'
-import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
+// Kadence n'utilise que 2 emails d'auth :
+// - invite : l'admin invite un employé, qui clique pour créer son compte
+// - recovery : réinitialisation du mot de passe
+// Les autres types (signup, magiclink, email_change, reauthentication) sont
+// ignorés silencieusement (retour 200 sans envoi).
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
-  invite: "You've been invited",
-  magiclink: 'Your login link',
-  recovery: 'Reset your password',
-  email_change: 'Confirm your new email',
-  reauthentication: 'Your verification code',
+  invite: 'Bienvenue chez Skult – Active ton compte Kadence',
+  recovery: 'Réinitialise ton mot de passe Kadence',
 }
 
-// Template mapping
 const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
-  signup: SignupEmail,
   invite: InviteEmail,
-  magiclink: MagicLinkEmail,
   recovery: RecoveryEmail,
-  email_change: EmailChangeEmail,
-  reauthentication: ReauthenticationEmail,
 }
 
-// Configuration
-const SITE_NAME = "hourly-huddle"
-const SENDER_DOMAIN = "notify.app.shyft.flashsite.fr"
-const ROOT_DOMAIN = "app.shyft.flashsite.fr"
-const FROM_DOMAIN = "app.shyft.flashsite.fr"
+const SITE_NAME = 'Kadence'
+const SENDER_DOMAIN = 'notify.app.shyft.flashsite.fr'
+const ROOT_DOMAIN = 'app.shyft.flashsite.fr'
+const FROM_DOMAIN = 'app.shyft.flashsite.fr'
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'
@@ -43,7 +34,7 @@ function redactEmail(email: string | null | undefined): string {
   return `${localPart[0]}***@${domain}`
 }
 
-export const Route = createFileRoute("/lovable/email/auth/webhook")({
+export const Route = createFileRoute('/lovable/email/auth/webhook')({
   server: {
     handlers: {
       POST: async ({ request }) => {
@@ -53,11 +44,10 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
           console.error('LOVABLE_API_KEY not configured')
           return Response.json(
             { error: 'Server configuration error' },
-            { status: 500 }
+            { status: 500 },
           )
         }
 
-        // Verify signature + timestamp, then parse payload.
         let payload: any
         let run_id = ''
         try {
@@ -76,62 +66,43 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
               case 'invalid_timestamp':
               case 'stale_timestamp':
                 console.error('Invalid webhook signature', { error: error.message })
-                return Response.json(
-                  { error: 'Invalid signature' },
-                  { status: 401 }
-                )
+                return Response.json({ error: 'Invalid signature' }, { status: 401 })
               case 'invalid_payload':
               case 'invalid_json':
                 console.error('Invalid webhook payload', { error: error.message })
-                return Response.json(
-                  { error: 'Invalid webhook payload' },
-                  { status: 400 }
-                )
+                return Response.json({ error: 'Invalid webhook payload' }, { status: 400 })
             }
           }
 
           console.error('Webhook verification failed', { error })
-          return Response.json(
-            { error: 'Invalid webhook payload' },
-            { status: 400 }
-          )
+          return Response.json({ error: 'Invalid webhook payload' }, { status: 400 })
         }
 
         if (!run_id) {
-          console.error('Webhook payload missing run_id')
-          return Response.json(
-            { error: 'Invalid webhook payload' },
-            { status: 400 }
-          )
+          return Response.json({ error: 'Invalid webhook payload' }, { status: 400 })
         }
 
         if (payload.version !== '1') {
-          console.error('Unsupported payload version', { version: payload.version, run_id })
           return Response.json(
             { error: `Unsupported payload version: ${payload.version}` },
-            { status: 400 }
+            { status: 400 },
           )
         }
 
-        // The email action type is in payload.data.action_type (e.g., "signup", "recovery")
-        // payload.type is the hook event type ("auth")
         const emailType = payload.data.action_type
-        console.log('Received auth event', {
-          emailType,
-          email_redacted: redactEmail(payload.data.email),
-          run_id,
-        })
-
         const EmailTemplate = EMAIL_TEMPLATES[emailType]
+
+        // Type non géré (signup, magiclink, email_change, reauthentication)
+        // → on retourne 200 sans envoyer pour ne pas bloquer Supabase Auth.
         if (!EmailTemplate) {
-          console.error('Unknown email type', { emailType, run_id })
-          return Response.json(
-            { error: `Unknown email type: ${emailType}` },
-            { status: 400 }
-          )
+          console.log('Auth email type skipped (not used by Kadence)', {
+            emailType,
+            email_redacted: redactEmail(payload.data.email),
+            run_id,
+          })
+          return Response.json({ success: true, skipped: true })
         }
 
-        // Build template props from payload.data (HookData structure)
         const templateProps = {
           siteName: SITE_NAME,
           siteUrl: `https://${ROOT_DOMAIN}`,
@@ -143,27 +114,21 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
           newEmail: payload.data.new_email,
         }
 
-        // Render React Email to HTML and plain text
         const element = React.createElement(EmailTemplate, templateProps)
         const html = await render(element)
         const text = await render(element, { plainText: true })
 
-        // Enqueue email for async processing by the dispatcher (process-email-queue).
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
         if (!supabaseUrl || !supabaseServiceKey) {
           console.error('Missing Supabase environment variables')
-          return Response.json(
-            { error: 'Server configuration error' },
-            { status: 500 }
-          )
+          return Response.json({ error: 'Server configuration error' }, { status: 500 })
         }
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey)
         const messageId = crypto.randomUUID()
 
-        // Log pending BEFORE enqueue so we have a record even if enqueue crashes
         await supabase.from('email_send_log').insert({
           message_id: messageId,
           template_name: emailType,
@@ -179,7 +144,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             to: payload.data.email,
             from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
             sender_domain: SENDER_DOMAIN,
-            subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+            subject: EMAIL_SUBJECTS[emailType] || 'Notification Kadence',
             html,
             text,
             purpose: 'transactional',
@@ -197,10 +162,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             status: 'failed',
             error_message: 'Failed to enqueue email',
           })
-          return Response.json(
-            { error: 'Failed to enqueue email' },
-            { status: 500 }
-          )
+          return Response.json({ error: 'Failed to enqueue email' }, { status: 500 })
         }
 
         console.log('Auth email enqueued', {

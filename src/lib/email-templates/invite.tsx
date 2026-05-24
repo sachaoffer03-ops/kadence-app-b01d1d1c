@@ -1,77 +1,51 @@
 import * as React from 'react'
-
+import { Button, Heading, Hr, Section, Text } from '@react-email/components'
+import EmailLayout from '@/emails/layout/EmailLayout'
 import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Link,
-  Preview,
-  Text,
-} from '@react-email/components'
+  ctaButton,
+  ctaSection,
+  h1,
+  hr,
+  muted,
+  paragraph,
+} from '@/emails/_styles'
 
 interface InviteEmailProps {
-  siteName: string
-  siteUrl: string
-  confirmationUrl: string
+  siteName?: string
+  siteUrl?: string
+  confirmationUrl?: string
+  email?: string
 }
 
 export const InviteEmail = ({
-  siteName,
-  siteUrl,
-  confirmationUrl,
+  confirmationUrl = '#',
+  email,
 }: InviteEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>You've been invited to join {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>You've been invited</Heading>
-        <Text style={text}>
-          You've been invited to join{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
-          </Link>
-          . Click the button below to accept the invitation and create your
-          account.
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Accept Invitation
-        </Button>
-        <Text style={footer}>
-          If you weren't expecting this invitation, you can safely ignore this
-          email.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
+  <EmailLayout
+    studioName="Skult Studios"
+    preview="Bienvenue chez Skult – Active ton compte Kadence"
+  >
+    <Heading style={h1}>Bienvenue chez Skult 👋</Heading>
+    <Text style={paragraph}>Salut,</Text>
+    <Text style={paragraph}>
+      Ton manager t'a invité à rejoindre Kadence, l'app qui gère tes
+      plannings, propositions de shifts et formations chez Skult Studios.
+    </Text>
+    <Text style={paragraph}>
+      Active ton compte en 30 secondes en cliquant sur le bouton ci-dessous :
+    </Text>
+    <Section style={ctaSection}>
+      <Button href={confirmationUrl} style={ctaButton}>
+        Activer mon compte
+      </Button>
+    </Section>
+    <Hr style={hr} />
+    <Text style={muted}>
+      Cette invitation a été envoyée à {email ?? 'ton adresse email'} et
+      expire dans 7 jours. Si tu n'attendais pas cette invitation, tu peux
+      ignorer cet email.
+    </Text>
+  </EmailLayout>
 )
 
 export default InviteEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const link = { color: 'inherit', textDecoration: 'underline' }
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

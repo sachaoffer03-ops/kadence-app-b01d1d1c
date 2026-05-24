@@ -5,11 +5,15 @@ import {
   Head,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
   Text,
 } from "@react-email/components";
+
+export const KADENCE_LOGO_URL =
+  "https://vqejayodpprbfgwaejmb.supabase.co/storage/v1/object/public/avatars/_brand/kadence-logo.png";
 
 interface EmailLayoutProps {
   children: React.ReactNode;
@@ -32,7 +36,13 @@ export default function EmailLayout({
       <Body style={body}>
         <Container style={container}>
           <Section style={header}>
-            <Text style={logo}>Kadence</Text>
+            <Img
+              src={KADENCE_LOGO_URL}
+              alt="Kadence"
+              width="120"
+              height="32"
+              style={logoImg}
+            />
           </Section>
 
           <Section style={content}>{children}</Section>
@@ -59,7 +69,7 @@ export default function EmailLayout({
 }
 
 const body: React.CSSProperties = {
-  backgroundColor: "#F4F4F5",
+  backgroundColor: "#FAFAF8",
   fontFamily:
     "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   margin: 0,
@@ -72,21 +82,20 @@ const container: React.CSSProperties = {
   backgroundColor: "#ffffff",
   borderRadius: "12px",
   overflow: "hidden",
+  border: "1px solid #EAEAE5",
 };
 
 const header: React.CSSProperties = {
-  backgroundColor: "#000000",
-  padding: "24px",
+  backgroundColor: "#18181B",
+  padding: "28px 24px",
   textAlign: "center",
 };
 
-const logo: React.CSSProperties = {
-  color: "#ffffff",
-  fontSize: "22px",
-  fontWeight: 600,
-  letterSpacing: "-0.02em",
-  fontFamily: "Georgia, 'Times New Roman', serif",
-  margin: 0,
+const logoImg: React.CSSProperties = {
+  display: "block",
+  margin: "0 auto",
+  height: "32px",
+  width: "auto",
 };
 
 const content: React.CSSProperties = {
