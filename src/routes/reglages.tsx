@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Save, Tag } from "lucide-react";
+import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { StaffingTemplatesEditor } from "@/components/StaffingTemplatesEditor";
-import { BusinessRolesEditor } from "@/components/BusinessRolesEditor";
 
 export const Route = createFileRoute("/reglages")({
   component: ReglagesPage,
@@ -14,7 +13,6 @@ export const Route = createFileRoute("/reglages")({
 const tabs = [
   { id: "ai", label: "Algorithme IA", icon: Sparkles },
   { id: "templates", label: "Besoins par studio", icon: Puzzle },
-  { id: "roles", label: "Rôles métier", icon: Tag },
   { id: "billing", label: "Facturation", icon: CreditCard },
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "danger", label: "Zone dangereuse", icon: AlertTriangle },
@@ -54,8 +52,7 @@ function ReglagesPage() {
         <div className="flex-1 min-w-0">
           {activeTab === "ai" && <AISettings />}
           {activeTab === "templates" && <StaffingTemplatesEditor />}
-          {activeTab === "roles" && <BusinessRolesEditor />}
-          {!["ai", "templates", "roles"].includes(activeTab) && (
+          {!["ai", "templates"].includes(activeTab) && (
             <div className="rounded-xl border p-8 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
               <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
                 {tabs.find((t) => t.id === activeTab)?.label}
