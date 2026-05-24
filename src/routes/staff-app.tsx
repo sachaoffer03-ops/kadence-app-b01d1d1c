@@ -20,7 +20,7 @@ import { EditProfileSheet, type EditableProfile } from "@/components/staff-app/E
 import { DisposSheet, disposKey } from "@/components/staff-app/DisposSheet";
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
-import { ChatPanel } from "@/components/staff-app/ChatPanel";
+import { AIChatPanel } from "@/components/staff-app/AIChatPanel";
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSheet";
 import { Send } from "lucide-react";
