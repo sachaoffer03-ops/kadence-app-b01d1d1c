@@ -317,6 +317,8 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         </button>
       </div>
 
+      <ProposalsInline userId={userId} studios={studios} />
+
       {/* Carte sombre — prochain shift en vedette */}
       {(() => {
         const next = shifts[0];
