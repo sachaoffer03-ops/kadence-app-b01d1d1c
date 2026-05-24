@@ -77,7 +77,7 @@ function EmployeeDetailPage() {
       supabase.from("studios").select("id,name"),
       supabase.from("user_studios").select("studio_id").eq("user_id", id),
       supabase.from("user_contracts").select("contract").eq("user_id", id),
-      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status,clocked_in_at,clocked_out_at").eq("user_id", id).order("shift_date", { ascending: false }).limit(20),
+      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status,clocked_in_at,clocked_out_at").eq("user_id", id).lte("shift_date", new Date().toISOString().slice(0, 10)).order("shift_date", { ascending: false }).limit(20),
       supabase.from("signalements").select("id,category,message,created_at,resolved").eq("author_id", id).order("created_at", { ascending: false }).limit(10),
     ]);
     setEmp(p as Profile | null);
