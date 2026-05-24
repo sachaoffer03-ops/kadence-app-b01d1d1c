@@ -555,12 +555,12 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
 
 
       <button
-        onClick={() => !disposValidated && setDisposOpen(true)}
+        onClick={() => setDisposOpen(true)}
         className="w-full rounded-xl px-4 py-4 mb-5 flex items-center gap-3 text-left"
         style={{
           backgroundColor: disposValidated ? "var(--success-bg)" : "#fff",
           border: `0.5px solid ${disposValidated ? "var(--success-text)" : "var(--coral)"}`,
-          cursor: disposValidated ? "default" : "pointer",
+          cursor: "pointer",
         }}
       >
         <div className="rounded-lg flex items-center justify-center" style={{ width: 40, height: 40, backgroundColor: disposValidated ? "var(--success-text)" : "var(--coral-light)", color: disposValidated ? "#fff" : "var(--coral-dark)" }}>
@@ -571,11 +571,12 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
               {disposValidated ? "Dispos envoyées" : "Indique tes dispos"}
           </div>
           <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-              {disposValidated ? `En attente du planning généré par l'admin` : <>Pour <span style={{ textTransform: "capitalize" }}>{nextMonthLabel}</span> — une seule fois</>}
+              {disposValidated ? `Modifiables jusqu'à la deadline — touche pour ajuster` : <>Pour <span style={{ textTransform: "capitalize" }}>{nextMonthLabel}</span></>}
           </div>
         </div>
-        {!disposValidated && <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />}
+        <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />
       </button>
+
 
       {shifts.length > 1 && (
         <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Shifts suivants</div>
