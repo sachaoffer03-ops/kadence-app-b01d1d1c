@@ -51,8 +51,9 @@ async function getDeadlineDay(supabase: any): Promise<number> {
 }
 
 /**
- * Verrouillé UNIQUEMENT si un planning publié couvre le mois de la date cible.
- * La deadline est purement indicative côté UI.
+ * Verrouillé si :
+ *  - un planning publié couvre le mois de la date cible, OU
+ *  - la deadline (jour J du mois précédent la cible, à 23:59:59.999) est dépassée.
  */
 async function isMonthLocked(supabase: any, targetDate: string): Promise<boolean> {
   const target = new Date(`${targetDate}T00:00:00`);
@@ -67,8 +68,14 @@ async function isMonthLocked(supabase: any, targetDate: string): Promise<boolean
     .lte("period_start", monthEnd)
     .gte("period_end", monthStart)
     .limit(1);
-  return (data?.length ?? 0) > 0;
+  if ((data?.length ?? 0) > 0) return true;
+
+  // Deadline : jour J du mois précédent la cible, à 23:59:59.999 locale.
+  const day = await getDeadlineDay(supabase);
+  const deadline = new Date(y, m - 1, day, 23, 59, 59, 999);
+  return Date.now() > deadline.getTime();
 }
+
 
 function validateRangeShape(start: string, end: string) {
   const s = t2m(start);
