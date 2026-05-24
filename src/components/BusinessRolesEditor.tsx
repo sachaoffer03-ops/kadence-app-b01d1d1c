@@ -76,20 +76,49 @@ export function BusinessRolesEditor() {
     setDrafts((p) => p.map((d) => (d.id === id ? { ...d, ...patch, _dirty: true } : d)));
   };
 
-  const addRow = () => {
-    const nextPos = drafts.length ? Math.max(...drafts.map((d) => d.position)) + 1 : 0;
-    setDrafts((p) => [
-      ...p,
-      {
-        id: `new-${Date.now()}`,
-        name: "",
-        color: "#888888",
-        position: nextPos,
-        is_active: true,
-        _dirty: true,
-        _new: true,
-      },
-    ]);
+  const openCreate = () => {
+    setNewName("");
+    setNewColor(randomPresetColor());
+    setCreateOpen(true);
+  };
+
+  const createRole = async () => {
+    if (!studioId) return;
+    const trimmed = newName.trim();
+    if (!trimmed) return toast.error("Le nom du rôle est requis");
+    if (!isHexColor(newColor)) return toast.error("Couleur invalide (format #RRGGBB attendu)");
+
+    // Doublon dans CE studio ?
+    if (studioRoleNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
+      return toast.error(`"${trimmed}" existe déjà dans ${studioName}`);
+    }
+
+    setCreating(true);
+    try {
+      const existing = allRoles.find((r) => r.name.toLowerCase() === trimmed.toLowerCase());
+      if (!existing) {
+        const nextPos = allRoles.length ? Math.max(...allRoles.map((r) => r.position)) + 1 : 0;
+        const { error } = await supabase.from("business_roles").insert({
+          name: trimmed,
+          color: newColor,
+          position: nextPos,
+          is_active: true,
+        });
+        if (error) { setCreating(false); return toast.error(error.message); }
+      }
+      const { error: eLink } = await supabase
+        .from("studio_business_roles")
+        .insert({ studio_id: studioId, role: trimmed });
+      if (eLink && !String(eLink.message).includes("duplicate")) {
+        setCreating(false); return toast.error(eLink.message);
+      }
+      toast.success(`Rôle "${trimmed}" ajouté à ${studioName}`);
+      setCreateOpen(false);
+      await reloadStudioScope(studioId);
+      reloadBusinessRoles();
+    } finally {
+      setCreating(false);
+    }
   };
 
   const removeRow = async (d: Draft) => {
