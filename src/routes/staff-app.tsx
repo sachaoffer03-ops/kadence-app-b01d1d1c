@@ -547,30 +547,7 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
       <FormationNotifBanner onGoFormation={onGoFormation} />
 
 
-      {/* Encart proposition de shift — ouvre la page dédiée */}
-      {proposals.length > 0 && (
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/staff-app/propositions" })}
-          className="w-full rounded-2xl p-5 mb-4 text-left"
-          style={{ border: "2px solid var(--coral)", backgroundColor: "var(--coral-light, #fef2f0)" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 40, height: 40, backgroundColor: "var(--coral)", color: "#fff" }}>
-              <Inbox size={20} />
-            </div>
-            <div className="flex-1">
-              <div style={{ fontSize: 16, fontWeight: 500, color: "var(--coral-dark)" }}>
-                {proposals.length} proposition{proposals.length > 1 ? "s" : ""} de shift en attente
-              </div>
-              <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>
-                Tape pour voir les détails et accepter ou refuser
-              </div>
-            </div>
-            <ChevronRight size={20} style={{ color: "var(--coral)" }} />
-          </div>
-        </button>
-      )}
+
 
       {/* Notifications importantes (urgent + normal) */}
       <EmployeeNotifsWidget userId={userId} />

@@ -48,9 +48,7 @@ export function ProposalsInline({ userId, studios }: {
 
   return (
     <div className="flex flex-col gap-3 mb-4">
-      <div style={{ fontSize: 11, fontWeight: 500, color: "var(--coral-dark)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-        {proposals.length} proposition{proposals.length > 1 ? "s" : ""} en attente
-      </div>
+
       {proposals.map((p: any) => {
         const sname = p.shift.studio_id ? (studios[p.shift.studio_id] || "—") : "—";
         const dateLabel = new Date(p.shift.shift_date).toLocaleDateString("fr-FR", {
