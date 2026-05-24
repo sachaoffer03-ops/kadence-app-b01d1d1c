@@ -23,7 +23,7 @@ import { FormationNotifBanner } from "@/components/staff-app/formation/Formation
 import { ChatPanel } from "@/components/staff-app/ChatPanel";
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSheet";
-import { ProposalsInline } from "@/components/staff-app/ProposalsInline";
+import { Send } from "lucide-react";
 import { WorkedHoursEmployeeCard, EmployeeLastShifts } from "@/components/WorkedHoursCard";
 import { MyStatsCard } from "@/components/staff-app/MyStatsCard";
 import { EmployeeNotifsWidget } from "@/components/staff-app/EmployeeNotifsWidget";
@@ -317,7 +317,7 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         </button>
       </div>
 
-      <ProposalsInline userId={userId} studios={studios} />
+      
 
       {/* Carte sombre — prochain shift en vedette */}
       {(() => {
@@ -608,6 +608,14 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
 
       <div style={{ fontSize: 13, fontWeight: 500, marginTop: 20, marginBottom: 8 }}>Actions rapides</div>
       <div className="grid grid-cols-2 gap-3 mb-3">
+        <QuickLink
+          icon={<Send size={18} />}
+          label="Propositions"
+          sub={proposals.length > 0 ? `${proposals.length} en attente` : "Aucune en attente"}
+          badge={proposals.length > 0 ? proposals.length : undefined}
+          highlight={proposals.length > 0}
+          onClick={() => navigate({ to: "/staff-app/propositions" })}
+        />
         <QuickLink icon={<AlertCircle size={18} />} label="Signaler" sub="Stock, matériel, hygiène" onClick={() => setSignalOpen(true)} />
         <QuickLink icon={<Replace size={18} />} label="Demande" sub="Échange, annulation…" onClick={() => setReqOpen(true)} />
         <QuickLink icon={<Inbox size={18} />} label="Mes demandes" sub="Suivi des réponses" onClick={() => setMyReqOpen(true)} />
@@ -660,12 +668,17 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
   );
 }
 
-function QuickLink({ icon, label, sub, onClick }: { icon: React.ReactNode; label: string; sub: string; onClick?: () => void }) {
+function QuickLink({ icon, label, sub, onClick, badge, highlight }: { icon: React.ReactNode; label: string; sub: string; onClick?: () => void; badge?: number; highlight?: boolean }) {
   return (
-    <button onClick={onClick} className="rounded-xl border px-4 py-4 text-left" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)", cursor: "pointer" }}>
-      <div style={{ color: "var(--coral)", marginBottom: 8 }}>{icon}</div>
+    <button onClick={onClick} className="relative rounded-xl border px-4 py-4 text-left" style={{ backgroundColor: highlight ? "var(--coral-light)" : "#fff", borderColor: highlight ? "var(--coral)" : "rgba(0,0,0,0.08)", cursor: "pointer" }}>
+      <div style={{ color: highlight ? "var(--coral-dark)" : "var(--coral)", marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
-      <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{sub}</div>
+      <div style={{ fontSize: 11, color: highlight ? "var(--coral-dark)" : "var(--muted-foreground)" }}>{sub}</div>
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute rounded-full flex items-center justify-center" style={{ top: 10, right: 10, minWidth: 20, height: 20, padding: "0 6px", fontSize: 11, fontWeight: 600, backgroundColor: "var(--coral)", color: "#fff" }}>
+          {badge}
+        </span>
+      )}
     </button>
   );
 }

@@ -91,7 +91,18 @@ export const sendProposals = createServerFn({ method: "POST" })
       .upsert(rows, { onConflict: "shift_id,user_id" });
     if (e2) throw new Error(e2.message);
 
-    // Pas de notification : les propositions sont visibles via ProposalsInline sur la home.
+    // Notifie chaque employé qu'une proposition est arrivée
+    const dateLabel = new Date(shift.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+    const notifs = data.userIds.map((uid) => ({
+      user_id: uid,
+      type: "shift_proposal",
+      title: "Nouvelle proposition de shift",
+      body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
+      link: `/staff-app/propositions`,
+      priority: "normal",
+      category: "shift",
+    }));
+    await supabaseAdmin.from("notifications").insert(notifs);
 
 
     return { ok: true, count: data.userIds.length };
