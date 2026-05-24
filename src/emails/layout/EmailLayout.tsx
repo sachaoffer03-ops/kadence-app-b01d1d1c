@@ -96,9 +96,10 @@ const container: React.CSSProperties = {
 };
 
 const header: React.CSSProperties = {
-  backgroundColor: "#18181B",
+  backgroundColor: "#ffffff",
   padding: "28px 24px",
   textAlign: "center",
+  borderBottom: "1px solid #EAEAE5",
 };
 
 const logoImg: React.CSSProperties = {
