@@ -42,8 +42,8 @@ export default function EmailLayout({
             <Img
               src={KADENCE_LOGO_URL}
               alt="Kadence"
-              width="290"
-              height="80"
+              width="360"
+              height="100"
               style={logoImg}
             />
           </Section>
@@ -105,7 +105,7 @@ const header: React.CSSProperties = {
 const logoImg: React.CSSProperties = {
   display: "block",
   margin: "0 auto",
-  height: "80px",
+  height: "100px",
   width: "auto",
 };
 
