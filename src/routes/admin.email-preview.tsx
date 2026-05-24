@@ -1,8 +1,9 @@
 import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { render } from "@react-email/render";
+import { useServerFn } from "@tanstack/react-start";
 import { EMAIL_REGISTRY } from "@/emails";
+import { getEmailPreview } from "@/lib/email-preview.functions";
 
 export const Route = createFileRoute("/admin/email-preview")({
   component: EmailPreviewPage,
@@ -15,22 +16,27 @@ function EmailPreviewPage() {
     () => EMAIL_REGISTRY.find((t) => t.id === selectedId)!,
     [selectedId],
   );
+  const previewFn = useServerFn(getEmailPreview);
   const [html, setHtml] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    const Component = selected.component as React.ComponentType<any>;
-    Promise.resolve(render(React.createElement(Component, selected.mockData)))
-      .then((out) => {
-        if (!cancelled) setHtml(out as string);
+    setLoading(true);
+    previewFn({ data: { templateId: selectedId } })
+      .then((res) => {
+        if (!cancelled) setHtml(res.html);
       })
       .catch((e: any) => {
         if (!cancelled) setHtml(`<pre>Erreur rendu: ${e.message}</pre>`);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [selected]);
+  }, [selectedId, previewFn]);
 
   const employeeEmails = EMAIL_REGISTRY.filter(
     (t) => t.category === "employee",
@@ -174,7 +180,7 @@ function EmailPreviewPage() {
           >
             <iframe
               title={`Preview ${selected.name}`}
-              srcDoc={html}
+              srcDoc={loading ? "<div style='padding:20px;font-family:Inter,sans-serif;color:#71717A'>Chargement du preview…</div>" : html}
               style={{
                 width: "100%",
                 height: 720,
