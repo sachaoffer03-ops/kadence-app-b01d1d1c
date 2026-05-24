@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import { EMAIL_REGISTRY } from '@/emails'
 
 export interface TemplateEntry {
   component: ComponentType<any>
@@ -10,14 +11,17 @@ export interface TemplateEntry {
 }
 
 /**
- * Template registry — maps template names to their React Email components.
- * Import and register new templates here after creating them in this directory.
- *
- * Example:
- *   import { template as welcomeTemplate } from './welcome'
- *   // then add to TEMPLATES: 'welcome': welcomeTemplate
+ * Bridge entre EMAIL_REGISTRY (source de vérité Kadence) et le format
+ * attendu par l'infrastructure Lovable Emails (send-transactional-email).
  */
-export const TEMPLATES: Record<string, TemplateEntry> = {
-  // Add templates here as they are created, e.g.:
-  // 'welcome': welcomeTemplate,
-}
+export const TEMPLATES: Record<string, TemplateEntry> = Object.fromEntries(
+  EMAIL_REGISTRY.map((t) => [
+    t.id,
+    {
+      component: t.component,
+      subject: t.subject,
+      displayName: t.name,
+      previewData: t.mockData,
+    } satisfies TemplateEntry,
+  ]),
+)
