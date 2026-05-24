@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { SKULT_KNOWLEDGE_BASE } from "./skult-knowledge-base";
+
 
 const SYSTEM_PROMPT = `Tu es Kadence Assistant, l'assistant IA de l'app Kadence utilisée par les employés de Skult Studios (cafés/restauration, Bruxelles).
 
@@ -146,7 +148,15 @@ Réponds à sa question en utilisant uniquement ces informations + tes connaissa
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
-      system: SYSTEM_PROMPT + "\n\n" + contextBlock,
+      system: [
+        { type: "text", text: SYSTEM_PROMPT },
+        {
+          type: "text",
+          text: SKULT_KNOWLEDGE_BASE,
+          cache_control: { type: "ephemeral" },
+        },
+        { type: "text", text: contextBlock },
+      ] as any,
       messages,
     });
 
