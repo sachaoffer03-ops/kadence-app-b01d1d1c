@@ -357,12 +357,122 @@ export function BusinessRolesEditor() {
           </div>
         )}
 
-        <button onClick={addRow}
+        <button onClick={openCreate}
           className="mt-3 rounded-md px-3 py-2 flex items-center gap-2"
           style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
           <Plus size={13} /> Ajouter un rôle à {studioName}
         </button>
       </div>
+
+      {createOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          onClick={() => !creating && setCreateOpen(false)}
+        >
+          <div
+            className="rounded-xl w-full max-w-md p-5 flex flex-col gap-4"
+            style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Nouveau rôle métier</div>
+              <button onClick={() => !creating && setCreateOpen(false)} className="rounded-md p-1" title="Fermer">
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Nom du rôle *</label>
+              <input
+                type="text"
+                value={newName}
+                autoFocus
+                placeholder="ex : Barista, Accueil, Cuisine"
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && newName.trim() && isHexColor(newColor)) createRole(); }}
+                className="rounded-md px-2 py-1.5 outline-none"
+                style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Couleur *</label>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div
+                  style={{
+                    width: 36, height: 36, borderRadius: "50%",
+                    backgroundColor: isHexColor(newColor) ? newColor : "transparent",
+                    border: "1px solid var(--border)",
+                  }}
+                />
+                <input
+                  type="color"
+                  value={isHexColor(newColor) ? newColor : "#3B82F6"}
+                  onChange={(e) => setNewColor(e.target.value)}
+                  style={{ width: 36, height: 36, border: "none", background: "transparent", cursor: "pointer" }}
+                />
+                <input
+                  type="text"
+                  value={newColor}
+                  onChange={(e) => setNewColor(e.target.value)}
+                  placeholder="#RRGGBB"
+                  className="rounded-md px-2 py-1.5 outline-none"
+                  style={{ fontSize: 12, width: 100, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)", fontFamily: "monospace" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setNewColor(randomPresetColor())}
+                  className="rounded-md px-2 py-1.5 flex items-center gap-1"
+                  style={{ fontSize: 11, border: "0.5px solid var(--border)" }}
+                  title="Couleur aléatoire de la palette"
+                >
+                  <Shuffle size={12} /> Aléatoire
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                {PRESET_PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setNewColor(c)}
+                    title={c}
+                    style={{
+                      width: 22, height: 22, borderRadius: "50%",
+                      backgroundColor: c,
+                      border: newColor.toLowerCase() === c.toLowerCase() ? "2px solid var(--foreground)" : "1px solid var(--border)",
+                      cursor: "pointer",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={() => setCreateOpen(false)}
+                disabled={creating}
+                className="rounded-md px-3 py-2"
+                style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={createRole}
+                disabled={creating || !newName.trim() || !isHexColor(newColor)}
+                className="rounded-md px-3 py-2"
+                style={{
+                  fontSize: 12, fontWeight: 500,
+                  backgroundColor: "var(--foreground)", color: "var(--card)",
+                  opacity: (creating || !newName.trim() || !isHexColor(newColor)) ? 0.5 : 1,
+                }}
+              >
+                {creating ? "Création…" : "Créer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
