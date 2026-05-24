@@ -250,13 +250,33 @@ function StudiosPage() {
 
   const onAddCustomRole = async (name: string) => {
     if (!currentRow) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
     try {
-      await addRoleToStudio(currentRow.id, name);
+      // 1) Crée la ligne globale dans business_roles si elle n'existe pas
+      const { data: existing } = await supabase
+        .from("business_roles")
+        .select("id")
+        .ilike("name", trimmed)
+        .maybeSingle();
+      if (!existing) {
+        const { error: eIns } = await supabase.from("business_roles").insert({
+          name: trimmed,
+          color: "#888888",
+          position: 999,
+          is_active: true,
+        });
+        if (eIns) throw eIns;
+      }
+      // 2) Lie le rôle au studio courant
+      await addRoleToStudio(currentRow.id, trimmed);
       reloadRoles();
+      toast.success(`Poste "${trimmed}" ajouté`);
     } catch (e: any) {
       toast.error("Ajout impossible", { description: e?.message ?? "" });
     }
   };
+
 
   const onRemoveCustomRole = async (name: string) => {
     if (!currentRow) return;
