@@ -43,6 +43,20 @@ export const EMAIL_REGISTRY: EmailTemplate[] = [
     },
   },
   {
+    id: "bienvenue-employe",
+    name: "Bienvenue (compte activé)",
+    category: "employee",
+    description:
+      "Envoyé à l'employé juste après l'activation de son compte",
+    subject: "🎉 Bienvenue chez Skult Studios — Ton compte est activé",
+    component: BienvenueEmail,
+    mockData: {
+      firstName: "Léa",
+      studioName: "Skult Châtelain",
+      appUrl: "https://app.shyft.flashsite.fr/staff-app",
+    },
+  },
+  {
     id: "reset-password",
     name: "Reset password",
     category: "employee",
