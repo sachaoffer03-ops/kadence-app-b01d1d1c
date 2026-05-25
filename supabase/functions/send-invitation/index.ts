@@ -98,13 +98,17 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
           body: JSON.stringify({
-            from: "Skult Studios <onboarding@resend.dev>",
+            from: "Skult Studios <invitations@notify.app.shyft.flashsite.fr>",
             to: [body.email],
             subject: "Bienvenue chez Skult Studios — activez votre compte",
             html,
           }),
         });
         emailSent = r.ok;
+        if (!r.ok) {
+          const errText = await r.text();
+          console.error("Email send failed:", r.status, errText);
+        }
       } catch (e) {
         console.error("Email send error:", e);
       }
