@@ -98,14 +98,27 @@ function ActivationPage() {
       return;
     }
     (async () => {
-      const query = supabase
-        .from("invitations")
-        .select(
-          "id, email, first_name, last_name, phone, studio_id, contract, app_role, status, expires_at",
-        );
-      const { data, error } = await (isPreview
-        ? query.eq("id", preview).maybeSingle()
-        : query.eq("token", token).maybeSingle());
+      let data: any = null;
+      let error: any = null;
+      if (isPreview) {
+        const res = await supabase
+          .from("invitations")
+          .select(
+            "id, email, first_name, last_name, phone, studio_id, studio_ids, contract, contracts, app_role, status, expires_at",
+          )
+          .eq("id", preview)
+          .maybeSingle();
+        data = res.data;
+        error = res.error;
+      } else {
+        // RPC accessible en anonyme : la page d'activation n'a pas encore de session.
+        const res = await supabase.rpc("get_invitation_by_token", { _token: token });
+        if (res.error) {
+          error = res.error;
+        } else {
+          data = Array.isArray(res.data) ? res.data[0] : res.data;
+        }
+      }
       if (error || !data) {
         setError("Invitation introuvable");
       } else if (!isPreview && data.status !== "pending") {
