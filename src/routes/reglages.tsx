@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Save } from "lucide-react";
+import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Save, ShieldCheck, Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { StaffingTemplatesEditor } from "@/components/StaffingTemplatesEditor";
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/reglages")({
 const tabs = [
   { id: "ai", label: "Algorithme IA", icon: Sparkles },
   { id: "templates", label: "Besoins par studio", icon: Puzzle },
+  { id: "admins", label: "Administrateurs", icon: ShieldCheck },
   { id: "billing", label: "Facturation", icon: CreditCard },
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "danger", label: "Zone dangereuse", icon: AlertTriangle },
@@ -52,7 +53,8 @@ function ReglagesPage() {
         <div className="flex-1 min-w-0">
           {activeTab === "ai" && <AISettings />}
           {activeTab === "templates" && <StaffingTemplatesEditor />}
-          {!["ai", "templates"].includes(activeTab) && (
+          {activeTab === "admins" && <AdminsSettings />}
+          {!["ai", "templates", "admins"].includes(activeTab) && (
             <div className="rounded-xl border p-8 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
               <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
                 {tabs.find((t) => t.id === activeTab)?.label}
@@ -279,6 +281,144 @@ function RuleToggle({ label, description, enabled, onChange, locked }: { label: 
           backgroundColor: "#fff",
         }} />
       </button>
+    </div>
+  );
+}
+
+// ── Administrateurs ─────────────────────────────────────────
+function AdminsSettings() {
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const reload = async () => {
+    setLoading(true);
+    try {
+      const { listAdmins } = await import("@/lib/admins.functions");
+      const res = await listAdmins();
+      setAdmins(res.admins);
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur chargement");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { reload(); }, []);
+
+  const submit = async () => {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
+      return toast.error("Tous les champs sont requis");
+    }
+    setSubmitting(true);
+    try {
+      const { createAdminAccount } = await import("@/lib/admins.functions");
+      await createAdminAccount({ data: { email: email.trim(), password, first_name: firstName.trim(), last_name: lastName.trim() } });
+      toast.success("Compte administrateur créé");
+      setFirstName(""); setLastName(""); setEmail(""); setPassword("");
+      setShowForm(false);
+      await reload();
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur lors de la création");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Comptes administrateurs</div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+              Les administrateurs ont 100% des accès : gestion des employés, planning, studios, réglages, données.
+            </div>
+          </div>
+          {!showForm && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="rounded-md px-3 py-2 flex items-center gap-2 shrink-0"
+              style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
+            >
+              <Plus size={14} /> Nouvel admin
+            </button>
+          )}
+        </div>
+
+        {showForm && (
+          <div className="rounded-lg p-4 mb-4 flex flex-col gap-3" style={{ backgroundColor: "var(--muted)" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Prénom
+                <input value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                  className="rounded-md px-2 py-1.5 outline-none"
+                  style={{ fontSize: 13, color: "var(--foreground)", border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
+              </label>
+              <label className="flex flex-col gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Nom
+                <input value={lastName} onChange={(e) => setLastName(e.target.value)}
+                  className="rounded-md px-2 py-1.5 outline-none"
+                  style={{ fontSize: 13, color: "var(--foreground)", border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
+              </label>
+              <label className="flex flex-col gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Email
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  className="rounded-md px-2 py-1.5 outline-none"
+                  style={{ fontSize: 13, color: "var(--foreground)", border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
+              </label>
+              <label className="flex flex-col gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Mot de passe
+                <input type="text" value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder="6 caractères minimum"
+                  className="rounded-md px-2 py-1.5 outline-none"
+                  style={{ fontSize: 13, color: "var(--foreground)", border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
+              </label>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              Le compte est créé immédiatement, sans email de confirmation. Communique l'email et le mot de passe à la personne.
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setShowForm(false); setFirstName(""); setLastName(""); setEmail(""); setPassword(""); }}
+                className="rounded-md px-3 py-1.5" style={{ fontSize: 13, border: "0.5px solid var(--border)", color: "var(--foreground)" }}>
+                Annuler
+              </button>
+              <button onClick={submit} disabled={submitting}
+                className="rounded-md px-3 py-1.5 flex items-center gap-2"
+                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)", opacity: submitting ? 0.6 : 1 }}>
+                {submitting && <Loader2 size={13} className="animate-spin" />}
+                Créer le compte admin
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1.5">
+          {loading ? (
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
+          ) : admins.length === 0 ? (
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun administrateur.</div>
+          ) : admins.map((a) => (
+            <div key={a.id} className="flex items-center justify-between rounded-lg px-3 py-2.5" style={{ backgroundColor: "var(--muted)" }}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <ShieldCheck size={14} style={{ color: "var(--coral)" }} />
+                <div className="min-w-0">
+                  <div style={{ fontSize: 13, fontWeight: 500 }} className="truncate">
+                    {(a.first_name || "") + " " + (a.last_name || "")}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }} className="truncate">{a.email}</div>
+                </div>
+              </div>
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Admin</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
