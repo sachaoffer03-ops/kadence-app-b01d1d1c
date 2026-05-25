@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Save } from "lucide-react";
+import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Save, ShieldCheck, Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { StaffingTemplatesEditor } from "@/components/StaffingTemplatesEditor";
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/reglages")({
 const tabs = [
   { id: "ai", label: "Algorithme IA", icon: Sparkles },
   { id: "templates", label: "Besoins par studio", icon: Puzzle },
+  { id: "admins", label: "Administrateurs", icon: ShieldCheck },
   { id: "billing", label: "Facturation", icon: CreditCard },
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "danger", label: "Zone dangereuse", icon: AlertTriangle },
