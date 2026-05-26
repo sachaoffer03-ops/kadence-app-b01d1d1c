@@ -1718,21 +1718,38 @@ function ShiftBlock({
 
         <div className="flex gap-2 px-4 py-3" style={{ borderTop: "0.5px solid var(--border)" }}>
           {isHole ? (
-            <Link
-              to="/trous"
-              search={{ shift: shift.id } as never}
-              onClick={() => setOpen(false)}
-              className="flex-1 rounded-md px-3 py-2 text-center"
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                backgroundColor: "var(--coral)",
-                color: "#fff",
-                textDecoration: "none",
-              }}
-            >
-              Envoyer une proposition
-            </Link>
+            <>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  if (confirm("Supprimer définitivement ce trou ? Les propositions en attente seront annulées.")) {
+                    onDelete(shift);
+                  }
+                }}
+                className="rounded-md px-2.5 py-2"
+                style={{ fontSize: 12, border: "0.5px solid var(--border)", color: "var(--danger-text)" }}
+                aria-label="Supprimer"
+                title="Supprimer ce trou"
+              >
+                <Trash2 size={13} />
+              </button>
+              <Link
+                to="/trous"
+                search={{ shift: shift.id } as never}
+                onClick={() => setOpen(false)}
+                className="flex-1 rounded-md px-3 py-2 text-center"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  backgroundColor: "var(--coral)",
+                  color: "#fff",
+                  textDecoration: "none",
+                }}
+              >
+                Envoyer une proposition
+              </Link>
+            </>
+
           ) : (
             <>
               <button
