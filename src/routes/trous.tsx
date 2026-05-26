@@ -180,6 +180,41 @@ function TrousPage() {
     }
   };
 
+  const assignDirect = async (shiftId: string) => {
+    const set = selected[shiftId];
+    if (!set || set.size !== 1) return;
+    const uid = Array.from(set)[0];
+    try {
+      await assignFn({ data: { shiftId, userId: uid } });
+      toast.success("Shift assigné directement");
+      setSelected((prev) => ({ ...prev, [shiftId]: new Set() }));
+      setExpanded(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Erreur assignation");
+    }
+  };
+
+  const removeHole = async (shiftId: string) => {
+    if (!confirm("Supprimer ce trou ? Les propositions en cours seront annulées.")) return;
+    try {
+      // annule d'abord les propositions pending pour ce shift
+      const pendingIds = (proposalsByShift.get(shiftId) || [])
+        .filter((p) => p.status === "pending")
+        .map((p) => p.id);
+      if (pendingIds.length > 0) {
+        await cancelFn({ data: { proposalIds: pendingIds } });
+      }
+      await deleteFn({ data: { shiftId } });
+      toast.success("Trou supprimé");
+      setExpanded(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Erreur suppression");
+    }
+  };
+
+
   const { names: allRoles } = useBusinessRoles({ onlyActive: true });
 
   return (
