@@ -28,6 +28,8 @@ import { WorkedHoursEmployeeCard, EmployeeLastShifts } from "@/components/Worked
 import { MyStatsCard } from "@/components/staff-app/MyStatsCard";
 import { EmployeeNotifsWidget } from "@/components/staff-app/EmployeeNotifsWidget";
 import { ClockInSheet } from "@/components/staff-app/ClockInSheet";
+import { ProposalsInline } from "@/components/staff-app/ProposalsInline";
+
 
 export const Route = createFileRoute("/staff-app")({
   component: StaffAppPage,
@@ -317,9 +319,10 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         </button>
       </div>
 
-      
+      <ProposalsInline userId={userId} studios={studios} />
 
       {/* Carte sombre — prochain shift en vedette */}
+
       {(() => {
         const next = shifts[0];
         let kicker = "Prochain shift";
