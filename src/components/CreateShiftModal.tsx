@@ -321,6 +321,54 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
                     className={inputCls} style={inputStyle} required />
                 </div>
               )}
+              {(recurrence === "weekly" || recurrence === "biweekly") && (() => {
+                const days = [
+                  { wd: 1, label: "Lun" },
+                  { wd: 2, label: "Mar" },
+                  { wd: 3, label: "Mer" },
+                  { wd: 4, label: "Jeu" },
+                  { wd: 5, label: "Ven" },
+                  { wd: 6, label: "Sam" },
+                  { wd: 0, label: "Dim" },
+                ];
+                const startWd = new Date(date + "T00:00:00").getDay();
+                return (
+                  <div className="mt-3">
+                    <label style={labelStyle}>Jours répétés (en plus du jour de base)</label>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {days.map((d) => {
+                        const isBase = d.wd === startWd;
+                        const active = isBase || extraWeekdays.has(d.wd);
+                        return (
+                          <button
+                            key={d.wd}
+                            type="button"
+                            disabled={isBase}
+                            title={isBase ? "Jour de base (date sélectionnée)" : ""}
+                            onClick={() => {
+                              setExtraWeekdays((prev) => {
+                                const n = new Set(prev);
+                                if (n.has(d.wd)) n.delete(d.wd);
+                                else n.add(d.wd);
+                                return n;
+                              });
+                            }}
+                            className="rounded-full px-2.5 py-1 transition-colors"
+                            style={{ ...chip(active), opacity: isBase ? 0.6 : 1, cursor: isBase ? "default" : "pointer" }}
+                          >
+                            {d.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 6 }}>
+                      Ex : lundi + jeudi {recurrence === "weekly" ? "chaque semaine" : "toutes les 2 semaines"}.
+                    </p>
+                  </div>
+                );
+              })()}
+
+              )}
             </div>
 
             <div>
