@@ -1753,14 +1753,21 @@ function ShiftBlock({
           ) : (
             <>
               <button
-                onClick={() => { setOpen(false); onDelete(shift); }}
+                onClick={() => {
+                  setOpen(false);
+                  const who = shift.name ? ` de ${shift.name}` : "";
+                  if (confirm(`Supprimer définitivement ce shift${who} ? L'employé sera notifié si le shift était publié.`)) {
+                    onDelete(shift);
+                  }
+                }}
                 className="rounded-md px-2.5 py-2"
                 style={{ fontSize: 12, border: "0.5px solid var(--border)", color: "var(--danger-text)" }}
                 aria-label="Supprimer"
-                title="Supprimer"
+                title="Supprimer ce shift"
               >
                 <Trash2 size={13} />
               </button>
+
               <button
                 onClick={() => { setOpen(false); onReassign(shift); }}
                 className="flex-1 rounded-md px-3 py-2 flex items-center justify-center gap-1.5"
