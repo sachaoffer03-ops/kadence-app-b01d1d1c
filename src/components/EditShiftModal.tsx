@@ -130,6 +130,22 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm("Supprimer définitivement ce shift ? L'employé sera notifié si le shift était publié.")) return;
+    setSaving(true);
+    try {
+      await deleteShiftFn({ data: { shiftId: shift.id } });
+      toast.success("Shift supprimé");
+      onDeleted?.();
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
