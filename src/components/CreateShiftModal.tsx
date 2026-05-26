@@ -40,6 +40,8 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const [notes, setNotes] = useState("");
   const [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly" | "monthly">("none");
   const [until, setUntil] = useState("");
+  const [extraWeekdays, setExtraWeekdays] = useState<Set<number>>(new Set());
+
 
   // step 2 state
   const [shiftId, setShiftId] = useState<string | null>(null);
