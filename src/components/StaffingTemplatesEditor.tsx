@@ -260,7 +260,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                         </td>
                       </tr>
                       {isOpen && (
-                        <tr key={t.id + "-adv"}>
+                        <tr>
                           <td></td>
                           <td colSpan={8} className="px-2 py-2">
                             <div className="rounded-lg p-3" style={{ backgroundColor: "var(--muted)" }}>
@@ -313,8 +313,9 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
+
                 })}
               </tbody>
             </table>
