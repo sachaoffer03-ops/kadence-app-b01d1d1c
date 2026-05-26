@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 
 interface DropdownProps {
@@ -14,26 +15,51 @@ interface DropdownProps {
 
 export function Dropdown({ label, value, options, onChange, minWidth = 140, align = "left", fullWidth = false, placeholder }: DropdownProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const computePos = () => {
+    const el = btnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const width = Math.max(minWidth, 160, r.width);
+    const left = align === "right" ? r.right - width : r.left;
+    setPos({ top: r.bottom + 4, left, width });
+  };
+
+  useLayoutEffect(() => {
+    if (open) computePos();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const onScroll = () => computePos();
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onScroll);
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onScroll);
     };
   }, [open]);
 
   return (
-    <div ref={ref} className={`relative ${fullWidth ? "flex w-full" : "inline-flex"} items-center gap-2`} style={{ fontSize: 12 }}>
+    <div ref={wrapRef} className={`relative ${fullWidth ? "flex w-full" : "inline-flex"} items-center gap-2`} style={{ fontSize: 12 }}>
       {label && <span style={{ color: "var(--muted-foreground)" }}>{label}</span>}
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen(o => !o)}
         className={`flex items-center justify-between gap-2 rounded-md transition-colors ${fullWidth ? "w-full px-3 py-2" : "px-2.5 py-1.5"}`}
@@ -49,13 +75,16 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder || "Sélectionner..."}</span>
         <ChevronDown size={fullWidth ? 14 : 12} style={{ color: "var(--muted-foreground)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }} />
       </button>
-      {open && (
+      {open && pos && typeof document !== "undefined" && createPortal(
         <div
-          className="absolute z-30 rounded-lg overflow-hidden"
+          ref={menuRef}
+          className="rounded-lg overflow-hidden"
           style={{
-            top: "calc(100% + 4px)",
-            [align === "right" ? "right" : "left"]: 0,
-            minWidth: Math.max(minWidth, 160),
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            minWidth: pos.width,
+            zIndex: 1000,
             backgroundColor: "var(--card)",
             border: "0.5px solid var(--border)",
             boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
@@ -84,7 +113,8 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
