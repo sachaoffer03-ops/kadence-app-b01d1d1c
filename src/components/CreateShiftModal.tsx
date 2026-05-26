@@ -20,19 +20,6 @@ interface Props {
 
 type Step = "form" | "recipients";
 
-function timeToMin(t: string): number {
-  const [h, m] = String(t).split(":").map(Number);
-  return (h || 0) * 60 + (m || 0);
-}
-
-function isoWeekKey(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
-  const day = d.getUTCDay() || 7;
-  const monday = new Date(d);
-  monday.setUTCDate(d.getUTCDate() - (day - 1));
-  return monday.toISOString().slice(0, 10);
-}
-
 export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const eligibilityFn = useServerFn(getEligibleEmployeesForShift);
   const sendFn = useServerFn(sendProposalsToShifts);
