@@ -77,41 +77,35 @@ Deno.serve(async (req) => {
       : "https://admin.shyft.flashsite.fr";
     const activationUrl = `${activationOrigin}/activation?token=${inv.token}`;
 
-    // Send email via Lovable AI Gateway / Resend if configured. Fallback: just return the link.
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const { data: studio } = studioIds[0]
+      ? await admin.from("studios").select("name").eq("id", studioIds[0]).maybeSingle()
+      : { data: null };
+
+    // Envoi via l'infrastructure email de l'app : queue, retries et logs centralisés.
+    const emailRouteOrigin = "https://app.shyft.flashsite.fr";
     let emailSent = false;
-    if (lovableKey) {
-      try {
-        const html = `
-<div style="font-family: Inter, Arial, sans-serif; background:#FAFAF8; padding:32px;">
-  <div style="max-width:520px; margin:0 auto; background:#fff; border-radius:12px; padding:32px; border:1px solid #ECEAE5;">
-    <h1 style="font-size:22px; font-weight:500; margin:0 0 8px 0; color:#1a1a1a;">Bienvenue chez Skult Studios</h1>
-    <p style="font-size:14px; color:#6b6b6b; margin:0 0 24px 0;">Bonjour ${body.first_name},</p>
-    <p style="font-size:14px; color:#3a3a3a; line-height:1.6; margin:0 0 24px 0;">
-      Votre administrateur vous a invité à rejoindre l'équipe sur Kadence, notre plateforme de gestion du staff. Cliquez sur le bouton ci-dessous pour activer votre compte et commencer.
-    </p>
-    <a href="${activationUrl}" style="display:inline-block; background:#F0997B; color:#fff; padding:12px 24px; border-radius:8px; text-decoration:none; font-size:14px; font-weight:500;">Activer mon compte</a>
-    <p style="font-size:12px; color:#9a9a9a; margin:24px 0 0 0;">Ce lien expire dans 7 jours. Si vous n'attendiez pas cette invitation, ignorez ce message.</p>
-  </div>
-</div>`;
-        const r = await fetch("https://ai.gateway.lovable.dev/v1/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
-          body: JSON.stringify({
-            from: "Skult Studios <invitations@notify.app.shyft.flashsite.fr>",
-            to: [body.email],
-            subject: "Bienvenue chez Skult Studios — activez votre compte",
-            html,
-          }),
-        });
-        emailSent = r.ok;
-        if (!r.ok) {
-          const errText = await r.text();
-          console.error("Email send failed:", r.status, errText);
-        }
-      } catch (e) {
-        console.error("Email send error:", e);
+    try {
+      const r = await fetch(`${emailRouteOrigin}/lovable/email/transactional/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader },
+        body: JSON.stringify({
+          templateName: "invitation-employe",
+          recipientEmail: body.email,
+          idempotencyKey: `invitation-employe-${inv.id}`,
+          templateData: {
+            firstName: body.first_name,
+            studioName: studio?.name ?? "Skult Studios",
+            inviteUrl: activationUrl,
+          },
+        }),
+      });
+      emailSent = r.ok;
+      if (!r.ok) {
+        const errText = await r.text();
+        console.error("Email send failed:", r.status, errText);
       }
+    } catch (e) {
+      console.error("Email send error:", e);
     }
 
     return new Response(JSON.stringify({ ok: true, invitation_id: inv.id, activation_url: activationUrl, email_sent: emailSent }), {
