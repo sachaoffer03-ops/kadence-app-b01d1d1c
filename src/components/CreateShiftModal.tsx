@@ -23,6 +23,8 @@ type Step = "form" | "recipients";
 export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const eligibilityFn = useServerFn(getEligibleEmployeesForShift);
   const sendFn = useServerFn(sendProposals);
+  const assignFn = useServerFn(assignShiftDirect);
+
 
   const [studios, setStudios] = useState<Studio[]>([]);
   const [step, setStep] = useState<Step>("form");
