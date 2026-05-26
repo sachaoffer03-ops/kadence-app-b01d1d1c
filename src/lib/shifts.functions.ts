@@ -289,9 +289,33 @@ export const deleteShift = createServerFn({ method: "POST" })
     await assertAdmin(supabase, userId);
     const { data: cur } = await supabase
       .from("shifts")
-      .select("user_id, shift_date, start_time, published_at")
+      .select("user_id, shift_date, start_time, published_at, business_role")
       .eq("id", data.shiftId)
       .single();
+
+    // Cancel pending proposals for this shift and notify those employees
+    const { data: pendingProps } = await supabase
+      .from("shift_proposals")
+      .select("id, user_id")
+      .eq("shift_id", data.shiftId)
+      .eq("status", "pending");
+    if (pendingProps && pendingProps.length > 0) {
+      await supabase
+        .from("shift_proposals")
+        .update({ status: "cancelled", responded_at: new Date().toISOString() })
+        .in("id", pendingProps.map((p: any) => p.id));
+      const notifs = pendingProps.map((p: any) => ({
+        user_id: p.user_id,
+        type: "proposal_cancelled",
+        title: "Proposition annulée",
+        body: `Le shift du ${cur?.shift_date ?? ""} ${cur ? String(cur.start_time).slice(0,5) : ""} (${cur?.business_role ?? ""}) a été supprimé`,
+        link: "/staff-app?tab=planning",
+        priority: "normal",
+        category: "shift",
+      }));
+      if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
+    }
+
     const { error } = await supabase.from("shifts").delete().eq("id", data.shiftId);
     if (error) throw new Error(error.message);
     if (cur?.published_at && cur.user_id) {
@@ -307,6 +331,7 @@ export const deleteShift = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
 
 // ---------- PUBLISH ----------
 export const publishPlanning = createServerFn({ method: "POST" })
