@@ -26,7 +26,11 @@ export const sendEmail = createServerFn({ method: "POST" })
     const baseUrl = `${proto}://${host}`;
     const authHeader = getRequestHeader("authorization");
 
-    const idempotencyKey = `${data.templateId}-${data.recipient}-${Date.now()}`;
+    const idempotencyKey =
+      typeof data.data?.idempotencyKey === "string"
+        ? data.data.idempotencyKey
+        : `${data.templateId}-${data.recipient}`;
+    const { idempotencyKey: _ignored, ...templateData } = data.data;
 
     const res = await fetch(`${baseUrl}/lovable/email/transactional/send`, {
       method: "POST",
@@ -38,7 +42,7 @@ export const sendEmail = createServerFn({ method: "POST" })
         templateName: data.templateId,
         recipientEmail: data.recipient,
         idempotencyKey,
-        templateData: data.data,
+        templateData,
       }),
     });
 
