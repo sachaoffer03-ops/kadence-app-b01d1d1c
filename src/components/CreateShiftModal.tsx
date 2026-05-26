@@ -235,8 +235,8 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
           reasons: Array.from(new Set([...emp.reasons, "saturé sur la série complète"])),
         };
       });
-      setEligible(allRows.filter((emp) => eligibleForAll.has(emp.id) && !emp.pending_proposal));
-      setPartial(allRows.filter((emp) => !eligibleForAll.has(emp.id) || emp.pending_proposal));
+      setEligible(allRows.filter((emp) => eligibleForAll.has(emp.id) && !emp.pending_proposal && !emp.is_saturated));
+      setPartial(allRows.filter((emp) => !eligibleForAll.has(emp.id) || emp.pending_proposal || emp.is_saturated));
     } catch (err: any) {
       toast.error(err.message || "Erreur calcul éligibilité");
     } finally {
