@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { updateShift } from "@/lib/shifts.functions";
+import { updateShift, deleteShift } from "@/lib/shifts.functions";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
 
 type EmployeeOpt = {
