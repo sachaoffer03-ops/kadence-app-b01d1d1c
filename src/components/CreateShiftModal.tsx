@@ -182,6 +182,13 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
     setLoadingElig(true);
     try {
       const results = await Promise.all(ids.map((id) => eligibilityFn({ data: { shiftId: id } })));
+      const shiftDurationH = Math.max(0, (timeToMin(endTime) - timeToMin(startTime)) / 60);
+      const seriesHoursByWeek = new Map<string, number>();
+      dates.forEach((d) => {
+        const key = isoWeekKey(d);
+        seriesHoursByWeek.set(key, (seriesHoursByWeek.get(key) ?? 0) + shiftDurationH);
+      });
+      const weeklyHoursByUser = new Map<string, Map<string, number>>();
       const eligibleForAll = new Set(results[0]?.eligible.map((emp) => emp.id) ?? []);
       results.slice(1).forEach((r) => {
         const idsForShift = new Set(r.eligible.map((emp) => emp.id));
@@ -191,8 +198,12 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
       });
 
       const byId = new Map<string, EligibleEmployee>();
-      results.forEach((r) => {
+      results.forEach((r, index) => {
+        const weekKey = isoWeekKey(dates[index]);
         [...r.eligible, ...r.partial].forEach((emp) => {
+          const weeks = weeklyHoursByUser.get(emp.id) ?? new Map<string, number>();
+          weeks.set(weekKey, emp.weekly_hours);
+          weeklyHoursByUser.set(emp.id, weeks);
           const previous = byId.get(emp.id);
           if (!previous) {
             byId.set(emp.id, { ...emp, reasons: [...emp.reasons] });
@@ -212,7 +223,18 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
         });
       });
 
-      const allRows = Array.from(byId.values());
+      const allRows = Array.from(byId.values()).map((emp) => {
+        const hasSeriesCapacity = Array.from(seriesHoursByWeek.entries()).every(([week, addedHours]) => {
+          const existingHours = weeklyHoursByUser.get(emp.id)?.get(week) ?? emp.weekly_hours;
+          return existingHours + addedHours <= emp.max_weekly_hours;
+        });
+        if (hasSeriesCapacity) return emp;
+        return {
+          ...emp,
+          is_saturated: true,
+          reasons: Array.from(new Set([...emp.reasons, "saturé sur la série complète"])),
+        };
+      });
       setEligible(allRows.filter((emp) => eligibleForAll.has(emp.id) && !emp.pending_proposal));
       setPartial(allRows.filter((emp) => !eligibleForAll.has(emp.id) || emp.pending_proposal));
     } catch (err: any) {
