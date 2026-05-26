@@ -7,17 +7,16 @@ import { createFileRoute } from '@tanstack/react-router'
 import { InviteEmail } from '@/lib/email-templates/invite'
 import { RecoveryEmail } from '@/lib/email-templates/recovery'
 
-// Kadence n'utilise que 2 emails d'auth :
-// - invite : l'admin invite un employé, qui clique pour créer son compte
-// - recovery : réinitialisation du mot de passe
-// Les autres types (signup, magiclink, email_change, reauthentication) sont
-// ignorés silencieusement (retour 200 sans envoi).
+// Kadence utilise ces emails d'auth : confirmation d'inscription, invitation
+// et réinitialisation du mot de passe. Les autres types sont ignorés.
 const EMAIL_SUBJECTS: Record<string, string> = {
+  signup: 'Confirme ton compte Kadence',
   invite: 'Bienvenue chez Skult – Active ton compte Kadence',
   recovery: 'Réinitialise ton mot de passe Kadence',
 }
 
 const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
+  signup: InviteEmail,
   invite: InviteEmail,
   recovery: RecoveryEmail,
 }
@@ -92,7 +91,7 @@ export const Route = createFileRoute('/lovable/email/auth/webhook')({
         const emailType = payload.data.action_type
         const EmailTemplate = EMAIL_TEMPLATES[emailType]
 
-        // Type non géré (signup, magiclink, email_change, reauthentication)
+        // Type non géré (magiclink, email_change, reauthentication)
         // → on retourne 200 sans envoyer pour ne pas bloquer Supabase Auth.
         if (!EmailTemplate) {
           console.log('Auth email type skipped (not used by Kadence)', {
