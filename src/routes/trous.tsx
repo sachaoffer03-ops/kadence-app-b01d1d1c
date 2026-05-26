@@ -56,6 +56,8 @@ function elapsedTone(sentAt: string): { bg: string; text: string } {
 function TrousPage() {
   const sendFn = useServerFn(sendProposals);
   const cancelFn = useServerFn(cancelProposals);
+  const assignFn = useServerFn(assignShiftDirect);
+  const deleteFn = useServerFn(deleteShift);
 
   const [holes, setHoles] = useState<Hole[]>([]);
   const [studios, setStudios] = useState<Map<string, string>>(new Map());
