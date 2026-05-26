@@ -91,16 +91,40 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
     const end = new Date(until + "T00:00:00");
     if (end < start) return [date];
     const out: string[] = [];
-    const cur = new Date(start);
-    let safety = 0;
-    while (cur <= end && safety++ < 200) {
-      out.push(cur.toISOString().slice(0, 10));
-      if (recurrence === "weekly") cur.setDate(cur.getDate() + 7);
-      else if (recurrence === "biweekly") cur.setDate(cur.getDate() + 14);
-      else if (recurrence === "monthly") cur.setMonth(cur.getMonth() + 1);
+    const toIso = (d: Date) => d.toISOString().slice(0, 10);
+
+    if (recurrence === "monthly") {
+      const cur = new Date(start);
+      let safety = 0;
+      while (cur <= end && safety++ < 200) {
+        out.push(toIso(cur));
+        cur.setMonth(cur.getMonth() + 1);
+      }
+      return out;
     }
+
+    // weekly / biweekly — include start weekday + extraWeekdays
+    const startWd = start.getDay();
+    const wds = new Set<number>([startWd, ...Array.from(extraWeekdays)]);
+    const stepDays = recurrence === "weekly" ? 7 : 14;
+    // Anchor each weekday to its first occurrence on/after start, then repeat by stepDays
+    const seen = new Set<string>();
+    wds.forEach((wd) => {
+      const first = new Date(start);
+      const diff = (wd - startWd + 7) % 7;
+      first.setDate(first.getDate() + diff);
+      const cur = new Date(first);
+      let safety = 0;
+      while (cur <= end && safety++ < 200) {
+        const iso = toIso(cur);
+        if (!seen.has(iso)) { seen.add(iso); out.push(iso); }
+        cur.setDate(cur.getDate() + stepDays);
+      }
+    });
+    out.sort();
     return out;
   };
+
 
   const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
