@@ -26,6 +26,7 @@ interface Props {
   };
   onClose: () => void;
   onSaved: () => void;
+  onDeleted?: () => void;
 }
 
 const toHHMM = (t: string) => String(t).slice(0, 5);
