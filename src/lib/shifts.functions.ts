@@ -279,6 +279,74 @@ export const assignShiftDirect = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const assignShiftsDirect = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      shiftIds: z.array(z.string().uuid()).min(1).max(200),
+      userId: z.string().uuid(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    const shiftIds = Array.from(new Set(data.shiftIds));
+    const { data: shifts, error: eCur } = await supabase
+      .from("shifts")
+      .select("id, user_id, shift_date, start_time, end_time, business_role, studio_id, published_at")
+      .in("id", shiftIds)
+      .order("shift_date", { ascending: true });
+    if (eCur) throw new Error(eCur.message);
+    if (!shifts || shifts.length !== shiftIds.length) throw new Error("Certains shifts sont introuvables");
+    if (shifts.some((shift: any) => shift.user_id && shift.user_id !== data.userId)) {
+      throw new Error("Un des shifts est déjà attribué à quelqu'un d'autre");
+    }
+
+    for (const shift of shifts) {
+      await assertNoOverlap(supabase, data.userId, shift.shift_date, shift.start_time, shift.end_time, shift.id);
+    }
+
+    const nowIso = new Date().toISOString();
+    const { data: updated, error: eUp } = await supabase
+      .from("shifts")
+      .update({
+        user_id: data.userId,
+        is_manual: true,
+        is_locked: true,
+        published_at: nowIso,
+        status: "scheduled",
+        updated_at: nowIso,
+      })
+      .in("id", shiftIds)
+      .is("user_id", null)
+      .select("id");
+    if (eUp) throw new Error(eUp.message);
+    if (!updated || updated.length !== shiftIds.length) throw new Error("Un shift vient d'être attribué par quelqu'un d'autre");
+
+    await supabase
+      .from("shift_proposals")
+      .update({ status: "cancelled", responded_at: nowIso })
+      .in("shift_id", shiftIds)
+      .eq("status", "pending");
+
+    const notifs = shifts.map((shift: any) => {
+      const dateLabel = new Date(shift.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+      return {
+        user_id: data.userId,
+        type: "shift_assigned",
+        title: "Nouveau shift assigné",
+        body: `${shift.business_role} · ${dateLabel} · ${String(shift.start_time).slice(0,5)}–${String(shift.end_time).slice(0,5)}`,
+        link: employeeLink({ kind: "shift", shiftId: shift.id }),
+        priority: "normal",
+        category: "shift",
+      };
+    });
+    if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
+
+    return { ok: true, count: shifts.length };
+  });
+
 
 // ---------- DELETE ----------
 export const deleteShift = createServerFn({ method: "POST" })
