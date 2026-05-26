@@ -159,18 +159,49 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
       return toast.error(error?.message || "Erreur création");
     }
 
-    const firstId = data[0].id;
-    setShiftId(firstId);
+    const ids = data.map((row) => row.id);
+    setShiftIds(ids);
     setCreatedCount(data.length);
     onCreated?.();
     setStep("recipients");
 
-    // charge l'éligibilité pour le premier shift
+    // charge l'éligibilité pour toute la série créée
     setLoadingElig(true);
     try {
-      const r = await eligibilityFn({ data: { shiftId: firstId } });
-      setEligible(r.eligible);
-      setPartial(r.partial);
+      const results = await Promise.all(ids.map((id) => eligibilityFn({ data: { shiftId: id } })));
+      const eligibleForAll = new Set(results[0]?.eligible.map((emp) => emp.id) ?? []);
+      results.slice(1).forEach((r) => {
+        const idsForShift = new Set(r.eligible.map((emp) => emp.id));
+        Array.from(eligibleForAll).forEach((id) => {
+          if (!idsForShift.has(id)) eligibleForAll.delete(id);
+        });
+      });
+
+      const byId = new Map<string, EligibleEmployee>();
+      results.forEach((r) => {
+        [...r.eligible, ...r.partial].forEach((emp) => {
+          const previous = byId.get(emp.id);
+          if (!previous) {
+            byId.set(emp.id, { ...emp, reasons: [...emp.reasons] });
+            return;
+          }
+          byId.set(emp.id, {
+            ...previous,
+            weekly_hours: Math.max(previous.weekly_hours, emp.weekly_hours),
+            max_weekly_hours: Math.min(previous.max_weekly_hours, emp.max_weekly_hours),
+            pending_proposal: previous.pending_proposal || emp.pending_proposal,
+            has_studio: previous.has_studio && emp.has_studio,
+            has_availability: previous.has_availability && emp.has_availability,
+            is_saturated: previous.is_saturated || emp.is_saturated,
+            not_trained: previous.not_trained || emp.not_trained,
+            reasons: Array.from(new Set([...previous.reasons, ...emp.reasons])),
+          });
+        });
+      });
+
+      const allRows = Array.from(byId.values());
+      setEligible(allRows.filter((emp) => eligibleForAll.has(emp.id) && !emp.pending_proposal));
+      setPartial(allRows.filter((emp) => !eligibleForAll.has(emp.id) || emp.pending_proposal));
     } catch (err: any) {
       toast.error(err.message || "Erreur calcul éligibilité");
     } finally {
@@ -190,11 +221,11 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   };
 
   const sendNow = async () => {
-    if (!shiftId || selected.size === 0) return;
+    if (shiftIds.length === 0 || selected.size === 0) return;
     setSubmitting(true);
     try {
-      await sendFn({ data: { shiftId, userIds: Array.from(selected) } });
-      toast.success(`Proposition envoyée à ${selected.size} employé${selected.size > 1 ? "s" : ""}`);
+      await sendFn({ data: { shiftIds, userIds: Array.from(selected) } });
+      toast.success(`${shiftIds.length} proposition${shiftIds.length > 1 ? "s" : ""} envoyée${shiftIds.length > 1 ? "s" : ""} à ${selected.size} employé${selected.size > 1 ? "s" : ""}`);
       resetAll();
       onClose();
     } catch (e: any) {
@@ -205,12 +236,12 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   };
 
   const assignNow = async () => {
-    if (!shiftId || selected.size !== 1) return;
+    if (shiftIds.length === 0 || selected.size !== 1) return;
     const uid = Array.from(selected)[0];
     setSubmitting(true);
     try {
-      await assignFn({ data: { shiftId, userId: uid } });
-      toast.success("Shift assigné directement");
+      await assignFn({ data: { shiftIds, userId: uid } });
+      toast.success(`${shiftIds.length} shift${shiftIds.length > 1 ? "s" : ""} assigné${shiftIds.length > 1 ? "s" : ""} directement`);
       onCreated?.();
       resetAll();
       onClose();
