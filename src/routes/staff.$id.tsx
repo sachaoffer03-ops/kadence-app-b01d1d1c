@@ -17,6 +17,7 @@ import { EmployeeDocumentsTab } from "@/components/staff/EmployeeDocumentsTab";
 import { EmployeeProposalsCard } from "@/components/staff/EmployeeProposalsCard";
 import { AdminEditEmployeeSheet } from "@/components/staff/AdminEditEmployeeSheet";
 import { countUnviewedDocuments } from "@/lib/documents.functions";
+import { RatingInput, RatingBadge } from "@/components/RatingInput";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -62,7 +63,7 @@ function EmployeeDetailPage() {
   const [sigs, setSigs] = useState<Sig[]>([]);
   const [loading, setLoading] = useState(true);
   const [rateShiftId, setRateShiftId] = useState<string | null>(null);
-  const [rateValue, setRateValue] = useState(5);
+  const [rateValue, setRateValue] = useState(7);
   const [rateMsg, setRateMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [breakdown, setBreakdown] = useState<Awaited<ReturnType<typeof getScoreBreakdown>> | null>(null);
@@ -142,14 +143,14 @@ function EmployeeDetailPage() {
         user_id: id,
         type: "feedback_received",
         title: "Nouveau feedback reçu",
-        body: `Tu as reçu une note ${rateValue}/5 sur un de tes shifts.`,
+        body: `Tu as reçu une note ${rateValue}/10 sur un de tes shifts.`,
         link: `/staff-app?tab=planning&shift=${shiftId}`,
         priority: "normal",
         category: "general",
       });
     }
     toast.success("Note enregistrée");
-    setRateShiftId(null); setRateMsg(""); setRateValue(5);
+    setRateShiftId(null); setRateMsg(""); setRateValue(7);
     load();
   };
 
@@ -390,11 +391,7 @@ function EmployeeDetailPage() {
                           <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)} · {s.business_role} · {sname?.replace?.("Skult ", "")}</div>
                         </div>
                         {shiftFbs.length > 0 && (
-                          <span className="flex items-center gap-0.5">
-                            {[1,2,3,4,5].map(n => (
-                              <Star key={n} size={10} fill={n <= shiftFbs[0].rating ? "var(--coral)" : "transparent"} color={n <= shiftFbs[0].rating ? "var(--coral)" : "rgba(0,0,0,0.2)"} strokeWidth={1.4} />
-                            ))}
-                          </span>
+                          <RatingBadge value={shiftFbs[0].rating} />
                         )}
                         <span className="rounded-full px-2 py-0.5" style={{
                           fontSize: 10, fontWeight: 500,
@@ -402,7 +399,7 @@ function EmployeeDetailPage() {
                           color: s.status === "completed" ? "var(--success-text)" : s.status === "cancelled" ? "var(--danger-text)" : "var(--muted-foreground)",
                         }}>{s.status}</span>
                         {canRate && !isRating && (
-                          <button onClick={() => { setRateShiftId(s.id); setRateValue(5); setRateMsg(""); }}
+                          <button onClick={() => { setRateShiftId(s.id); setRateValue(7); setRateMsg(""); }}
                             className="rounded-md px-2 py-1 inline-flex items-center gap-1"
                             style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}>
                             <Plus size={11} /> Noter
@@ -411,13 +408,7 @@ function EmployeeDetailPage() {
                       </div>
                       {isRating && (
                         <div className="mt-2 pt-2 flex flex-col gap-2" style={{ borderTop: "0.5px solid var(--border)" }}>
-                          <div className="flex items-center gap-1">
-                            {[1,2,3,4,5].map(n => (
-                              <button key={n} onClick={() => setRateValue(n)}>
-                                <Star size={16} fill={n <= rateValue ? "var(--coral)" : "transparent"} color={n <= rateValue ? "var(--coral)" : "rgba(0,0,0,0.3)"} strokeWidth={1.4} />
-                              </button>
-                            ))}
-                          </div>
+                          <RatingInput value={rateValue} onChange={setRateValue} size="md" />
                           <textarea value={rateMsg} onChange={e => setRateMsg(e.target.value)} placeholder="Commentaire (optionnel)" rows={2}
                             className="rounded-md border px-2 py-1.5 outline-none"
                             style={{ fontSize: 12, borderColor: "var(--border)", backgroundColor: "var(--card)" }} />
@@ -448,9 +439,7 @@ function EmployeeDetailPage() {
                   return (
                     <div key={f.id} className="rounded-lg px-3 py-2" style={{ backgroundColor: "var(--background)" }}>
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        {[1,2,3,4,5].map(n => (
-                          <Star key={n} size={11} fill={n <= f.rating ? "var(--coral)" : "transparent"} color={n <= f.rating ? "var(--coral)" : "rgba(0,0,0,0.2)"} strokeWidth={1.4} />
-                        ))}
+                        <RatingBadge value={f.rating} />
                         <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
                           {a ? `par ${a.first_name} ${a.last_name}` : "—"}
                           {sh && ` · shift du ${new Date(sh.shift_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`}
