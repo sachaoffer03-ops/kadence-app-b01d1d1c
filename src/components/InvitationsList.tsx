@@ -179,7 +179,7 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
   const validateManually = async (inv: Invitation) => {
     if (
       !confirm(
-        `Marquer l'invitation de ${inv.first_name} ${inv.last_name} comme acceptée ?\n\nÀ utiliser uniquement si l'employé n'arrive pas à activer son compte par email. Vous devrez alors lui transmettre ses identifiants par un autre moyen.`,
+        `⚠️ ATTENTION — Cette action CASSERA définitivement le lien d'activation de ${inv.first_name} ${inv.last_name}.\n\nÀ n'utiliser QUE si l'employé a déjà un compte créé hors de l'app (cas exceptionnel).\n\nDans 99% des cas, vous devez plutôt :\n• Renvoyer l'invitation, ou\n• Demander à l'employé de cliquer sur son lien d'activation reçu par email.\n\nConfirmer le marquage manuel comme « déjà inscrit hors-app » ?`,
       )
     )
       return;
@@ -191,7 +191,7 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
       toast.error(error.message);
       return;
     }
-    toast.success("Invitation validée manuellement");
+    toast.success("Invitation marquée comme déjà inscrit hors-app");
     load();
   };
 
