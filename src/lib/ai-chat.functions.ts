@@ -95,7 +95,21 @@ export const askKadenceAI = createServerFn({ method: "POST" })
       supabaseAdmin.from("training_course_completions")
         .select("training_courses(title)").eq("user_id", userId),
       supabaseAdmin.from("user_contracts").select("contract").eq("user_id", userId),
+      supabaseAdmin.from("ai_knowledge_entries")
+        .select("title, content, category, priority")
+        .eq("is_active", true)
+        .order("priority", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(200),
     ]);
+
+    const adminKnowledge = (knowledgeRes.data ?? []).length === 0
+      ? ""
+      : "\n\n# CONNAISSANCES COMPLÉMENTAIRES (ajoutées par l'admin Skult)\n\n" +
+        (knowledgeRes.data ?? []).map((k: any) =>
+          `## ${k.title}\n_Catégorie : ${k.category}_\n\n${k.content}`
+        ).join("\n\n---\n\n");
+
 
     const profile = profileRes.data as any;
     const contracts = (contractRes.data ?? []).map((c: any) => c.contract).filter(Boolean).join(", ")
