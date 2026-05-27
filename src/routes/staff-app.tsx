@@ -547,6 +547,9 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         );
       })()}
 
+      {/* Collègues du jour */}
+      <TodayColleaguesCard userId={userId} />
+
       {/* Notifications formation */}
       <FormationNotifBanner onGoFormation={onGoFormation} />
 
