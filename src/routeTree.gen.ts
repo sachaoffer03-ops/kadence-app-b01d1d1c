@@ -30,6 +30,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContingentsRouteImport } from './routes/contingents'
 import { Route as ClotureRouteImport } from './routes/cloture'
 import { Route as ChecklistsRouteImport } from './routes/checklists'
+import { Route as AssistantIaRouteImport } from './routes/assistant-ia'
 import { Route as ActivationRouteImport } from './routes/activation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
@@ -161,6 +162,11 @@ const ClotureRoute = ClotureRouteImport.update({
 const ChecklistsRoute = ChecklistsRouteImport.update({
   id: '/checklists',
   path: '/checklists',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistantIaRoute = AssistantIaRouteImport.update({
+  id: '/assistant-ia',
+  path: '/assistant-ia',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActivationRoute = ActivationRouteImport.update({
@@ -306,6 +312,7 @@ const ApiPublicStudioQrStudioIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activation': typeof ActivationRoute
+  '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
   '/contingents': typeof ContingentsRoute
@@ -356,6 +363,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activation': typeof ActivationRoute
+  '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
   '/contingents': typeof ContingentsRoute
@@ -406,6 +414,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/activation': typeof ActivationRoute
+  '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
   '/contingents': typeof ContingentsRoute
@@ -458,6 +467,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/activation'
+    | '/assistant-ia'
     | '/checklists'
     | '/cloture'
     | '/contingents'
@@ -508,6 +518,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/activation'
+    | '/assistant-ia'
     | '/checklists'
     | '/cloture'
     | '/contingents'
@@ -557,6 +568,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/activation'
+    | '/assistant-ia'
     | '/checklists'
     | '/cloture'
     | '/contingents'
@@ -608,6 +620,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivationRoute: typeof ActivationRoute
+  AssistantIaRoute: typeof AssistantIaRoute
   ChecklistsRoute: typeof ChecklistsRoute
   ClotureRoute: typeof ClotureRoute
   ContingentsRoute: typeof ContingentsRoute
@@ -798,6 +811,13 @@ declare module '@tanstack/react-router' {
       path: '/checklists'
       fullPath: '/checklists'
       preLoaderRoute: typeof ChecklistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistant-ia': {
+      id: '/assistant-ia'
+      path: '/assistant-ia'
+      fullPath: '/assistant-ia'
+      preLoaderRoute: typeof AssistantIaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/activation': {
@@ -1033,6 +1053,7 @@ const StaffRouteWithChildren = StaffRoute._addFileChildren(StaffRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivationRoute: ActivationRoute,
+  AssistantIaRoute: AssistantIaRoute,
   ChecklistsRoute: ChecklistsRoute,
   ClotureRoute: ClotureRoute,
   ContingentsRoute: ContingentsRoute,
