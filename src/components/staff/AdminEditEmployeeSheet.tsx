@@ -266,6 +266,49 @@ export function AdminEditEmployeeSheet({ open, onClose, userId, initial, onSaved
         />
       </FormField>
 
+      <div
+        className="mt-5 rounded-lg p-3 flex flex-col gap-2"
+        style={{ border: "0.5px solid rgba(0,0,0,0.12)", backgroundColor: "rgba(0,0,0,0.02)" }}
+      >
+        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--foreground)" }}>
+          Accès au compte
+        </div>
+        <div style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+          Génère un lien d'accès unique pour cet employé. Utile s'il a perdu son mot de passe ou n'arrive pas à se connecter. Le lien fonctionne partout (WhatsApp, mail, SMS).
+        </div>
+        <button
+          type="button"
+          onClick={regenerateLink}
+          disabled={regenerating}
+          className="inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2"
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            backgroundColor: "#fff",
+            color: "var(--foreground)",
+            border: "0.5px solid rgba(0,0,0,0.18)",
+            opacity: regenerating ? 0.5 : 1,
+          }}
+        >
+          <Link2 size={13} /> {regenerating ? "Génération…" : "Régénérer un lien d'accès"}
+        </button>
+        {generatedLink && (
+          <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5" style={{ backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.12)" }}>
+            <span className="truncate flex-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              {generatedLink}
+            </span>
+            <button
+              type="button"
+              onClick={copyLink}
+              className="inline-flex items-center gap-1 rounded px-2 py-1 shrink-0"
+              style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid rgba(0,0,0,0.18)" }}
+            >
+              <Copy size={11} /> Copier
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="flex flex-col gap-2 mt-5">
         <PrimaryButton onClick={save} disabled={saving}>{saving ? "Enregistrement…" : "Enregistrer"}</PrimaryButton>
         <SecondaryButton onClick={onClose} disabled={saving}>Annuler</SecondaryButton>
