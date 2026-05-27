@@ -162,6 +162,47 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
     load();
   };
 
+  const [bulkResending, setBulkResending] = useState(false);
+  const resendAllPending = async () => {
+    const pendings = invitations.filter((i) => i.status === "pending");
+    if (pendings.length === 0) {
+      toast.info("Aucune invitation en attente");
+      return;
+    }
+    if (!confirm(`Renvoyer l'email d'activation à ${pendings.length} employé(s) en attente ?`)) return;
+    setBulkResending(true);
+    const t = toast.loading(`Envoi en cours (0/${pendings.length})...`);
+    let ok = 0;
+    let fail = 0;
+    for (let idx = 0; idx < pendings.length; idx++) {
+      const inv = pendings[idx];
+      toast.loading(`Envoi en cours (${idx + 1}/${pendings.length})...`, { id: t });
+      const { error } = await supabase.functions.invoke("send-invitation", {
+        body: {
+          email: inv.email,
+          first_name: inv.first_name,
+          last_name: inv.last_name,
+          phone: inv.phone,
+          studio_ids: inv.studio_ids ?? (inv.studio_id ? [inv.studio_id] : []),
+          contracts: inv.contracts ?? (inv.contract ? [inv.contract] : []),
+          business_roles: inv.business_roles ?? [],
+          app_role: inv.app_role,
+        },
+      });
+      if (error) {
+        fail++;
+      } else {
+        ok++;
+        await supabase.from("invitations").update({ status: "revoked" }).eq("id", inv.id);
+      }
+    }
+    toast.dismiss(t);
+    if (fail === 0) toast.success(`${ok} email(s) renvoyé(s)`);
+    else toast.error(`${ok} envoyé(s), ${fail} en échec`);
+    setBulkResending(false);
+    load();
+  };
+
   const revoke = async (inv: Invitation) => {
     if (!confirm(`Révoquer l'invitation de ${inv.first_name} ${inv.last_name} ?`)) return;
     const { error } = await supabase
@@ -243,6 +284,23 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
           <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
             {filtered.length} invitation{filtered.length > 1 ? "s" : ""}
           </span>
+          {counts.pending > 0 && (
+            <button
+              onClick={resendAllPending}
+              disabled={bulkResending}
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                backgroundColor: "transparent",
+                color: "var(--foreground)",
+                border: "0.5px solid var(--border)",
+                opacity: bulkResending ? 0.5 : 1,
+              }}
+            >
+              <Send size={13} /> {bulkResending ? "Envoi..." : `Renvoyer aux ${counts.pending} en attente`}
+            </button>
+          )}
           <button
             onClick={onInviteClick}
             className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
