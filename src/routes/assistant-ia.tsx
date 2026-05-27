@@ -347,7 +347,7 @@ function EditSheet({ initial, onClose, onSave }:
     try {
       await onSave({
         id: initial.id, title, content, category,
-        tags: tagsStr.split(",").map((s) => s.trim()).filter(Boolean),
+        tags: [],
         priority, is_active: isActive, entry_type: entryType, data,
       });
     } finally { setSaving(false); }
