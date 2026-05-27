@@ -469,7 +469,7 @@ function Row({
               <IconBtn label="Renvoyer" onClick={onResend}>
                 <Send size={13} />
               </IconBtn>
-              <IconBtn label="Valider manuellement" onClick={onValidate}>
+              <IconBtn label="Marquer comme déjà inscrit hors-app (casse le lien)" onClick={onValidate}>
                 <CheckCheck size={13} />
               </IconBtn>
               <IconBtn label="Révoquer" onClick={onRevoke} danger>
