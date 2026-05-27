@@ -82,7 +82,7 @@ export const askKadenceAI = createServerFn({ method: "POST" })
     const pad = (n: number) => String(n).padStart(2, "0");
     const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-    const [profileRes, shiftsRes, rolesRes, formationsRes, contractRes, knowledgeRes] = await Promise.all([
+    const [profileRes, shiftsRes, rolesRes, formationsRes, contractRes, knowledgeRes, feedbackRes] = await Promise.all([
       supabaseAdmin.from("profiles").select("first_name, last_name, contract, score").eq("id", userId).maybeSingle(),
       supabaseAdmin.from("shifts")
         .select("shift_date, start_time, end_time, business_role, studios(name)")
