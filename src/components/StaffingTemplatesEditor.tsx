@@ -42,13 +42,36 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const reload = async () => {
-    try {
+    const runQueries = async () => {
       const [s, t] = await Promise.all([
         supabase.from("studios").select("id, name").order("name"),
         supabase.from("staffing_templates").select("*").order("day_of_week").order("start_time"),
       ]);
-      if (s.error) throw new Error(s.error.message);
-      if (t.error) throw new Error(t.error.message);
+      return { s, t };
+    };
+
+    try {
+      let { s, t } = await runQueries();
+
+      // Retry once on transient error (race auth au mount)
+      if (s.error || t.error) {
+        console.warn("[StaffingTemplatesEditor] 1re tentative en erreur, retry…", {
+          studiosError: s.error,
+          templatesError: t.error,
+        });
+        await new Promise((r) => setTimeout(r, 400));
+        ({ s, t } = await runQueries());
+      }
+
+      if (s.error) {
+        console.error("[StaffingTemplatesEditor] studios query error", s.error);
+        throw new Error(`studios: ${s.error.message}`);
+      }
+      if (t.error) {
+        console.error("[StaffingTemplatesEditor] staffing_templates query error", t.error);
+        throw new Error(`staffing_templates: ${t.error.message}`);
+      }
+
       if (s.data) {
         setStudios(s.data);
         if (s.data.length) {
@@ -62,6 +85,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
       }
       if (t.data) setTemplates(t.data as Template[]);
     } catch (e: any) {
+      console.error("[StaffingTemplatesEditor] reload failed", e);
       toast.error("Erreur de chargement des besoins", { description: e?.message });
     } finally {
       setLoading(false);
