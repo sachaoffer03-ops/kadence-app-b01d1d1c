@@ -82,7 +82,7 @@ export const askKadenceAI = createServerFn({ method: "POST" })
     const pad = (n: number) => String(n).padStart(2, "0");
     const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-    const [profileRes, shiftsRes, rolesRes, formationsRes, contractRes, knowledgeRes] = await Promise.all([
+    const [profileRes, shiftsRes, rolesRes, formationsRes, contractRes, knowledgeRes, feedbackRes] = await Promise.all([
       supabaseAdmin.from("profiles").select("first_name, last_name, contract, score").eq("id", userId).maybeSingle(),
       supabaseAdmin.from("shifts")
         .select("shift_date, start_time, end_time, business_role, studios(name)")
@@ -101,6 +101,11 @@ export const askKadenceAI = createServerFn({ method: "POST" })
         .order("priority", { ascending: false })
         .order("updated_at", { ascending: false })
         .limit(200),
+      supabaseAdmin.from("ai_message_feedback")
+        .select("rating, comment, corrected_answer, ai_chat_messages!inner(content, role)")
+        .in("rating", ["up", "correction", "down"])
+        .order("updated_at", { ascending: false })
+        .limit(40),
     ]);
 
     const adminKnowledge = (knowledgeRes.data ?? []).length === 0
@@ -109,6 +114,36 @@ export const askKadenceAI = createServerFn({ method: "POST" })
         (knowledgeRes.data ?? []).map((k: any) =>
           `## ${k.title}\n_Catégorie : ${k.category}_\n\n${k.content}`
         ).join("\n\n---\n\n");
+
+    const fbList = (feedbackRes.data ?? []) as any[];
+    const corrections = fbList.filter((f) => f.rating === "correction" && f.corrected_answer);
+    const positives = fbList.filter((f) => f.rating === "up").slice(0, 8);
+    const negatives = fbList.filter((f) => f.rating === "down" && f.comment).slice(0, 8);
+
+    let learningBlock = "";
+    if (corrections.length || positives.length || negatives.length) {
+      learningBlock = "\n\n# APPRENTISSAGE SUPERVISÉ (retours admin sur tes précédentes réponses)\n\nUtilise ces exemples pour calibrer ton ton et tes réponses futures.\n";
+      if (corrections.length) {
+        learningBlock += "\n## Corrections (réponses à reformuler ainsi à l'avenir)\n";
+        for (const c of corrections.slice(0, 12)) {
+          const ans = c.corrected_answer.length > 600 ? c.corrected_answer.slice(0, 600) + "…" : c.corrected_answer;
+          learningBlock += `\n- Mauvaise réponse passée : "${(c.ai_chat_messages?.content ?? "").slice(0, 200)}"\n  Bonne réponse à donner : ${ans}${c.comment ? `\n  Note admin : ${c.comment}` : ""}\n`;
+        }
+      }
+      if (negatives.length) {
+        learningBlock += "\n## Réponses jugées mauvaises (évite ces erreurs)\n";
+        for (const n of negatives) {
+          learningBlock += `\n- "${(n.ai_chat_messages?.content ?? "").slice(0, 180)}" → ${n.comment}\n`;
+        }
+      }
+      if (positives.length) {
+        learningBlock += "\n## Réponses validées (continue dans ce style)\n";
+        for (const p of positives) {
+          learningBlock += `\n- "${(p.ai_chat_messages?.content ?? "").slice(0, 180)}"\n`;
+        }
+      }
+    }
+
 
 
     const profile = profileRes.data as any;
@@ -168,7 +203,7 @@ Réponds à sa question en utilisant uniquement ces informations + tes connaissa
         { type: "text", text: SYSTEM_PROMPT },
         {
           type: "text",
-          text: SKULT_KNOWLEDGE_BASE + adminKnowledge,
+          text: SKULT_KNOWLEDGE_BASE + adminKnowledge + learningBlock,
           cache_control: { type: "ephemeral" },
         },
         { type: "text", text: contextBlock },

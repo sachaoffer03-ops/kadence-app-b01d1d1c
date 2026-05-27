@@ -52,6 +52,8 @@ export type Database = {
           category: string
           content: string
           created_at: string
+          data: Json
+          entry_type: string
           id: string
           is_active: boolean
           priority: number
@@ -64,6 +66,8 @@ export type Database = {
           category?: string
           content: string
           created_at?: string
+          data?: Json
+          entry_type?: string
           id?: string
           is_active?: boolean
           priority?: number
@@ -76,6 +80,8 @@ export type Database = {
           category?: string
           content?: string
           created_at?: string
+          data?: Json
+          entry_type?: string
           id?: string
           is_active?: boolean
           priority?: number
@@ -84,6 +90,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ai_message_feedback: {
+        Row: {
+          admin_id: string | null
+          comment: string | null
+          corrected_answer: string | null
+          created_at: string
+          id: string
+          message_id: string
+          rating: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id?: string | null
+          comment?: string | null
+          corrected_answer?: string | null
+          created_at?: string
+          id?: string
+          message_id: string
+          rating: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string | null
+          comment?: string | null
+          corrected_answer?: string | null
+          created_at?: string
+          id?: string
+          message_id?: string
+          rating?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_message_feedback_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "ai_chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_planning_settings: {
         Row: {
