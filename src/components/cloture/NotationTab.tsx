@@ -198,7 +198,7 @@ export function NotationTab() {
               onChange={(v) => handleWeightChange("weight_punctuality", v)} />
             <WeightSlider label="Checklist" value={rules.weight_checklist}
               onChange={(v) => handleWeightChange("weight_checklist", v)} />
-            <WeightSlider label="Photos" value={rules.weight_photos}
+            <WeightSlider label="Note manager" value={rules.weight_photos}
               onChange={(v) => handleWeightChange("weight_photos", v)} />
           </Card>
 

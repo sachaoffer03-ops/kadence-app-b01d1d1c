@@ -61,7 +61,9 @@ export async function computeScoreBreakdown(
       for (const f of list) {
         const days = Math.max(0, (now - new Date(f.created_at).getTime()) / dayMs);
         const w = Math.exp(-lambda * days);
-        num += Math.min(f.rating, 5) * 2 * w;
+        // f.rating est désormais natif sur 0..10 (migration 2026-05-27),
+        // on borne par sécurité au cas où d'anciennes valeurs 0..5 traînent.
+        num += Math.min(Math.max(f.rating, 0), 10) * w;
         den += w;
       }
       manager = num / den;
