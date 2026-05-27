@@ -49,6 +49,7 @@ const TOTAL_STEPS = 8; // 0 welcome, 1 password, 2 identity, 3 photo, 4 address,
 function ActivationPage() {
   const { token, preview } = Route.useSearch();
   const isPreview = !!preview;
+  const normalizedToken = token.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -76,7 +77,7 @@ function ActivationPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token && !preview) {
+    if (!normalizedToken && !preview) {
       setError("Aucun lien d'invitation détecté");
       setLoading(false);
       return;
@@ -112,7 +113,7 @@ function ActivationPage() {
         error = res.error;
       } else {
         // RPC accessible en anonyme : la page d'activation n'a pas encore de session.
-        const res = await supabase.rpc("get_invitation_by_token", { _token: token });
+        const res = await supabase.rpc("get_invitation_by_token", { _token: normalizedToken });
         if (res.error) {
           error = res.error;
         } else {
@@ -129,7 +130,7 @@ function ActivationPage() {
       }
       setLoading(false);
     })();
-  }, [token, preview, isPreview]);
+  }, [normalizedToken, preview, isPreview]);
 
   // Password strength
   const pwStrength = useMemo(() => {
@@ -196,7 +197,7 @@ function ActivationPage() {
       password,
       options: {
         data: {
-          invitation_token: token,
+          invitation_token: normalizedToken,
           first_name: invitation.first_name,
           last_name: invitation.last_name,
         },
