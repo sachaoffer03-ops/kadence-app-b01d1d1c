@@ -123,8 +123,6 @@ function ActivationPage() {
         setError("Invitation introuvable");
       } else if (!isPreview && data.status !== "pending") {
         setError("Cette invitation a déjà été utilisée ou révoquée");
-      } else if (!isPreview && new Date(data.expires_at) < new Date()) {
-        setError("Cette invitation a expiré. Demandez-en une nouvelle.");
       } else {
         setInvitation(data);
         if (data.phone) setPhone(data.phone);
