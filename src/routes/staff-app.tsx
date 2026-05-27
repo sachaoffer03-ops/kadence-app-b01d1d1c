@@ -435,15 +435,15 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
               {state === "today_before" && next && (() => {
                 const startDt = new Date(next.shift_date + "T" + next.start_time);
                 const diffMin = (nowTs - startDt.getTime()) / 60_000;
-                // -30min..+1h → bouton scan QR ; avant -30 → trop tôt ; après +1h → bloqué
-                if (diffMin < -30) {
-                  const mins = Math.ceil(Math.abs(diffMin) - 30);
+                // -5min..+1h → bouton scan QR ; avant -5 → trop tôt ; après +1h → bloqué
+                if (diffMin < -5) {
+                  const mins = Math.ceil(Math.abs(diffMin) - 5);
                   return (
                     <div
                       className="mt-4 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
                       style={{ fontSize: 12, fontWeight: 500, backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(250,248,244,0.65)", border: "1px solid rgba(255,255,255,0.1)" }}
                     >
-                      <Clock size={13} /> Scan disponible dans {mins} min
+                      <Clock size={13} /> Pointage disponible dans {mins} min
                     </div>
                   );
                 }

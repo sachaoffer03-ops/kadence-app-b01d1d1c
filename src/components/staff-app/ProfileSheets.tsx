@@ -69,7 +69,10 @@ export function ShiftDetailSheet({ open, onClose, shift, studios, onClockIn, onE
   const isToday = shift.shift_date === today;
   const isDone = !!shift.clocked_out_at;
   const isInService = !isDone && !!shift.clocked_in_at;
-  const canStart = isToday && !shift.clocked_in_at && !isDone;
+  const startTs = new Date(`${shift.shift_date}T${shift.start_time}`).getTime();
+  const minsUntilStart = Math.ceil((startTs - Date.now()) / 60_000);
+  const canStart = isToday && !shift.clocked_in_at && !isDone && minsUntilStart <= 5;
+  const tooEarly = isToday && !shift.clocked_in_at && !isDone && minsUntilStart > 5;
 
   return (
     <Sheet open={open} onClose={onClose} title="Détail du shift">
@@ -124,6 +127,14 @@ export function ShiftDetailSheet({ open, onClose, shift, studios, onClockIn, onE
               <Play size={14} /> Commencer mon shift
             </span>
           </PrimaryButton>
+        )}
+        {tooEarly && (
+          <div
+            className="rounded-md px-3 py-2.5 inline-flex items-center gap-1.5"
+            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid rgba(0,0,0,0.08)" }}
+          >
+            <Clock size={13} /> Pointage disponible dans {minsUntilStart - 5} min
+          </div>
         )}
         {isInService && onEndShift && (
           <PrimaryButton onClick={onEndShift}>
