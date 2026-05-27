@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Sheet, PrimaryButton, SecondaryButton, FormField } from "@/components/staff-app/shared";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
 import { useStudios } from "@/hooks/use-studios";
+import { regenerateEmployeeAccessLink } from "@/lib/employee-access.functions";
+import { Link2, Copy } from "lucide-react";
 
 const CONTRACTS = ["Étudiant", "Flexi", "CDI"] as const;
 
