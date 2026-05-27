@@ -288,7 +288,7 @@ function EditSheet({ initial, onClose, onSave }:
   const [title, setTitle] = useState(initial.title || "");
   const [content, setContent] = useState(initial.content || "");
   const [category, setCategory] = useState(initial.category || "general");
-  const [tagsStr, setTagsStr] = useState((initial.tags || []).join(", "));
+  
   const [priority, setPriority] = useState(initial.priority ?? 0);
   const [isActive, setIsActive] = useState(initial.is_active ?? true);
   const [saving, setSaving] = useState(false);
@@ -347,7 +347,7 @@ function EditSheet({ initial, onClose, onSave }:
     try {
       await onSave({
         id: initial.id, title, content, category,
-        tags: tagsStr.split(",").map((s) => s.trim()).filter(Boolean),
+        tags: [],
         priority, is_active: isActive, entry_type: entryType, data,
       });
     } finally { setSaving(false); }
@@ -452,9 +452,6 @@ function EditSheet({ initial, onClose, onSave }:
             </Field>
           )}
 
-          <Field label="Tags" hint="Séparés par virgules">
-            <Input value={tagsStr} onChange={setTagsStr} />
-          </Field>
 
           <label className="inline-flex items-center gap-2" style={{ fontSize: 13 }}>
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
