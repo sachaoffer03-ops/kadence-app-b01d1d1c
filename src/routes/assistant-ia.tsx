@@ -256,7 +256,7 @@ function EntryCard({ entry, onEdit, onToggle, onDelete }:
           <IconBtn title="Supprimer" onClick={onDelete}><Trash2 size={14} /></IconBtn>
         </div>
       </div>
-      <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }} className="line-clamp-3">{entry.content}</p>
+      <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }} className="line-clamp-3">{previewText(entry)}</p>
       {entry.tags.length > 0 && (
         <div className="flex gap-1 flex-wrap">
           {entry.tags.map((t) => (
@@ -269,6 +269,31 @@ function EntryCard({ entry, onEdit, onToggle, onDelete }:
       )}
     </div>
   );
+}
+
+function previewText(entry: Entry): string {
+  if (entry.entry_type === "faq" && entry.data) {
+    const q = (entry.data as any).question?.trim();
+    const a = (entry.data as any).answer?.trim();
+    if (q && a) return `Q. ${q}  —  R. ${a}`;
+    if (q) return `Q. ${q}`;
+  }
+  if (entry.entry_type === "link" && entry.data) {
+    const url = (entry.data as any).url;
+    const desc = (entry.data as any).description;
+    return [desc, url].filter(Boolean).join(" — ") || entry.content;
+  }
+  if (entry.entry_type === "file" && entry.data) {
+    const name = (entry.data as any).file_name;
+    const desc = (entry.data as any).description;
+    return [name, desc].filter(Boolean).join(" — ") || entry.content;
+  }
+  // Strip basic markdown for plain preview
+  return (entry.content || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/[*_`#>]/g, "")
+    .replace(/\n+/g, " ")
+    .trim();
 }
 
 function IconBtn({ children, onClick, title }: any) {
