@@ -143,7 +143,7 @@ export function AIChatPanel() {
                 backgroundColor: mine ? "var(--coral)" : "#fff",
                 color: mine ? "var(--coral-text)" : "var(--foreground)",
                 border: mine ? "none" : "0.5px solid rgba(0,0,0,0.08)",
-                whiteSpace: "pre-wrap",
+                whiteSpace: mine ? "pre-wrap" : "normal",
                 wordBreak: "break-word",
                 opacity: m.loading ? 0.7 : 1,
               }}>
