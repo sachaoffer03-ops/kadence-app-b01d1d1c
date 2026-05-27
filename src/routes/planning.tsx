@@ -16,6 +16,8 @@ import { EditShiftModal } from "@/components/EditShiftModal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { getRoleStyle } from "@/lib/staff-helpers";
+import { RatingInput } from "@/components/RatingInput";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
@@ -141,6 +143,55 @@ function TimeBar({ leftPct, widthPct, color }: { leftPct: number; widthPct: numb
 
 // ── Shift Detail Modal ─────────────────────────────────────
 function ShiftDetailModal({ shift, employee, onClose, onDelete, onConfirm, onUnlock, onEdit }: { shift: PlanningShift; employee?: EmployeeLite; onClose: () => void; onDelete: () => void; onConfirm: () => void; onUnlock?: () => void; onEdit: () => void }) {
+  const { user, appRole } = useAuth();
+  const canRate = (appRole === "admin" || appRole === "manager") && !shift.hole && !!shift.clockOut;
+  const [rateOpen, setRateOpen] = useState(false);
+  const [rateValue, setRateValue] = useState(7);
+  const [rateMsg, setRateMsg] = useState("");
+  const [rateSaving, setRateSaving] = useState(false);
+  const [alreadyRated, setAlreadyRated] = useState(false);
+
+  useEffect(() => {
+    if (!canRate) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("feedbacks")
+        .select("id")
+        .eq("shift_id", shift.id)
+        .limit(1);
+      if (!cancelled) setAlreadyRated((data ?? []).length > 0);
+    })();
+    return () => { cancelled = true; };
+  }, [shift.id, canRate]);
+
+  const submitRate = async () => {
+    if (!user) return;
+    setRateSaving(true);
+    const { error } = await supabase.from("feedbacks").insert({
+      author_id: user.id,
+      shift_id: shift.id,
+      rating: rateValue,
+      message: rateMsg.trim() || null,
+    });
+    setRateSaving(false);
+    if (error) { toast.error("Erreur lors de l'enregistrement"); return; }
+    if (shift.employeeId && shift.employeeId !== user.id) {
+      await supabase.from("notifications").insert({
+        user_id: shift.employeeId,
+        type: "feedback_received",
+        title: "Nouveau feedback reçu",
+        body: `Tu as reçu une note ${rateValue}/10 sur ton shift du ${new Date(shift.shiftDate).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}.`,
+        link: `/staff-app?tab=planning&shift=${shift.id}`,
+        priority: "normal",
+        category: "general",
+      });
+    }
+    toast.success("Note enregistrée");
+    setAlreadyRated(true);
+    setRateOpen(false);
+  };
+
   const durationH = useMemo(() => {
     const [sh, sm] = String(shift.startTime).slice(0, 5).split(":").map(Number);
     const [eh, em] = String(shift.endTime).slice(0, 5).split(":").map(Number);
