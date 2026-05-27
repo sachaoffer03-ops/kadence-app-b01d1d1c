@@ -27,7 +27,7 @@ function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number)
 export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
   const { data: shift, error: shiftError } = await supabaseAdmin
     .from("shifts")
-    .select("id,user_id,clocked_in_at,clocked_out_at")
+    .select("id,user_id,studio_id,shift_date,clocked_in_at,clocked_out_at")
     .eq("id", input.shiftId)
     .maybeSingle();
 
@@ -104,6 +104,56 @@ export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
     .maybeSingle();
   if (updateError) throw new Error(updateError.message);
   if (!updated) return { alreadyCompleted: true, completedAt };
+
+  // ─── Notification "shift_to_rate" pour les admins/managers du studio ───
+  // Déclenché à chaque clôture pour rappeler à l'équipe d'attribuer une note manager.
+  // On évite de notifier si l'employé s'auto-note (cas rare) — on cible seulement les admins/managers.
+  try {
+    const { data: employee } = await supabaseAdmin
+      .from("profiles")
+      .select("first_name,last_name")
+      .eq("id", shift.user_id)
+      .maybeSingle();
+    const empName = [employee?.first_name, employee?.last_name].filter(Boolean).join(" ") || "Un employé";
+
+    // Récupère les admins/managers (limités au studio si possible)
+    const { data: managerRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id, role")
+      .in("role", ["admin", "manager"]);
+    const managerIds = Array.from(new Set((managerRoles ?? []).map((r: any) => r.user_id))) as string[];
+
+    let recipients = managerIds;
+    if (shift.studio_id && managerIds.length > 0) {
+      const { data: studioLinks } = await supabaseAdmin
+        .from("user_studios")
+        .select("user_id")
+        .eq("studio_id", shift.studio_id)
+        .in("user_id", managerIds);
+      const studioManagerIds = (studioLinks ?? []).map((s: any) => s.user_id);
+      // Admins globaux : toujours notifiés ; managers : uniquement ceux liés au studio.
+      const adminIds = (managerRoles ?? []).filter((r: any) => r.role === "admin").map((r: any) => r.user_id);
+      recipients = Array.from(new Set([...adminIds, ...studioManagerIds]));
+    }
+    // Exclut l'acteur lui-même (s'il vient de noter via la clôture)
+    recipients = recipients.filter((uid) => uid && uid !== input.actorId);
+
+    if (recipients.length > 0) {
+      const dateLabel = new Date(shift.shift_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+      const rows = recipients.map((uid) => ({
+        user_id: uid,
+        type: "shift_to_rate",
+        title: "Shift à noter",
+        body: `${empName} a terminé son shift du ${dateLabel} — pense à attribuer une note.`,
+        link: `/planning?shift=${input.shiftId}`,
+        priority: "normal",
+        category: "planning",
+      }));
+      await supabaseAdmin.from("notifications").insert(rows);
+    }
+  } catch {
+    // Best-effort : ne casse pas la clôture si la notif échoue
+  }
 
   return { alreadyCompleted: false, completedAt };
 }
