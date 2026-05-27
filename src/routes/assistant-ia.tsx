@@ -256,7 +256,7 @@ function EntryCard({ entry, onEdit, onToggle, onDelete }:
           <IconBtn title="Supprimer" onClick={onDelete}><Trash2 size={14} /></IconBtn>
         </div>
       </div>
-      <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }} className="line-clamp-3">{entry.content}</p>
+      <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }} className="line-clamp-3">{previewText(entry)}</p>
       {entry.tags.length > 0 && (
         <div className="flex gap-1 flex-wrap">
           {entry.tags.map((t) => (
