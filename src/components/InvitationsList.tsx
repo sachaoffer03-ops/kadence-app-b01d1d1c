@@ -284,6 +284,23 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
           <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
             {filtered.length} invitation{filtered.length > 1 ? "s" : ""}
           </span>
+          {counts.pending > 0 && (
+            <button
+              onClick={resendAllPending}
+              disabled={bulkResending}
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                backgroundColor: "transparent",
+                color: "var(--foreground)",
+                border: "0.5px solid var(--border)",
+                opacity: bulkResending ? 0.5 : 1,
+              }}
+            >
+              <Send size={13} /> {bulkResending ? "Envoi..." : `Renvoyer aux ${counts.pending} en attente`}
+            </button>
+          )}
           <button
             onClick={onInviteClick}
             className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
