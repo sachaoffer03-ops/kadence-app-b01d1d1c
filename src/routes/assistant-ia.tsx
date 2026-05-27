@@ -770,18 +770,22 @@ function RateBtn({ children, active, color, onClick, title }: any) {
 function FeedbackModal({ msg, mode, onClose, onSubmit }:
   { msg: Msg; mode: "down" | "correction"; onClose: () => void;
     onSubmit: (p: { comment?: string; corrected_answer?: string }) => Promise<void> }) {
-  const [comment, setComment] = useState(msg.feedback?.comment || "");
-  const [corrected, setCorrected] = useState(msg.feedback?.corrected_answer || "");
+  // For "correction" mode we store the admin's style/tone remark in `corrected_answer`
+  // (kept as the DB field for backward compat). For "down" mode it goes in `comment`.
+  const initialRemark = msg.feedback?.corrected_answer || msg.feedback?.comment || "";
+  const [remark, setRemark] = useState(initialRemark);
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (mode === "correction" && !corrected.trim()) { toast.error("Indique la bonne réponse"); return; }
-    if (mode === "down" && !comment.trim()) { toast.error("Explique pourquoi"); return; }
+    if (!remark.trim()) {
+      toast.error(mode === "correction" ? "Écris une remarque pour le bot" : "Explique pourquoi");
+      return;
+    }
     setSaving(true);
     try {
       await onSubmit({
-        comment: comment.trim() || undefined,
-        corrected_answer: mode === "correction" ? corrected.trim() : undefined,
+        comment: mode === "down" ? remark.trim() : undefined,
+        corrected_answer: mode === "correction" ? remark.trim() : undefined,
       });
     } finally { setSaving(false); }
   };
@@ -790,7 +794,7 @@ function FeedbackModal({ msg, mode, onClose, onSubmit }:
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.4)" }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="rounded-xl w-full"
-        style={{ maxWidth: 560, backgroundColor: "#FAFAF8", border: "0.5px solid var(--border)" }}>
+        style={{ maxWidth: 600, backgroundColor: "#FAFAF8", border: "0.5px solid var(--border)" }}>
         <div className="px-5 py-4 flex items-start gap-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
           <div className="rounded-full flex items-center justify-center shrink-0"
             style={{ width: 32, height: 32, backgroundColor: mode === "correction" ? "var(--coral)" : "#fde2e2" }}>
@@ -802,7 +806,7 @@ function FeedbackModal({ msg, mode, onClose, onSubmit }:
             </div>
             <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
               {mode === "correction"
-                ? "Donne au bot la bonne réponse. Elle servira d'exemple pour ses prochaines réponses."
+                ? "Indique au bot ce que tu n'as pas aimé dans le ton, le format ou le fond. Il s'en servira pour ajuster ses prochaines réponses."
                 : "Ton feedback aidera le bot à éviter cette erreur."}
             </div>
           </div>
@@ -810,24 +814,41 @@ function FeedbackModal({ msg, mode, onClose, onSubmit }:
         </div>
 
         <div className="p-5 flex flex-col gap-3">
-          <div className="rounded-md p-3" style={{ backgroundColor: "#fff", border: "0.5px solid var(--border)" }}>
-            <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginBottom: 4 }}>RÉPONSE ACTUELLE DU BOT</div>
-            <div style={{ fontSize: 12, lineHeight: 1.5, color: "var(--foreground)" }}>{msg.content}</div>
+          <div className="rounded-md p-3" style={{ backgroundColor: "#fff", border: "0.5px solid var(--border)", maxHeight: 280, overflowY: "auto" }}>
+            <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginBottom: 6, letterSpacing: 0.4 }}>RÉPONSE ACTUELLE DU BOT</div>
+            <div className="kadence-md" style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--foreground)" }}>
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p style={{ margin: "0 0 8px" }}>{children}</p>,
+                  h1: ({ children }) => <h1 style={{ fontSize: 15, fontWeight: 600, margin: "8px 0 6px" }}>{children}</h1>,
+                  h2: ({ children }) => <h2 style={{ fontSize: 14, fontWeight: 600, margin: "8px 0 4px" }}>{children}</h2>,
+                  h3: ({ children }) => <h3 style={{ fontSize: 13, fontWeight: 600, margin: "6px 0 3px" }}>{children}</h3>,
+                  ul: ({ children }) => <ul style={{ margin: "4px 0 8px", paddingLeft: 18 }}>{children}</ul>,
+                  ol: ({ children }) => <ol style={{ margin: "4px 0 8px", paddingLeft: 18 }}>{children}</ol>,
+                  li: ({ children }) => <li style={{ margin: "2px 0" }}>{children}</li>,
+                  strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                  code: ({ children }) => <code style={{ backgroundColor: "rgba(0,0,0,0.05)", padding: "1px 4px", borderRadius: 4, fontSize: 11.5 }}>{children}</code>,
+                  a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" style={{ color: "var(--coral)", textDecoration: "underline" }}>{children}</a>,
+                }}
+              >
+                {msg.content}
+              </ReactMarkdown>
+            </div>
           </div>
 
-          {mode === "correction" && (
-            <Field label="Bonne réponse à donner à l'avenir">
-              <Textarea value={corrected} onChange={setCorrected} rows={6}
-                placeholder="Reformule comme le bot aurait dû répondre…" />
-            </Field>
-          )}
-
-          <Field label={mode === "correction" ? "Note pour le bot (optionnel)" : "Pourquoi cette réponse n'est pas bonne"}>
-            <Textarea value={comment} onChange={setComment} rows={3}
+          <Field label={mode === "correction"
+            ? "Ta remarque pour le bot (ton, style, format, ce qui t'a déplu…)"
+            : "Pourquoi cette réponse n'est pas bonne"}>
+            <Textarea value={remark} onChange={setRemark} rows={5}
               placeholder={mode === "correction"
-                ? "Ex : il manquait la précision sur la deadline mercredi"
+                ? "Ex : utilise plus de titres en ## et des listes à puces, sois moins formel, évite les phrases trop longues, ne commence pas par 'Bien sûr !'…"
                 : "Ex : ton trop sec, info incorrecte, hors sujet…"} />
           </Field>
+          {mode === "correction" && (
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: -4 }}>
+              Le bot va comparer ta remarque à sa réponse actuelle et ajuster son style sur les prochaines questions similaires.
+            </div>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button onClick={onClose} className="px-4 py-2 rounded-md"

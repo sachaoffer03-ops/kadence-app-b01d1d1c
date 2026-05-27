@@ -122,12 +122,13 @@ export const askKadenceAI = createServerFn({ method: "POST" })
 
     let learningBlock = "";
     if (corrections.length || positives.length || negatives.length) {
-      learningBlock = "\n\n# APPRENTISSAGE SUPERVISÉ (retours admin sur tes précédentes réponses)\n\nUtilise ces exemples pour calibrer ton ton et tes réponses futures.\n";
+      learningBlock = "\n\n# APPRENTISSAGE SUPERVISÉ (retours de l'admin Skult sur tes précédentes réponses)\n\nCes remarques viennent de l'admin qui supervise tes réponses. Analyse-les attentivement : compare ce que tu avais répondu avec la remarque, identifie ce qui ne lui a pas plu (ton, format, longueur, vocabulaire, structure, fond) et applique ces ajustements à toutes tes prochaines réponses similaires. Les remarques portent souvent sur la FORME (style, ton, mise en page markdown, longueur) autant que sur le fond — n'ignore jamais une demande de style.\n";
       if (corrections.length) {
-        learningBlock += "\n## Corrections (réponses à reformuler ainsi à l'avenir)\n";
+        learningBlock += "\n## Remarques de style et de contenu à appliquer\n";
         for (const c of corrections.slice(0, 12)) {
-          const ans = c.corrected_answer.length > 600 ? c.corrected_answer.slice(0, 600) + "…" : c.corrected_answer;
-          learningBlock += `\n- Mauvaise réponse passée : "${(c.ai_chat_messages?.content ?? "").slice(0, 200)}"\n  Bonne réponse à donner : ${ans}${c.comment ? `\n  Note admin : ${c.comment}` : ""}\n`;
+          const prev = (c.ai_chat_messages?.content ?? "").slice(0, 400);
+          const remark = (c.corrected_answer || c.comment || "").slice(0, 800);
+          learningBlock += `\n- Tu avais répondu : "${prev}"\n  Remarque de l'admin : ${remark}\n  → Ajuste tes prochaines réponses en conséquence.\n`;
         }
       }
       if (negatives.length) {
