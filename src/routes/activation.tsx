@@ -210,6 +210,18 @@ function ActivationPage() {
     }
 
     await new Promise((r) => setTimeout(r, 600));
+
+    // Connexion immédiate (pas de confirmation email tant que Resend n'est pas configuré)
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: invitation.email,
+      password,
+    });
+    if (signInError) {
+      setSubmitting(false);
+      setDone(true);
+      return toast.error(signInError.message);
+    }
+
     const userId = signUpData.user?.id;
     if (userId) {
       let avatarUrl: string | null = null;
@@ -224,37 +236,32 @@ function ActivationPage() {
           avatarUrl = pub.publicUrl;
         }
       }
-      await supabase
-        .from("profiles")
-        .update({
-          phone,
-          birth_date: birthDate,
-          nationality,
-          city,
-          address,
-          niss,
-          iban,
-          emergency_contact_name: emName,
-          emergency_contact_phone: emPhone,
-          emergency_contact_relation: emRel,
-          student_card_valid: studentValid,
-          status: "active",
-          ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
-        })
-        .eq("id", userId);
-    }
 
-    // Connexion immédiate (pas de confirmation email tant que Resend n'est pas configuré)
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: invitation.email,
-      password,
-    });
-    setSubmitting(false);
-    if (signInError) {
-      // Fallback : on affiche l'écran de fin, l'utilisateur peut se connecter manuellement
-      setDone(true);
-      return toast.error(signInError.message);
+      try {
+        const { completeActivationProfile } = await import("@/lib/activation.functions");
+        await completeActivationProfile({
+          data: {
+            token: normalizedToken,
+            phone,
+            birth_date: birthDate,
+            nationality,
+            city,
+            address,
+            niss,
+            iban,
+            emergency_contact_name: emName,
+            emergency_contact_phone: emPhone,
+            emergency_contact_relation: emRel,
+            student_card_valid: studentValid,
+            avatar_url: avatarUrl,
+          },
+        });
+      } catch (e: any) {
+        console.error("completeActivationProfile failed:", e);
+        toast.error("Profil partiellement enregistré, complétez-le depuis votre espace.");
+      }
     }
+    setSubmitting(false);
 
     // Email de bienvenue à l'employé (fire-and-forget, ne bloque pas la redirection)
     try {
