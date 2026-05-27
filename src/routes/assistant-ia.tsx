@@ -452,9 +452,6 @@ function EditSheet({ initial, onClose, onSave }:
             </Field>
           )}
 
-          <Field label="Tags" hint="Séparés par virgules">
-            <Input value={tagsStr} onChange={setTagsStr} />
-          </Field>
 
           <label className="inline-flex items-center gap-2" style={{ fontSize: 13 }}>
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
