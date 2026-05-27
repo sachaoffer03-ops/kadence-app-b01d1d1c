@@ -147,7 +147,25 @@ export function AIChatPanel() {
                 wordBreak: "break-word",
                 opacity: m.loading ? 0.7 : 1,
               }}>
-                {m.loading ? <TypingDots /> : m.content}
+                {m.loading ? <TypingDots /> : (
+                  mine ? m.content : (
+                    <div className="kadence-md">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p style={{ margin: "0 0 8px" }}>{children}</p>,
+                          ul: ({ children }) => <ul style={{ margin: "4px 0 8px", paddingLeft: 18 }}>{children}</ul>,
+                          ol: ({ children }) => <ol style={{ margin: "4px 0 8px", paddingLeft: 18 }}>{children}</ol>,
+                          li: ({ children }) => <li style={{ margin: "2px 0" }}>{children}</li>,
+                          strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                          a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" style={{ color: "var(--coral)", textDecoration: "underline" }}>{children}</a>,
+                          code: ({ children }) => <code style={{ backgroundColor: "rgba(0,0,0,0.05)", padding: "1px 4px", borderRadius: 4, fontSize: 12 }}>{children}</code>,
+                        }}
+                      >
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           );
