@@ -109,6 +109,7 @@ export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
   // Déclenché à chaque clôture pour rappeler à l'équipe d'attribuer une note manager.
   // On évite de notifier si l'employé s'auto-note (cas rare) — on cible seulement les admins/managers.
   try {
+    if (!shift.user_id) throw new Error("no user");
     const { data: employee } = await supabaseAdmin
       .from("profiles")
       .select("first_name,last_name")
