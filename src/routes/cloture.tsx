@@ -253,9 +253,9 @@ function ClotureePage() {
         value={tab}
         onValueChange={(v) => navigate({ search: (prev: any) => ({ ...prev, tab: v as "config" | "checklists" | "notation" }) })}
         className="w-full"
+      >
         <TabsList className="mb-5 max-w-full overflow-x-auto">
 
-        <TabsList className="mb-5">
           <TabsTrigger value="config" className="gap-2">
             <SettingsIcon size={14} strokeWidth={1.8} />
             Configuration
