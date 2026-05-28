@@ -10,19 +10,23 @@ import { fallbackLinkByCategory } from "@/lib/notif-links";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/rapports": "Rapports",
   "/planning": "Planning",
   "/staff": "Staff",
   "/trous": "Trous à combler",
+  "/notifications": "Notifications",
   "/demandes": "Demandes modif",
+  "/signalements": "Signalements",
   "/pointage": "Pointage",
+  "/cloture": "Clôture",
   "/checklists": "Checklists",
   "/feedbacks": "Feedbacks",
   "/formation": "Formation",
   "/dimona": "Dimona",
   "/contingents": "Quotas étudiants",
   "/studios": "Studios & postes",
+  "/assistant-ia": "Assistant IA",
   "/reglages": "Réglages",
-  
 };
 
 interface NotifRow {
