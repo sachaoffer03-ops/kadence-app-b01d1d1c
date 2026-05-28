@@ -137,7 +137,8 @@ function SignalementsPage() {
                     textDecoration: dismissing[s.id] ? "line-through" : "none",
                     color: dismissing[s.id] ? "var(--muted-foreground)" : undefined,
                     transition: "color 300ms ease",
-                  }}>
+                  <div className="flex items-center gap-x-2 gap-y-1 mb-1 flex-wrap" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+
                   <div className="flex items-center gap-2 mb-1" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                     <div className="flex items-center justify-center rounded-full" style={{ width: 18, height: 18, fontSize: 9, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--foreground)" }}>{initials}</div>
                     <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{emp ? `${emp.first_name} ${emp.last_name}` : "Inconnu"}</span>
