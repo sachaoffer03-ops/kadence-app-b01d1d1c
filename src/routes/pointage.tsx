@@ -233,9 +233,9 @@ function TodayTab() {
           ]}
         />
 
-        <div className="ml-auto">
+        <div className="md:ml-auto w-full md:w-auto">
           <Select value={studioFilter} onValueChange={setStudioFilter}>
-            <SelectTrigger className="w-[180px] h-8"><SelectValue placeholder="Studio" /></SelectTrigger>
+            <SelectTrigger className="w-full md:w-[180px] h-8"><SelectValue placeholder="Studio" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les studios</SelectItem>
               {studios.map((s) => <SelectItem key={s.id} value={s.id}>{s.short_name || s.name}</SelectItem>)}

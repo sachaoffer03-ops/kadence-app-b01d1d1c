@@ -626,9 +626,9 @@ function InformationsTab({
 
   return (
     <>
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div
-        className="col-span-2 rounded-xl border p-5"
+        className="lg:col-span-2 rounded-xl border p-5"
         style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
       >
         <div className="flex items-start justify-between mb-5">
@@ -1537,7 +1537,7 @@ function ExceptionForm({
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <FormField label="Date">
           <input
             value={draft.dateLabel}
@@ -1606,7 +1606,7 @@ function ExceptionForm({
         >
           Impact staff (par rôle)
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {allRoles.map((r) => (
             <div
               key={r}

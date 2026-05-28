@@ -3,7 +3,7 @@ import { Clock } from "lucide-react";
 
 function StubPage({ title, description }: { title: string; description: string }) {
   return (
-    <div className="p-6" style={{ maxWidth: 1200 }}>
+    <div className="p-4 md:p-6" style={{ maxWidth: 1200 }}>
       <div
         className="rounded-xl border p-10 text-center flex flex-col items-center"
         style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}

@@ -423,7 +423,7 @@ function ResultView({ r, navigate, onReset }: { r: GenerateResult; navigate: any
       </Card>
 
       {/* Mini stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <MiniStat label="Employés utilisés" value={employeesUsed > 0 ? String(employeesUsed) : "—"} />
         <MiniStat label="Heures réparties" value={hoursTotal > 0 ? `${Math.round(hoursTotal)}h` : "—"} />
         <MiniStat label="Trous restants" value={String(r.holes.length)} />

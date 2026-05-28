@@ -107,7 +107,7 @@ function AuditPage() {
       {/* Executive summary */}
       <Card>
         <Title>Résumé exécutif</Title>
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <Stat label="🟢 Ce qui marche" n={ok.length} color="#16a34a" />
           <Stat label="🟡 À améliorer" n={warn.length} color="#a16207" />
           <Stat label="🔴 Manquant" n={miss.length} color="#b91c1c" />

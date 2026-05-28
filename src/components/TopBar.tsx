@@ -10,19 +10,23 @@ import { fallbackLinkByCategory } from "@/lib/notif-links";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/rapports": "Rapports",
   "/planning": "Planning",
   "/staff": "Staff",
   "/trous": "Trous à combler",
+  "/notifications": "Notifications",
   "/demandes": "Demandes modif",
+  "/signalements": "Signalements",
   "/pointage": "Pointage",
+  "/cloture": "Clôture",
   "/checklists": "Checklists",
   "/feedbacks": "Feedbacks",
   "/formation": "Formation",
   "/dimona": "Dimona",
   "/contingents": "Quotas étudiants",
   "/studios": "Studios & postes",
+  "/assistant-ia": "Assistant IA",
   "/reglages": "Réglages",
-  
 };
 
 interface NotifRow {
@@ -134,7 +138,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
     setSearchValue("");
   };
 
-  const pageTitle = pageTitles[currentPath] || "Dashboard";
+  const pageTitle = pageTitles[currentPath] || Object.entries(pageTitles).find(([p]) => currentPath.startsWith(p + "/"))?.[1] || "Kadence";
 
   return (
     <>
@@ -181,7 +185,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
             )}
           </button>
           {notifOpen && (
-            <div className="absolute right-0 mt-2 rounded-xl border shadow-xl overflow-hidden z-50" style={{ width: 380, backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+            <div className="fixed md:absolute left-2 right-2 md:left-auto md:right-0 mt-2 rounded-xl border shadow-xl overflow-hidden z-50 md:w-[380px]" style={{ top: "52px", backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
               <div className="px-3 pt-3 pb-2 border-b" style={{ borderColor: "var(--border)" }}>
                 <div className="flex items-center justify-between mb-2">
                   <span style={{ fontSize: 13, fontWeight: 500 }}>Notifications</span>

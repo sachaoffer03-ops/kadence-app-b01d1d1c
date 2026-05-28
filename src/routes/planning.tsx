@@ -695,7 +695,10 @@ function PlanningCalendarPage() {
   const [published, setPublished] = useState(false);
   const search = Route.useSearch();
   const [showAdd, setShowAdd] = useState(!!search.add);
-  const [viewMode, setViewMode] = useState<ViewMode>("semaine");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) return "jour";
+    return "semaine";
+  });
   const [dayIdxJour, setDayIdxJour] = useState<number>(() => {
     const t = new Date();
     const idx = weekDays.findIndex((d) => d.toDateString() === t.toDateString());
