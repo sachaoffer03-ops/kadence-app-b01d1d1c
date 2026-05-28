@@ -138,7 +138,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
     setSearchValue("");
   };
 
-  const pageTitle = pageTitles[currentPath] || "Dashboard";
+  const pageTitle = pageTitles[currentPath] || Object.entries(pageTitles).find(([p]) => currentPath.startsWith(p + "/"))?.[1] || "Kadence";
 
   return (
     <>
