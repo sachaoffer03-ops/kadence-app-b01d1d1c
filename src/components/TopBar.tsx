@@ -181,7 +181,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
             )}
           </button>
           {notifOpen && (
-            <div className="absolute right-0 mt-2 rounded-xl border shadow-xl overflow-hidden z-50" style={{ width: 380, backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+            <div className="fixed md:absolute left-2 right-2 md:left-auto md:right-0 mt-2 rounded-xl border shadow-xl overflow-hidden z-50 md:w-[380px]" style={{ top: "52px", backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
               <div className="px-3 pt-3 pb-2 border-b" style={{ borderColor: "var(--border)" }}>
                 <div className="flex items-center justify-between mb-2">
                   <span style={{ fontSize: 13, fontWeight: 500 }}>Notifications</span>
