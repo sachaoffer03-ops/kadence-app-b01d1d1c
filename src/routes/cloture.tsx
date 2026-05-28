@@ -211,7 +211,8 @@ function ClotureePage() {
             Configure le parcours de pointage, les checklists par moment de service, et la notation.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+
           {dirtyCount > 0 ? (
             <span
               className="rounded-full px-2.5 py-1 flex items-center gap-1.5"
