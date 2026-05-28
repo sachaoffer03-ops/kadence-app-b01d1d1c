@@ -147,22 +147,58 @@ function StaffAppPage() {
 
       <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} userId={user.id} studios={studios} onNavigate={(t) => setTab(t)} />
 
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-around border-t"
-        style={{ width: "100%", maxWidth: 430, paddingBottom: "env(safe-area-inset-bottom)", backgroundColor: "#FFFFFF", borderColor: "rgba(0,0,0,0.08)" }}>
-        {([
-          { id: "accueil" as Tab, label: "Accueil", icon: Home },
-          { id: "planning" as Tab, label: "Planning", icon: Calendar },
-          { id: "pointage" as Tab, label: "Pointage", icon: Clock },
-          { id: "formation" as Tab, label: "Formation", icon: GraduationCap },
-          { id: "chat" as Tab, label: "Assistant IA", icon: Bot },
-          { id: "profil" as Tab, label: "Profil", icon: User },
-        ]).map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-3 px-1" style={{ minHeight: 56, flex: 1 }}>
-            <t.icon size={20} strokeWidth={1.6} style={{ color: tab === t.id ? "var(--coral)" : "var(--muted-foreground)" }} />
-            <span style={{ fontSize: 10, fontWeight: tab === t.id ? 500 : 400, color: tab === t.id ? "var(--coral-dark)" : "var(--muted-foreground)" }}>{t.label}</span>
-          </button>
-        ))}
+      <div
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40"
+        style={{ width: "100%", maxWidth: 430, paddingBottom: "env(safe-area-inset-bottom)", pointerEvents: "none" }}
+      >
+        <div
+          className="mx-3 mb-3 flex items-center justify-between"
+          style={{
+            backgroundColor: "rgba(255,255,255,0.85)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderRadius: 999,
+            padding: "6px 8px",
+            border: "0.5px solid rgba(0,0,0,0.06)",
+            boxShadow: "0 8px 28px rgba(0,0,0,0.10)",
+            pointerEvents: "auto",
+          }}
+        >
+          {([
+            { id: "accueil" as Tab, label: "Accueil", icon: Home },
+            { id: "planning" as Tab, label: "Planning", icon: Calendar },
+            { id: "pointage" as Tab, label: "Pointage", icon: Clock },
+            { id: "formation" as Tab, label: "Formation", icon: GraduationCap },
+            { id: "chat" as Tab, label: "Assistant", icon: Bot },
+            { id: "profil" as Tab, label: "Profil", icon: User },
+          ]).map(t => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className="flex flex-col items-center justify-center gap-1 transition-colors"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: "8px 0",
+                  borderRadius: 16,
+                  backgroundColor: active ? "rgba(0,0,0,0.05)" : "transparent",
+                }}
+              >
+                <t.icon size={20} strokeWidth={active ? 2.1 : 1.7} style={{ color: active ? "var(--foreground)" : "var(--muted-foreground)" }} />
+                <span
+                  className="truncate"
+                  style={{ fontSize: 9.5, fontWeight: active ? 600 : 400, color: active ? "var(--foreground)" : "var(--muted-foreground)", maxWidth: "100%" }}
+                >
+                  {t.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
+
     </div>
   );
 }
