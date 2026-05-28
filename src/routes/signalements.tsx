@@ -90,7 +90,8 @@ function SignalementsPage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-4 md:p-6 max-w-4xl">
+
       <div className="mb-5">
         <div style={{ fontSize: 20, fontWeight: 500 }}>Signalements</div>
         <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>
