@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Send, Bot, X, Sparkles, ThumbsUp, ThumbsDown, Pencil, Trash2 } from "lucide-react";
+import { Send, Bot, X, Sparkles, ThumbsUp, ThumbsDown, Pencil, Trash2, UserCircle2, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { askKadenceAI, getChatHistory } from "@/lib/ai-chat.functions";
-import { rateMessage, deleteMessageFeedback } from "@/lib/ai-admin.functions";
+import { rateMessage, deleteMessageFeedback, listEmployeesForTest } from "@/lib/ai-admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
@@ -20,6 +20,8 @@ type Msg = {
   feedback?: { rating: "up" | "down" | "correction"; comment?: string | null; corrected_answer?: string | null } | null;
 };
 
+type Employee = { id: string; first_name: string | null; last_name: string | null; avatar_url: string | null };
+
 const SUGGESTIONS = [
   "Quand est mon prochain shift ?",
   "Comment fonctionne le scoring ?",
@@ -34,44 +36,53 @@ export function TestBotSheet({ open, onClose }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState<{ msgId: string; mode: "down" | "correction" } | null>(null);
   const [editText, setEditText] = useState("");
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [impersonateId, setImpersonateId] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const ask = useServerFn(askKadenceAI);
   const history = useServerFn(getChatHistory);
   const rate = useServerFn(rateMessage);
   const delFb = useServerFn(deleteMessageFeedback);
+  const listEmp = useServerFn(listEmployeesForTest);
 
-  // Charge l'historique (= la conversation admin = "bac à sable")
+  const loadMessages = async () => {
+    const r = await history({ data: { is_test: true } });
+    const msgs = (r.messages ?? []) as any[];
+    const ids = msgs.map((m) => m.id);
+    let fbMap = new Map<string, any>();
+    if (ids.length > 0) {
+      const { data: fbs } = await supabase
+        .from("ai_message_feedback")
+        .select("message_id, rating, comment, corrected_answer")
+        .in("message_id", ids);
+      fbMap = new Map((fbs ?? []).map((f: any) => [f.message_id, f]));
+    }
+    setMessages(msgs.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      feedback: fbMap.get(m.id) ?? null,
+    })));
+  };
+
   useEffect(() => {
     if (!open) return;
     setLoaded(false);
     (async () => {
       try {
-        const r = await history();
-        const msgs = (r.messages ?? []) as any[];
-        // Récupère les feedbacks associés
-        const ids = msgs.map((m) => m.id);
-        let fbMap = new Map<string, any>();
-        if (ids.length > 0) {
-          const { data: fbs } = await supabase
-            .from("ai_message_feedback")
-            .select("message_id, rating, comment, corrected_answer")
-            .in("message_id", ids);
-          fbMap = new Map((fbs ?? []).map((f: any) => [f.message_id, f]));
-        }
-        setMessages(msgs.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          feedback: fbMap.get(m.id) ?? null,
-        })));
+        await loadMessages();
+        const e = await listEmp();
+        setEmployees(e.employees ?? []);
       } catch (e) {
         console.error(e);
       } finally {
         setLoaded(true);
       }
     })();
-  }, [open, history]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -90,11 +101,8 @@ export function TestBotSheet({ open, onClose }: Props) {
       { id: tmpAsst, role: "assistant", content: "…", loading: true },
     ]);
     try {
-      await ask({ data: { question: q } });
-      // Recharge pour récupérer les vrais IDs (nécessaires pour noter)
-      const r = await history();
-      const msgs = (r.messages ?? []) as any[];
-      setMessages(msgs.map((m) => ({ id: m.id, role: m.role, content: m.content, feedback: null })));
+      await ask({ data: { question: q, is_test: true, impersonate_user_id: impersonateId } });
+      await loadMessages();
     } catch (e: any) {
       setMessages((prev) => prev.filter((m) => m.id !== tmpAsst && m.id !== tmpUser));
       toast.error(e?.message || "Erreur de l'assistant");
@@ -124,8 +132,12 @@ export function TestBotSheet({ open, onClose }: Props) {
 
   const removeFeedback = async (msg: Msg) => {
     if (msg.id.startsWith("tmp-")) return;
-    await delFb({ data: { message_id: msg.id } });
-    setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, feedback: null } : m));
+    try {
+      await delFb({ data: { message_id: msg.id } });
+      setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, feedback: null } : m));
+    } catch (e: any) {
+      toast.error(e?.message || "Impossible de retirer le feedback");
+    }
   };
 
   const submitEdit = async () => {
@@ -134,12 +146,21 @@ export function TestBotSheet({ open, onClose }: Props) {
     if (!text) { toast.error("Ajoute une remarque"); return; }
     const msg = messages.find((m) => m.id === editing.msgId);
     if (!msg) return;
-    await doRate(msg, editing.mode, editing.mode === "correction" ? { corrected_answer: text } : { comment: text });
-    setEditing(null);
-    setEditText("");
+    try {
+      await doRate(msg, editing.mode, editing.mode === "correction" ? { corrected_answer: text } : { comment: text });
+      setEditing(null);
+      setEditText("");
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur d'enregistrement");
+    }
   };
 
   if (!open) return null;
+
+  const impersonated = employees.find((e) => e.id === impersonateId);
+  const impersonateLabel = impersonated
+    ? `${impersonated.first_name ?? ""} ${impersonated.last_name ?? ""}`.trim() || "Employé"
+    : "Toi (admin)";
 
   return (
     <div
@@ -166,13 +187,57 @@ export function TestBotSheet({ open, onClose }: Props) {
             <div>
               <div style={{ fontSize: 14, fontWeight: 500 }}>Tester le bot</div>
               <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-                Discute avec Kadence Assistant et corrige ses réponses — chaque correction alimente l'apprentissage du bot pour tous les employés.
+                Bac à sable isolé — n'apparaît pas dans les conversations employés.
               </div>
             </div>
           </div>
           <button type="button" onClick={onClose} className="p-2 rounded-full transition" style={{ backgroundColor: "transparent" }}>
             <X size={18} />
           </button>
+        </div>
+
+        {/* Impersonation bar */}
+        <div className="px-4 py-2 flex items-center gap-2 relative" style={{ borderBottom: "0.5px solid var(--border)", backgroundColor: "#fff" }}>
+          <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Tester en tant que :</span>
+          <button
+            type="button"
+            onClick={() => setShowPicker((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 transition"
+            style={{ fontSize: 11, backgroundColor: impersonateId ? "rgba(240,153,123,0.18)" : "#FAF8F4", border: "0.5px solid var(--border)", color: impersonateId ? "var(--coral)" : "var(--foreground)" }}
+          >
+            <UserCircle2 size={12} />
+            {impersonateLabel}
+            <ChevronDown size={12} />
+          </button>
+          {impersonateId && (
+            <button type="button" onClick={() => setImpersonateId(null)} style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
+              Réinitialiser
+            </button>
+          )}
+          {showPicker && (
+            <div className="absolute left-4 top-full mt-1 rounded-xl overflow-hidden shadow-lg z-10"
+              style={{ backgroundColor: "#fff", border: "0.5px solid var(--border)", width: 280, maxHeight: 300, overflowY: "auto" }}>
+              <button
+                type="button"
+                onClick={() => { setImpersonateId(null); setShowPicker(false); }}
+                className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                style={{ fontSize: 12 }}
+              >
+                Toi (admin) — pas d'impersonation
+              </button>
+              {employees.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => { setImpersonateId(e.id); setShowPicker(false); }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                  style={{ fontSize: 12, borderTop: "0.5px solid var(--border)" }}
+                >
+                  {(e.first_name ?? "") + " " + (e.last_name ?? "")}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Messages */}
