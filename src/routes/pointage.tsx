@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Clock, Check, Calendar, Search, X, Users, AlertTriangle, Ban,
+  Clock, Check, Calendar as CalendarIcon, Search, X, Users, AlertTriangle, Ban,
   MoreVertical, LogIn, LogOut, Edit3, FileText, History, Undo2, Loader2,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+
 
 export const Route = createFileRoute("/pointage")({
   component: PointagePage,
@@ -106,6 +110,27 @@ function StubTab({ label }: { label: string }) {
 // TODAY TAB
 // ============================================================
 
+function todayIsoLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function isoFromDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function dateFromIso(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+function shiftIso(iso: string, deltaDays: number): string {
+  const d = dateFromIso(iso);
+  d.setDate(d.getDate() + deltaDays);
+  return isoFromDate(d);
+}
+function formatLongDate(iso: string): string {
+  const d = dateFromIso(iso);
+  return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+}
+
 function TodayTab() {
   const getToday = useServerFn(getPointageTodayFn);
   const checkAlerts = useServerFn(checkPointageAlertsFn);
@@ -115,40 +140,50 @@ function TodayTab() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [studioFilter, setStudioFilter] = useState<string>("all");
+  const [selectedDate, setSelectedDate] = useState<string>(() => todayIsoLocal());
+  const [calOpen, setCalOpen] = useState(false);
+
+  const isToday = selectedDate === todayIsoLocal();
 
   const reload = useCallback(async () => {
     try {
-      const res = await getToday({ data: studioFilter === "all" ? {} : { studioIds: [studioFilter] } });
+      const payload: { studioIds?: string[]; date?: string } = {};
+      if (studioFilter !== "all") payload.studioIds = [studioFilter];
+      if (!isToday) payload.date = selectedDate;
+      const res = await getToday({ data: payload });
       setData(res);
     } catch (e: any) {
       toast.error(e?.message || "Impossible de charger le pointage");
     } finally {
       setLoading(false);
     }
-  }, [getToday, studioFilter]);
+  }, [getToday, studioFilter, selectedDate, isToday]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { setLoading(true); reload(); }, [reload]);
 
-  // Realtime
+  // Realtime (only useful for today)
   useEffect(() => {
+    if (!isToday) return;
     const ch = supabase
       .channel("pointage-rt-v2")
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, () => reload())
       .on("postgres_changes", { event: "*", schema: "public", table: "shift_clock_audit" }, () => reload())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [reload]);
+  }, [reload, isToday]);
 
-  // 30s polling backup
+  // 30s polling backup (today only)
   useEffect(() => {
+    if (!isToday) return;
     const t = window.setInterval(() => reload(), 30_000);
     return () => window.clearInterval(t);
-  }, [reload]);
+  }, [reload, isToday]);
 
   // Alerts check on mount (idempotent)
   useEffect(() => {
     checkAlerts().catch(() => { /* silent */ });
   }, [checkAlerts]);
+
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -207,6 +242,59 @@ function TodayTab() {
         />
       </div>
 
+      {/* Date picker (planning-style) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center rounded-md" style={{ border: "0.5px solid var(--border)" }}>
+          <button onClick={() => setSelectedDate((d) => shiftIso(d, -1))} className="p-1.5" style={{ color: "var(--muted-foreground)" }} aria-label="Jour précédent">
+            <ChevronLeft size={14} />
+          </button>
+          <Popover open={calOpen} onOpenChange={setCalOpen}>
+            <PopoverTrigger asChild>
+              <button className="px-3 py-1.5 hover:bg-[var(--muted)] transition-colors capitalize" style={{ fontSize: 12, fontWeight: 500, borderLeft: "0.5px solid var(--border)", borderRight: "0.5px solid var(--border)", minWidth: 200 }}>
+                {isToday ? "Aujourd'hui · " : ""}{formatLongDate(selectedDate)}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="center" className="w-auto p-2 pointer-events-auto">
+              <div className="flex items-center justify-between px-2 pb-2 gap-2">
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>Choisir une date</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setSelectedDate(shiftIso(todayIsoLocal(), -1)); setCalOpen(false); }}
+                    className="rounded-md px-2 py-1"
+                    style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--foreground)" }}
+                  >
+                    Hier
+                  </button>
+                  <button
+                    onClick={() => { setSelectedDate(todayIsoLocal()); setCalOpen(false); }}
+                    className="rounded-md px-2 py-1"
+                    style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}
+                  >
+                    Aujourd'hui
+                  </button>
+                </div>
+              </div>
+              <Calendar
+                mode="single"
+                weekStartsOn={1}
+                selected={dateFromIso(selectedDate)}
+                defaultMonth={dateFromIso(selectedDate)}
+                onSelect={(d) => { if (d) { setSelectedDate(isoFromDate(d)); setCalOpen(false); } }}
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          <button onClick={() => setSelectedDate((d) => shiftIso(d, 1))} className="p-1.5" style={{ color: "var(--muted-foreground)" }} aria-label="Jour suivant">
+            <ChevronRight size={14} />
+          </button>
+        </div>
+        {!isToday && (
+          <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+            Vue historique — temps réel désactivé
+          </span>
+        )}
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 rounded-md px-2.5 py-1.5" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
@@ -251,7 +339,7 @@ function TodayTab() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border p-10 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: 13, color: "var(--muted-foreground)" }}>
-          Aucun shift correspondant aujourd'hui.
+          {isToday ? "Aucun shift correspondant aujourd'hui." : "Aucun shift pour cette date."}
         </div>
       ) : (
         <div className="flex flex-col gap-2">

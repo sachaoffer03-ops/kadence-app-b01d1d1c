@@ -41,13 +41,16 @@ export type PointageTodayResult = {
 
 export const getPointageTodayFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { studioIds?: string[] } | undefined) =>
-    z.object({ studioIds: z.array(z.string().uuid()).optional() }).parse(input ?? {})
+  .inputValidator((input: { studioIds?: string[]; date?: string } | undefined) =>
+    z.object({
+      studioIds: z.array(z.string().uuid()).optional(),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    }).parse(input ?? {})
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
     await assertAdminOrManager(supabase, userId);
-    const today = todayIso();
+    const today = data.date ?? todayIso();
 
     let q = supabase
       .from("shifts")
@@ -55,6 +58,7 @@ export const getPointageTodayFn = createServerFn({ method: "POST" })
       .eq("shift_date", today)
       .order("start_time", { ascending: true });
     if (data.studioIds && data.studioIds.length > 0) q = q.in("studio_id", data.studioIds);
+
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
