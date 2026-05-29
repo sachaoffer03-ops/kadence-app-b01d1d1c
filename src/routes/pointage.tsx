@@ -459,6 +459,7 @@ function ActionDialog({ kind, shift, onClose, onDone }: { kind: Exclude<DialogKi
         {kind === "clock_in" && <ClockDialog shift={shift} mode="in" onDone={onDone} />}
         {kind === "clock_out" && <ClockDialog shift={shift} mode="out" onDone={onDone} />}
         {kind === "edit_late" && <EditLateDialog shift={shift} onDone={onDone} />}
+        {kind === "edit_times" && <EditTimesDialog shift={shift} onDone={onDone} />}
         {kind === "no_show" && <NoShowDialog shift={shift} onDone={onDone} />}
         {kind === "note" && <NoteDialog shift={shift} onDone={onDone} />}
         {kind === "history" && <HistoryDialog shift={shift} />}
