@@ -1,88 +1,43 @@
 ## Objectif
 
-Sur la page **Pointage** (admin/manager), permettre d'éditer les horaires de **pointage entrée** et **pointage sortie** d'un shift, même après la fin du shift (statut « Terminé »), avec audit complet et raison obligatoire.
+Permettre à l'employé d'attacher **jusqu'à 3 photos** à un signalement (en plus du texte), et les afficher dans la page admin `/signalements`.
 
-## Pourquoi
+Il faut que l'admin reçoivent ses photos aussi évidemment dans un endroit dédié dans signalements 
 
-Aujourd'hui l'admin peut :
-- pointer manuellement un employé à l'arrivée / au départ (si pas encore fait)
-- éditer le « retard » en minutes
-- ajouter une note admin
+## DB — migration
 
-…mais ne peut **pas corriger** un horaire de pointage déjà enregistré (ex : employé arrivé à 9h05 mais a oublié de scanner, ou pointage parti en double, ou clôture trop tardive).
+Ajouter une colonne `photos text[]` (URLs publiques) sur `public.signalements`, nullable, défaut `'{}'`. Pas de nouvelle table.
 
-## UI — page /pointage
+Réutiliser le bucket public existant `**chat-attachments**` (déjà public, déjà utilisé pour des médias employés) sous le préfixe `signalements/{userId}/{timestamp}-{rand}.{ext}`. Pas de nouveau bucket nécessaire.
 
-Sur chaque ligne shift, dans le menu d'actions admin existant, ajouter :
+## UI employé — `SignalementSheet` (`src/components/staff-app/StaffActionsSheets.tsx`)
 
-- **« Modifier les pointages »** (visible si `clocked_in_at` OU `clocked_out_at` est rempli)
+Sous le champ Message, ajouter un bloc "Photos (optionnel)" :
 
-Ouvre une `Dialog` « Modifier les pointages » avec :
+- Bouton "+ Ajouter une photo" → `<input type="file" accept="image/*" capture="environment" multiple>` (déclenche caméra sur mobile)
+- Aperçu en grille 3 colonnes des miniatures déjà choisies (max 3), avec croix pour retirer
+- Validation client : max 3 fichiers, max 5 MB / fichier, type image/* uniquement
+- À la soumission :
+  1. Upload séquentiel vers `chat-attachments` (path `signalements/{userId}/...`)
+  2. Récupère `publicUrl` de chaque fichier
+  3. Insert `signalements` avec `photos: [...urls]`
+- Pendant l'upload : libellé bouton "Envoi… (1/3)" + désactivation
+- Erreur upload : toast, on n'insère pas le signalement
 
-```text
-Employé · Studio · Date du shift  (lecture seule)
-Prévu : 09h00 – 17h00              (lecture seule, contexte)
+## UI admin — `/signalements` (`src/routes/signalements.tsx`)
 
-Heure d'arrivée   [ 09:05 ]        ← <input type="time">  (vide = effacer)
-Heure de sortie   [ 17:12 ]        ← <input type="time">  (vide = effacer, désactivé si pas d'arrivée)
+Sous le message du signalement, si `photos?.length`, afficher une rangée de miniatures (48×48, `rounded-md`, `object-cover`). Clic sur une miniature → ouvre l'URL plein écran dans un nouvel onglet (simple `<a target="_blank">`, pas de lightbox custom).
 
-Recalculer le retard automatiquement   [✓]   (par défaut coché)
-
-Raison de la modification *
-[ textarea, 5-500 caractères, obligatoire ]
-
-[ Annuler ]                        [ Enregistrer ]
-```
-
-Règles UX :
-- Les deux inputs sont préremplis avec les valeurs actuelles (HH:mm local Bruxelles).
-- La **date** est figée sur `shift_date` — pas d'édition cross-day (cas marginal, à demander plus tard si besoin).
-- Validation côté UI : `out ≥ in` ; si l'utilisateur vide l'arrivée, on vide aussi la sortie automatiquement.
-- Toast succès + invalidation de la query `pointage-today` ; ligne mise à jour, badge statut recalculé.
-
-## Backend — nouveau server function
-
-Ajouter dans `src/lib/pointage.functions.ts` :
-
-```text
-editClockTimesFn (POST, requireSupabaseAuth)
-  input (zod):
-    shiftId: uuid
-    clockedInTime: string | null    // "HH:mm" ou null pour effacer
-    clockedOutTime: string | null   // "HH:mm" ou null pour effacer
-    recomputeLate: boolean
-    reason: string (min 5, max 500)
-  handler:
-    - assertAdminOrManager
-    - charge le shift (shift_date, start_time, end_time, clocked_in_at, clocked_out_at, minutes_late)
-    - construit les ISO complets en combinant shift_date + HH:mm (timezone wall-clock Bruxelles, cohérent avec le reste du moteur)
-    - règles :
-        * out non null ⇒ in non null
-        * out >= in
-        * si in null ⇒ out null + status repasse à "scheduled"
-        * si in non null + out non null ⇒ status = "completed"
-        * si in non null + out null ⇒ status = "scheduled" (en cours)
-    - si recomputeLate ET in non null : recalcule minutes_late = max(0, in - start_time)
-      sinon : ne touche pas à minutes_late
-    - UPDATE shifts (clocked_in_at, clocked_out_at, status, minutes_late)
-    - writeAudit avec action "edit_clock_times", before/after complets, note = reason
-    - retourne { ok: true, clockedInAt, clockedOutAt, minutesLate, status }
-```
-
-La RLS existante (admins/managers gèrent les shifts) suffit. Pas de migration DB nécessaire (toutes les colonnes existent déjà : `clocked_in_at`, `clocked_out_at`, `minutes_late`, `status`, `clock_admin_note`).
-
-## Audit
-
-Le helper `writeAudit` existant trace déjà l'action. L'historique affiché par `getShiftAuditHistoryFn` (déjà branché sur la modale d'audit) montrera automatiquement le nouvel évènement `edit_clock_times` — il suffit d'ajouter le libellé FR dans la table de mapping côté UI audit.
+Étendre le type `Row` local avec `photos: string[] | null`.
 
 ## Fichiers touchés
 
-- `src/lib/pointage.functions.ts` — ajout de `editClockTimesFn`
-- `src/routes/pointage.tsx` — nouveau bouton + composant `EditClockTimesDialog` + libellé audit
-- Aucune migration DB
+- migration SQL : ajout colonne `photos`
+- `src/components/staff-app/StaffActionsSheets.tsx` — `SignalementSheet`
+- `src/routes/signalements.tsx` — affichage miniatures
 
-## Hors périmètre (à confirmer plus tard si besoin)
+## Hors périmètre
 
-- Édition cross-day (pointage qui déborde sur le lendemain)
-- Édition en lot
-- Le futur système d'incompatibilités entre employés (sujet précédent) — sera traité après celui-ci.
+- Édition / suppression de photos après envoi
+- Compression côté client (on se repose sur la limite 5 MB)
+- Lightbox / galerie custom

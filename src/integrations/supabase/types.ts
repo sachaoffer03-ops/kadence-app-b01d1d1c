@@ -1619,6 +1619,7 @@ export type Database = {
           created_at: string
           id: string
           message: string
+          photos: string[]
           resolved: boolean
           resolved_at: string | null
           resolved_by: string | null
@@ -1630,6 +1631,7 @@ export type Database = {
           created_at?: string
           id?: string
           message: string
+          photos?: string[]
           resolved?: boolean
           resolved_at?: string | null
           resolved_by?: string | null
@@ -1641,6 +1643,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string
+          photos?: string[]
           resolved?: boolean
           resolved_at?: string | null
           resolved_by?: string | null
