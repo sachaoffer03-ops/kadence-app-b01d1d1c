@@ -5,8 +5,9 @@ import { toast } from "sonner";
 import {
   Bot, Plus, Search, Pencil, Trash2, Power, Sparkles, BookOpen, Tag, X,
   Loader2, CheckCircle2, Circle, MessageSquare, BarChart3, ThumbsUp, ThumbsDown,
-  Type, HelpCircle, Link2, FileUp, Table2, Send, User, Download, ExternalLink, Wand2, ChevronDown,
+  Type, HelpCircle, Link2, FileUp, Table2, Send, User, Download, ExternalLink, Wand2, ChevronDown, Sparkle,
 } from "lucide-react";
+import { TestBotSheet } from "@/components/ai-test/TestBotSheet";
 import ReactMarkdown from "react-markdown";
 import {
   listKnowledgeEntries, upsertKnowledgeEntry, toggleKnowledgeEntry, deleteKnowledgeEntry,
@@ -515,6 +516,7 @@ function ConversationsTab() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [testOpen, setTestOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -543,6 +545,17 @@ function ConversationsTab() {
   }, [convs, q]);
 
   return (
+    <>
+    <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+        Visualise les échanges des employés et note les réponses pour entraîner le bot.
+      </div>
+      <button type="button" onClick={() => setTestOpen(true)}
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg transition active:scale-[0.98]"
+        style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
+        <Sparkle size={13} /> Tester le bot
+      </button>
+    </div>
     <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4" style={{ minHeight: 600 }}>
       <div className="rounded-lg overflow-hidden flex flex-col"
         style={{ backgroundColor: "#fff", border: "0.5px solid var(--border)", maxHeight: "75vh" }}>
@@ -609,6 +622,8 @@ function ConversationsTab() {
             </div>}
       </div>
     </div>
+    <TestBotSheet open={testOpen} onClose={() => setTestOpen(false)} />
+    </>
   );
 }
 
