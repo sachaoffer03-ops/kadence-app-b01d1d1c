@@ -182,12 +182,36 @@ async function writeAudit(
   } as any);
 }
 
+// Compute the UTC offset (in minutes) of Europe/Brussels for a given local wall time.
+// Handles CET (+60) / CEST (+120) DST transitions automatically.
+function brusselsOffsetMinutes(dateIso: string, time: string): number {
+  // Build a "naive" UTC timestamp from the wall-clock parts, then ask Intl what
+  // Europe/Brussels would call that instant; the diff is the offset.
+  const [y, mo, d] = dateIso.split("-").map(Number);
+  const [h, mi] = time.split(":").map(Number);
+  const asUtc = Date.UTC(y, mo - 1, d, h, mi, 0);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Brussels",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date(asUtc));
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  const brusselsAsUtc = Date.UTC(
+    get("year"), get("month") - 1, get("day"),
+    get("hour") === 24 ? 0 : get("hour"), get("minute"), get("second")
+  );
+  return Math.round((brusselsAsUtc - asUtc) / 60000); // +60 or +120
+}
+
 function combineDateTime(dateIso: string, time: string): string {
-  // time HH:MM
-  const [h, m] = time.split(":").map(Number);
-  const d = new Date(`${dateIso}T00:00:00`);
-  d.setHours(h, m, 0, 0);
-  return d.toISOString();
+  // Interpret HH:MM as Europe/Brussels wall time, return UTC ISO.
+  const [y, mo, d] = dateIso.split("-").map(Number);
+  const [h, mi] = time.split(":").map(Number);
+  const offsetMin = brusselsOffsetMinutes(dateIso, time);
+  const utcMs = Date.UTC(y, mo - 1, d, h, mi, 0) - offsetMin * 60_000;
+  return new Date(utcMs).toISOString();
 }
 
 function diffMinutes(planned: Date, real: Date): number {
