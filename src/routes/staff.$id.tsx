@@ -386,6 +386,9 @@ function EmployeeDetailPage() {
                   const sname = s.studio_id ? studios[s.studio_id] : "—";
                   const shiftFbs = fbsByShift[s.id] || [];
                   const isRating = rateShiftId === s.id;
+                  const isEditingClock = editClockShiftId === s.id;
+                  const inHHMM = s.clocked_in_at ? new Date(s.clocked_in_at).toTimeString().slice(0, 5) : "";
+                  const outHHMM = s.clocked_out_at ? new Date(s.clocked_out_at).toTimeString().slice(0, 5) : "";
                   return (
                     <div key={s.id} className="rounded-lg px-3 py-2" style={{ backgroundColor: "var(--background)" }}>
                       <div className="flex items-center gap-3">
@@ -393,6 +396,11 @@ function EmployeeDetailPage() {
                         <div className="flex-1">
                           <div style={{ fontSize: 12, fontWeight: 500 }}>{new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</div>
                           <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)} · {s.business_role} · {sname?.replace?.("Skult ", "")}</div>
+                          {(s.clocked_in_at || s.clocked_out_at) && (
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+                              Pointé : {inHHMM || "—"} → {outHHMM || "—"}
+                            </div>
+                          )}
                         </div>
                         {shiftFbs.length > 0 && (
                           <RatingBadge value={shiftFbs[0].rating} />
@@ -402,6 +410,14 @@ function EmployeeDetailPage() {
                           backgroundColor: s.status === "completed" ? "var(--success-bg)" : s.status === "cancelled" ? "var(--danger-bg)" : "var(--muted)",
                           color: s.status === "completed" ? "var(--success-text)" : s.status === "cancelled" ? "var(--danger-text)" : "var(--muted-foreground)",
                         }}>{s.status}</span>
+                        {canEditClock && !isEditingClock && (
+                          <button onClick={() => setEditClockShiftId(s.id)}
+                            className="rounded-md px-2 py-1 inline-flex items-center gap-1"
+                            style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}
+                            title="Modifier les heures de pointage">
+                            <Pencil size={11} /> Pointage
+                          </button>
+                        )}
                         {canRate && !isRating && (
                           <button onClick={() => { setRateShiftId(s.id); setRateValue(7); setRateMsg(""); }}
                             className="rounded-md px-2 py-1 inline-flex items-center gap-1"
@@ -410,6 +426,23 @@ function EmployeeDetailPage() {
                           </button>
                         )}
                       </div>
+                      {isEditingClock && (
+                        <EditClockInline
+                          initialIn={inHHMM}
+                          initialOut={outHHMM}
+                          onCancel={() => setEditClockShiftId(null)}
+                          onSubmit={async (inT, outT, recompute, reason) => {
+                            try {
+                              await editClockTimes({ data: { shiftId: s.id, clockedInTime: inT || null, clockedOutTime: outT || null, recomputeLate: recompute, reason } });
+                              toast.success("Pointages mis à jour");
+                              setEditClockShiftId(null);
+                              await load();
+                            } catch (e: any) {
+                              toast.error(e?.message || "Échec");
+                            }
+                          }}
+                        />
+                      )}
                       {isRating && (
                         <div className="mt-2 pt-2 flex flex-col gap-2" style={{ borderTop: "0.5px solid var(--border)" }}>
                           <RatingInput value={rateValue} onChange={setRateValue} size="md" />
