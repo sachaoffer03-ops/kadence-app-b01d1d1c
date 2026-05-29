@@ -545,6 +545,17 @@ function ConversationsTab() {
   }, [convs, q]);
 
   return (
+    <>
+    <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+        Visualise les échanges des employés et note les réponses pour entraîner le bot.
+      </div>
+      <button type="button" onClick={() => setTestOpen(true)}
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg transition active:scale-[0.98]"
+        style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
+        <Sparkle size={13} /> Tester le bot
+      </button>
+    </div>
     <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4" style={{ minHeight: 600 }}>
       <div className="rounded-lg overflow-hidden flex flex-col"
         style={{ backgroundColor: "#fff", border: "0.5px solid var(--border)", maxHeight: "75vh" }}>
