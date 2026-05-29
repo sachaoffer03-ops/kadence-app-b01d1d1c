@@ -22,6 +22,7 @@ export const listChatConversations = createServerFn({ method: "POST" })
     const { data: msgs, error } = await supabaseAdmin
       .from("ai_chat_messages")
       .select("id, user_id, role, content, created_at")
+      .eq("is_test", false)
       .order("created_at", { ascending: false })
       .limit(2000);
     if (error) throw new Error(error.message);
