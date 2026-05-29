@@ -15,6 +15,14 @@ const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
       throw error;
     }
     console.error(error);
+    // N'afficher la page HTML d'erreur que pour les vraies navigations.
+    // Pour les appels server-fn / fetch, on relance pour préserver le format
+    // d'erreur attendu côté client (sinon le client reçoit du HTML et le
+    // composant peut remount, perdant l'état local — ex: l'onglet du chat).
+    const accept = request.headers.get("accept") || "";
+    if (!accept.includes("text/html")) {
+      throw error;
+    }
     return new Response(renderErrorPage(), {
       status: 500,
       headers: { "content-type": "text/html; charset=utf-8" },
