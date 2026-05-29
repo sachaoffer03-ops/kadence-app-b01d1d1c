@@ -67,7 +67,7 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
         setUploadProgress({ current: i + 1, total: photos.length });
         const f = photos[i].file;
         const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-        const path = `signalements/${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const path = `${userId}/signalements/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error: upErr } = await supabase.storage.from("chat-attachments").upload(path, f, {
           contentType: f.type, upsert: false,
         });
