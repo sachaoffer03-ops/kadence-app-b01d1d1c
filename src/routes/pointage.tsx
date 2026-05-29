@@ -410,6 +410,11 @@ function ShiftRow({ shift, onChanged }: { shift: PointageShift; onChanged: () =>
                 <Edit3 size={14} /> Corriger minutes de retard
               </DropdownMenuItem>
             )}
+            {(shift.clocked_in_at || shift.clocked_out_at) && (
+              <DropdownMenuItem onClick={() => setDialog("edit_times")} className="gap-2">
+                <Clock size={14} /> Modifier les pointages
+              </DropdownMenuItem>
+            )}
             {shift.status !== "cancelled" && !shift.clocked_in_at && (
               <DropdownMenuItem onClick={() => setDialog("no_show")} className="gap-2" style={{ color: "#991B1B" }}>
                 <Ban size={14} /> Marquer no-show
