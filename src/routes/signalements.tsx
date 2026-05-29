@@ -148,6 +148,17 @@ function SignalementsPage() {
                     <span>·</span><span>{CAT_LABEL[s.category]}</span>
                   </div>
                   <div style={{ fontSize: 13 }}>{s.message}</div>
+                  {s.photos && s.photos.length > 0 && (
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                      {s.photos.map((url, idx) => (
+                        <a key={idx} href={url} target="_blank" rel="noopener noreferrer"
+                          className="block rounded-md overflow-hidden"
+                          style={{ width: 56, height: 56, border: "0.5px solid var(--border)" }}>
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => setResolved(s.id, !s.resolved)}
                   disabled={!!dismissing[s.id]}
