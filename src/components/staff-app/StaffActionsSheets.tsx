@@ -15,7 +15,43 @@ const CATS: { key: SignalCategory; label: string }[] = [
 ];
 
 const MAX_PHOTOS = 3;
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_MIME = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const MAX_DIMENSION = 1600;
+const COMPRESSION_QUALITY = 0.82;
+
+async function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      try {
+        let { width, height } = img;
+        if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+          const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { URL.revokeObjectURL(url); resolve(file); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(url);
+          if (!blob) { resolve(file); return; }
+          if (blob.size >= file.size) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+        }, "image/jpeg", COMPRESSION_QUALITY);
+      } catch {
+        URL.revokeObjectURL(url);
+        resolve(file);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image illisible")); };
+    img.src = url;
+  });
+}
 
 export function SignalementSheet({ open, onClose, userId, studioId }: { open: boolean; onClose: () => void; userId: string; studioId: string | null }) {
   const [cat, setCat] = useState<SignalCategory>("stock");
@@ -35,6 +71,12 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Cleanup object URLs on unmount (fix memory leak)
+  useEffect(() => {
+    return () => { photos.forEach(p => URL.revokeObjectURL(p.preview)); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
@@ -43,8 +85,14 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
     if (remaining <= 0) { toast.error(`Max ${MAX_PHOTOS} photos`); return; }
     const accepted: { file: File; preview: string }[] = [];
     for (const f of files.slice(0, remaining)) {
-      if (!f.type.startsWith("image/")) { toast.error("Images uniquement"); continue; }
-      if (f.size > MAX_BYTES) { toast.error(`${f.name} dépasse 5 Mo`); continue; }
+      const mime = (f.type || "").toLowerCase();
+      const nameLower = f.name.toLowerCase();
+      if (nameLower.endsWith(".heic") || nameLower.endsWith(".heif") || mime === "image/heic" || mime === "image/heif") {
+        toast.error("Format HEIC non supporté. Réglages iPhone › Appareil photo › Formats › « Plus compatible ».");
+        continue;
+      }
+      if (!ACCEPTED_MIME.includes(mime)) { toast.error("Format non supporté (JPG, PNG, WEBP)"); continue; }
+      if (f.size > MAX_BYTES) { toast.error(`${f.name} dépasse 10 Mo`); continue; }
       accepted.push({ file: f, preview: URL.createObjectURL(f) });
     }
     if (accepted.length) setPhotos(prev => [...prev, ...accepted]);
@@ -61,21 +109,27 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
     if (!msg.trim()) { toast.error("Décris le problème"); return; }
     setSubmitting(true);
 
+    const uploadedPaths: string[] = [];
     const urls: string[] = [];
     try {
       for (let i = 0; i < photos.length; i++) {
         setUploadProgress({ current: i + 1, total: photos.length });
-        const f = photos[i].file;
-        const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-        const path = `${userId}/signalements/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        let f: File;
+        try { f = await compressImage(photos[i].file); }
+        catch { f = photos[i].file; }
+        const path = `${userId}/signalements/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
         const { error: upErr } = await supabase.storage.from("chat-attachments").upload(path, f, {
-          contentType: f.type, upsert: false,
+          contentType: f.type || "image/jpeg", upsert: false,
         });
         if (upErr) throw upErr;
+        uploadedPaths.push(path);
         const { data: pub } = supabase.storage.from("chat-attachments").getPublicUrl(path);
         urls.push(pub.publicUrl);
       }
     } catch (err) {
+      if (uploadedPaths.length) {
+        await supabase.storage.from("chat-attachments").remove(uploadedPaths).catch(() => {});
+      }
       setSubmitting(false);
       setUploadProgress(null);
       toast.error("Erreur d'upload photo");
@@ -86,8 +140,15 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
     const { error } = await supabase.from("signalements").insert({
       author_id: userId, studio_id: studioId, category: cat, message: msg.trim(), photos: urls,
     });
+    if (error) {
+      if (uploadedPaths.length) {
+        await supabase.storage.from("chat-attachments").remove(uploadedPaths).catch(() => {});
+      }
+      setSubmitting(false);
+      toast.error("Erreur d'envoi");
+      return;
+    }
     setSubmitting(false);
-    if (error) { toast.error("Erreur d'envoi"); return; }
     toast.success("Signalement envoyé");
     onClose();
   };
