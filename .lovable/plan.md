@@ -1,68 +1,88 @@
-# Infrastructure emails Kadence — 14 templates + preview
+## Objectif
 
-Implémentation exacte des specs que tu m'as données. Je résume ce qui sera créé pour validation finale.
+Sur la page **Pointage** (admin/manager), permettre d'éditer les horaires de **pointage entrée** et **pointage sortie** d'un shift, même après la fin du shift (statut « Terminé »), avec audit complet et raison obligatoire.
 
-## Dépendances
+## Pourquoi
 
+Aujourd'hui l'admin peut :
+- pointer manuellement un employé à l'arrivée / au départ (si pas encore fait)
+- éditer le « retard » en minutes
+- ajouter une note admin
+
+…mais ne peut **pas corriger** un horaire de pointage déjà enregistré (ex : employé arrivé à 9h05 mais a oublié de scanner, ou pointage parti en double, ou clôture trop tardive).
+
+## UI — page /pointage
+
+Sur chaque ligne shift, dans le menu d'actions admin existant, ajouter :
+
+- **« Modifier les pointages »** (visible si `clocked_in_at` OU `clocked_out_at` est rempli)
+
+Ouvre une `Dialog` « Modifier les pointages » avec :
+
+```text
+Employé · Studio · Date du shift  (lecture seule)
+Prévu : 09h00 – 17h00              (lecture seule, contexte)
+
+Heure d'arrivée   [ 09:05 ]        ← <input type="time">  (vide = effacer)
+Heure de sortie   [ 17:12 ]        ← <input type="time">  (vide = effacer, désactivé si pas d'arrivée)
+
+Recalculer le retard automatiquement   [✓]   (par défaut coché)
+
+Raison de la modification *
+[ textarea, 5-500 caractères, obligatoire ]
+
+[ Annuler ]                        [ Enregistrer ]
 ```
-bun add @react-email/components @react-email/render
+
+Règles UX :
+- Les deux inputs sont préremplis avec les valeurs actuelles (HH:mm local Bruxelles).
+- La **date** est figée sur `shift_date` — pas d'édition cross-day (cas marginal, à demander plus tard si besoin).
+- Validation côté UI : `out ≥ in` ; si l'utilisateur vide l'arrivée, on vide aussi la sortie automatiquement.
+- Toast succès + invalidation de la query `pointage-today` ; ligne mise à jour, badge statut recalculé.
+
+## Backend — nouveau server function
+
+Ajouter dans `src/lib/pointage.functions.ts` :
+
+```text
+editClockTimesFn (POST, requireSupabaseAuth)
+  input (zod):
+    shiftId: uuid
+    clockedInTime: string | null    // "HH:mm" ou null pour effacer
+    clockedOutTime: string | null   // "HH:mm" ou null pour effacer
+    recomputeLate: boolean
+    reason: string (min 5, max 500)
+  handler:
+    - assertAdminOrManager
+    - charge le shift (shift_date, start_time, end_time, clocked_in_at, clocked_out_at, minutes_late)
+    - construit les ISO complets en combinant shift_date + HH:mm (timezone wall-clock Bruxelles, cohérent avec le reste du moteur)
+    - règles :
+        * out non null ⇒ in non null
+        * out >= in
+        * si in null ⇒ out null + status repasse à "scheduled"
+        * si in non null + out non null ⇒ status = "completed"
+        * si in non null + out null ⇒ status = "scheduled" (en cours)
+    - si recomputeLate ET in non null : recalcule minutes_late = max(0, in - start_time)
+      sinon : ne touche pas à minutes_late
+    - UPDATE shifts (clocked_in_at, clocked_out_at, status, minutes_late)
+    - writeAudit avec action "edit_clock_times", before/after complets, note = reason
+    - retourne { ok: true, clockedInAt, clockedOutAt, minutesLate, status }
 ```
 
-(Les packages `@react-email/components` sont déjà partiellement installés via le scaffold auth — je vérifie et ajoute uniquement ce qui manque, notamment `@react-email/render` standalone.)
+La RLS existante (admins/managers gèrent les shifts) suffit. Pas de migration DB nécessaire (toutes les colonnes existent déjà : `clocked_in_at`, `clocked_out_at`, `minutes_late`, `status`, `clock_admin_note`).
 
-## Fichiers créés
+## Audit
 
-### Layout commun
-- `src/emails/layout/EmailLayout.tsx` — Html/Head/Body shell, header noir avec logo Kadence (texte serif pour fiabilité, pas de PNG externe pour l'instant), body blanc 32px padding, footer gris #FAFAFA avec mention studio + lien politique. Props : `children`, `studioName?`.
+Le helper `writeAudit` existant trace déjà l'action. L'historique affiché par `getShiftAuditHistoryFn` (déjà branché sur la modale d'audit) montrera automatiquement le nouvel évènement `edit_clock_times` — il suffit d'ajouter le libellé FR dans la table de mapping côté UI audit.
 
-### 9 templates employé (`src/emails/employee/`)
-1. `InvitationEmployeEmail.tsx`
-2. `ResetPasswordEmail.tsx`
-3. `ShiftAssigneEmail.tsx`
-4. `PropositionShiftEmail.tsx` (encadré coral)
-5. `DemandeAccepteeEmail.tsx`
-6. `DemandeRefuseeEmail.tsx`
-7. `PlanningPublieEmail.tsx`
-8. `RappelShiftEmail.tsx`
-9. `DebriefingShiftEmail.tsx` (le plus riche : durée + points + score + commentaire manager)
+## Fichiers touchés
 
-### 5 templates admin (`src/emails/admin/`)
-10. `NouvelleDemandeEmail.tsx`
-11. `TrouCritiqueEmail.tsx` (encadré rouge)
-12. `EmployeRetardEmail.tsx` (encadré orange)
-13. `QuotaEtudiantDepasseEmail.tsx`
-14. `NouvelleInscriptionEmail.tsx`
+- `src/lib/pointage.functions.ts` — ajout de `editClockTimesFn`
+- `src/routes/pointage.tsx` — nouveau bouton + composant `EditClockTimesDialog` + libellé audit
+- Aucune migration DB
 
-Chacun : H1 + paragraphes + CTA coral `#FF6B5B`, wrappé dans `<EmailLayout>`. Subject exporté comme constante nommée à côté du composant default export. Styles inline (pas de `var(--xxx)`, les emails ne lisent pas les CSS variables).
+## Hors périmètre (à confirmer plus tard si besoin)
 
-### Registry et envoi
-- `src/emails/index.ts` — `EMAIL_REGISTRY` typé avec les 14 entrées + mockData réaliste (Léa, Sacha, Skult Châtelain, dates plausibles)
-- `src/lib/email.functions.ts` — `sendEmail` server function avec `requireSupabaseAuth`, valide via Zod, render le template, **stub** qui log dans la console (pas de provider branché pour l'instant)
-
-### Page preview admin
-- `src/routes/admin.email-preview.tsx` — Route TanStack à `/admin/email-preview` :
-  - Sidebar gauche : 2 sections (Employé / Admin) avec liste cliquable
-  - Panneau central : nom + description + sujet + JSON mockData
-  - Panneau droit : iframe avec srcDoc = HTML rendu du template sélectionné
-  - `render()` est async → wrappé dans `useEffect` + `useState` (la spec mentionne déjà cette adaptation)
-  - Style cohérent avec le reste de l'app Kadence (off-white, Inter, bordures fines)
-
-## Règles respectées
-
-- Tous les templates utilisent `EmailLayout` (cohérence header/footer)
-- Couleurs en dur (pas de CSS vars)
-- `<Button>` et `<Link>` de `@react-email/components`
-- Container 560px max, mobile-friendly
-- `sendEmail` est un **stub console.log** — aucun email réel n'est envoyé pour l'instant
-- Pas de wiring sur les triggers existants (`shifts`, `demandes`, `notifications`, etc.) — uniquement l'infrastructure de templates + preview
-
-## Hors-scope (étape suivante)
-
-- Brancher `sendEmail` sur Lovable Email queue (`enqueue_email` via RPC)
-- Brancher les triggers réels (insert shift → ShiftAssigne, publish planning → PlanningPublie, etc.)
-- Supprimer la vieille edge function `send-invitation`
-- Cohabitation avec les templates auth déjà scaffolés dans `src/lib/email-templates/` — on garde les deux dossiers séparés pour l'instant (`src/emails/` = nouveaux templates app, `src/lib/email-templates/` = auth Supabase). On consolidera si besoin une fois la validation faite.
-
-## Validation
-
-Une fois construit, tu vas sur `/admin/email-preview`, tu cliques chaque template dans la sidebar, et tu vois le rendu HTML final dans l'iframe avec les mockData. Tu me dis quoi ajuster avant qu'on branche les vrais déclencheurs.
+- Édition cross-day (pointage qui déborde sur le lendemain)
+- Édition en lot
+- Le futur système d'incompatibilités entre employés (sujet précédent) — sera traité après celui-ci.

@@ -11,7 +11,7 @@ import { useStudios } from "@/hooks/use-studios";
 import { getRoleStyle, hhmm, initials } from "@/lib/staff-helpers";
 import {
   getPointageTodayFn, manualClockInFn, manualClockOutFn, editMinutesLateFn,
-  markNoShowFn, undoNoShowFn, setAdminNoteFn, getShiftAuditHistoryFn,
+  markNoShowFn, undoNoShowFn, setAdminNoteFn, getShiftAuditHistoryFn, editClockTimesFn,
   checkPointageAlertsFn, type PointageShift, type PointageTodayResult, type AuditEntry,
 } from "@/lib/pointage.functions";
 import {
@@ -330,7 +330,7 @@ function Chips({ value, onChange, options }: { value: string; onChange: (v: stri
 // SHIFT ROW
 // ============================================================
 
-type DialogKind = null | "clock_in" | "clock_out" | "edit_late" | "no_show" | "note" | "history";
+type DialogKind = null | "clock_in" | "clock_out" | "edit_late" | "edit_times" | "no_show" | "note" | "history";
 
 function ShiftRow({ shift, onChanged }: { shift: PointageShift; onChanged: () => void }) {
   const meta = STATUS_META[shift.computed_status];
@@ -410,6 +410,11 @@ function ShiftRow({ shift, onChanged }: { shift: PointageShift; onChanged: () =>
                 <Edit3 size={14} /> Corriger minutes de retard
               </DropdownMenuItem>
             )}
+            {(shift.clocked_in_at || shift.clocked_out_at) && (
+              <DropdownMenuItem onClick={() => setDialog("edit_times")} className="gap-2">
+                <Clock size={14} /> Modifier les pointages
+              </DropdownMenuItem>
+            )}
             {shift.status !== "cancelled" && !shift.clocked_in_at && (
               <DropdownMenuItem onClick={() => setDialog("no_show")} className="gap-2" style={{ color: "#991B1B" }}>
                 <Ban size={14} /> Marquer no-show
@@ -454,6 +459,7 @@ function ActionDialog({ kind, shift, onClose, onDone }: { kind: Exclude<DialogKi
         {kind === "clock_in" && <ClockDialog shift={shift} mode="in" onDone={onDone} />}
         {kind === "clock_out" && <ClockDialog shift={shift} mode="out" onDone={onDone} />}
         {kind === "edit_late" && <EditLateDialog shift={shift} onDone={onDone} />}
+        {kind === "edit_times" && <EditTimesDialog shift={shift} onDone={onDone} />}
         {kind === "no_show" && <NoShowDialog shift={shift} onDone={onDone} />}
         {kind === "note" && <NoteDialog shift={shift} onDone={onDone} />}
         {kind === "history" && <HistoryDialog shift={shift} />}
@@ -530,6 +536,78 @@ function EditLateDialog({ shift, onDone }: { shift: PointageShift; onDone: () =>
   );
 }
 
+function isoToHHMM(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function EditTimesDialog({ shift, onDone }: { shift: PointageShift; onDone: () => void }) {
+  const [inTime, setInTime] = useState(isoToHHMM(shift.clocked_in_at));
+  const [outTime, setOutTime] = useState(isoToHHMM(shift.clocked_out_at));
+  const [recomputeLate, setRecomputeLate] = useState(true);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const fn = useServerFn(editClockTimesFn);
+
+  const onInChange = (v: string) => {
+    setInTime(v);
+    if (!v) setOutTime("");
+  };
+
+  const submit = async () => {
+    if (reason.trim().length < 5) { toast.error("Raison obligatoire (min 5 caractères)"); return; }
+    if (outTime && !inTime) { toast.error("Renseigne d'abord l'heure d'arrivée"); return; }
+    if (inTime && outTime && outTime < inTime) { toast.error("La sortie doit être après l'arrivée"); return; }
+    setBusy(true);
+    try {
+      await fn({
+        data: {
+          shiftId: shift.id,
+          clockedInTime: inTime || null,
+          clockedOutTime: outTime || null,
+          recomputeLate,
+          reason: reason.trim(),
+        },
+      });
+      toast.success("Pointages mis à jour");
+      onDone();
+    } catch (e: any) { toast.error(e?.message || "Échec"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <DialogHeader><DialogTitle>Modifier les pointages</DialogTitle></DialogHeader>
+      <div className="flex flex-col gap-3 py-2">
+        <div className="rounded-md border p-2.5" style={{ borderColor: "var(--border)", fontSize: 12, color: "var(--muted-foreground)" }}>
+          <div><span style={{ fontWeight: 500, color: "var(--foreground)" }}>{shift.user_name || "—"}</span> · {shift.studio_short || shift.studio_name || "—"}</div>
+          <div>Shift du {new Date(shift.shift_date).toLocaleDateString("fr-FR")} · prévu {hhmm(shift.start_time)} – {hhmm(shift.end_time)}</div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Heure d'arrivée">
+            <input type="time" value={inTime} onChange={(e) => onInChange(e.target.value)} className="rounded-md border px-2.5 py-1.5" style={inputStyle} />
+          </FormField>
+          <FormField label="Heure de sortie">
+            <input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} disabled={!inTime} className="rounded-md border px-2.5 py-1.5 disabled:opacity-50" style={inputStyle} />
+          </FormField>
+        </div>
+        <label className="flex items-center gap-2" style={{ fontSize: 12 }}>
+          <input type="checkbox" checked={recomputeLate} onChange={(e) => setRecomputeLate(e.target.checked)} />
+          Recalculer le retard automatiquement
+        </label>
+        <FormField label="Raison de la modification (obligatoire)">
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={500} className="rounded-md border px-2.5 py-1.5" style={inputStyle} placeholder="Ex: badge oublié, clôture tardive, erreur de scan…" />
+        </FormField>
+      </div>
+      <DialogFooter>
+        <DialogButton onClick={submit} busy={busy} primary>Enregistrer</DialogButton>
+      </DialogFooter>
+    </>
+  );
+}
+
+
 function NoShowDialog({ shift, onDone }: { shift: PointageShift; onDone: () => void }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -598,6 +676,7 @@ const ACTION_LABELS: Record<string, string> = {
   undo_no_show: "No-show annulé",
   add_note: "Note ajoutée",
   edit_note: "Note modifiée",
+  edit_clock_times: "Pointages modifiés",
 };
 
 function HistoryDialog({ shift }: { shift: PointageShift }) {
