@@ -262,3 +262,19 @@ export const getBotStats = createServerFn({ method: "POST" })
       ),
     };
   });
+
+export const listEmployeesForTest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id, first_name, last_name, avatar_url")
+      .eq("status", "active")
+      .order("first_name", { ascending: true })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return { employees: data ?? [] };
+  });
