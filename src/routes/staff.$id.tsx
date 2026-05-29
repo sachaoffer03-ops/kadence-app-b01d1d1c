@@ -62,6 +62,7 @@ function EmployeeDetailPage() {
   const [fbs, setFbs] = useState<FB[]>([]);
   const [authors, setAuthors] = useState<Record<string, AuthorMini>>({});
   const [sigs, setSigs] = useState<Sig[]>([]);
+  const [loading, setLoading] = useState(true);
   const [rateShiftId, setRateShiftId] = useState<string | null>(null);
   const [rateValue, setRateValue] = useState(7);
   const [rateMsg, setRateMsg] = useState("");
@@ -76,7 +77,6 @@ function EmployeeDetailPage() {
   const editClockTimes = useServerFn(editClockTimesFn);
   const canEditProfile = appRole === "admin";
   const canEditClock = appRole === "admin" || appRole === "manager";
-  const canEditProfile = appRole === "admin";
 
   const load = async () => {
     const [{ data: p }, { data: br }, { data: sts }, { data: us }, { data: uc }, { data: sh }, { data: sg }] = await Promise.all([
