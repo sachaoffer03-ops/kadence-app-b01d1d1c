@@ -62,6 +62,8 @@ Contrats légaux Belgique :
 
 const AskInput = z.object({
   question: z.string().min(1).max(2000),
+  is_test: z.boolean().optional().default(false),
+  impersonate_user_id: z.string().uuid().optional().nullable(),
 });
 
 export const askKadenceAI = createServerFn({ method: "POST" })
@@ -76,6 +78,15 @@ export const askKadenceAI = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // Mode test + impersonation : seul un admin peut le faire, et on charge le contexte de l'employé ciblé
+    let contextUserId = userId;
+    if (data.is_test && data.impersonate_user_id) {
+      const { data: roleRow } = await supabaseAdmin
+        .from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
+      if (!roleRow) throw new Error("Réservé aux administrateurs");
+      contextUserId = data.impersonate_user_id;
+    }
+
     // 1. Charger le contexte de l'employé
     const today = new Date();
     const in14 = new Date(today); in14.setDate(today.getDate() + 14);
@@ -83,18 +94,18 @@ export const askKadenceAI = createServerFn({ method: "POST" })
     const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
     const [profileRes, shiftsRes, rolesRes, formationsRes, contractRes, knowledgeRes, feedbackRes] = await Promise.all([
-      supabaseAdmin.from("profiles").select("first_name, last_name, contract, score").eq("id", userId).maybeSingle(),
+      supabaseAdmin.from("profiles").select("first_name, last_name, contract, score").eq("id", contextUserId).maybeSingle(),
       supabaseAdmin.from("shifts")
         .select("shift_date, start_time, end_time, business_role, studios(name)")
-        .eq("user_id", userId)
+        .eq("user_id", contextUserId)
         .gte("shift_date", fmt(today))
         .lte("shift_date", fmt(in14))
         .order("shift_date", { ascending: true })
         .limit(10),
-      supabaseAdmin.from("user_business_roles").select("role").eq("user_id", userId),
+      supabaseAdmin.from("user_business_roles").select("role").eq("user_id", contextUserId),
       supabaseAdmin.from("training_course_completions")
-        .select("training_courses(title)").eq("user_id", userId),
-      supabaseAdmin.from("user_contracts").select("contract").eq("user_id", userId),
+        .select("training_courses(title)").eq("user_id", contextUserId),
+      supabaseAdmin.from("user_contracts").select("contract").eq("user_id", contextUserId),
       supabaseAdmin.from("ai_knowledge_entries")
         .select("title, content, category, priority")
         .eq("is_active", true)
@@ -145,8 +156,6 @@ export const askKadenceAI = createServerFn({ method: "POST" })
       }
     }
 
-
-
     const profile = profileRes.data as any;
     const contracts = (contractRes.data ?? []).map((c: any) => c.contract).filter(Boolean).join(", ")
       || profile?.contract || "non précisé";
@@ -165,8 +174,11 @@ export const askKadenceAI = createServerFn({ method: "POST" })
           return `- ${dateStr} : ${String(s.start_time).slice(0, 5)}–${String(s.end_time).slice(0, 5)}, ${s.business_role} à ${s.studios?.name ?? "studio non précisé"}`;
         }).join("\n");
 
-    const contextBlock = `
-CONTEXTE DE L'EMPLOYÉ QUI POSE LA QUESTION :
+    const testPreamble = data.is_test
+      ? `MODE TEST : Tu réponds dans un bac à sable utilisé par l'admin pour évaluer tes réponses. ${data.impersonate_user_id ? "Tu réponds COMME SI tu parlais à l'employé suivant (utilise SON contexte, pas celui de l'admin)." : "Tu réponds à l'admin lui-même."}\n\n`
+      : "";
+
+    const contextBlock = `${testPreamble}CONTEXTE DE L'EMPLOYÉ QUI POSE LA QUESTION :
 - Prénom : ${profile?.first_name ?? "?"}
 - Nom : ${profile?.last_name ?? "?"}
 - Contrat(s) : ${contracts}
@@ -179,11 +191,12 @@ ${nextShifts}
 
 Réponds à sa question en utilisant uniquement ces informations + tes connaissances générales sur Kadence. Si tu n'as pas l'info, dis-le.`;
 
-    // 2. Charger les 10 derniers messages d'historique
+    // 2. Charger les 10 derniers messages d'historique (même bucket: test ou réel)
     const { data: history } = await supabaseAdmin
       .from("ai_chat_messages")
       .select("role, content")
       .eq("user_id", userId)
+      .eq("is_test", data.is_test)
       .order("created_at", { ascending: false })
       .limit(10);
 
@@ -219,23 +232,27 @@ Réponds à sa question en utilisant uniquement ces informations + tes connaissa
 
     // 4. Sauvegarder
     await supabaseAdmin.from("ai_chat_messages").insert([
-      { user_id: userId, role: "user", content: data.question },
-      { user_id: userId, role: "assistant", content: answer },
+      { user_id: userId, role: "user", content: data.question, is_test: data.is_test, impersonate_user_id: data.impersonate_user_id ?? null },
+      { user_id: userId, role: "assistant", content: answer, is_test: data.is_test, impersonate_user_id: data.impersonate_user_id ?? null },
     ]);
 
     return { answer };
   });
 
-export const getChatHistory = createServerFn({ method: "GET" })
+const HistoryInput = z.object({ is_test: z.boolean().optional().default(false) }).optional();
+
+export const getChatHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((i) => (HistoryInput.parse(i) ?? { is_test: false }))
+  .handler(async ({ data, context }) => {
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const { data: rows } = await supabaseAdmin
       .from("ai_chat_messages")
       .select("id, role, content, created_at")
       .eq("user_id", userId)
+      .eq("is_test", data?.is_test ?? false)
       .order("created_at", { ascending: true })
-      .limit(100);
-    return { messages: data ?? [] };
+      .limit(500);
+    return { messages: rows ?? [] };
   });

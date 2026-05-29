@@ -19,6 +19,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          impersonate_user_id: string | null
+          is_test: boolean
           role: string
           user_id: string
         }
@@ -26,6 +28,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          impersonate_user_id?: string | null
+          is_test?: boolean
           role: string
           user_id: string
         }
@@ -33,10 +37,19 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          impersonate_user_id?: string | null
+          is_test?: boolean
           role?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_chat_messages_impersonate_user_id_fkey"
+            columns: ["impersonate_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_chat_messages_user_id_fkey"
             columns: ["user_id"]

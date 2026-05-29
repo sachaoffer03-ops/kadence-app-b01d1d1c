@@ -22,6 +22,7 @@ export const listChatConversations = createServerFn({ method: "POST" })
     const { data: msgs, error } = await supabaseAdmin
       .from("ai_chat_messages")
       .select("id, user_id, role, content, created_at")
+      .eq("is_test", false)
       .order("created_at", { ascending: false })
       .limit(2000);
     if (error) throw new Error(error.message);
@@ -95,6 +96,7 @@ export const getConversation = createServerFn({ method: "POST" })
         .from("ai_chat_messages")
         .select("id, role, content, created_at")
         .eq("user_id", data.userId)
+        .eq("is_test", false)
         .order("created_at", { ascending: true })
         .limit(500),
       supabaseAdmin
@@ -184,22 +186,25 @@ export const getBotStats = createServerFn({ method: "POST" })
     const sinceIso = since.toISOString();
 
     const [allMsgsRes, recentMsgsRes, fbRes, kbRes, usersRes] = await Promise.all([
-      supabaseAdmin.from("ai_chat_messages").select("id, role", { count: "exact", head: true }),
+      supabaseAdmin.from("ai_chat_messages").select("id, role", { count: "exact", head: true }).eq("is_test", false),
       supabaseAdmin
         .from("ai_chat_messages")
         .select("id, role, user_id, created_at")
+        .eq("is_test", false)
         .gte("created_at", sinceIso)
         .order("created_at", { ascending: true })
         .limit(5000),
       supabaseAdmin
         .from("ai_message_feedback")
-        .select("rating, created_at, comment, corrected_answer"),
+        .select("rating, created_at, comment, corrected_answer, ai_chat_messages!inner(is_test)")
+        .eq("ai_chat_messages.is_test", false),
       supabaseAdmin
         .from("ai_knowledge_entries")
         .select("id, is_active, entry_type, category"),
       supabaseAdmin
         .from("ai_chat_messages")
-        .select("user_id"),
+        .select("user_id")
+        .eq("is_test", false),
     ]);
 
     const recent = recentMsgsRes.data ?? [];
@@ -256,4 +261,20 @@ export const getBotStats = createServerFn({ method: "POST" })
         ])
       ),
     };
+  });
+
+export const listEmployeesForTest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id, first_name, last_name, avatar_url")
+      .eq("status", "active")
+      .order("first_name", { ascending: true })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return { employees: data ?? [] };
   });
