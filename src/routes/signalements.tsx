@@ -17,7 +17,8 @@ interface Row {
   id: string; category: Category; message: string; studio_id: string | null;
   author_id: string; created_at: string; resolved: boolean; photos: string[] | null;
 }
-
+}
+interface ProfileLite { id: string; first_name: string; last_name: string; }
 
 interface StudioLite { id: string; name: string; }
 
