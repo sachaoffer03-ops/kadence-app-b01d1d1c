@@ -9,6 +9,7 @@ import { computePunctuality, punctualityColor } from "@/lib/staff-helpers";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from "recharts";
 import { useServerFn } from "@tanstack/react-start";
 import { getScoreBreakdown } from "@/lib/scoring.functions";
+import { editClockTimesFn } from "@/lib/pointage.functions";
 import { WorkedHoursAdminCard, ClockedShiftsTable } from "@/components/WorkedHoursCard";
 import { EmployeeStatsCard } from "@/components/EmployeeStatsCard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
