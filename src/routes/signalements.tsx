@@ -14,10 +14,10 @@ type Category = "stock" | "materiel" | "hygiene" | "autre";
 const CAT_LABEL: Record<Category, string> = { stock: "Stock", materiel: "Matériel", hygiene: "Hygiène", autre: "Autre" };
 
 interface Row {
-interface Row {
   id: string; category: Category; message: string; studio_id: string | null;
   author_id: string; created_at: string; resolved: boolean; photos: string[] | null;
 }
+
 
 interface StudioLite { id: string; name: string; }
 
