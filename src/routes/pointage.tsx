@@ -11,7 +11,7 @@ import { useStudios } from "@/hooks/use-studios";
 import { getRoleStyle, hhmm, initials } from "@/lib/staff-helpers";
 import {
   getPointageTodayFn, manualClockInFn, manualClockOutFn, editMinutesLateFn,
-  markNoShowFn, undoNoShowFn, setAdminNoteFn, getShiftAuditHistoryFn,
+  markNoShowFn, undoNoShowFn, setAdminNoteFn, getShiftAuditHistoryFn, editClockTimesFn,
   checkPointageAlertsFn, type PointageShift, type PointageTodayResult, type AuditEntry,
 } from "@/lib/pointage.functions";
 import {
