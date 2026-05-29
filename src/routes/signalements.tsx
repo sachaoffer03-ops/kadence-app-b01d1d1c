@@ -163,11 +163,12 @@ function SignalementsPage() {
                   {s.photos && s.photos.length > 0 && (
                     <div className="flex gap-1.5 mt-2 flex-wrap">
                       {s.photos.map((url, idx) => (
-                        <a key={idx} href={url} target="_blank" rel="noopener noreferrer"
-                          className="block rounded-md overflow-hidden"
+                        <button key={idx} type="button"
+                          onClick={() => setLightbox({ urls: s.photos!, index: idx })}
+                          className="block rounded-md overflow-hidden hover:opacity-80 transition-opacity"
                           style={{ width: 56, height: 56, border: "0.5px solid var(--border)" }}>
                           <img src={url} alt="" className="w-full h-full object-cover" />
-                        </a>
+                        </button>
                       ))}
                     </div>
                   )}
