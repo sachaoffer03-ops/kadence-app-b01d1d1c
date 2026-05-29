@@ -110,6 +110,27 @@ function StubTab({ label }: { label: string }) {
 // TODAY TAB
 // ============================================================
 
+function todayIsoLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function isoFromDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function dateFromIso(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+function shiftIso(iso: string, deltaDays: number): string {
+  const d = dateFromIso(iso);
+  d.setDate(d.getDate() + deltaDays);
+  return isoFromDate(d);
+}
+function formatLongDate(iso: string): string {
+  const d = dateFromIso(iso);
+  return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+}
+
 function TodayTab() {
   const getToday = useServerFn(getPointageTodayFn);
   const checkAlerts = useServerFn(checkPointageAlertsFn);
@@ -119,40 +140,50 @@ function TodayTab() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [studioFilter, setStudioFilter] = useState<string>("all");
+  const [selectedDate, setSelectedDate] = useState<string>(() => todayIsoLocal());
+  const [calOpen, setCalOpen] = useState(false);
+
+  const isToday = selectedDate === todayIsoLocal();
 
   const reload = useCallback(async () => {
     try {
-      const res = await getToday({ data: studioFilter === "all" ? {} : { studioIds: [studioFilter] } });
+      const payload: { studioIds?: string[]; date?: string } = {};
+      if (studioFilter !== "all") payload.studioIds = [studioFilter];
+      if (!isToday) payload.date = selectedDate;
+      const res = await getToday({ data: payload });
       setData(res);
     } catch (e: any) {
       toast.error(e?.message || "Impossible de charger le pointage");
     } finally {
       setLoading(false);
     }
-  }, [getToday, studioFilter]);
+  }, [getToday, studioFilter, selectedDate, isToday]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { setLoading(true); reload(); }, [reload]);
 
-  // Realtime
+  // Realtime (only useful for today)
   useEffect(() => {
+    if (!isToday) return;
     const ch = supabase
       .channel("pointage-rt-v2")
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, () => reload())
       .on("postgres_changes", { event: "*", schema: "public", table: "shift_clock_audit" }, () => reload())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [reload]);
+  }, [reload, isToday]);
 
-  // 30s polling backup
+  // 30s polling backup (today only)
   useEffect(() => {
+    if (!isToday) return;
     const t = window.setInterval(() => reload(), 30_000);
     return () => window.clearInterval(t);
-  }, [reload]);
+  }, [reload, isToday]);
 
   // Alerts check on mount (idempotent)
   useEffect(() => {
     checkAlerts().catch(() => { /* silent */ });
   }, [checkAlerts]);
+
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
