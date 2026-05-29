@@ -201,8 +201,9 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
             </button>
           )}
         </div>
-        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" multiple
+        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple
           onChange={onPickFiles} style={{ display: "none" }} />
+
       </FormField>
       <div className="mt-2"><PrimaryButton onClick={submit} disabled={submitting}>{btnLabel}</PrimaryButton></div>
     </Sheet>
