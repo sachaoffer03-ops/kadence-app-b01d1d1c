@@ -301,6 +301,77 @@ export const setAdminNoteFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- editClockTimes : édite a posteriori les heures de pointage ----------
+const timeOrNull = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/)
+  .nullable()
+  .or(z.literal("").transform(() => null));
+
+export const editClockTimesFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        shiftId: z.string().uuid(),
+        clockedInTime: timeOrNull,
+        clockedOutTime: timeOrNull,
+        recomputeLate: z.boolean(),
+        reason: z.string().min(5).max(500),
+      })
+      .parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertAdminOrManager(supabase, userId);
+    const shift = await loadShift(supabase, data.shiftId);
+
+    const inTime = data.clockedInTime || null;
+    const outTime = data.clockedOutTime || null;
+    if (outTime && !inTime) throw new Error("Une heure de sortie nécessite une heure d'arrivée");
+
+    const clockedInAt = inTime ? combineDateTime(shift.shift_date, inTime) : null;
+    const clockedOutAt = outTime ? combineDateTime(shift.shift_date, outTime) : null;
+    if (clockedInAt && clockedOutAt && new Date(clockedOutAt).getTime() < new Date(clockedInAt).getTime()) {
+      throw new Error("L'heure de sortie doit être après l'heure d'arrivée");
+    }
+
+    let minutesLate = shift.minutes_late;
+    if (data.recomputeLate) {
+      minutesLate = clockedInAt
+        ? diffMinutes(new Date(`${shift.shift_date}T${shift.start_time}`), new Date(clockedInAt))
+        : null;
+    } else if (!clockedInAt) {
+      minutesLate = null;
+    }
+
+    const nextStatus =
+      shift.status === "cancelled"
+        ? "cancelled"
+        : clockedInAt && clockedOutAt
+        ? "completed"
+        : "scheduled";
+
+    const before = {
+      clocked_in_at: shift.clocked_in_at,
+      clocked_out_at: shift.clocked_out_at,
+      minutes_late: shift.minutes_late,
+      status: shift.status,
+    };
+    const after = {
+      clocked_in_at: clockedInAt,
+      clocked_out_at: clockedOutAt,
+      minutes_late: minutesLate,
+      status: nextStatus,
+    };
+
+    const { error } = await supabase.from("shifts").update(after).eq("id", shift.id);
+    if (error) throw new Error(error.message);
+
+    await writeAudit(supabase, userId, shift.id, "edit_clock_times", before, after, data.reason);
+    return { ok: true, ...after };
+  });
+
 export type AuditEntry = {
   id: string;
   action: string;
