@@ -972,7 +972,7 @@ export const getCourseForEmployee = createServerFn({ method: "POST" })
       moduleIds.length > 0 ? supabase.from("training_contents").select("*").in("module_id", moduleIds).order("position") : Promise.resolve({ data: [] }),
       moduleIds.length > 0 ? supabase.from("training_quizzes").select("*").in("module_id", moduleIds) : Promise.resolve({ data: [] }),
       supabase.from("training_quiz_questions").select("*").order("position"),
-      supabase.from("training_quiz_options").select("*").order("position"),
+      supabase.from("training_quiz_options").select("id, question_id, option_text, position").order("position"),
       supabase.from("training_content_progress").select("*").eq("user_id", userId),
       supabase.from("training_quiz_attempts").select("*").eq("user_id", userId).order("attempt_number"),
     ]);
