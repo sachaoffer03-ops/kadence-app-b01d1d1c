@@ -283,3 +283,66 @@ export const getChatHistory = createServerFn({ method: "POST" })
       .limit(500);
     return { messages: rows ?? [] };
   });
+
+// ─── Suggestions contextuelles pour le panel de chat ─────────────────────────
+export const getChatSuggestions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const today = new Date();
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    const in7 = new Date(today); in7.setDate(today.getDate() + 7);
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+
+    const [profileRes, shiftTomorrowRes, pendingPropRes, availNextMonthRes, requiredCoursesRes, completionsRes] = await Promise.all([
+      supabaseAdmin.from("profiles").select("score").eq("id", userId).maybeSingle(),
+      supabaseAdmin.from("shifts").select("id").eq("user_id", userId)
+        .gte("shift_date", fmt(tomorrow)).lte("shift_date", fmt(in7)).limit(1),
+      supabaseAdmin.from("shift_proposals").select("id").eq("user_id", userId).eq("status", "pending").limit(1),
+      supabaseAdmin.from("availabilities").select("id").eq("user_id", userId)
+        .gte("avail_date", fmt(nextMonth)).lte("avail_date", fmt(nextMonthEnd)).limit(1),
+      supabaseAdmin.from("training_courses").select("id").eq("is_published", true).eq("required_for_planning", true),
+      supabaseAdmin.from("training_course_completions").select("course_id").eq("user_id", userId),
+    ]);
+
+    const suggestions: string[] = [];
+
+    if ((pendingPropRes.data ?? []).length > 0) {
+      suggestions.push("J'ai une proposition de shift, je dois faire quoi ?");
+    }
+    if ((shiftTomorrowRes.data ?? []).length > 0) {
+      suggestions.push("C'est quoi mon prochain shift ?");
+    }
+    if ((availNextMonthRes.data ?? []).length === 0) {
+      suggestions.push("Comment poser mes dispos ?");
+    }
+    const requiredIds = new Set((requiredCoursesRes.data ?? []).map((c: any) => c.id));
+    const doneIds = new Set((completionsRes.data ?? []).map((c: any) => c.course_id));
+    const missing = [...requiredIds].filter((id) => !doneIds.has(id));
+    if (missing.length > 0) {
+      suggestions.push("Quelles formations je dois encore valider ?");
+    }
+    const score = profileRes.data?.score;
+    if (typeof score === "number" && score < 7) {
+      suggestions.push("Comment améliorer mon score ?");
+    }
+
+    // Fallbacks génériques
+    const fallback = [
+      "Quand est mon prochain shift ?",
+      "Comment fonctionne le scoring ?",
+      "Signaler un problème au studio",
+    ];
+    for (const f of fallback) {
+      if (suggestions.length >= 3) break;
+      if (!suggestions.includes(f)) suggestions.push(f);
+    }
+
+    return { suggestions: suggestions.slice(0, 3) };
+  });
+
