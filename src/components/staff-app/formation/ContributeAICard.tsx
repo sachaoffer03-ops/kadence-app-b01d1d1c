@@ -4,6 +4,7 @@ import { Sparkles, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { getMyContributorStatus, submitSuggestion } from "@/lib/ai-suggestions.functions";
 import { KNOWLEDGE_CATEGORIES } from "@/lib/ai-knowledge.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export function ContributeAICard() {
   const checkFn = useServerFn(getMyContributorStatus);
@@ -17,7 +18,45 @@ export function ContributeAICard() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    checkFn({}).then((r) => setCanContribute(r.canContribute)).catch(() => {});
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const refresh = () => {
+      checkFn({})
+        .then((r) => { if (!cancelled) setCanContribute(r.canContribute); })
+        .catch(() => {});
+    };
+
+    refresh();
+
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id;
+      if (!uid || cancelled) return;
+      channel = supabase
+        .channel(`profile-contrib-${uid}`)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${uid}` },
+          (payload) => {
+            const next = Boolean((payload.new as any)?.ai_contributor);
+            if (!cancelled) {
+              setCanContribute(next);
+              if (!next) setOpen(false);
+            }
+          },
+        )
+        .subscribe();
+    })();
+
+    const onVis = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVis);
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
   if (!canContribute) return null;
