@@ -144,24 +144,8 @@ function SuggestionsTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2 justify-between">
-        <div className="flex gap-1">
-          {([
-            { v: "pending", l: "En attente" },
-            { v: "approved", l: "Approuvées" },
-            { v: "rejected", l: "Refusées" },
-            { v: "all", l: "Toutes" },
-          ] as const).map((s) => (
-            <button key={s.v} onClick={() => setStatus(s.v)}
-              className="rounded-full px-3 py-1"
-              style={{
-                fontSize: 12, fontWeight: 500,
-                border: status === s.v ? "1px solid var(--coral)" : "0.5px solid var(--border)",
-                backgroundColor: status === s.v ? "var(--coral)" : "transparent",
-                color: status === s.v ? "var(--coral-text)" : "var(--foreground)",
-              }}>
-              {s.l}
-            </button>
-          ))}
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          {items.length > 0 ? `${items.length} suggestion${items.length > 1 ? "s" : ""} à traiter` : "Suggestions des employés"}
         </div>
         <button
           type="button"
