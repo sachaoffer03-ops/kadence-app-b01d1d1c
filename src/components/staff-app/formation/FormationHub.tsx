@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAssignedCourses } from "@/lib/formation.functions";
 import { CourseDetailView } from "./CourseDetailView";
+import { ContributeAICard } from "./ContributeAICard";
 import type { AssignedCourses, CourseCard, CourseDetail } from "./types";
 
 export function FormationHub({ userId }: { userId: string }) {
