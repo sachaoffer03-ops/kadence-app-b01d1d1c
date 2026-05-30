@@ -1465,6 +1465,7 @@ function QrSection({ studio }: { studio: any }) {
         qr_renewal_seconds: draft.renewal,
         current_qr_code: draft.currentCode || null,
       } } });
+      setServerCode(draft.currentCode || "");
       confirmSaved(draft);
       flashSaved();
       toast.success("✓ QR code enregistré");
