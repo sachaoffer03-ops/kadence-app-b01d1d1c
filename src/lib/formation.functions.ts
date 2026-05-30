@@ -1136,7 +1136,7 @@ export const submitQuizAttempt = createServerFn({ method: "POST" })
     const { data: questions } = await supabase.from("training_quiz_questions").select("*").eq("quiz_id", (attempt as any).quiz_id);
     const qIds = ((questions ?? []) as any[]).map((q: any) => q.id);
     const { data: options } = qIds.length > 0
-      ? await supabase.from("training_quiz_options").select("*").in("question_id", qIds)
+      ? await supabaseAdmin.from("training_quiz_options").select("*").in("question_id", qIds)
       : { data: [] as any[] };
 
     const optByQ = new Map<string, any[]>();
