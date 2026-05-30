@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
 import { useStudios } from "@/hooks/use-studios";
 import { regenerateEmployeeAccessLink } from "@/lib/employee-access.functions";
-import { Link2, Copy } from "lucide-react";
+import { setContributorStatus } from "@/lib/ai-suggestions.functions";
+import { Link2, Copy, Sparkles } from "lucide-react";
 
 const CONTRACTS = ["Étudiant", "Flexi", "CDI"] as const;
 
@@ -80,9 +81,33 @@ export function AdminEditEmployeeSheet({ open, onClose, userId, initial, onSaved
   const [saving, setSaving] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [aiContributor, setAiContributor] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
   const regenFn = useServerFn(regenerateEmployeeAccessLink);
+  const setContribFn = useServerFn(setContributorStatus);
 
-  useEffect(() => { if (open) { setS(initial); setGeneratedLink(null); } }, [open, initial]);
+  useEffect(() => {
+    if (open) {
+      setS(initial);
+      setGeneratedLink(null);
+      supabase.from("profiles").select("ai_contributor").eq("id", userId).maybeSingle()
+        .then(({ data }) => setAiContributor(Boolean((data as any)?.ai_contributor)));
+    }
+  }, [open, initial, userId]);
+
+  const toggleAiContributor = async () => {
+    setAiSaving(true);
+    const next = !aiContributor;
+    try {
+      await setContribFn({ data: { userId, is_contributor: next } });
+      setAiContributor(next);
+      toast.success(next ? "Contributeur IA activé" : "Contributeur IA désactivé");
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur");
+    } finally {
+      setAiSaving(false);
+    }
+  };
 
   const regenerateLink = async () => {
     if (!confirm("Générer un nouveau lien d'accès unique pour cet employé ?\n\nLe lien permettra à l'employé de se connecter et choisir un nouveau mot de passe. Il fonctionne partout (WhatsApp, mail, SMS) et est valide une seule fois.")) return;
@@ -267,7 +292,40 @@ export function AdminEditEmployeeSheet({ open, onClose, userId, initial, onSaved
       </FormField>
 
       <div
-        className="mt-5 rounded-lg p-3 flex flex-col gap-2"
+        className="mt-5 rounded-lg p-3 flex items-start gap-3"
+        style={{ border: "0.5px solid rgba(0,0,0,0.12)", backgroundColor: "rgba(240,153,123,0.06)" }}
+      >
+        <div
+          className="rounded-md flex items-center justify-center shrink-0"
+          style={{ width: 32, height: 32, backgroundColor: "color-mix(in oklch, #F0997B 18%, transparent)" }}
+        >
+          <Sparkles size={15} style={{ color: "#F0997B" }} />
+        </div>
+        <div className="flex-1">
+          <div style={{ fontSize: 12, fontWeight: 500 }}>Contributeur IA</div>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5, marginTop: 2 }}>
+            Autorise cet employé à envoyer des suggestions (FAQ, infos) pour améliorer l'assistant. Tu valides chaque envoi.
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={toggleAiContributor}
+          disabled={aiSaving}
+          className="rounded-full px-3 py-1 shrink-0"
+          style={{
+            fontSize: 11, fontWeight: 500,
+            border: aiContributor ? "1px solid var(--coral)" : "0.5px solid rgba(0,0,0,0.18)",
+            backgroundColor: aiContributor ? "var(--coral)" : "#fff",
+            color: aiContributor ? "var(--coral-text)" : "var(--foreground)",
+            opacity: aiSaving ? 0.5 : 1,
+          }}
+        >
+          {aiContributor ? "Activé" : "Désactivé"}
+        </button>
+      </div>
+
+      <div
+        className="mt-3 rounded-lg p-3 flex flex-col gap-2"
         style={{ border: "0.5px solid rgba(0,0,0,0.12)", backgroundColor: "rgba(0,0,0,0.02)" }}
       >
         <div style={{ fontSize: 12, fontWeight: 500, color: "var(--foreground)" }}>

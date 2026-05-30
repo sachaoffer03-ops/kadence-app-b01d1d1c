@@ -104,6 +104,76 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_knowledge_suggestions: {
+        Row: {
+          admin_notes: string | null
+          approved_entry_id: string | null
+          author_id: string
+          category: string
+          content: string
+          created_at: string
+          entry_type: string
+          id: string
+          reviewed_at: string | null
+          reviewer_id: string | null
+          status: Database["public"]["Enums"]["ai_suggestion_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          approved_entry_id?: string | null
+          author_id: string
+          category?: string
+          content: string
+          created_at?: string
+          entry_type?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: Database["public"]["Enums"]["ai_suggestion_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          approved_entry_id?: string | null
+          author_id?: string
+          category?: string
+          content?: string
+          created_at?: string
+          entry_type?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: Database["public"]["Enums"]["ai_suggestion_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_knowledge_suggestions_approved_entry_id_fkey"
+            columns: ["approved_entry_id"]
+            isOneToOne: false
+            referencedRelation: "ai_knowledge_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_knowledge_suggestions_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_knowledge_suggestions_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_message_feedback: {
         Row: {
           admin_id: string | null
@@ -1215,6 +1285,7 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          ai_contributor: boolean
           avatar_url: string | null
           birth_date: string | null
           city: string | null
@@ -1245,6 +1316,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          ai_contributor?: boolean
           avatar_url?: string | null
           birth_date?: string | null
           city?: string | null
@@ -1275,6 +1347,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          ai_contributor?: boolean
           avatar_url?: string | null
           birth_date?: string | null
           city?: string | null
@@ -2590,6 +2663,7 @@ export type Database = {
       studio_blockers: { Args: { _studio_id: string }; Returns: Json }
     }
     Enums: {
+      ai_suggestion_status: "pending" | "approved" | "rejected"
       app_role: "admin" | "manager" | "employee"
       availability_slot: "matin" | "midi" | "soir"
       contract_type: "Étudiant" | "Flexi" | "CDI"
@@ -2727,6 +2801,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_suggestion_status: ["pending", "approved", "rejected"],
       app_role: ["admin", "manager", "employee"],
       availability_slot: ["matin", "midi", "soir"],
       contract_type: ["Étudiant", "Flexi", "CDI"],

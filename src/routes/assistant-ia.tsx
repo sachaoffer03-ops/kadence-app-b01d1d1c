@@ -6,6 +6,7 @@ import {
   Bot, Plus, Search, Pencil, Trash2, Power, Sparkles, BookOpen, Tag, X,
   Loader2, CheckCircle2, Circle, MessageSquare, BarChart3, ThumbsUp, ThumbsDown,
   Type, HelpCircle, Link2, FileUp, Table2, Send, User, Download, ExternalLink, Wand2, ChevronDown, Sparkle,
+  Inbox, Check, XCircle, Users as UsersIcon,
 } from "lucide-react";
 import { TestBotSheet } from "@/components/ai-test/TestBotSheet";
 import ReactMarkdown from "react-markdown";
@@ -16,6 +17,9 @@ import {
 import {
   listChatConversations, getConversation, rateMessage, deleteMessageFeedback, getBotStats,
 } from "@/lib/ai-admin.functions";
+import {
+  listSuggestions, reviewSuggestion, listContributors, setContributorStatus,
+} from "@/lib/ai-suggestions.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/assistant-ia")({
@@ -42,7 +46,7 @@ function typeLabel(v: EntryType) { return KNOWLEDGE_TYPES.find((t) => t.value ==
 /* ============================================================ ROOT ============================================================ */
 
 function AssistantIAPage() {
-  const [tab, setTab] = useState<"knowledge" | "conversations" | "performance">("knowledge");
+  const [tab, setTab] = useState<"knowledge" | "suggestions" | "conversations" | "performance">("knowledge");
 
   return (
     <div className="p-4 md:p-6">
@@ -59,9 +63,10 @@ function AssistantIAPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 mb-5 border-b" style={{ borderColor: "var(--border)" }}>
+      <div className="flex gap-1 mb-5 border-b overflow-x-auto" style={{ borderColor: "var(--border)" }}>
         {[
           { k: "knowledge", l: "Bases de connaissances", icon: BookOpen },
+          { k: "suggestions", l: "Suggestions employés", icon: Inbox },
           { k: "conversations", l: "Conversations", icon: MessageSquare },
           { k: "performance", l: "Performance", icon: BarChart3 },
         ].map((t) => {
@@ -69,7 +74,7 @@ function AssistantIAPage() {
           const Icon = t.icon;
           return (
             <button key={t.k} onClick={() => setTab(t.k as any)}
-              className="px-3 py-2.5 inline-flex items-center gap-2"
+              className="px-3 py-2.5 inline-flex items-center gap-2 whitespace-nowrap"
               style={{
                 fontSize: 13, fontWeight: 500,
                 color: active ? "var(--foreground)" : "var(--muted-foreground)",
@@ -83,8 +88,283 @@ function AssistantIAPage() {
       </div>
 
       {tab === "knowledge" && <KnowledgeTab />}
+      {tab === "suggestions" && <SuggestionsTab />}
       {tab === "conversations" && <ConversationsTab />}
       {tab === "performance" && <PerformanceTab />}
+    </div>
+  );
+}
+
+/* ============================================================ SUGGESTIONS ============================================================ */
+
+type Suggestion = {
+  id: string; author_id: string; title: string; content: string;
+  category: string; entry_type: "text" | "faq";
+  status: "pending" | "approved" | "rejected";
+  admin_notes: string | null; reviewer_id: string | null;
+  reviewed_at: string | null; approved_entry_id: string | null;
+  created_at: string; updated_at: string;
+  author: { id: string; first_name: string | null; last_name: string | null; avatar_url: string | null } | null;
+  reviewer: { id: string; first_name: string | null; last_name: string | null } | null;
+};
+
+function SuggestionsTab() {
+  const listFn = useServerFn(listSuggestions);
+  const reviewFn = useServerFn(reviewSuggestion);
+  const listContribFn = useServerFn(listContributors);
+  const setContribFn = useServerFn(setContributorStatus);
+
+  const [status, setStatus] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [items, setItems] = useState<Suggestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Suggestion | null>(null);
+  const [showContribs, setShowContribs] = useState(false);
+  const [contribs, setContribs] = useState<any[]>([]);
+
+  const load = async () => {
+    setLoading(true);
+    try { const r = await listFn({ data: { status } }); setItems(r.suggestions as Suggestion[]); }
+    catch (e: any) { toast.error(e?.message || "Erreur"); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void load(); }, [status]);
+
+  const loadContribs = async () => {
+    try { const r = await listContribFn({}); setContribs(r.employees); }
+    catch (e: any) { toast.error(e?.message || "Erreur"); }
+  };
+
+  const toggleContrib = async (userId: string, current: boolean) => {
+    try {
+      await setContribFn({ data: { userId, is_contributor: !current } });
+      setContribs((prev) => prev.map((p) => p.id === userId ? { ...p, ai_contributor: !current } : p));
+    } catch (e: any) { toast.error(e?.message || "Erreur"); }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2 justify-between">
+        <div className="flex gap-1">
+          {([
+            { v: "pending", l: "En attente" },
+            { v: "approved", l: "Approuvées" },
+            { v: "rejected", l: "Refusées" },
+            { v: "all", l: "Toutes" },
+          ] as const).map((s) => (
+            <button key={s.v} onClick={() => setStatus(s.v)}
+              className="rounded-full px-3 py-1"
+              style={{
+                fontSize: 12, fontWeight: 500,
+                border: status === s.v ? "1px solid var(--coral)" : "0.5px solid var(--border)",
+                backgroundColor: status === s.v ? "var(--coral)" : "transparent",
+                color: status === s.v ? "var(--coral-text)" : "var(--foreground)",
+              }}>
+              {s.l}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => { setShowContribs((v) => !v); if (!showContribs) loadContribs(); }}
+          className="rounded-md px-3 py-1.5 inline-flex items-center gap-1.5"
+          style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}
+        >
+          <UsersIcon size={13} /> Gérer les contributeurs
+        </button>
+      </div>
+
+      {showContribs && (
+        <div className="rounded-lg p-3" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+          <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 8 }}>Employés contributeurs</div>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 10, lineHeight: 1.5 }}>
+            Active le statut pour qu'un employé puisse envoyer des suggestions depuis l'onglet Formation.
+          </div>
+          <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto">
+            {contribs.map((e) => (
+              <div key={e.id} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5"
+                style={{ border: "0.5px solid var(--border)" }}>
+                <span style={{ fontSize: 12 }}>{e.first_name} {e.last_name}</span>
+                <button onClick={() => toggleContrib(e.id, e.ai_contributor)}
+                  className="rounded-full px-2.5 py-0.5"
+                  style={{
+                    fontSize: 11, fontWeight: 500,
+                    border: e.ai_contributor ? "1px solid var(--coral)" : "0.5px solid var(--border)",
+                    backgroundColor: e.ai_contributor ? "var(--coral)" : "transparent",
+                    color: e.ai_contributor ? "var(--coral-text)" : "var(--foreground)",
+                  }}>
+                  {e.ai_contributor ? "Activé" : "Désactivé"}
+                </button>
+              </div>
+            ))}
+            {contribs.length === 0 && (
+              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-10" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+          <Loader2 size={18} className="animate-spin inline" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-lg p-10 text-center" style={{ border: "0.5px dashed var(--border)" }}>
+          <Inbox size={28} className="mx-auto mb-2" style={{ color: "var(--muted-foreground)" }} />
+          <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Aucune suggestion {status === "pending" ? "en attente" : ""}.</div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {items.map((it) => (
+            <div key={it.id} className="rounded-lg p-3" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                    <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--muted)" }}>
+                      {it.entry_type === "faq" ? "FAQ" : "Texte"}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
+                      {categoryLabel(it.category)}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>·</span>
+                    <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
+                      {it.author?.first_name} {it.author?.last_name}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>·</span>
+                    <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
+                      {new Date(it.created_at).toLocaleDateString("fr-FR")}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{it.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                    {it.content.length > 220 ? it.content.slice(0, 220) + "…" : it.content}
+                  </div>
+                </div>
+                {it.status !== "pending" && (
+                  <span className="rounded-full px-2 py-0.5 shrink-0" style={{
+                    fontSize: 10, fontWeight: 500,
+                    backgroundColor: it.status === "approved" ? "color-mix(in oklch, #16A34A 18%, transparent)" : "color-mix(in oklch, #DC2626 18%, transparent)",
+                    color: it.status === "approved" ? "#16A34A" : "#DC2626",
+                  }}>
+                    {it.status === "approved" ? "Approuvée" : "Refusée"}
+                  </span>
+                )}
+              </div>
+              {it.status === "pending" && (
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => setEditing(it)} className="rounded-md px-3 py-1.5 inline-flex items-center gap-1"
+                    style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+                    <Check size={12} /> Approuver / Modifier
+                  </button>
+                  <button onClick={async () => {
+                    if (!confirm("Refuser cette suggestion ?")) return;
+                    try { await reviewFn({ data: { id: it.id, action: "reject" } }); toast.success("Refusée"); load(); }
+                    catch (e: any) { toast.error(e?.message || "Erreur"); }
+                  }} className="rounded-md px-3 py-1.5 inline-flex items-center gap-1"
+                    style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+                    <XCircle size={12} /> Refuser
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editing && (
+        <ReviewSuggestionModal
+          suggestion={editing}
+          onClose={() => setEditing(null)}
+          onApproved={() => { setEditing(null); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReviewSuggestionModal({ suggestion, onClose, onApproved }: {
+  suggestion: Suggestion; onClose: () => void; onApproved: () => void;
+}) {
+  const reviewFn = useServerFn(reviewSuggestion);
+  const [title, setTitle] = useState(suggestion.title);
+  const [content, setContent] = useState(suggestion.content);
+  const [category, setCategory] = useState(suggestion.category);
+  const [entryType, setEntryType] = useState<"text" | "faq">(suggestion.entry_type);
+  const [saving, setSaving] = useState(false);
+
+  const approve = async () => {
+    setSaving(true);
+    try {
+      await reviewFn({ data: {
+        id: suggestion.id, action: "approve",
+        title: title.trim(), content: content.trim(), category, entry_type: entryType,
+      }});
+      toast.success("Approuvée et publiée dans la base de connaissances");
+      onApproved();
+    } catch (e: any) { toast.error(e?.message || "Erreur"); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl p-5 flex flex-col gap-3"
+        style={{ backgroundColor: "var(--card)", maxHeight: "90vh", overflowY: "auto" }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <div style={{ fontSize: 16, fontWeight: 500 }}>Relire et publier</div>
+          <button onClick={onClose}><X size={18} /></button>
+        </div>
+        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+          Suggestion de {suggestion.author?.first_name} {suggestion.author?.last_name}. Modifie librement avant publication.
+        </div>
+
+        <div className="flex gap-1.5">
+          {(["text", "faq"] as const).map((t) => (
+            <button key={t} onClick={() => setEntryType(t)} className="rounded-full px-3 py-1"
+              style={{
+                fontSize: 11, fontWeight: 500,
+                border: entryType === t ? "1px solid var(--coral)" : "0.5px solid var(--border)",
+                backgroundColor: entryType === t ? "var(--coral)" : "transparent",
+                color: entryType === t ? "var(--coral-text)" : "var(--foreground)",
+              }}>
+              {t === "text" ? "Texte" : "FAQ"}
+            </button>
+          ))}
+        </div>
+
+        <label style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+          Titre
+          <input value={title} onChange={(e) => setTitle(e.target.value)}
+            className="w-full mt-1 rounded-md border px-3 py-2 outline-none"
+            style={{ fontSize: 13, borderColor: "var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }} />
+        </label>
+
+        <label style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+          Contenu
+          <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={8}
+            className="w-full mt-1 rounded-md border px-3 py-2 outline-none resize-none"
+            style={{ fontSize: 13, borderColor: "var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }} />
+        </label>
+
+        <label style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+          Catégorie
+          <select value={category} onChange={(e) => setCategory(e.target.value)}
+            className="w-full mt-1 rounded-md border px-3 py-2 outline-none"
+            style={{ fontSize: 13, borderColor: "var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}>
+            {KNOWLEDGE_CATEGORIES.map((c) => (<option key={c.value} value={c.value}>{c.label}</option>))}
+          </select>
+        </label>
+
+        <div className="flex gap-2 mt-2">
+          <button onClick={approve} disabled={saving} className="flex-1 rounded-md py-2.5 inline-flex items-center justify-center gap-1.5"
+            style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)", opacity: saving ? 0.5 : 1 }}>
+            <Check size={14} /> {saving ? "Publication…" : "Approuver et publier"}
+          </button>
+          <button onClick={onClose} disabled={saving} className="rounded-md px-4 py-2.5"
+            style={{ fontSize: 13, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+            Annuler
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
