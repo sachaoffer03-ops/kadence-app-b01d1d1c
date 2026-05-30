@@ -429,7 +429,7 @@ export const getCourseFullStructure = createServerFn({ method: "POST" })
       supabase.from("training_contents").select("*").order("position"),
       supabase.from("training_quizzes").select("*"),
       supabase.from("training_quiz_questions").select("*").order("position"),
-      supabase.from("training_quiz_options").select("*").order("position"),
+      supabaseAdmin.from("training_quiz_options").select("*").order("position"),
       supabase.from("business_roles").select("id, name"),
     ]);
     if (!courseRes.data) throw new Error("Parcours introuvable");
