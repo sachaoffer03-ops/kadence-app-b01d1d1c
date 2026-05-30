@@ -167,6 +167,8 @@ export function FormationHub({ userId }: { userId: string }) {
           ))}
         </div>
       </div>
+
+      <ContributeAICard />
     </div>
   );
 }
