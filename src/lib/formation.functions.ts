@@ -264,7 +264,7 @@ export const getEmployeeTrainingProgress = createServerFn({ method: "POST" })
       supabase.from("training_contents").select("*").order("position"),
       supabase.from("training_quizzes").select("*"),
       supabase.from("training_quiz_questions").select("*").order("position"),
-      supabase.from("training_quiz_options").select("*").order("position"),
+      supabaseAdmin.from("training_quiz_options").select("*").order("position"),
       supabase.from("training_content_progress").select("*").eq("user_id", data.userId),
       supabase.from("training_quiz_attempts").select("*").eq("user_id", data.userId).order("attempt_number"),
       supabase.from("training_quiz_answers").select("*"),
