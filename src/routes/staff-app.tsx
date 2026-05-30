@@ -266,6 +266,19 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     }
   }, [navigate]);
 
+  // Ouverture de sheets déclenchée par l'assistant IA
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onAction = (e: Event) => {
+      const type = (e as CustomEvent).detail?.type as string | undefined;
+      if (type === "open_dispos") setDisposOpen(true);
+      else if (type === "open_signalement") setSignalOpen(true);
+    };
+    window.addEventListener("kadence:chat-action", onAction as EventListener);
+    return () => window.removeEventListener("kadence:chat-action", onAction as EventListener);
+  }, []);
+
+
   function handleStartClockIn(s: ShiftRow) {
     if (s.clocked_in_at) { toast.info("Arrivée déjà pointée"); return; }
     setClockInShift(s);
