@@ -94,10 +94,13 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
 
   useEffect(() => {
     if (open) {
-      setCat("stock"); setMsg("");
+      setCat("stock"); setMsg(""); setInterim("");
+      msgAtStartRef.current = "";
       photos.forEach(p => URL.revokeObjectURL(p.preview));
       setPhotos([]);
       setUploadProgress(null);
+    } else {
+      voice.stop();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
