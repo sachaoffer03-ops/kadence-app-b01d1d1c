@@ -27,7 +27,7 @@ function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number)
 export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
   const { data: shift, error: shiftError } = await supabaseAdmin
     .from("shifts")
-    .select("id,user_id,studio_id,shift_date,clocked_in_at,clocked_out_at")
+    .select("id,user_id,studio_id,shift_date,end_time,business_role,clocked_in_at,clocked_out_at")
     .eq("id", input.shiftId)
     .maybeSingle();
 
