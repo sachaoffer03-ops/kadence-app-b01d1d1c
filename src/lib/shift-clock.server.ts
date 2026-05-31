@@ -27,7 +27,7 @@ function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number)
 export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
   const { data: shift, error: shiftError } = await supabaseAdmin
     .from("shifts")
-    .select("id,user_id,studio_id,shift_date,clocked_in_at,clocked_out_at")
+    .select("id,user_id,studio_id,shift_date,end_time,business_role,clocked_in_at,clocked_out_at")
     .eq("id", input.shiftId)
     .maybeSingle();
 
@@ -104,6 +104,44 @@ export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
     .maybeSingle();
   if (updateError) throw new Error(updateError.message);
   if (!updated) return { alreadyCompleted: true, completedAt };
+
+  // ─── Notification handoff → prochain employé du même studio/poste ───
+  if (handoffMsg && shift.studio_id && shift.business_role) {
+    try {
+      const { data: nextShift } = await supabaseAdmin
+        .from("shifts")
+        .select("id,user_id,shift_date,start_time")
+        .eq("studio_id", shift.studio_id)
+        .eq("business_role", shift.business_role)
+        .not("user_id", "is", null)
+        .or(`shift_date.gt.${shift.shift_date},and(shift_date.eq.${shift.shift_date},start_time.gte.${shift.end_time})`)
+        .lte("shift_date", new Date(new Date(shift.shift_date).getTime() + 7 * 86_400_000).toISOString().slice(0, 10))
+        .order("shift_date", { ascending: true })
+        .order("start_time", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (nextShift?.user_id && nextShift.user_id !== input.actorId) {
+        const { data: author } = await supabaseAdmin
+          .from("profiles")
+          .select("first_name")
+          .eq("id", input.actorId)
+          .maybeSingle();
+        const fromName = author?.first_name || "Un collègue";
+        await supabaseAdmin.from("notifications").insert({
+          user_id: nextShift.user_id,
+          type: "shift_handoff_received",
+          title: "Message du shift précédent",
+          body: `${fromName} t'a laissé un mot avant son départ.`,
+          link: "/staff-app",
+          priority: "normal",
+          category: "shift",
+        });
+      }
+    } catch {
+      // best-effort
+    }
+  }
+
 
   // ─── Notification "shift_to_rate" pour les admins/managers du studio ───
   // Déclenché à chaque clôture pour rappeler à l'équipe d'attribuer une note manager.
@@ -228,5 +266,60 @@ export async function validateClockIn(input: ValidateClockInInput) {
     note: null,
   } as any);
 
+
+  const { data: shiftFull } = await supabaseAdmin
+    .from("shifts")
+    .select("business_role")
+    .eq("id", input.shiftId)
+    .maybeSingle();
+
+  // ─── Rappel handoff au pointage : s'il y a un mot du shift précédent, notifier l'employé ───
+  try {
+    if (shiftFull?.business_role && shift.studio_id) {
+      const { data: prevShift } = await supabaseAdmin
+        .from("shifts")
+        .select("id,shift_date,end_time,user_id")
+        .eq("studio_id", shift.studio_id)
+        .eq("business_role", shiftFull.business_role)
+        .neq("id", input.shiftId)
+        .not("clocked_out_at", "is", null)
+        .or(`shift_date.lt.${shift.shift_date},and(shift_date.eq.${shift.shift_date},end_time.lte.${shift.start_time})`)
+        .gte("shift_date", new Date(new Date(shift.shift_date).getTime() - 7 * 86_400_000).toISOString().slice(0, 10))
+        .order("shift_date", { ascending: false })
+        .order("end_time", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (prevShift?.id) {
+        const { data: handoff } = await supabaseAdmin
+          .from("shift_handoffs")
+          .select("id,author_id")
+          .eq("shift_id", prevShift.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (handoff?.id) {
+          const { data: author } = await supabaseAdmin
+            .from("profiles")
+            .select("first_name")
+            .eq("id", handoff.author_id)
+            .maybeSingle();
+          const fromName = author?.first_name || "Le collègue précédent";
+          await supabaseAdmin.from("notifications").insert({
+            user_id: input.actorId,
+            type: "shift_handoff_reminder",
+            title: "Mot du shift précédent",
+            body: `${fromName} t'a laissé un message — pense à le lire avant de commencer.`,
+            link: "/staff-app",
+            priority: "normal",
+            category: "shift",
+          });
+        }
+      }
+    }
+  } catch {
+    // best-effort
+  }
+
   return { ok: true, alreadyDone: false as const, clockedInAt, minutesLate, distance_m };
 }
+
