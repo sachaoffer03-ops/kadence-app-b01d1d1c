@@ -230,7 +230,7 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
                 color: voice.listening ? "var(--coral-text)" : "var(--foreground)",
                 border: `0.5px solid ${voice.listening ? "var(--coral)" : "rgba(0,0,0,0.18)"}`,
                 boxShadow: voice.listening ? "0 0 0 4px rgba(240,153,123,0.22)" : "none",
-                animation: voice.listening ? "pulse 1.4s ease-in-out infinite" : "none",
+                animation: voice.listening ? "pulse-dot 1.4s ease-in-out infinite" : "none",
               }}
             >
               {voice.listening ? <MicOff size={16} /> : <Mic size={16} />}
@@ -239,7 +239,7 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
         </div>
         {voice.listening && (
           <div className="mt-1.5 flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--coral)" }}>
-            <span className="inline-block rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)", animation: "pulse 1s ease-in-out infinite" }} />
+            <span className="inline-block rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)", animation: "pulse-dot 1s ease-in-out infinite" }} />
             Écoute en cours… parle naturellement
           </div>
         )}
