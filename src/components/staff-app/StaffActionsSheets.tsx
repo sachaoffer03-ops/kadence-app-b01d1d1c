@@ -3,8 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sheet, FormField, TextArea, PrimaryButton, fmtRelative } from "./shared";
-import { AlertCircle, GraduationCap, Check, Play, Clock, X as XIcon, ChevronDown, CalendarOff, Camera } from "lucide-react";
+import { AlertCircle, GraduationCap, Check, Play, Clock, X as XIcon, ChevronDown, CalendarOff, Camera, Mic, MicOff } from "lucide-react";
 import { createModificationRequest, cancelMyRequest } from "@/lib/demandes.functions";
+import { useVoiceInput } from "@/hooks/use-voice-input";
 
 type SignalCategory = "stock" | "materiel" | "hygiene" | "autre";
 const CATS: { key: SignalCategory; label: string }[] = [
@@ -56,17 +57,50 @@ async function compressImage(file: File): Promise<File> {
 export function SignalementSheet({ open, onClose, userId, studioId }: { open: boolean; onClose: () => void; userId: string; studioId: string | null }) {
   const [cat, setCat] = useState<SignalCategory>("stock");
   const [msg, setMsg] = useState("");
+  const [interim, setInterim] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const msgAtStartRef = useRef("");
+
+  const voice = useVoiceInput({
+    lang: "fr-FR",
+    continuous: true,
+    onResult: (text, isFinal) => {
+      if (isFinal) {
+        const sep = msgAtStartRef.current && !/\s$/.test(msgAtStartRef.current) ? " " : "";
+        const next = (msgAtStartRef.current + sep + text).trim();
+        msgAtStartRef.current = next;
+        setMsg(next);
+        setInterim("");
+      } else {
+        setInterim(text);
+      }
+    },
+    onError: (m) => { toast.error(m); setInterim(""); },
+  });
+
+  const toggleMic = () => {
+    if (voice.listening) {
+      voice.stop();
+      setInterim("");
+    } else {
+      msgAtStartRef.current = msg;
+      setInterim("");
+      voice.start();
+    }
+  };
 
   useEffect(() => {
     if (open) {
-      setCat("stock"); setMsg("");
+      setCat("stock"); setMsg(""); setInterim("");
+      msgAtStartRef.current = "";
       photos.forEach(p => URL.revokeObjectURL(p.preview));
       setPhotos([]);
       setUploadProgress(null);
+    } else {
+      voice.stop();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -177,8 +211,43 @@ export function SignalementSheet({ open, onClose, userId, studioId }: { open: bo
         </div>
       </FormField>
       <FormField label="Message">
-        <TextArea value={msg} onChange={setMsg} rows={5}
-          placeholder="Ex: Plus de lait avoine, prévoir réassort / Moulin chauffe / WC à nettoyer..." />
+        <div className="relative">
+          <TextArea
+            value={msg + (interim ? (msg && !/\s$/.test(msg) ? " " : "") + interim : "")}
+            onChange={(v) => { if (!voice.listening) { setMsg(v); msgAtStartRef.current = v; } }}
+            rows={5}
+            placeholder="Ex: Plus de lait avoine, prévoir réassort / Moulin chauffe / WC à nettoyer..."
+          />
+          {voice.supported && (
+            <button
+              type="button"
+              onClick={toggleMic}
+              aria-label={voice.listening ? "Arrêter la dictée" : "Dicter le message"}
+              className="absolute flex items-center justify-center rounded-full transition-all"
+              style={{
+                bottom: 8, right: 8, width: 36, height: 36,
+                backgroundColor: voice.listening ? "var(--coral)" : "#fff",
+                color: voice.listening ? "var(--coral-text)" : "var(--foreground)",
+                border: `0.5px solid ${voice.listening ? "var(--coral)" : "rgba(0,0,0,0.18)"}`,
+                boxShadow: voice.listening ? "0 0 0 4px rgba(240,153,123,0.22)" : "none",
+                animation: voice.listening ? "pulse-dot 1.4s ease-in-out infinite" : "none",
+              }}
+            >
+              {voice.listening ? <MicOff size={16} /> : <Mic size={16} />}
+            </button>
+          )}
+        </div>
+        {voice.listening && (
+          <div className="mt-1.5 flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--coral)" }}>
+            <span className="inline-block rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)", animation: "pulse-dot 1s ease-in-out infinite" }} />
+            Écoute en cours… parle naturellement
+          </div>
+        )}
+        {!voice.supported && (
+          <div className="mt-1" style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
+            Dictée vocale non disponible sur ce navigateur
+          </div>
+        )}
       </FormField>
       <FormField label={`Photos (optionnel · ${photos.length}/${MAX_PHOTOS})`}>
         <div className="grid grid-cols-3 gap-2">

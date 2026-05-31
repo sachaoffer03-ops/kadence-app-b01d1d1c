@@ -10,10 +10,11 @@ function getSR(): SR | null {
 
 export function useVoiceInput(opts: {
   lang?: string;
+  continuous?: boolean;
   onResult?: (text: string, isFinal: boolean) => void;
   onError?: (msg: string) => void;
 }) {
-  const { lang = "fr-FR", onResult, onError } = opts;
+  const { lang = "fr-FR", continuous = false, onResult, onError } = opts;
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const recRef = useRef<any>(null);
@@ -39,7 +40,7 @@ export function useVoiceInput(opts: {
       const rec = new SR();
       rec.lang = lang;
       rec.interimResults = true;
-      rec.continuous = false;
+      rec.continuous = continuous;
       rec.maxAlternatives = 1;
       rec.onresult = (e: any) => {
         let text = "";
@@ -67,7 +68,7 @@ export function useVoiceInput(opts: {
       onErrorRef.current?.(e?.message || "Impossible de démarrer le micro");
       setListening(false);
     }
-  }, [lang]);
+  }, [lang, continuous]);
 
   useEffect(() => () => { try { recRef.current?.abort(); } catch { /* noop */ } }, []);
 
