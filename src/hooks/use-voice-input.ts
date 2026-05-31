@@ -68,7 +68,7 @@ export function useVoiceInput(opts: {
       onErrorRef.current?.(e?.message || "Impossible de démarrer le micro");
       setListening(false);
     }
-  }, [lang]);
+  }, [lang, continuous]);
 
   useEffect(() => () => { try { recRef.current?.abort(); } catch { /* noop */ } }, []);
 
