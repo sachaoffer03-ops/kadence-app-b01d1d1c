@@ -1,0 +1,11 @@
+UPDATE public.shifts SET user_id='38306d5d-80dc-446d-8aa3-eb5e581d013b' WHERE user_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+UPDATE public.availabilities SET user_id='38306d5d-80dc-446d-8aa3-eb5e581d013b' WHERE user_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+UPDATE public.shift_proposals SET user_id='38306d5d-80dc-446d-8aa3-eb5e581d013b' WHERE user_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+UPDATE public.modification_requests SET user_id='38306d5d-80dc-446d-8aa3-eb5e581d013b' WHERE user_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+UPDATE public.checklist_submissions SET user_id='38306d5d-80dc-446d-8aa3-eb5e581d013b' WHERE user_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+UPDATE public.feedbacks SET author_id='38306d5d-80dc-446d-8aa3-eb5e581d013b' WHERE author_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+UPDATE public.shift_reports SET author_id='38306d5d-80dc-446d-8aa3-eb5e581d013b' WHERE author_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+UPDATE public.shift_handoffs SET author_id='38306d5d-80dc-446d-8aa3-eb5e581d013b' WHERE author_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+UPDATE public.employee_documents SET user_id='38306d5d-80dc-446d-8aa3-eb5e581d013b' WHERE user_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+DELETE FROM public.user_roles WHERE user_id='a8563c40-ac07-472a-b46a-6531f40b59e0';
+DELETE FROM public.profiles WHERE id='a8563c40-ac07-472a-b46a-6531f40b59e0';
