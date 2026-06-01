@@ -135,10 +135,20 @@ function SuggestionsTab() {
   };
 
   const toggleContrib = async (userId: string, current: boolean) => {
+    const next = !current;
+    // Optimistic
+    setContribs((prev) => prev.map((p) => p.id === userId ? { ...p, ai_contributor: next } : p));
     try {
-      await setContribFn({ data: { userId, is_contributor: !current } });
-      setContribs((prev) => prev.map((p) => p.id === userId ? { ...p, ai_contributor: !current } : p));
-    } catch (e: any) { toast.error(e?.message || "Erreur"); }
+      const res: any = await setContribFn({ data: { userId, is_contributor: next } });
+      const confirmed = typeof res?.ai_contributor === "boolean" ? res.ai_contributor : next;
+      setContribs((prev) => prev.map((p) => p.id === userId ? { ...p, ai_contributor: confirmed } : p));
+      toast.success(confirmed ? "Contributeur activé" : "Contributeur désactivé");
+    } catch (e: any) {
+      // Revert
+      setContribs((prev) => prev.map((p) => p.id === userId ? { ...p, ai_contributor: current } : p));
+      console.error("[toggleContrib]", e);
+      toast.error(e?.message || "Erreur lors de la mise à jour");
+    }
   };
 
   return (

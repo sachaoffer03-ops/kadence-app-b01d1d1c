@@ -201,7 +201,7 @@ export const reviewSuggestion = createServerFn({ method: "POST" })
     return { ok: true, entry_id: entry.id };
   });
 
-/** Admin : active/désactive le statut contributeur d'un employé */
+/** Admin/Manager : active/désactive le statut contributeur d'un employé */
 export const setContributorStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
@@ -209,14 +209,17 @@ export const setContributorStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertAdminOrManager(supabase, userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { data: updated, error } = await supabaseAdmin
       .from("profiles")
       .update({ ai_contributor: data.is_contributor })
-      .eq("id", data.userId);
+      .eq("id", data.userId)
+      .select("id, ai_contributor")
+      .maybeSingle();
     if (error) throw new Error(error.message);
-    return { ok: true };
+    if (!updated) throw new Error("Profil introuvable");
+    return { ok: true, ai_contributor: updated.ai_contributor };
   });
 
 /** Admin : liste des contributeurs actifs */
