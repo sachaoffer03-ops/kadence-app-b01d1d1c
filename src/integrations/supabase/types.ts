@@ -2637,6 +2637,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      merge_profile_data: {
+        Args: { new_id: string; old_id: string }
+        Returns: undefined
+      }
       merge_studio: { Args: { dst_id: string; src_id: string }; Returns: Json }
       migrate_studios_v2: {
         Args: { caller_id: string; pairs: Json }
