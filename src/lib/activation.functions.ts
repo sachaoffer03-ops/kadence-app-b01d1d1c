@@ -67,5 +67,13 @@ export const completeActivationProfile = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.from("profiles").update(patch as any).eq("id", userId);
     if (error) throw new Error(error.message);
 
+    // Inscription terminée jusqu'au bout : on marque enfin l'invitation
+    // comme « accepted », ce qui rend le lien inactif.
+    await supabaseAdmin
+      .from("invitations")
+      .update({ status: "accepted", accepted_at: new Date().toISOString() })
+      .eq("id", inv.id);
+
     return { ok: true };
   });
+
