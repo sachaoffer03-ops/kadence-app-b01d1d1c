@@ -251,37 +251,50 @@ function ActivationPage() {
     setSubmitting(true);
     const isAdmin = invitation.app_role === "admin" || invitation.app_role === "manager";
     const targetPath = isAdmin ? "/" : "/staff-app";
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: invitation.email,
-      password,
-      options: {
-        data: {
-          invitation_token: normalizedToken,
-          first_name: invitation.first_name,
-          last_name: invitation.last_name,
+
+    // Si l'employé reprend une inscription en cours, il a déjà une session
+    // (mot de passe créé lors d'une visite précédente). On saute alors le
+    // signUp et on enchaîne directement sur la finalisation du profil.
+    let userId: string | undefined;
+    const { data: existingSession } = await supabase.auth.getSession();
+    const sessionEmail = existingSession.session?.user?.email?.toLowerCase();
+    const invEmail = (invitation.email || "").toLowerCase();
+    const alreadySignedIn = !!sessionEmail && sessionEmail === invEmail;
+
+    if (alreadySignedIn) {
+      userId = existingSession.session!.user.id;
+    } else {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: invitation.email,
+        password,
+        options: {
+          data: {
+            invitation_token: normalizedToken,
+            first_name: invitation.first_name,
+            last_name: invitation.last_name,
+          },
         },
-      },
-    });
+      });
 
-    if (signUpError) {
-      setSubmitting(false);
-      return toast.error(signUpError.message);
+      if (signUpError) {
+        setSubmitting(false);
+        return toast.error(signUpError.message);
+      }
+
+      await new Promise((r) => setTimeout(r, 600));
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: invitation.email,
+        password,
+      });
+      if (signInError) {
+        setSubmitting(false);
+        setDone(true);
+        return toast.error(signInError.message);
+      }
+      userId = signUpData.user?.id;
     }
 
-    await new Promise((r) => setTimeout(r, 600));
-
-    // Connexion immédiate (pas de confirmation email tant que Resend n'est pas configuré)
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: invitation.email,
-      password,
-    });
-    if (signInError) {
-      setSubmitting(false);
-      setDone(true);
-      return toast.error(signInError.message);
-    }
-
-    const userId = signUpData.user?.id;
     if (userId) {
       let avatarUrl: string | null = null;
       if (photoFile) {
@@ -345,6 +358,7 @@ function ActivationPage() {
     toast.success("Compte activé");
     navigate({ to: targetPath });
   };
+
 
   // ───── render states ─────
   if (loading) {
