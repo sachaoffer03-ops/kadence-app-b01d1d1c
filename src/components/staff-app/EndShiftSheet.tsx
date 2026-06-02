@@ -38,7 +38,8 @@ function readDraft(shiftId: string): Draft | null {
 }
 
 function clearDraft(shiftId: string) {
-  if (typeof window !== "undefined") window.sessionStorage.removeItem(`${DRAFT_PREFIX}${shiftId}`);
+  if (typeof window === "undefined") return;
+  try { window.sessionStorage.removeItem(`${DRAFT_PREFIX}${shiftId}`); } catch {}
 }
 
 const STEPS: Step[] = ["feedback", "report", "handoff"];
@@ -56,7 +57,7 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
   const saveDraft = (patch: Draft) => {
     if (!shift || typeof window === "undefined") return;
     const next: Draft = { step, rating, feedbackMsg, reportMsg, handoffMsg, ...patch };
-    window.sessionStorage.setItem(`${DRAFT_PREFIX}${shift.id}`, JSON.stringify(next));
+    try { window.sessionStorage.setItem(`${DRAFT_PREFIX}${shift.id}`, JSON.stringify(next)); } catch {}
   };
 
   const goToStep = (next: Step) => {

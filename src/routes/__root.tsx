@@ -75,11 +75,19 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       /error loading dynamically imported module/i.test(msg);
     if (!isChunkError || typeof window === "undefined") return;
     const KEY = "kadence_chunk_reload_at";
-    const last = Number(sessionStorage.getItem(KEY) || 0);
-    if (Date.now() - last < 10_000) return; // évite la boucle
-    sessionStorage.setItem(KEY, String(Date.now()));
+    try {
+      const last = Number(window.sessionStorage?.getItem(KEY) || 0);
+      if (Date.now() - last < 10_000) return; // évite la boucle
+      window.sessionStorage?.setItem(KEY, String(Date.now()));
+    } catch {
+      // sessionStorage inaccessible (mode privé, storage bloqué) — on recharge quand même
+    }
     forceReload();
   }, [error]);
+
+  // Home selon le mode (employé → /staff-app, admin → /dashboard)
+  const homeHref =
+    typeof window !== "undefined" && getAppMode() === "employee" ? "/staff-app" : "/dashboard";
 
   return (
     <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
@@ -97,7 +105,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             Réessayer
           </button>
           <a
-            href="/dashboard"
+            href={homeHref}
             className="inline-flex items-center justify-center rounded-md border px-4 py-2"
             style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)" }}
           >
