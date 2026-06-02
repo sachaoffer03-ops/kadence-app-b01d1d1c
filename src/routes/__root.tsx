@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import "@/lib/browser-storage-guard";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
