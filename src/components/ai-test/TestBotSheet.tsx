@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Send, Bot, X, Sparkles, ThumbsUp, ThumbsDown, Pencil, Trash2, UserCircle2, ChevronDown } from "lucide-react";
+import { Send, Bot, X, Sparkles, ThumbsUp, ThumbsDown, Pencil, Trash2, UserCircle2, ChevronDown, Eraser } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { askKadenceAI, getChatHistory } from "@/lib/ai-chat.functions";
+import { askKadenceAI, getChatHistory, clearMyChatHistory } from "@/lib/ai-chat.functions";
 import { rateMessage, deleteMessageFeedback, listEmployeesForTest } from "@/lib/ai-admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -46,6 +46,7 @@ export function TestBotSheet({ open, onClose }: Props) {
   const rate = useServerFn(rateMessage);
   const delFb = useServerFn(deleteMessageFeedback);
   const listEmp = useServerFn(listEmployeesForTest);
+  const clearHistory = useServerFn(clearMyChatHistory);
 
   const loadMessages = async () => {
     const r = await history({ data: { is_test: true } });
@@ -191,9 +192,29 @@ export function TestBotSheet({ open, onClose }: Props) {
               </div>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-2 rounded-full transition" style={{ backgroundColor: "transparent" }}>
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={async () => {
+                if (!confirm("Vider tout l'historique du bac à sable ?")) return;
+                try {
+                  await clearHistory({ data: { is_test: true } });
+                  setMessages([]);
+                  toast.success("Historique vidé");
+                } catch (e: any) {
+                  toast.error(e?.message || "Erreur");
+                }
+              }}
+              className="p-2 rounded-full transition"
+              title="Vider l'historique"
+              style={{ backgroundColor: "transparent" }}
+            >
+              <Eraser size={16} />
+            </button>
+            <button type="button" onClick={onClose} className="p-2 rounded-full transition" style={{ backgroundColor: "transparent" }}>
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Impersonation bar */}
