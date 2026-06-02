@@ -295,7 +295,7 @@ export function DocumentsSheet({ open, onClose }: { open: boolean; onClose: () =
 
 /* ─── NotificationsSheet ─── */
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
-import { Calendar, Replace as ReplaceIcon, MessageCircle, Send, X, Bell, BellOff } from "lucide-react";
+import { Calendar, Replace as ReplaceIcon, MessageCircle, Send, X, BellOff } from "lucide-react";
 import { acceptProposal, declineProposal, acceptReplacementProposal } from "@/lib/proposals.functions";
 
 function PushPermissionButton() {
