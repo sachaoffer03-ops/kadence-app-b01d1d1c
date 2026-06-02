@@ -27,7 +27,7 @@ export interface StudioRow {
   capacity: number | null;
   surface_m2: number | null;
   opened_at: string | null;
-  internal_notes: string | null;
+  internal_notes?: string | null;
   has_kitchen: boolean;
   opening_hours: DayHours[];
   role_hours: Record<string, RoleSchedule>;
@@ -72,7 +72,7 @@ export function useStudios() {
   const reload = useCallback(async () => {
     const { data, error } = await supabase
       .from("studios")
-      .select("id, name, created_at, address, city, postal_code, phone, opening_hours, capacity, color, description, short_name, has_kitchen, manager_id, deleted_at, email, surface_m2, opened_at, internal_notes, role_hours, manager_name, clock_out_button_appears_before_min, clock_out_grace_period_min, clock_out_overdue_action, qr_renewal_seconds, qr_display_support, geofencing_enabled, geofencing_radius_m, lat, lng, clock_in_grace_period_min, qr_generated_at")
+      .select("id, name, created_at, address, city, postal_code, phone, opening_hours, capacity, color, description, short_name, has_kitchen, manager_id, deleted_at, email, surface_m2, opened_at, role_hours, manager_name, clock_out_button_appears_before_min, clock_out_grace_period_min, clock_out_overdue_action, qr_renewal_seconds, qr_display_support, geofencing_enabled, geofencing_radius_m, clock_in_grace_period_min")
       .order("created_at", { ascending: true });
     if (!error && data) setStudios(data.map(normalize));
     setLoading(false);
@@ -106,7 +106,7 @@ export async function createStudio(name: string, hasKitchen: boolean = false): P
       opening_hours: DEFAULT_WEEK as any,
       role_hours: {} as any,
     })
-    .select("id, name, created_at, address, city, postal_code, phone, opening_hours, capacity, color, description, short_name, has_kitchen, manager_id, deleted_at, email, surface_m2, opened_at, internal_notes, role_hours, manager_name, clock_out_button_appears_before_min, clock_out_grace_period_min, clock_out_overdue_action, qr_renewal_seconds, qr_display_support, geofencing_enabled, geofencing_radius_m, lat, lng, clock_in_grace_period_min, qr_generated_at")
+    .select("id, name, created_at, address, city, postal_code, phone, opening_hours, capacity, color, description, short_name, has_kitchen, manager_id, deleted_at, email, surface_m2, opened_at, role_hours, manager_name, clock_out_button_appears_before_min, clock_out_grace_period_min, clock_out_overdue_action, qr_renewal_seconds, qr_display_support, geofencing_enabled, geofencing_radius_m, clock_in_grace_period_min")
     .single();
   if (error) throw error;
   return normalize(data);

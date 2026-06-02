@@ -2618,6 +2618,10 @@ export type Database = {
           studio_ids: string[]
         }[]
       }
+      get_studio_internal_notes: {
+        Args: { _studio_id: string }
+        Returns: string
+      }
       get_worked_hours: {
         Args: {
           period_end?: string
