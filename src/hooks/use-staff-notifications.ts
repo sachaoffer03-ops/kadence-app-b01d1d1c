@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const dismissedKey = (uid: string) => `staff-notif-dismissed:${uid}`;
+const MAX_DISMISSED = 200;
 
 export type StaffNotifKind = "shift" | "request" | "message" | "proposal";
 
@@ -141,19 +142,28 @@ export function useStaffNotifications(userId: string | undefined) {
     setItems(list.slice(0, 30));
   }, [userId]);
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedLoad = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { load(); }, 250);
+  }, [load]);
+
   useEffect(() => {
     if (!userId) return;
     load();
 
-    const ch = supabase.channel(`staff-notif-${userId}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, load)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "modification_requests", filter: `user_id=eq.${userId}` }, load)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${userId}` }, load)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, load)
+    const ch = supabase.channel(`staff-notif-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, debouncedLoad)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "modification_requests", filter: `user_id=eq.${userId}` }, debouncedLoad)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${userId}` }, debouncedLoad)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, debouncedLoad)
       .subscribe();
 
-    return () => { supabase.removeChannel(ch); };
-  }, [userId, load]);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      supabase.removeChannel(ch);
+    };
+  }, [userId, load, debouncedLoad]);
 
   const unread = useMemo(() => items.filter((n) => !n.read).length, [items]);
 
@@ -174,8 +184,11 @@ export function useStaffNotifications(userId: string | undefined) {
     setDismissed((prev) => {
       const next = new Set(prev);
       next.add(id);
-      localStorage.setItem(dismissedKey(userId), JSON.stringify([...next]));
-      return next;
+      // Cap localStorage size: keep only the most recent MAX_DISMISSED ids
+      const arr = [...next];
+      const capped = arr.length > MAX_DISMISSED ? arr.slice(-MAX_DISMISSED) : arr;
+      localStorage.setItem(dismissedKey(userId), JSON.stringify(capped));
+      return new Set(capped);
     });
     setItems((prev) => prev.filter((n) => n.id !== id));
     // Marquer aussi comme lu côté DB si c'est une vraie notification
