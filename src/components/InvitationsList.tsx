@@ -180,6 +180,14 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
     if (!confirm(`Renvoyer l'email d'activation à ${pendings.length} employé(s) en attente ?`)) return;
     setBulkResending(true);
     const t = toast.loading(`Envoi en cours (0/${pendings.length})...`);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) {
+      toast.dismiss(t);
+      setBulkResending(false);
+      toast.error("Session expirée, reconnectez-vous");
+      return;
+    }
     let ok = 0;
     let fail = 0;
     for (let idx = 0; idx < pendings.length; idx++) {
@@ -196,6 +204,7 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
           business_roles: inv.business_roles ?? [],
           app_role: inv.app_role,
         },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (error) {
         fail++;
