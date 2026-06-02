@@ -53,13 +53,15 @@ export function useSidebarCounts(): SidebarCounts {
 
   useEffect(() => {
     load();
-    const ch = supabase.channel("sidebar-counts")
+    let ch = supabase.channel("sidebar-counts")
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, debouncedLoad)
       .on("postgres_changes", { event: "*", schema: "public", table: "modification_requests" }, debouncedLoad)
       .on("postgres_changes", { event: "*", schema: "public", table: "signalements" }, debouncedLoad)
-      .on("postgres_changes", { event: "*", schema: "public", table: "feedbacks" }, debouncedLoad)
-      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: user?.id ? `user_id=eq.${user.id}` : undefined as any }, debouncedLoad)
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "feedbacks" }, debouncedLoad);
+    if (user?.id) {
+      ch = ch.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, debouncedLoad);
+    }
+    ch.subscribe();
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       supabase.removeChannel(ch);
