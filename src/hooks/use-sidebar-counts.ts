@@ -53,7 +53,7 @@ export function useSidebarCounts(): SidebarCounts {
 
   useEffect(() => {
     load();
-    let ch = supabase.channel("sidebar-counts")
+    let ch = supabase.channel("sidebar-counts-" + Math.random().toString(36).slice(2, 10))
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, debouncedLoad)
       .on("postgres_changes", { event: "*", schema: "public", table: "modification_requests" }, debouncedLoad)
       .on("postgres_changes", { event: "*", schema: "public", table: "signalements" }, debouncedLoad)
