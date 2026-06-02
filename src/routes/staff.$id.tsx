@@ -79,42 +79,48 @@ function EmployeeDetailPage() {
   const canEditClock = appRole === "admin" || appRole === "manager";
 
   const load = async () => {
-    const [{ data: p }, { data: br }, { data: sts }, { data: us }, { data: uc }, { data: sh }, { data: sg }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
-      supabase.from("user_business_roles").select("role").eq("user_id", id),
-      supabase.from("studios").select("id,name"),
-      supabase.from("user_studios").select("studio_id").eq("user_id", id),
-      supabase.from("user_contracts").select("contract").eq("user_id", id),
-      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status,clocked_in_at,clocked_out_at").eq("user_id", id).lte("shift_date", new Date().toISOString().slice(0, 10)).order("shift_date", { ascending: false }).limit(20),
-      supabase.from("signalements").select("id,category,message,created_at,resolved").eq("author_id", id).order("created_at", { ascending: false }).limit(10),
-    ]);
-    setEmp(p as Profile | null);
-    setBusinessRoles((br || []).map(r => r.role as Role));
-    setStudios(Object.fromEntries((sts || []).map(s => [s.id, s.name])));
-    setUserStudioIds((us || []).map(r => r.studio_id as string));
-    setUserContracts((uc || []).map(r => r.contract as string));
-    setShifts(sh || []);
-    setSigs(sg || []);
+    try {
+      const [{ data: p }, { data: br }, { data: sts }, { data: us }, { data: uc }, { data: sh }, { data: sg }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
+        supabase.from("user_business_roles").select("role").eq("user_id", id),
+        supabase.from("studios").select("id,name"),
+        supabase.from("user_studios").select("studio_id").eq("user_id", id),
+        supabase.from("user_contracts").select("contract").eq("user_id", id),
+        supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status,clocked_in_at,clocked_out_at").eq("user_id", id).lte("shift_date", new Date().toISOString().slice(0, 10)).order("shift_date", { ascending: false }).limit(20),
+        supabase.from("signalements").select("id,category,message,created_at,resolved").eq("author_id", id).order("created_at", { ascending: false }).limit(10),
+      ]);
+      setEmp(p as Profile | null);
+      setBusinessRoles((br || []).map(r => r.role as Role));
+      setStudios(Object.fromEntries((sts || []).map(s => [s.id, s.name])));
+      setUserStudioIds((us || []).map(r => r.studio_id as string));
+      setUserContracts((uc || []).map(r => r.contract as string));
+      setShifts(sh || []);
+      setSigs(sg || []);
 
-    // Feedbacks SUR ses shifts (notes admin/manager)
-    const shiftIds = (sh || []).map(s => s.id);
-    if (shiftIds.length > 0) {
-      const { data: fb } = await supabase
-        .from("feedbacks")
-        .select("id,rating,message,created_at,shift_id,author_id")
-        .in("shift_id", shiftIds)
-        .order("created_at", { ascending: false });
-      const list = (fb || []).filter(f => f.author_id !== id) as FB[];
-      setFbs(list);
-      const authorIds = Array.from(new Set(list.map(f => f.author_id)));
-      if (authorIds.length > 0) {
-        const { data: ap } = await supabase.from("profiles").select("id,first_name,last_name").in("id", authorIds);
-        setAuthors(Object.fromEntries((ap || []).map(a => [a.id, a as AuthorMini])));
+      // Feedbacks SUR ses shifts (notes admin/manager)
+      const shiftIds = (sh || []).map(s => s.id);
+      if (shiftIds.length > 0) {
+        const { data: fb } = await supabase
+          .from("feedbacks")
+          .select("id,rating,message,created_at,shift_id,author_id")
+          .in("shift_id", shiftIds)
+          .order("created_at", { ascending: false });
+        const list = (fb || []).filter(f => f.author_id !== id) as FB[];
+        setFbs(list);
+        const authorIds = Array.from(new Set(list.map(f => f.author_id)));
+        if (authorIds.length > 0) {
+          const { data: ap } = await supabase.from("profiles").select("id,first_name,last_name").in("id", authorIds);
+          setAuthors(Object.fromEntries((ap || []).map(a => [a.id, a as AuthorMini])));
+        }
+      } else {
+        setFbs([]);
       }
-    } else {
-      setFbs([]);
+      setLoading(false);
+    } catch (e: any) {
+      console.error("[staff.$id load]", e);
+      toast.error("Erreur lors du chargement", { description: e?.message });
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => { load(); }, [id]);
