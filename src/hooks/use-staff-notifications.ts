@@ -5,6 +5,22 @@ import { toast } from "sonner";
 const dismissedKey = (uid: string) => `staff-notif-dismissed:${uid}`;
 const MAX_DISMISSED = 200;
 
+// Safe localStorage wrappers — certains navigateurs mobiles (mode privé,
+// stockage bloqué, quota) lèvent une exception ; on isole pour ne JAMAIS
+// crasher l'arbre React au montage.
+function safeGet(key: string): string | null {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    return window.localStorage.getItem(key);
+  } catch { return null; }
+}
+function safeSet(key: string, value: string) {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    window.localStorage.setItem(key, value);
+  } catch { /* ignore */ }
+}
+
 export type StaffNotifKind = "shift" | "request" | "message" | "proposal";
 
 export interface StaffNotif {
@@ -37,12 +53,12 @@ export function useStaffNotifications(userId: string | undefined) {
   const [items, setItems] = useState<StaffNotif[]>([]);
   const [lastSeen, setLastSeen] = useState<number>(() => {
     if (!userId) return 0;
-    return Number(localStorage.getItem(lastSeenKey(userId)) || 0);
+    return Number(safeGet(lastSeenKey(userId)) || 0);
   });
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
     if (!userId) return new Set<string>();
     try {
-      return new Set<string>(JSON.parse(localStorage.getItem(dismissedKey(userId)) || "[]"));
+      return new Set<string>(JSON.parse(safeGet(dismissedKey(userId)) || "[]"));
     } catch {
       return new Set<string>();
     }
@@ -78,8 +94,10 @@ export function useStaffNotifications(userId: string | undefined) {
         .limit(30),
     ]);
 
-    const seenAt = Number(localStorage.getItem(lastSeenKey(userId)) || 0);
-    const dismissedIds = new Set<string>(JSON.parse(localStorage.getItem(dismissedKey(userId)) || "[]"));
+    const seenAt = Number(safeGet(lastSeenKey(userId)) || 0);
+    let dismissedIds: Set<string>;
+    try { dismissedIds = new Set<string>(JSON.parse(safeGet(dismissedKey(userId)) || "[]")); }
+    catch { dismissedIds = new Set<string>(); }
     const list: StaffNotif[] = [];
 
     (shifts || []).forEach((s) => {
@@ -211,7 +229,7 @@ export function useStaffNotifications(userId: string | undefined) {
   const markAllRead = useCallback(async () => {
     if (!userId) return;
     const now = Date.now();
-    localStorage.setItem(lastSeenKey(userId), String(now));
+    safeSet(lastSeenKey(userId), String(now));
     setLastSeen(now);
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
     await supabase.from("notifications")
@@ -228,7 +246,7 @@ export function useStaffNotifications(userId: string | undefined) {
       // Cap localStorage size: keep only the most recent MAX_DISMISSED ids
       const arr = [...next];
       const capped = arr.length > MAX_DISMISSED ? arr.slice(-MAX_DISMISSED) : arr;
-      localStorage.setItem(dismissedKey(userId), JSON.stringify(capped));
+      safeSet(dismissedKey(userId), JSON.stringify(capped));
       return new Set(capped);
     });
     setItems((prev) => prev.filter((n) => n.id !== id));

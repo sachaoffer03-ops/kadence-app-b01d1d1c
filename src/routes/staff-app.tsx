@@ -299,7 +299,7 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
   const nextMonthLabel = nextMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
   useEffect(() => {
-    setDisposValidated(!!localStorage.getItem(disposKey(userId, nextMonth.getFullYear(), nextMonth.getMonth())));
+    try { setDisposValidated(!!window.localStorage?.getItem(disposKey(userId, nextMonth.getFullYear(), nextMonth.getMonth()))); } catch { setDisposValidated(false); }
   }, [userId, disposOpen, nextMonth]);
 
   useEffect(() => {

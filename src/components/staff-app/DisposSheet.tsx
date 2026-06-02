@@ -55,7 +55,8 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
 
   useEffect(() => {
     if (!open) return;
-    const flag = typeof window !== "undefined" ? localStorage.getItem(disposKey(userId, year, month)) : null;
+    let flag: string | null = null;
+    try { if (typeof window !== "undefined") flag = window.localStorage?.getItem(disposKey(userId, year, month)) ?? null; } catch {}
     setValidated(!!flag);
     deadlineFn().then((d: any) => setDeadline(d)).catch(() => {});
     (async () => {
@@ -210,7 +211,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       toast.error("Indique au moins une disponibilité");
       return;
     }
-    localStorage.setItem(disposKey(userId, year, month), new Date().toISOString());
+    try { window.localStorage?.setItem(disposKey(userId, year, month), new Date().toISOString()); } catch {}
     setValidated(true);
     toast.success("Dispos envoyées pour " + monthLabel);
   };
