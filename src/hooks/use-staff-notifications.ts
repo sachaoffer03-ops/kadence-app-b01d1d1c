@@ -229,7 +229,7 @@ export function useStaffNotifications(userId: string | undefined) {
   const markAllRead = useCallback(async () => {
     if (!userId) return;
     const now = Date.now();
-    localStorage.setItem(lastSeenKey(userId), String(now));
+    safeSet(lastSeenKey(userId), String(now));
     setLastSeen(now);
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
     await supabase.from("notifications")
