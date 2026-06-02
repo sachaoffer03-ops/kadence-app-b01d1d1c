@@ -295,8 +295,38 @@ export function DocumentsSheet({ open, onClose }: { open: boolean; onClose: () =
 
 /* ─── NotificationsSheet ─── */
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
-import { Calendar, Replace as ReplaceIcon, MessageCircle, Send, X } from "lucide-react";
+import { Calendar, Replace as ReplaceIcon, MessageCircle, Send, X, Bell, BellOff } from "lucide-react";
 import { acceptProposal, declineProposal, acceptReplacementProposal } from "@/lib/proposals.functions";
+
+function PushPermissionButton() {
+  const [perm, setPerm] = useState<NotificationPermission | "unsupported">(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+    return Notification.permission;
+  });
+  if (perm === "unsupported") return null;
+  if (perm === "granted") {
+    return (
+      <span className="flex items-center gap-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+        <Bell size={11} /> Activées
+      </span>
+    );
+  }
+  if (perm === "denied") {
+    return (
+      <span className="flex items-center gap-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }} title="Autorisez les notifications dans les réglages du navigateur">
+        <BellOff size={11} /> Bloquées
+      </span>
+    );
+  }
+  return (
+    <button
+      onClick={async () => { try { const p = await Notification.requestPermission(); setPerm(p); } catch {} }}
+      className="flex items-center gap-1"
+      style={{ fontSize: 11, fontWeight: 500, color: "var(--coral-dark)" }}>
+      <Bell size={11} /> Activer
+    </button>
+  );
+}
 
 function fmtRelative(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
