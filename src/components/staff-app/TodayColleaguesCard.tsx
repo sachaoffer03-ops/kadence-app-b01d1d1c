@@ -19,7 +19,7 @@ export function TodayColleaguesCard({ userId }: { userId: string }) {
     };
     load();
     const ch = supabase
-      .channel(`colleagues-${userId}`)
+      .channel(`colleagues-${userId}-${Math.random().toString(36).slice(2, 10)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, () => load())
       .subscribe();
     return () => {
