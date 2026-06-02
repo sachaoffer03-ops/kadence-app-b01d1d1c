@@ -57,7 +57,7 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
   const saveDraft = (patch: Draft) => {
     if (!shift || typeof window === "undefined") return;
     const next: Draft = { step, rating, feedbackMsg, reportMsg, handoffMsg, ...patch };
-    window.sessionStorage.setItem(`${DRAFT_PREFIX}${shift.id}`, JSON.stringify(next));
+    try { window.sessionStorage.setItem(`${DRAFT_PREFIX}${shift.id}`, JSON.stringify(next)); } catch {}
   };
 
   const goToStep = (next: Step) => {
