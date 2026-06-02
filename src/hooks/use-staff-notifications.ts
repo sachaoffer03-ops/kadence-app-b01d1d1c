@@ -5,6 +5,22 @@ import { toast } from "sonner";
 const dismissedKey = (uid: string) => `staff-notif-dismissed:${uid}`;
 const MAX_DISMISSED = 200;
 
+// Safe localStorage wrappers — certains navigateurs mobiles (mode privé,
+// stockage bloqué, quota) lèvent une exception ; on isole pour ne JAMAIS
+// crasher l'arbre React au montage.
+function safeGet(key: string): string | null {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    return window.localStorage.getItem(key);
+  } catch { return null; }
+}
+function safeSet(key: string, value: string) {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    window.localStorage.setItem(key, value);
+  } catch { /* ignore */ }
+}
+
 export type StaffNotifKind = "shift" | "request" | "message" | "proposal";
 
 export interface StaffNotif {
@@ -37,12 +53,12 @@ export function useStaffNotifications(userId: string | undefined) {
   const [items, setItems] = useState<StaffNotif[]>([]);
   const [lastSeen, setLastSeen] = useState<number>(() => {
     if (!userId) return 0;
-    return Number(localStorage.getItem(lastSeenKey(userId)) || 0);
+    return Number(safeGet(lastSeenKey(userId)) || 0);
   });
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
     if (!userId) return new Set<string>();
     try {
-      return new Set<string>(JSON.parse(localStorage.getItem(dismissedKey(userId)) || "[]"));
+      return new Set<string>(JSON.parse(safeGet(dismissedKey(userId)) || "[]"));
     } catch {
       return new Set<string>();
     }
