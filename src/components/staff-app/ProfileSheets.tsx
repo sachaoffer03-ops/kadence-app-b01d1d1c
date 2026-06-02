@@ -326,7 +326,7 @@ export function NotificationsSheet({ open, onClose, userId, studios, onNavigate 
   studios?: Record<string, string>;
   onNavigate?: (tab: "accueil" | "planning" | "pointage" | "chat") => void;
 }) {
-  const { items, unread, markAllRead } = useStaffNotifications(userId);
+  const { items, unread, markAllRead, dismissNotif } = useStaffNotifications(userId);
   const [proposals, setProposals] = useState<PendingProposal[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const acceptFn = useServerFn(acceptProposal);
@@ -358,12 +358,6 @@ export function NotificationsSheet({ open, onClose, userId, studios, onNavigate 
     return () => { supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, userId]);
-
-  // Marquer comme lu à la fermeture
-  useEffect(() => {
-    if (!open && unread > 0) markAllRead();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const acceptProp = async (p: PendingProposal) => {
     setBusy(p.id);
