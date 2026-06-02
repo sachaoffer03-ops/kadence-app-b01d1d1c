@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const dismissedKey = (uid: string) => `staff-notif-dismissed:${uid}`;
 const MAX_DISMISSED = 200;
@@ -148,8 +149,30 @@ export function useStaffNotifications(userId: string | undefined) {
     debounceRef.current = setTimeout(() => { load(); }, 250);
   }, [load]);
 
+  // Track seen IDs to detect newly arrived notifs (after first load)
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (items.length === 0) return;
+    if (!initializedRef.current) {
+      items.forEach((n) => seenIdsRef.current.add(n.id));
+      initializedRef.current = true;
+      return;
+    }
+    items.forEach((n) => {
+      if (!seenIdsRef.current.has(n.id)) {
+        seenIdsRef.current.add(n.id);
+        if (!n.read) {
+          toast(n.title, { description: n.body || undefined });
+        }
+      }
+    });
+  }, [items]);
+
   useEffect(() => {
     if (!userId) return;
+    initializedRef.current = false;
+    seenIdsRef.current = new Set();
     load();
 
     const ch = supabase.channel(`staff-notif-${userId}`)
