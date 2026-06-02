@@ -302,6 +302,22 @@ export const getChatHistory = createServerFn({ method: "POST" })
     return { messages: rows ?? [] };
   });
 
+const ClearHistoryInput = z.object({ is_test: z.boolean().optional().default(false) }).optional();
+
+export const clearMyChatHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => (ClearHistoryInput.parse(i) ?? { is_test: false }))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("ai_chat_messages")
+      .delete()
+      .eq("user_id", userId)
+      .eq("is_test", data?.is_test ?? false);
+    return { ok: true };
+  });
+
 // ─── Suggestions contextuelles pour le panel de chat ─────────────────────────
 export const getChatSuggestions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
