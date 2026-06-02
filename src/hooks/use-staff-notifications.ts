@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+const dismissedKey = (uid: string) => `staff-notif-dismissed:${uid}`;
+
 export type StaffNotifKind = "shift" | "request" | "message" | "proposal";
 
 export interface StaffNotif {
@@ -35,6 +37,14 @@ export function useStaffNotifications(userId: string | undefined) {
     if (!userId) return 0;
     return Number(localStorage.getItem(lastSeenKey(userId)) || 0);
   });
+  const [dismissed, setDismissed] = useState<Set<string>>(() => {
+    if (!userId) return new Set<string>();
+    try {
+      return new Set<string>(JSON.parse(localStorage.getItem(dismissedKey(userId)) || "[]"));
+    } catch {
+      return new Set<string>();
+    }
+  });
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -67,12 +77,15 @@ export function useStaffNotifications(userId: string | undefined) {
     ]);
 
     const seenAt = Number(localStorage.getItem(lastSeenKey(userId)) || 0);
+    const dismissedIds = new Set<string>(JSON.parse(localStorage.getItem(dismissedKey(userId)) || "[]"));
     const list: StaffNotif[] = [];
 
     (shifts || []).forEach((s) => {
       const ts = new Date(s.created_at).getTime();
+      const id = `shift-${s.id}`;
+      if (dismissedIds.has(id)) return;
       list.push({
-        id: `shift-${s.id}`,
+        id,
         kind: "shift",
         title: "Planning généré",
         body: `Nouveau shift ${fmtShiftDate(s.shift_date, s.start_time)} · ${s.business_role}`,
@@ -156,5 +169,24 @@ export function useStaffNotifications(userId: string | undefined) {
       .is("read_at", null);
   }, [userId]);
 
-  return { items, unread, markAllRead, lastSeen };
+  const dismissNotif = useCallback(async (id: string) => {
+    if (!userId) return;
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem(dismissedKey(userId), JSON.stringify([...next]));
+      return next;
+    });
+    setItems((prev) => prev.filter((n) => n.id !== id));
+    // Marquer aussi comme lu côté DB si c'est une vraie notification
+    if (id.startsWith("notif-")) {
+      const dbId = id.replace("notif-", "");
+      await supabase.from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", dbId)
+        .eq("user_id", userId);
+    }
+  }, [userId]);
+
+  return { items, unread, markAllRead, dismissNotif, lastSeen };
 }
