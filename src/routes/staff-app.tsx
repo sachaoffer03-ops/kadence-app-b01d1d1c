@@ -26,7 +26,7 @@ import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSh
 import { Send } from "lucide-react";
 import { WorkedHoursEmployeeCard, EmployeeLastShifts } from "@/components/WorkedHoursCard";
 import { MyStatsCard } from "@/components/staff-app/MyStatsCard";
-import { EmployeeNotifsWidget } from "@/components/staff-app/EmployeeNotifsWidget";
+
 import { ClockInSheet } from "@/components/staff-app/ClockInSheet";
 import { ProposalsInline } from "@/components/staff-app/ProposalsInline";
 import { TodayColleaguesCard } from "@/components/staff-app/TodayColleaguesCard";
