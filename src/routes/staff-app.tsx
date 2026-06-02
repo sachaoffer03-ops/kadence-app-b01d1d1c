@@ -26,7 +26,7 @@ import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSh
 import { Send } from "lucide-react";
 import { WorkedHoursEmployeeCard, EmployeeLastShifts } from "@/components/WorkedHoursCard";
 import { MyStatsCard } from "@/components/staff-app/MyStatsCard";
-import { EmployeeNotifsWidget } from "@/components/staff-app/EmployeeNotifsWidget";
+
 import { ClockInSheet } from "@/components/staff-app/ClockInSheet";
 import { ProposalsInline } from "@/components/staff-app/ProposalsInline";
 import { TodayColleaguesCard } from "@/components/staff-app/TodayColleaguesCard";
@@ -383,21 +383,26 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         <button
           onClick={onOpenNotifs}
           aria-label="Notifications"
-          className="relative rounded-full flex items-center justify-center transition-colors hover:bg-black/5"
-          style={{ width: 40, height: 40 }}
+          className="relative inline-flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+          style={{
+            height: 40,
+            minWidth: 40,
+            padding: unread > 0 ? "0 12px 0 10px" : 0,
+            borderRadius: 999,
+            backgroundColor: unread > 0 ? "var(--coral)" : "transparent",
+            color: unread > 0 ? "var(--coral-text)" : "var(--foreground)",
+            border: unread > 0 ? "none" : "0.5px solid var(--border)",
+            boxShadow: unread > 0 ? "0 6px 18px rgba(240,153,123,0.45)" : "none",
+          }}
         >
-          <Bell size={20} strokeWidth={1.6} style={{ color: "var(--foreground)" }} />
+          <Bell size={unread > 0 ? 18 : 20} strokeWidth={unread > 0 ? 2 : 1.6} />
           {unread > 0 && (
-            <span
-              style={{
-                position: "absolute", top: 8, right: 8,
-                width: 8, height: 8, borderRadius: 4,
-                backgroundColor: "var(--coral)",
-                border: "1.5px solid #FAF8F4",
-              }}
-            />
+            <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1 }}>
+              {unread > 99 ? "99+" : unread}
+            </span>
           )}
         </button>
+
       </div>
 
       <ProposalsInline userId={userId} studios={studios} />
@@ -635,9 +640,6 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
 
 
 
-
-      {/* Notifications importantes (urgent + normal) */}
-      <EmployeeNotifsWidget userId={userId} />
 
 
 
