@@ -55,7 +55,8 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
 
   useEffect(() => {
     if (!open) return;
-    const flag = typeof window !== "undefined" ? localStorage.getItem(disposKey(userId, year, month)) : null;
+    let flag: string | null = null;
+    try { if (typeof window !== "undefined") flag = window.localStorage?.getItem(disposKey(userId, year, month)) ?? null; } catch {}
     setValidated(!!flag);
     deadlineFn().then((d: any) => setDeadline(d)).catch(() => {});
     (async () => {
