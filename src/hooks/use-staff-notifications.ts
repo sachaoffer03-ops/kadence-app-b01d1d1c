@@ -169,5 +169,24 @@ export function useStaffNotifications(userId: string | undefined) {
       .is("read_at", null);
   }, [userId]);
 
-  return { items, unread, markAllRead, lastSeen };
+  const dismissNotif = useCallback(async (id: string) => {
+    if (!userId) return;
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem(dismissedKey(userId), JSON.stringify([...next]));
+      return next;
+    });
+    setItems((prev) => prev.filter((n) => n.id !== id));
+    // Marquer aussi comme lu côté DB si c'est une vraie notification
+    if (id.startsWith("notif-")) {
+      const dbId = id.replace("notif-", "");
+      await supabase.from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", dbId)
+        .eq("user_id", userId);
+    }
+  }, [userId]);
+
+  return { items, unread, markAllRead, dismissNotif, lastSeen };
 }
