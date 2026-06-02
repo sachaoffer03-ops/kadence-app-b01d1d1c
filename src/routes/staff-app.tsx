@@ -641,9 +641,6 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
 
 
 
-      {/* Notifications importantes (urgent + normal) */}
-      <EmployeeNotifsWidget userId={userId} />
-
 
 
       <button
