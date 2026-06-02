@@ -142,19 +142,28 @@ export function useStaffNotifications(userId: string | undefined) {
     setItems(list.slice(0, 30));
   }, [userId]);
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedLoad = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { load(); }, 250);
+  }, [load]);
+
   useEffect(() => {
     if (!userId) return;
     load();
 
-    const ch = supabase.channel(`staff-notif-${userId}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, load)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "modification_requests", filter: `user_id=eq.${userId}` }, load)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${userId}` }, load)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, load)
+    const ch = supabase.channel(`staff-notif-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, debouncedLoad)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "modification_requests", filter: `user_id=eq.${userId}` }, debouncedLoad)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${userId}` }, debouncedLoad)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, debouncedLoad)
       .subscribe();
 
-    return () => { supabase.removeChannel(ch); };
-  }, [userId, load]);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      supabase.removeChannel(ch);
+    };
+  }, [userId, load, debouncedLoad]);
 
   const unread = useMemo(() => items.filter((n) => !n.read).length, [items]);
 
