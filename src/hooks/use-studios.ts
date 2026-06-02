@@ -27,7 +27,7 @@ export interface StudioRow {
   capacity: number | null;
   surface_m2: number | null;
   opened_at: string | null;
-  internal_notes: string | null;
+  internal_notes?: string | null;
   has_kitchen: boolean;
   opening_hours: DayHours[];
   role_hours: Record<string, RoleSchedule>;
