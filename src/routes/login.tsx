@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { mode: searchMode, email: searchEmail } = Route.useSearch();
+  const navigate = useNavigate();
   const { session, appRole, loading: authLoading } = useAuth();
   const [email, setEmail] = useState(searchEmail ?? "");
   const [password, setPassword] = useState("");
@@ -52,14 +53,12 @@ function LoginPage() {
         window.location.replace("https://app.shyft.flashsite.fr/login");
         return;
       }
-      // Redirection pleine page + cache-buster : évite les anciens chunks JS
-      // conservés par Safari/mobile après une publication.
-      const target = new URL(isEmployeeSpace ? "/staff-app" : "/dashboard", window.location.origin);
-      target.searchParams.set("r", String(Date.now()));
-      window.location.replace(target.toString());
+      // Navigation SPA : en navigation privée / stockage bloqué, la session peut
+      // être gardée uniquement en mémoire. Un reload plein écran la perdrait.
+      navigate({ to: isEmployeeSpace ? "/staff-app" : "/dashboard", replace: true });
     };
     checkAccess();
-  }, [authLoading, session, appMode]);
+  }, [authLoading, session, appMode, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
