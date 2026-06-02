@@ -164,6 +164,24 @@ export function useStaffNotifications(userId: string | undefined) {
         seenIdsRef.current.add(n.id);
         if (!n.read) {
           toast(n.title, { description: n.body || undefined });
+          // Native browser notification (off-app alerts)
+          try {
+            if (typeof window !== "undefined"
+                && "Notification" in window
+                && Notification.permission === "granted"
+                && document.visibilityState !== "visible") {
+              const notif = new Notification(n.title, {
+                body: n.body || undefined,
+                icon: "/favicon.ico",
+                tag: n.id,
+              });
+              notif.onclick = () => {
+                window.focus();
+                if (n.link) window.location.assign(n.link);
+                notif.close();
+              };
+            }
+          } catch {}
         }
       }
     });
