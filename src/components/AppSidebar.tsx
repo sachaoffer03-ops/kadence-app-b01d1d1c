@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import logo from "@/assets/kadence-logo.png";
+import { useSidebarCounts } from "@/hooks/use-sidebar-counts";
 
 
 interface NavItem {
@@ -35,48 +36,52 @@ interface NavSection {
   items: NavItem[];
 }
 
-const navSections: NavSection[] = [
-  {
-    title: "Pilotage",
-    items: [
-      { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-      { label: "Rapports", to: "/rapports", icon: BarChart3 },
-      { label: "Planning", to: "/planning", icon: CalendarDays },
-      { label: "Staff", to: "/staff", icon: Users },
-      { label: "Trous à combler", to: "/trous", icon: AlertTriangle },
-    ],
-  },
-  {
-    title: "Opérations",
-    items: [
-      { label: "Notifications", to: "/notifications", icon: Bell },
-      { label: "Demandes modif", to: "/demandes", icon: FileEdit },
-      { label: "Signalements", to: "/signalements", icon: PackageSearch },
-      { label: "Pointage", to: "/pointage", icon: Clock },
-      { label: "Clôture", to: "/cloture", icon: DoorClosed },
-      { label: "Feedbacks", to: "/feedbacks", icon: MessageSquare },
-      { label: "Formation", to: "/formation", icon: GraduationCap },
-    ],
-  },
-  {
-    title: "Conformité",
-    items: [
-      { label: "Dimona", to: "/dimona", icon: FileText },
-      { label: "Quotas étudiants", to: "/contingents", icon: BarChart3 },
-    ],
-  },
-  {
-    title: "Configuration",
-    items: [
-      { label: "Studios & postes", to: "/studios", icon: Building2 },
-      { label: "Assistant IA", to: "/assistant-ia", icon: Bot },
-      { label: "Réglages", to: "/reglages", icon: Settings },
-    ],
-  },
-];
+function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSection[] {
+  return [
+    {
+      title: "Pilotage",
+      items: [
+        { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+        { label: "Rapports", to: "/rapports", icon: BarChart3 },
+        { label: "Planning", to: "/planning", icon: CalendarDays },
+        { label: "Staff", to: "/staff", icon: Users },
+        { label: "Trous à combler", to: "/trous", icon: AlertTriangle, badge: counts.trous, badgeType: "danger" },
+      ],
+    },
+    {
+      title: "Opérations",
+      items: [
+        { label: "Notifications", to: "/notifications", icon: Bell, badge: counts.notifications, badgeType: "danger" },
+        { label: "Demandes modif", to: "/demandes", icon: FileEdit, badge: counts.demandes, badgeType: "danger" },
+        { label: "Signalements", to: "/signalements", icon: PackageSearch, badge: counts.signalements },
+        { label: "Pointage", to: "/pointage", icon: Clock },
+        { label: "Clôture", to: "/cloture", icon: DoorClosed },
+        { label: "Feedbacks", to: "/feedbacks", icon: MessageSquare, badge: counts.feedbacks },
+        { label: "Formation", to: "/formation", icon: GraduationCap },
+      ],
+    },
+    {
+      title: "Conformité",
+      items: [
+        { label: "Dimona", to: "/dimona", icon: FileText },
+        { label: "Quotas étudiants", to: "/contingents", icon: BarChart3 },
+      ],
+    },
+    {
+      title: "Configuration",
+      items: [
+        { label: "Studios & postes", to: "/studios", icon: Building2 },
+        { label: "Assistant IA", to: "/assistant-ia", icon: Bot },
+        { label: "Réglages", to: "/reglages", icon: Settings },
+      ],
+    },
+  ];
+}
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
+  const counts = useSidebarCounts();
+  const navSections = buildNavSections(counts);
 
   return (
     <>
