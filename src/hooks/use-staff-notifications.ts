@@ -37,6 +37,14 @@ export function useStaffNotifications(userId: string | undefined) {
     if (!userId) return 0;
     return Number(localStorage.getItem(lastSeenKey(userId)) || 0);
   });
+  const [dismissed, setDismissed] = useState<Set<string>>(() => {
+    if (!userId) return new Set<string>();
+    try {
+      return new Set<string>(JSON.parse(localStorage.getItem(dismissedKey(userId)) || "[]"));
+    } catch {
+      return new Set<string>();
+    }
+  });
 
   const load = useCallback(async () => {
     if (!userId) return;
