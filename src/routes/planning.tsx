@@ -695,10 +695,7 @@ function PlanningCalendarPage() {
   const [published, setPublished] = useState(false);
   const search = Route.useSearch();
   const [showAdd, setShowAdd] = useState(!!search.add);
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) return "jour";
-    return "semaine";
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>("semaine");
   const [dayIdxJour, setDayIdxJour] = useState<number>(() => {
     const t = new Date();
     const idx = weekDays.findIndex((d) => d.toDateString() === t.toDateString());
@@ -708,9 +705,28 @@ function PlanningCalendarPage() {
   const visibleDayIndices = viewMode === "jour" ? [dayIdxJour] : [0, 1, 2, 3, 4, 5, 6];
 
   const shiftWeek = (delta: number) => setWeekStart((d) => { const n = new Date(d); n.setDate(d.getDate() + delta * 7); return n; });
-  const goToday = () => setWeekStart(mondayOf(new Date()));
-  const goPrev = () => shiftWeek(-1);
-  const goNext = () => shiftWeek(1);
+  const goToday = () => {
+    setWeekStart(mondayOf(new Date()));
+    const t = new Date();
+    const idx = getWeekDaysFromStart(mondayOf(new Date())).findIndex((d) => d.toDateString() === t.toDateString());
+    if (idx >= 0) setDayIdxJour(idx);
+  };
+  const shiftDay = (delta: number) => {
+    // Navigate one day at a time in "jour" view; cross week boundaries by shifting weekStart.
+    const current = weekDays[dayIdxJour] ?? weekDays[0];
+    const target = new Date(current);
+    target.setDate(current.getDate() + delta);
+    const newWeekStart = mondayOf(target);
+    if (newWeekStart.getTime() !== weekStart.getTime()) {
+      setWeekStart(newWeekStart);
+    }
+    const newIdx = getWeekDaysFromStart(newWeekStart).findIndex(
+      (d) => d.toDateString() === target.toDateString(),
+    );
+    setDayIdxJour(newIdx >= 0 ? newIdx : 0);
+  };
+  const goPrev = () => (viewMode === "jour" ? shiftDay(-1) : shiftWeek(-1));
+  const goNext = () => (viewMode === "jour" ? shiftDay(1) : shiftWeek(1));
 
   // Auto-actualisation : si l'onglet redevient visible ou que minuit passe,
   // on recentre sur la semaine réelle (utile quand l'app reste ouverte plusieurs jours).
