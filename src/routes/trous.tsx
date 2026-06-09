@@ -67,6 +67,7 @@ function TrousPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
   const [filterRole, setFilterRole] = useState<string>("tous");
+  const [filterStudio, setFilterStudio] = useState<string>("tous");
   const [tick, setTick] = useState(0);
 
   // Tick chaque seconde pour le chronomètre live
@@ -138,9 +139,21 @@ function TrousPage() {
     });
   }, [holes, studioIdsFilter, weekRange]);
 
+  const studioOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    scoped.forEach((h) => {
+      if (h.studio_id) map.set(h.studio_id, studios.get(h.studio_id) || h.studio_id);
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [scoped, studios]);
+
   const filtered = useMemo(
-    () => scoped.filter((h) => filterRole === "tous" || h.business_role === filterRole),
-    [scoped, filterRole],
+    () => scoped.filter((h) => {
+      if (filterRole !== "tous" && h.business_role !== filterRole) return false;
+      if (filterStudio !== "tous" && h.studio_id !== filterStudio) return false;
+      return true;
+    }),
+    [scoped, filterRole, filterStudio],
   );
 
   const proposalsByShift = useMemo(() => {
@@ -247,7 +260,7 @@ function TrousPage() {
         </div>
       )}
 
-      <div className="flex items-center gap-2 flex-wrap mb-4">
+      <div className="flex items-center gap-2 flex-wrap mb-3">
         <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500, marginRight: 4 }}>Rôle</span>
         {[{ value: "tous", label: "Tous" }, ...allRoles.map((r) => ({ value: r, label: r }))].map((opt) => {
           const a = filterRole === opt.value;
@@ -269,6 +282,26 @@ function TrousPage() {
           );
         })}
       </div>
+
+      {studioOptions.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500, marginRight: 4 }}>Studio</span>
+          {[{ id: "tous", name: "Tous" }, ...studioOptions].map((opt) => {
+            const a = filterStudio === opt.id;
+            const count = opt.id === "tous" ? scoped.length : scoped.filter((h) => h.studio_id === opt.id).length;
+            return (
+              <button key={opt.id} onClick={() => setFilterStudio(opt.id)} className="rounded-full px-2.5 py-1 flex items-center gap-1.5"
+                style={{ fontSize: 11, fontWeight: a ? 500 : 400, backgroundColor: a ? "var(--foreground)" : "transparent", color: a ? "var(--card)" : "var(--muted-foreground)", border: a ? "none" : "0.5px solid var(--border)" }}>
+                {opt.name}
+                {count > 0 && (
+                  <span className="rounded-full inline-flex items-center justify-center"
+                    style={{ minWidth: 16, height: 16, padding: "0 5px", fontSize: 10, fontWeight: 500, backgroundColor: a ? "var(--card)" : "var(--muted)", color: a ? "var(--foreground)" : "var(--muted-foreground)" }}>{count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="rounded-xl border px-6 py-10 text-center" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
