@@ -3,6 +3,7 @@ import { X, Copy, Check, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
+import { sendInvitation } from "@/lib/invitations.functions";
 
 interface Studio { id: string; name: string }
 const CONTRACTS = ["Étudiant", "Flexi", "CDI"] as const;
@@ -106,33 +107,29 @@ export function InviteEmployeeModal({ open, onClose, onCreated }: Props) {
     if (roles.size === 0) return toast.error("Sélectionnez au moins un rôle métier");
 
     setSubmitting(true);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) {
+    try {
+      const data = await sendInvitation({
+        data: {
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          phone: phone || null,
+          studio_ids: Array.from(studioIds),
+          contracts: Array.from(contracts) as ("Étudiant" | "Flexi" | "CDI")[],
+          business_roles: Array.from(roles),
+          app_role: appRole,
+          hire_date: hireDate || null,
+        },
+      });
+      setActivationUrl(data.activation_url);
+      setEmailSent(data.email_sent);
+      toast.success(data.email_sent ? "Invitation envoyée" : "Invitation créée");
+      onCreated?.();
+    } catch (err: any) {
+      toast.error(err?.message || "Erreur lors de la création de l'invitation");
+    } finally {
       setSubmitting(false);
-      return toast.error("Session expirée, reconnectez-vous");
     }
-    const { data, error } = await supabase.functions.invoke("send-invitation", {
-      body: {
-        email, first_name: firstName, last_name: lastName,
-        phone: phone || null,
-        studio_ids: Array.from(studioIds),
-        contracts: Array.from(contracts),
-        business_roles: Array.from(roles),
-        app_role: appRole,
-        hire_date: hireDate || null,
-      },
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setSubmitting(false);
-
-    if (error || data?.error) {
-      return toast.error(data?.error || error?.message || "Erreur");
-    }
-    setActivationUrl(data.activation_url);
-    setEmailSent(data.email_sent);
-    toast.success(data.email_sent ? "Invitation envoyée" : "Invitation créée");
-    onCreated?.();
   };
 
   const copyLink = async () => {
