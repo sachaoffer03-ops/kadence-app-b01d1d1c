@@ -140,12 +140,8 @@ function TrousPage() {
   }, [holes, studioIdsFilter, weekRange]);
 
   const studioOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    scoped.forEach((h) => {
-      if (h.studio_id) map.set(h.studio_id, studios.get(h.studio_id) || h.studio_id);
-    });
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [scoped, studios]);
+    return Array.from(studios.entries()).map(([id, name]) => ({ id, name }));
+  }, [studios]);
 
   const filtered = useMemo(
     () => scoped.filter((h) => {
@@ -283,7 +279,7 @@ function TrousPage() {
         })}
       </div>
 
-      {studioOptions.length > 0 && (
+      {studioOptions.length > 1 && (
         <div className="flex items-center gap-2 flex-wrap mb-4">
           <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500, marginRight: 4 }}>Studio</span>
           {[{ id: "tous", name: "Tous" }, ...studioOptions].map((opt) => {
