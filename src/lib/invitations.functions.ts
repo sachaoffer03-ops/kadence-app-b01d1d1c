@@ -8,7 +8,7 @@ const InviteInput = z.object({
   last_name: z.string().min(1).max(80),
   phone: z.string().max(40).nullable().optional(),
   studio_ids: z.array(z.string().uuid()).min(1).max(20),
-  contracts: z.array(z.string().min(1).max(40)).min(1).max(10),
+  contracts: z.array(z.enum(["Étudiant", "Flexi", "CDI"])).min(1).max(10),
   business_roles: z.array(z.string().min(1).max(80)).min(1).max(20),
   app_role: z.enum(["employee", "manager"]).default("employee"),
   hire_date: z.string().nullable().optional(),
