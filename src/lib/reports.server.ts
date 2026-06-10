@@ -181,7 +181,7 @@ export async function getTopAndBottomPerformers(f: Filters) {
       const u = map.get(r.shift_id);
       if (!u) continue;
       const e = acc.get(u) ?? { sum: 0, n: 0 };
-      e.sum += Number(r.rating) * 2; e.n++;
+      e.sum += Math.min(Math.max(Number(r.rating), 0), 10); e.n++;
       acc.set(u, e);
     }
     return acc;
@@ -335,7 +335,7 @@ export async function getEmployeeDetail(args: { userId: string; from: string; to
   const { data: feedRows } = await supabaseAdmin
     .from("feedbacks").select("rating,shift_id").in("shift_id", (lateShifts ?? []).map((s: any) => s.id ?? "").filter(Boolean));
   const mgrScore = (feedRows ?? []).length
-    ? +((feedRows ?? []).reduce((a: number, f: any) => a + Number(f.rating) * 2, 0) / (feedRows ?? []).length).toFixed(2)
+    ? +((feedRows ?? []).reduce((a: number, f: any) => a + Math.min(Math.max(Number(f.rating), 0), 10), 0) / (feedRows ?? []).length).toFixed(2)
     : 7;
 
   const { data: subs } = await supabaseAdmin
