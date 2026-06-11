@@ -65,7 +65,6 @@ function statusBadge(s: Windo["status"]) {
 }
 
 function SaisieDisposPage() {
-  const router = useRouter();
   const list = useServerFn(listWindows);
   const create = useServerFn(createWindow);
   const open = useServerFn(openWindow);
