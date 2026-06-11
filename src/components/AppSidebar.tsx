@@ -49,7 +49,6 @@ function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSecti
         { label: "Trous à combler", to: "/trous", icon: AlertTriangle, badge: counts.trous, badgeType: "danger" },
       ],
     },
-    },
     {
       title: "Opérations",
       items: [
