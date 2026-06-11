@@ -14,6 +14,7 @@ import { Route as StudiosRouteImport } from './routes/studios'
 import { Route as StaffAppRouteImport } from './routes/staff-app'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as SignalementsRouteImport } from './routes/signalements'
+import { Route as SaisieDisposRouteImport } from './routes/saisie-dispos'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReglesScoringRouteImport } from './routes/regles-scoring'
 import { Route as ReglagesRouteImport } from './routes/reglages'
@@ -83,6 +84,11 @@ const StaffRoute = StaffRouteImport.update({
 const SignalementsRoute = SignalementsRouteImport.update({
   id: '/signalements',
   path: '/signalements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SaisieDisposRoute = SaisieDisposRouteImport.update({
+  id: '/saisie-dispos',
+  path: '/saisie-dispos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -336,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/saisie-dispos': typeof SaisieDisposRoute
   '/signalements': typeof SignalementsRoute
   '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
@@ -388,6 +395,7 @@ export interface FileRoutesByTo {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/saisie-dispos': typeof SaisieDisposRoute
   '/signalements': typeof SignalementsRoute
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
@@ -440,6 +448,7 @@ export interface FileRoutesById {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/saisie-dispos': typeof SaisieDisposRoute
   '/signalements': typeof SignalementsRoute
   '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
@@ -494,6 +503,7 @@ export interface FileRouteTypes {
     | '/reglages'
     | '/regles-scoring'
     | '/reset-password'
+    | '/saisie-dispos'
     | '/signalements'
     | '/staff'
     | '/staff-app'
@@ -546,6 +556,7 @@ export interface FileRouteTypes {
     | '/reglages'
     | '/regles-scoring'
     | '/reset-password'
+    | '/saisie-dispos'
     | '/signalements'
     | '/staff-app'
     | '/studios'
@@ -597,6 +608,7 @@ export interface FileRouteTypes {
     | '/reglages'
     | '/regles-scoring'
     | '/reset-password'
+    | '/saisie-dispos'
     | '/signalements'
     | '/staff'
     | '/staff-app'
@@ -650,6 +662,7 @@ export interface RootRouteChildren {
   ReglagesRoute: typeof ReglagesRoute
   ReglesScoringRoute: typeof ReglesScoringRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SaisieDisposRoute: typeof SaisieDisposRoute
   SignalementsRoute: typeof SignalementsRoute
   StaffRoute: typeof StaffRouteWithChildren
   StaffAppRoute: typeof StaffAppRoute
@@ -713,6 +726,13 @@ declare module '@tanstack/react-router' {
       path: '/signalements'
       fullPath: '/signalements'
       preLoaderRoute: typeof SignalementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saisie-dispos': {
+      id: '/saisie-dispos'
+      path: '/saisie-dispos'
+      fullPath: '/saisie-dispos'
+      preLoaderRoute: typeof SaisieDisposRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1091,6 +1111,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReglagesRoute: ReglagesRoute,
   ReglesScoringRoute: ReglesScoringRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SaisieDisposRoute: SaisieDisposRoute,
   SignalementsRoute: SignalementsRoute,
   StaffRoute: StaffRouteWithChildren,
   StaffAppRoute: StaffAppRoute,
