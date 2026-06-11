@@ -31,13 +31,7 @@ import {
 
 export const Route = createFileRoute("/saisie-dispos")({
   component: SaisieDisposPage,
-  errorComponent: ({ error, reset }) => (
-    <div className="p-6">
-      <p className="text-destructive mb-4">Erreur : {error.message}</p>
-      <Button onClick={reset}>Réessayer</Button>
-    </div>
-  ),
-  notFoundComponent: () => <div className="p-6">Page introuvable.</div>,
+  head: () => ({ meta: [{ title: "Saisie des dispos — Kadence" }] }),
 });
 
 interface Windo {
