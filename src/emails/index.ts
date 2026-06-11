@@ -10,6 +10,9 @@ import DemandeRefuseeEmail from "./employee/DemandeRefuseeEmail";
 import PlanningPublieEmail from "./employee/PlanningPublieEmail";
 import RappelShiftEmail from "./employee/RappelShiftEmail";
 import DebriefingShiftEmail from "./employee/DebriefingShiftEmail";
+import AvailabilityWindowOpenedEmail from "./employee/AvailabilityWindowOpenedEmail";
+import AvailabilityWindowReminderEmail from "./employee/AvailabilityWindowReminderEmail";
+import AvailabilityWindowClosedEmail from "./employee/AvailabilityWindowClosedEmail";
 
 import NouvelleDemandeEmail from "./admin/NouvelleDemandeEmail";
 import TrouCritiqueEmail from "./admin/TrouCritiqueEmail";
