@@ -10,6 +10,9 @@ import DemandeRefuseeEmail from "./employee/DemandeRefuseeEmail";
 import PlanningPublieEmail from "./employee/PlanningPublieEmail";
 import RappelShiftEmail from "./employee/RappelShiftEmail";
 import DebriefingShiftEmail from "./employee/DebriefingShiftEmail";
+import AvailabilityWindowOpenedEmail from "./employee/AvailabilityWindowOpenedEmail";
+import AvailabilityWindowReminderEmail from "./employee/AvailabilityWindowReminderEmail";
+import AvailabilityWindowClosedEmail from "./employee/AvailabilityWindowClosedEmail";
 
 import NouvelleDemandeEmail from "./admin/NouvelleDemandeEmail";
 import TrouCritiqueEmail from "./admin/TrouCritiqueEmail";
@@ -270,6 +273,51 @@ export const EMAIL_REGISTRY: EmailTemplate[] = [
       employeeName: "Léa Berger",
       employeeEmail: "lea.berger@example.com",
       profileUrl: "https://app.kadence.io/staff/abc",
+    },
+  },
+  {
+    id: "availability-window-opened",
+    name: "Saisie dispos — ouverture",
+    category: "employee",
+    description: "Envoyé quand l'admin ouvre une fenêtre de saisie de dispos",
+    subject: "📅 Saisie de tes dispos ouverte",
+    component: AvailabilityWindowOpenedEmail,
+    mockData: {
+      firstName: "Léa",
+      title: "Dispos pour Juillet 2026",
+      periodLabel: "juillet 2026",
+      deadlineShort: "20 juin à 23:59",
+      appUrl: "https://app.shyft.flashsite.fr/staff-app?openDispos=1",
+    },
+  },
+  {
+    id: "availability-window-reminder",
+    name: "Saisie dispos — rappel",
+    category: "employee",
+    description: "Rappel envoyé à J-3/2/1, H-5 et H-1 si dispos pas remplies",
+    subject: "⏰ Plus que 24h pour saisir tes dispos",
+    component: AvailabilityWindowReminderEmail,
+    mockData: {
+      firstName: "Léa",
+      title: "Dispos pour Juillet 2026",
+      periodLabel: "juillet 2026",
+      deadlineShort: "20 juin à 23:59",
+      threshold: "1d",
+      appUrl: "https://app.shyft.flashsite.fr/staff-app?openDispos=1",
+    },
+  },
+  {
+    id: "availability-window-closed",
+    name: "Saisie dispos — clôture",
+    category: "employee",
+    description: "Envoyé à la fermeture (auto à deadline ou manuelle)",
+    subject: "Saisie des dispos clôturée — merci !",
+    component: AvailabilityWindowClosedEmail,
+    mockData: {
+      firstName: "Léa",
+      title: "Dispos pour Juillet 2026",
+      periodLabel: "juillet 2026",
+      appUrl: "https://app.shyft.flashsite.fr/staff-app?tab=planning",
     },
   },
 ];

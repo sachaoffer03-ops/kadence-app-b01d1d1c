@@ -55,7 +55,25 @@ async function getDeadlineDay(supabase: any): Promise<number> {
  *  - un planning publié couvre le mois de la date cible, OU
  *  - la deadline (jour J du mois précédent la cible, à 23:59:59.999) est dépassée.
  */
-async function isMonthLocked(supabase: any, targetDate: string): Promise<boolean> {
+async function isMonthLocked(supabase: any, targetDate: string, userId?: string): Promise<boolean> {
+  // Si une fenêtre de saisie est ouverte et couvre la date cible (et inclut l'utilisateur),
+  // on lève le verrou — même si la deadline mensuelle est passée ou si un planning est publié.
+  const { data: windows } = await supabase
+    .from("availability_windows")
+    .select("target_user_ids, deadline_at")
+    .eq("status", "open")
+    .lte("period_start", targetDate)
+    .gte("period_end", targetDate);
+  if (windows && windows.length > 0) {
+    const now = Date.now();
+    const open = windows.find((w: any) => {
+      if (new Date(w.deadline_at).getTime() <= now) return false;
+      if (!w.target_user_ids || w.target_user_ids.length === 0) return true;
+      return userId ? w.target_user_ids.includes(userId) : false;
+    });
+    if (open) return false;
+  }
+
   const target = new Date(`${targetDate}T00:00:00`);
   const y = target.getFullYear();
   const m = target.getMonth();
@@ -128,7 +146,7 @@ export const createAvailability = createServerFn({ method: "POST" })
       throw new Error("Impossible de créer une dispo dans le passé");
     }
 
-    if (!admin && await isMonthLocked(supabase, data.avail_date)) {
+    if (!admin && await isMonthLocked(supabase, data.avail_date, userId)) {
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification depuis l'accueil.");
     }
 
@@ -173,7 +191,7 @@ export const updateAvailability = createServerFn({ method: "POST" })
       throw new Error("Impossible de modifier une dispo passée");
     }
 
-    if (!admin && await isMonthLocked(supabase, existing.avail_date)) {
+    if (!admin && await isMonthLocked(supabase, existing.avail_date, userId)) {
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification.");
     }
 
@@ -209,7 +227,7 @@ export const deleteAvailability = createServerFn({ method: "POST" })
     if (existing.avail_date < todayStr) {
       throw new Error("Impossible de supprimer une dispo passée");
     }
-    if (!admin && await isMonthLocked(supabase, existing.avail_date)) {
+    if (!admin && await isMonthLocked(supabase, existing.avail_date, userId)) {
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification.");
     }
 

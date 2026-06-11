@@ -44,6 +44,7 @@ function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSecti
         { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
         { label: "Rapports", to: "/rapports", icon: BarChart3 },
         { label: "Planning", to: "/planning", icon: CalendarDays },
+        { label: "Saisie dispos", to: "/saisie-dispos", icon: CalendarDays },
         { label: "Staff", to: "/staff", icon: Users },
         { label: "Trous à combler", to: "/trous", icon: AlertTriangle, badge: counts.trous, badgeType: "danger" },
       ],
