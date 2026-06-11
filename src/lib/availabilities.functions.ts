@@ -146,7 +146,7 @@ export const createAvailability = createServerFn({ method: "POST" })
       throw new Error("Impossible de créer une dispo dans le passé");
     }
 
-    if (!admin && await isMonthLocked(supabase, data.avail_date)) {
+    if (!admin && await isMonthLocked(supabase, data.avail_date, userId)) {
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification depuis l'accueil.");
     }
 
@@ -191,7 +191,7 @@ export const updateAvailability = createServerFn({ method: "POST" })
       throw new Error("Impossible de modifier une dispo passée");
     }
 
-    if (!admin && await isMonthLocked(supabase, existing.avail_date)) {
+    if (!admin && await isMonthLocked(supabase, existing.avail_date, userId)) {
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification.");
     }
 
@@ -227,7 +227,7 @@ export const deleteAvailability = createServerFn({ method: "POST" })
     if (existing.avail_date < todayStr) {
       throw new Error("Impossible de supprimer une dispo passée");
     }
-    if (!admin && await isMonthLocked(supabase, existing.avail_date)) {
+    if (!admin && await isMonthLocked(supabase, existing.avail_date, userId)) {
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification.");
     }
 
