@@ -52,6 +52,7 @@ import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-dia
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as StaffChecklistShiftIdRouteImport } from './routes/staff.checklist.$shiftId'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiPublicAvailabilityWindowsTickRouteImport } from './routes/api/public/availability-windows-tick'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -274,6 +275,12 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAvailabilityWindowsTickRoute =
+  ApiPublicAvailabilityWindowsTickRouteImport.update({
+    id: '/api/public/availability-windows-tick',
+    path: '/api/public/availability-windows-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
     id: '/lovable/email/transactional/send',
@@ -351,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
+  '/api/public/availability-windows-tick': typeof ApiPublicAvailabilityWindowsTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
@@ -401,6 +409,7 @@ export interface FileRoutesByTo {
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
+  '/api/public/availability-windows-tick': typeof ApiPublicAvailabilityWindowsTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
@@ -453,6 +462,7 @@ export interface FileRoutesById {
   '/staff-app_/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
+  '/api/public/availability-windows-tick': typeof ApiPublicAvailabilityWindowsTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
@@ -506,6 +516,7 @@ export interface FileRouteTypes {
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff/'
+    | '/api/public/availability-windows-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
     | '/api/public/studio-qr/$studioId'
@@ -556,6 +567,7 @@ export interface FileRouteTypes {
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff'
+    | '/api/public/availability-windows-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
     | '/api/public/studio-qr/$studioId'
@@ -607,6 +619,7 @@ export interface FileRouteTypes {
     | '/staff-app_/propositions'
     | '/staff/$id'
     | '/staff/'
+    | '/api/public/availability-windows-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
     | '/api/public/studio-qr/$studioId'
@@ -655,6 +668,7 @@ export interface RootRouteChildren {
   DisplayStudioIdRoute: typeof DisplayStudioIdRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   StaffAppPropositionsRoute: typeof StaffAppPropositionsRoute
+  ApiPublicAvailabilityWindowsTickRoute: typeof ApiPublicAvailabilityWindowsTickRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicStudioQrStudioIdRoute: typeof ApiPublicStudioQrStudioIdRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -967,6 +981,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/availability-windows-tick': {
+      id: '/api/public/availability-windows-tick'
+      path: '/api/public/availability-windows-tick'
+      fullPath: '/api/public/availability-windows-tick'
+      preLoaderRoute: typeof ApiPublicAvailabilityWindowsTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
       path: '/lovable/email/transactional/send'
@@ -1088,6 +1109,7 @@ const rootRouteChildren: RootRouteChildren = {
   DisplayStudioIdRoute: DisplayStudioIdRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   StaffAppPropositionsRoute: StaffAppPropositionsRoute,
+  ApiPublicAvailabilityWindowsTickRoute: ApiPublicAvailabilityWindowsTickRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicStudioQrStudioIdRoute: ApiPublicStudioQrStudioIdRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
