@@ -320,6 +320,66 @@ export type Database = {
         }
         Relationships: []
       }
+      availability_windows: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          created_by: string | null
+          deadline_at: string
+          id: string
+          notifications_sent: Json
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["availability_window_status"]
+          target_user_ids: string[] | null
+          title: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          deadline_at: string
+          id?: string
+          notifications_sent?: Json
+          period_end: string
+          period_start: string
+          status?: Database["public"]["Enums"]["availability_window_status"]
+          target_user_ids?: string[] | null
+          title: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          deadline_at?: string
+          id?: string
+          notifications_sent?: Json
+          period_end?: string
+          period_start?: string
+          status?: Database["public"]["Enums"]["availability_window_status"]
+          target_user_ids?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_windows_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availability_windows_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_roles: {
         Row: {
           color: string
@@ -2675,6 +2735,7 @@ export type Database = {
       ai_suggestion_status: "pending" | "approved" | "rejected"
       app_role: "admin" | "manager" | "employee"
       availability_slot: "matin" | "midi" | "soir"
+      availability_window_status: "draft" | "open" | "closed"
       contract_type: "Étudiant" | "Flexi" | "CDI"
       invitation_status: "pending" | "accepted" | "expired" | "revoked"
       modification_status: "pending" | "accepted" | "refused"
@@ -2813,6 +2874,7 @@ export const Constants = {
       ai_suggestion_status: ["pending", "approved", "rejected"],
       app_role: ["admin", "manager", "employee"],
       availability_slot: ["matin", "midi", "soir"],
+      availability_window_status: ["draft", "open", "closed"],
       contract_type: ["Étudiant", "Flexi", "CDI"],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
       modification_status: ["pending", "accepted", "refused"],
