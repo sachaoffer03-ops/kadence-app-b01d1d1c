@@ -887,6 +887,33 @@ function ZoneLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ProfilRecap({ userId: _userId }: { userId: string }) {
+  const fetchStats = useServerFn(getMyStats);
+  const [stats, setStats] = useState<Awaited<ReturnType<typeof getMyStats>> | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    fetchStats({}).then((s) => { if (!cancel) setStats(s); }).catch(() => {});
+    return () => { cancel = true; };
+  }, [fetchStats]);
+  if (!stats) return null;
+  const monthLabel = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const hours = Math.round(stats.career.totalHoursWorked);
+  const score = Math.round((stats.score.current ?? 0) * 10) / 10;
+  return (
+    <div
+      style={{
+        fontSize: 11,
+        color: "rgba(255,255,255,0.5)",
+        marginTop: 8,
+        letterSpacing: "0.01em",
+        textTransform: "capitalize",
+      }}
+    >
+      {monthLabel} · {stats.career.totalShiftsCompleted} shifts · {hours}h · score {score}
+    </div>
+  );
+}
+
 function QuickLink({ icon, label, sub, onClick, badge, highlight }: { icon: React.ReactNode; label: string; sub: string; onClick?: () => void; badge?: number; highlight?: boolean }) {
   return (
     <button onClick={onClick} className="relative rounded-xl border px-4 py-4 text-left" style={{ backgroundColor: highlight ? "var(--coral-light)" : "#fff", borderColor: highlight ? "var(--coral)" : "rgba(0,0,0,0.08)", cursor: "pointer" }}>
