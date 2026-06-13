@@ -4,11 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { z } from "zod";
 import { ArrowLeft, ChevronLeft, ChevronRight, CalendarCheck } from "lucide-react";
-import { getUserAvailabilitiesForMonth } from "@/lib/availabilities.functions";
+import { getUserAvailabilitiesForMonth, getUserAvailabilitiesAll } from "@/lib/availabilities.functions";
 
 const searchSchema = z.object({
   year: z.number().int().optional(),
   month: z.number().int().optional(),
+  view: z.enum(["month", "all"]).optional(),
 });
 
 export const Route = createFileRoute("/dispo-detail/$userId")({
@@ -33,16 +34,28 @@ function UserDisposPage() {
   const fallback = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const year = search.year ?? fallback.getFullYear();
   const month = search.month ?? fallback.getMonth() + 1;
+  const view = search.view ?? "month";
 
-  const fetchFn = useServerFn(getUserAvailabilitiesForMonth);
-  const { data, isLoading } = useQuery({
+  const fetchMonthFn = useServerFn(getUserAvailabilitiesForMonth);
+  const fetchAllFn = useServerFn(getUserAvailabilitiesAll);
+  const monthQ = useQuery({
     queryKey: ["user-dispos", userId, year, month],
-    queryFn: () => fetchFn({ data: { userId, year, month } }),
+    queryFn: () => fetchMonthFn({ data: { userId, year, month } }),
     refetchInterval: 30_000,
+    enabled: view === "month",
   });
+  const allQ = useQuery({
+    queryKey: ["user-dispos-all", userId],
+    queryFn: () => fetchAllFn({ data: { userId } }),
+    refetchInterval: 30_000,
+    enabled: view === "all",
+  });
+  const data = view === "month" ? monthQ.data : allQ.data;
+  const isLoading = view === "month" ? monthQ.isLoading : allQ.isLoading;
 
   const profile = data?.profile;
   const avails = data?.availabilities ?? [];
+
 
   // Group by date
   const byDate = useMemo(() => {
@@ -121,9 +134,38 @@ function UserDisposPage() {
         )}
       </div>
       <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 20 }}>
-        Disponibilités saisies pour le mois sélectionné.
+        {view === "month"
+          ? "Disponibilités saisies pour le mois sélectionné."
+          : "Vue d'ensemble de toutes les disponibilités saisies."}
       </p>
 
+      {/* View toggle */}
+      <div className="inline-flex rounded-md border mb-5" style={{ borderColor: "var(--border)" }}>
+        {(["month", "all"] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() =>
+              navigate({
+                to: "/dispo-detail/$userId",
+                params: { userId },
+                search: { year, month, view: v },
+              })
+            }
+            className="px-3 py-1.5"
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              backgroundColor: view === v ? "var(--coral)" : "transparent",
+              color: view === v ? "#fff" : "var(--foreground)",
+            }}
+          >
+            {v === "month" ? "Par mois" : "Tous les mois"}
+          </button>
+        ))}
+      </div>
+
+      {view === "month" && (
+      <>
       {/* Month navigation */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
@@ -155,6 +197,7 @@ function UserDisposPage() {
           <Stat label="Heures" value={`${totalHours.toFixed(1)}h`} />
         </div>
       </div>
+
 
       {/* Calendar */}
       <div
@@ -254,8 +297,96 @@ function UserDisposPage() {
           Aucune disponibilité saisie pour ce mois.
         </div>
       )}
+      </>
+      )}
+
+      {view === "all" && (
+        <AllMonthsView avails={avails} isLoading={isLoading} onPickMonth={(y, m) => navigate({ to: "/dispo-detail/$userId", params: { userId }, search: { year: y, month: m, view: "month" } })} />
+      )}
     </div>
   );
+}
+
+function AllMonthsView({
+  avails,
+  isLoading,
+  onPickMonth,
+}: {
+  avails: Array<{ id: string; avail_date: string; start_time: string; end_time: string }>;
+  isLoading: boolean;
+  onPickMonth: (year: number, month: number) => void;
+}) {
+  const groups = useMemoGroups(avails);
+  if (isLoading) {
+    return <div className="text-center mt-4" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>;
+  }
+  if (groups.length === 0) {
+    return (
+      <div className="text-center mt-6 py-8 rounded-lg border"
+        style={{ borderColor: "var(--border)", fontSize: 13, color: "var(--muted-foreground)" }}>
+        Aucune disponibilité saisie.
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {groups.map((g) => (
+        <button
+          key={g.key}
+          onClick={() => onPickMonth(g.year, g.month)}
+          className="rounded-lg border p-4 text-left hover:bg-[var(--muted)]/40 transition-colors"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <div style={{ fontSize: 15, fontWeight: 500 }}>{MONTHS_FR[g.month - 1]} {g.year}</div>
+            <div className="flex items-center gap-4" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+              <span><strong style={{ color: "var(--foreground)" }}>{g.days}</strong> jours</span>
+              <span><strong style={{ color: "var(--foreground)" }}>{g.slots}</strong> créneaux</span>
+              <span><strong style={{ color: "var(--foreground)" }}>{g.hours.toFixed(1)}h</strong></span>
+            </div>
+          </div>
+          <div className="flex gap-1 flex-wrap mt-2">
+            {Array.from({ length: new Date(g.year, g.month, 0).getDate() }, (_, i) => i + 1).map((d) => {
+              const has = g.dayMap.has(d);
+              return (
+                <div
+                  key={d}
+                  title={String(d)}
+                  style={{
+                    width: 14, height: 14, borderRadius: 3,
+                    backgroundColor: has ? "var(--coral)" : "var(--muted)",
+                  }}
+                />
+              );
+            })}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function useMemoGroups(avails: Array<{ id: string; avail_date: string; start_time: string; end_time: string }>) {
+  return useMemo(() => {
+    const map = new Map<string, { year: number; month: number; key: string; slots: number; hours: number; dayMap: Map<number, true> }>();
+    for (const a of avails) {
+      const [y, m, d] = a.avail_date.split("-").map(Number);
+      const key = `${y}-${String(m).padStart(2, "0")}`;
+      let g = map.get(key);
+      if (!g) {
+        g = { year: y, month: m, key, slots: 0, hours: 0, dayMap: new Map() };
+        map.set(key, g);
+      }
+      g.slots += 1;
+      const [sh, sm] = a.start_time.split(":").map(Number);
+      const [eh, em] = a.end_time.split(":").map(Number);
+      g.hours += ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+      g.dayMap.set(d, true);
+    }
+    return Array.from(map.values())
+      .map((g) => ({ ...g, days: g.dayMap.size }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  }, [avails]);
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
