@@ -11,7 +11,7 @@ const searchSchema = z.object({
   month: z.number().int().optional(),
 });
 
-export const Route = createFileRoute("/dispos-monitoring/$userId")({
+export const Route = createFileRoute("/dispo-detail/$userId")({
   validateSearch: (s) => searchSchema.parse(s),
   component: UserDisposPage,
 });
