@@ -53,9 +53,10 @@ function DisposMonitoringPage() {
   const fetchMonitoring = useServerFn(getMonthlyDispoMonitoring);
   const sendReminders = useServerFn(remindLateEmployees);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["dispo-monitoring", year, month],
     queryFn: () => fetchMonitoring({ data: { year, month } }),
+    refetchInterval: 30_000,
   });
 
   const rows = data?.rows ?? [];
@@ -135,13 +136,6 @@ function DisposMonitoringPage() {
             ))}
           </SelectContent>
         </Select>
-        <button
-          onClick={() => refetch()}
-          className="rounded-md border px-3 py-2"
-          style={{ fontSize: 13, borderColor: "var(--border)" }}
-        >
-          Rafraîchir
-        </button>
       </div>
 
       {/* KPIs */}
