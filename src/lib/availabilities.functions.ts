@@ -492,7 +492,7 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    // 2. Emails
+    // 2. Emails — render + enqueue directly via shared helper
     let emailsSent = 0;
     try {
       const { data: profiles } = await supabaseAdmin
@@ -520,35 +520,25 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
         " à " +
         deadline.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 
-      const host = getRequestHeader("host");
-      const proto = getRequestHeader("x-forwarded-proto") ?? "https";
-      const baseUrl = host ? `${proto}://${host}` : "https://app.shyft.flashsite.fr";
-      const statsAppUrl = `${baseUrl}/staff-app`;
-      const authHeader = getRequestHeader("authorization");
+      const statsAppUrl = "https://app.shyft.flashsite.fr/staff-app";
 
+      const { enqueueTemplateEmail } = await import("@/lib/email-send.server");
       const recipients = (profiles ?? []).filter((p: any) => p.email);
       const results = await Promise.allSettled(
         recipients.map((p: any) =>
-          fetch(`${baseUrl}/lovable/email/transactional/send`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(authHeader ? { Authorization: authHeader } : {}),
+          enqueueTemplateEmail({
+            templateId: "dispo-reminder",
+            recipient: p.email,
+            idempotencyKey: `dispo-reminder-${data.year}-${data.month}-${p.id}-${Date.now()}`,
+            data: {
+              firstName: p.first_name ?? "",
+              monthLabel,
+              deadlineLabel,
+              statsAppUrl,
             },
-            body: JSON.stringify({
-              templateName: "dispo-reminder",
-              recipientEmail: p.email,
-              idempotencyKey: `dispo-reminder-${data.year}-${data.month}-${p.id}-${Date.now()}`,
-              templateData: {
-                firstName: p.first_name ?? "",
-                monthLabel,
-                deadlineLabel,
-                statsAppUrl,
-              },
-            }),
-          }).then(async (r) => {
+          }).then((r) => {
             if (!r.ok) {
-              console.error("[remindLateEmployees] email failed", p.email, r.status, await r.text().catch(() => ""));
+              console.error("[remindLateEmployees] email failed", p.email, r.reason);
               return null;
             }
             return r;
@@ -562,6 +552,7 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
 
     return { ok: true, sent: data.userIds.length, notifsSent: data.userIds.length, emailsSent };
   });
+
 
 // =============================================================================
 // getUserAvailabilitiesForMonth — détail des dispos d'un employé pour un mois
