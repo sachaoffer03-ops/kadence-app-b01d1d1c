@@ -38,7 +38,7 @@ function AdminGate() {
   return <QAPage />;
 }
 
-function QAPage() {
+export function QAPage() {
   const prepare = useServerFn(prepareTestDataset);
   const cleanup = useServerFn(cleanupTestDataset);
   const reset = useServerFn(resetTestDataset);
