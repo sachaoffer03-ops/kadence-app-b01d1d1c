@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -11,15 +11,10 @@ import {
 
 const LS_KEY = "kadence_qa_last_run";
 
-export const Route = createFileRoute("/admin/qa-test-suite")({
-  component: AdminGate,
-  head: () => ({ meta: [{ title: "QA Test Suite — Kadence" }] }),
-});
-
 type Status = "idle" | "running" | "done" | "error";
 type RunState = { status: Status; result?: TestResult; error?: string };
 
-function AdminGate() {
+export function QAPageGate() {
   const { appRole, loading } = useAuth();
   if (loading) return <div className="p-8 text-sm" style={{ color: "var(--muted-foreground)" }}>Chargement…</div>;
   if (appRole !== "admin") {
@@ -39,6 +34,7 @@ function AdminGate() {
 }
 
 export function QAPage() {
+
   const prepare = useServerFn(prepareTestDataset);
   const cleanup = useServerFn(cleanupTestDataset);
   const reset = useServerFn(resetTestDataset);
