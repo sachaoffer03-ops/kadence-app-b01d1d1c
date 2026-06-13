@@ -134,9 +134,38 @@ function UserDisposPage() {
         )}
       </div>
       <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 20 }}>
-        Disponibilités saisies pour le mois sélectionné.
+        {view === "month"
+          ? "Disponibilités saisies pour le mois sélectionné."
+          : "Vue d'ensemble de toutes les disponibilités saisies."}
       </p>
 
+      {/* View toggle */}
+      <div className="inline-flex rounded-md border mb-5" style={{ borderColor: "var(--border)" }}>
+        {(["month", "all"] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() =>
+              navigate({
+                to: "/dispo-detail/$userId",
+                params: { userId },
+                search: { year, month, view: v },
+              })
+            }
+            className="px-3 py-1.5"
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              backgroundColor: view === v ? "var(--coral)" : "transparent",
+              color: view === v ? "#fff" : "var(--foreground)",
+            }}
+          >
+            {v === "month" ? "Par mois" : "Tous les mois"}
+          </button>
+        ))}
+      </div>
+
+      {view === "month" && (
+      <>
       {/* Month navigation */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
@@ -168,6 +197,7 @@ function UserDisposPage() {
           <Stat label="Heures" value={`${totalHours.toFixed(1)}h`} />
         </div>
       </div>
+
 
       {/* Calendar */}
       <div
