@@ -320,15 +320,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
             {" "}Tu ne peux plus modifier tes dispos pour ce mois — contacte ton manager si tu dois changer quelque chose.
           </span>
         </div>
-      ) : (
-        <div className="rounded-xl px-3 py-2 mb-3 flex items-start gap-2" style={{ backgroundColor: "var(--success-bg, #dcfce7)" }}>
-          <Pencil size={13} style={{ color: "var(--success-text, #166534)", marginTop: 2, flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: "var(--success-text, #166534)", lineHeight: 1.5 }}>
-            Tu peux modifier les dispos de <span style={{ textTransform: "capitalize", fontWeight: 600 }}>{monthLabel}</span>
-            {displayedMonthDeadline && <> jusqu'au <strong>{fmtDateFR(displayedMonthDeadline)}</strong></>}.
-          </span>
-        </div>
-      )}
+      ) : null}
 
       {!locked && validated && (
         <div className="rounded-xl px-3 py-2 mb-3 flex items-center gap-2" style={{ backgroundColor: "var(--success-bg, #dcfce7)" }}>
