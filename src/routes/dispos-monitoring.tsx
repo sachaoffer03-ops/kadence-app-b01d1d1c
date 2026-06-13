@@ -9,6 +9,9 @@ import {
   remindLateEmployees,
 } from "@/lib/availabilities.functions";
 import { useStudios } from "@/hooks/use-studios";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/dispos-monitoring")({
   component: DisposMonitoringPage,
@@ -116,26 +119,22 @@ function DisposMonitoringPage() {
 
       {/* Month selector */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <select
-          value={month}
-          onChange={(e) => setMonth(Number(e.target.value))}
-          className="rounded-md border px-3 py-2"
-          style={{ fontSize: 13, borderColor: "var(--border)", backgroundColor: "var(--background)" }}
-        >
-          {MONTHS_FR.map((m, i) => (
-            <option key={i + 1} value={i + 1}>{m}</option>
-          ))}
-        </select>
-        <select
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          className="rounded-md border px-3 py-2"
-          style={{ fontSize: 13, borderColor: "var(--border)", backgroundColor: "var(--background)" }}
-        >
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+        <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {MONTHS_FR.map((m, i) => (
+              <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+          <SelectTrigger className="w-[110px] h-9"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {years.map((y) => (
+              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <button
           onClick={() => refetch()}
           className="rounded-md border px-3 py-2"
@@ -173,18 +172,16 @@ function DisposMonitoringPage() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <select
-          value={contractFilter}
-          onChange={(e) => setContractFilter(e.target.value)}
-          className="rounded-md border px-3 py-1.5"
-          style={{ fontSize: 13, borderColor: "var(--border)", backgroundColor: "var(--background)" }}
-        >
-          <option value="all">Tous contrats</option>
-          <option value="cdi">CDI</option>
-          <option value="etudiant">Étudiant</option>
-          <option value="flexi">Flexi</option>
-          <option value="extra">Extra</option>
-        </select>
+        <Select value={contractFilter} onValueChange={setContractFilter}>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous contrats</SelectItem>
+            <SelectItem value="cdi">CDI</SelectItem>
+            <SelectItem value="etudiant">Étudiant</SelectItem>
+            <SelectItem value="flexi">Flexi</SelectItem>
+            <SelectItem value="extra">Extra</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="flex gap-1.5 flex-wrap">
           {studios.map((s) => {
             const active = studioFilter.includes(s.id);
