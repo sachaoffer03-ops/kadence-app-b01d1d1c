@@ -1050,7 +1050,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
           <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, backgroundColor: "var(--coral-light)" }}>
             <Sparkles size={20} style={{ color: "var(--coral-dark)" }} />
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4, textTransform: "capitalize" }}>{msg}</div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>{msg}</div>
           <div style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, maxWidth: 280 }}>
             Change de {view === "week" ? "semaine" : "mois"} avec les flèches pour explorer d'autres périodes.
           </div>
