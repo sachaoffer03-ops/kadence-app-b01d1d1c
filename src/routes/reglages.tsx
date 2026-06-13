@@ -121,8 +121,8 @@ function AISettings() {
       ...rules,
     };
     const { error } = id
-      ? await supabase.from("ai_planning_settings").update(payload).eq("id", id)
-      : await supabase.from("ai_planning_settings").insert(payload);
+      ? await supabase.from("ai_planning_settings").update(payload as any).eq("id", id)
+      : await supabase.from("ai_planning_settings").insert(payload as any);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Réglages enregistrés");
