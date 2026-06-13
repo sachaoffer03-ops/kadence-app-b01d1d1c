@@ -28,6 +28,11 @@ import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSh
 import { Send } from "lucide-react";
 import { WorkedHoursEmployeeCard, EmployeeLastShifts } from "@/components/WorkedHoursCard";
 import { MyStatsCard } from "@/components/staff-app/MyStatsCard";
+import { TodoCard } from "@/components/staff-app/TodoCard";
+import { MonthCalendar } from "@/components/staff-app/MonthCalendar";
+import { useOnlineStatus, useLocalCache, fmtLastSync } from "@/hooks/use-offline-cache";
+import { getMyStats } from "@/lib/my-stats.functions";
+import { WifiOff } from "lucide-react";
 
 import { ClockInSheet } from "@/components/staff-app/ClockInSheet";
 import { ProposalsInline } from "@/components/staff-app/ProposalsInline";
@@ -344,15 +349,23 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     : "";
 
 
+  const online = useOnlineStatus();
+  const { cached: cachedShifts, save: saveShiftsCache, lastSync } = useLocalCache<ShiftRow[]>(`kadence:upcoming:${userId}`);
+
   useEffect(() => {
     const today = todayISO();
     const in7 = new Date(); in7.setDate(in7.getDate() + 7);
     const weekEnd = in7.toISOString().slice(0, 10);
     const load = async () => {
-      const { data: next } = await supabase.from("shifts")
+      const { data: next, error } = await supabase.from("shifts")
         .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
         .eq("user_id", userId).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
-      if (next) setShifts(next);
+      if (next) {
+        setShifts(next);
+        saveShiftsCache(next as ShiftRow[]);
+      } else if (error && cachedShifts) {
+        setShifts(cachedShifts);
+      }
 
       const { data: week } = await supabase.from("shifts")
         .select("start_time,end_time").eq("user_id", userId)
@@ -366,7 +379,11 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         setWeekStats({ hours: Math.round(hours), count: week.length });
       }
     };
-    load();
+    if (online) {
+      load();
+    } else if (cachedShifts) {
+      setShifts(cachedShifts);
+    }
 
     const channel = supabase.channel(`shifts-accueil-${userId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, () => {
@@ -376,7 +393,8 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, online]);
 
   const firstName = profile?.first_name || "";
   const initial = (firstName.charAt(0) || "?").toUpperCase();
@@ -446,6 +464,21 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         </button>
 
       </div>
+
+      {!online && (
+        <div
+          className="rounded-xl px-4 py-2.5 mb-4 flex items-center gap-2.5"
+          style={{ backgroundColor: "var(--muted)", border: "0.5px solid rgba(0,0,0,0.08)" }}
+        >
+          <WifiOff size={14} style={{ color: "var(--muted-foreground)" }} />
+          <div className="flex-1" style={{ fontSize: 12 }}>
+            <div style={{ fontWeight: 500 }}>Hors ligne</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              Dernière synchro {fmtLastSync(lastSync)} · le pointage nécessite une connexion
+            </div>
+          </div>
+        </div>
+      )}
 
       <ProposalsInline userId={userId} studios={studios} />
 
@@ -701,43 +734,49 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         );
       })()}
 
-      {/* Collègues du jour */}
-      <TodayColleaguesCard userId={userId} />
-
-      {/* Notifications formation */}
-      <FormationNotifBanner onGoFormation={onGoFormation} />
-
-
-
-
-
+      {/* ─── À FAIRE ─── */}
+      <ZoneLabel>À faire</ZoneLabel>
 
       <button
         onClick={() => setDisposOpen(true)}
-        className="w-full rounded-xl px-4 py-4 mb-5 flex items-center gap-3 text-left"
+        className="w-full rounded-xl px-4 py-4 mb-3 flex items-center gap-3 text-left"
         style={{
           backgroundColor: disposValidated ? "var(--success-bg)" : "#fff",
           border: `0.5px solid ${disposValidated ? "var(--success-text)" : "var(--coral)"}`,
           cursor: "pointer",
         }}
       >
-        <div className="rounded-lg flex items-center justify-center" style={{ width: 40, height: 40, backgroundColor: disposValidated ? "var(--success-text)" : "var(--coral-light)", color: disposValidated ? "#fff" : "var(--coral-dark)" }}>
-          {disposValidated ? <CheckCircle2 size={18} /> : <CalendarCheck size={18} />}
+        <div className="rounded-lg flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: disposValidated ? "var(--success-text)" : "var(--coral-light)", color: disposValidated ? "#fff" : "var(--coral-dark)" }}>
+          {disposValidated ? <CheckCircle2 size={16} /> : <CalendarCheck size={16} />}
         </div>
         <div className="flex-1">
           <div style={{ fontSize: 13, fontWeight: 500 }}>
-              {disposValidated ? "Dispos envoyées" : "Indique tes dispos"}
+            {disposValidated ? "Dispos envoyées" : "Indique tes dispos"}
           </div>
           <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-              {disposValidated ? `Modifiables jusqu'à la deadline — touche pour ajuster` : <>Pour <span style={{ textTransform: "capitalize" }}>{nextMonthLabel}</span></>}
+            {disposValidated ? "Modifiables jusqu'à la deadline — touche pour ajuster" : <>Pour <span style={{ textTransform: "capitalize" }}>{nextMonthLabel}</span></>}
           </div>
         </div>
         <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />
       </button>
 
+      <TodoCard
+        userId={userId}
+        onOpenMyRequests={() => setMyReqOpen(true)}
+        onOpenSignal={() => setSignalOpen(true)}
+        onOpenRequest={() => setReqOpen(true)}
+      />
+
+      {/* Notifications formation */}
+      <FormationNotifBanner onGoFormation={onGoFormation} />
+
+      {/* ─── CETTE SEMAINE ─── */}
+      <ZoneLabel>Cette semaine</ZoneLabel>
+
+      <TodayColleaguesCard userId={userId} />
 
       {shifts.length > 1 && (
-        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Shifts suivants</div>
+        <div style={{ fontSize: 12, fontWeight: 500, marginTop: 12, marginBottom: 8, color: "var(--muted-foreground)" }}>Shifts suivants</div>
       )}
       {shifts.slice(1).map((s) => {
         const role = s.business_role as Role;
@@ -765,21 +804,24 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         );
       })}
 
-      <div style={{ fontSize: 13, fontWeight: 500, marginTop: 20, marginBottom: 8 }}>Actions rapides</div>
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <QuickLink
-          icon={<Send size={18} />}
-          label="Propositions"
-          sub={proposals.length > 0 ? `${proposals.length} en attente` : "Aucune en attente"}
-          badge={proposals.length > 0 ? proposals.length : undefined}
-          highlight={proposals.length > 0}
+      {/* Propositions accessibles via leur page dédiée si présentes (badge déjà visible via ProposalsInline ci-dessus) */}
+      {proposals.length > 0 && (
+        <button
           onClick={() => navigate({ to: "/staff-app/propositions" })}
-        />
-        <QuickLink icon={<AlertCircle size={18} />} label="Signaler" sub="Stock, matériel, hygiène" onClick={() => setSignalOpen(true)} />
-        <QuickLink icon={<Replace size={18} />} label="Demande" sub="Échange, annulation…" onClick={() => setReqOpen(true)} />
-        <QuickLink icon={<Inbox size={18} />} label="Mes demandes" sub="Suivi des réponses" onClick={() => setMyReqOpen(true)} />
-        <QuickLink icon={<CalendarCheck size={18} />} label="Mes dispos" sub={disposValidated ? "Validées" : "À envoyer"} onClick={() => setDisposOpen(true)} />
-      </div>
+          className="w-full rounded-xl px-4 py-3 mt-3 flex items-center gap-3 text-left"
+          style={{ backgroundColor: "var(--coral-light)", border: "0.5px solid var(--coral)", cursor: "pointer" }}
+        >
+          <Send size={16} style={{ color: "var(--coral-dark)" }} />
+          <div className="flex-1">
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--coral-dark)" }}>
+              {proposals.length} proposition{proposals.length > 1 ? "s" : ""} de shift
+            </div>
+            <div style={{ fontSize: 11, color: "var(--coral-dark)", opacity: 0.8 }}>Touche pour répondre</div>
+          </div>
+          <ChevronRight size={16} style={{ color: "var(--coral-dark)" }} />
+        </button>
+      )}
+
 
       <ShiftDetailSheet
         open={!!shiftDetail} onClose={() => setShiftDetail(null)}
@@ -827,6 +869,51 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
   );
 }
 
+function ZoneLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 11,
+        fontWeight: 500,
+        color: "var(--muted-foreground)",
+        letterSpacing: "0.04em",
+        marginTop: 8,
+        marginBottom: 10,
+        paddingLeft: 2,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ProfilRecap({ userId: _userId }: { userId: string }) {
+  const fetchStats = useServerFn(getMyStats);
+  const [stats, setStats] = useState<Awaited<ReturnType<typeof getMyStats>> | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    fetchStats({}).then((s) => { if (!cancel) setStats(s); }).catch(() => {});
+    return () => { cancel = true; };
+  }, [fetchStats]);
+  if (!stats) return null;
+  const monthLabel = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const hours = Math.round(stats.career.totalHoursWorked);
+  const score = Math.round((stats.score.current ?? 0) * 10) / 10;
+  return (
+    <div
+      style={{
+        fontSize: 11,
+        color: "rgba(255,255,255,0.5)",
+        marginTop: 8,
+        letterSpacing: "0.01em",
+        textTransform: "capitalize",
+      }}
+    >
+      {monthLabel} · {stats.career.totalShiftsCompleted} shifts · {hours}h · score {score}
+    </div>
+  );
+}
+
 function QuickLink({ icon, label, sub, onClick, badge, highlight }: { icon: React.ReactNode; label: string; sub: string; onClick?: () => void; badge?: number; highlight?: boolean }) {
   return (
     <button onClick={onClick} className="relative rounded-xl border px-4 py-4 text-left" style={{ backgroundColor: highlight ? "var(--coral-light)" : "#fff", borderColor: highlight ? "var(--coral)" : "rgba(0,0,0,0.08)", cursor: "pointer" }}>
@@ -852,6 +939,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
   const [clockInShift, setClockInShift] = useState<ShiftRow | null>(null);
   const [reqOpen, setReqOpen] = useState(false);
   const [reqShiftId, setReqShiftId] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   async function handleEndShift(s: ShiftRow) {
     if (s.clocked_out_at) { toast.info("Ce shift est déjà clôturé"); return; }
@@ -1037,6 +1125,15 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
         )}
       </div>
 
+      {view === "month" && (
+        <MonthCalendar
+          monthCursor={cursor}
+          shifts={shifts}
+          selectedISO={selectedDay}
+          onSelect={setSelectedDay}
+        />
+      )}
+
       {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : !hasAnyShift ? (() => {
         const periodLabel = rangeLabel;
         const isPast = toISO(rangeEnd) < today;
@@ -1060,7 +1157,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
       })()
       : (
         <div className="flex flex-col gap-2">
-          {days.map(day => {
+          {(selectedDay ? days.filter(d => d.iso === selectedDay) : days).map(day => {
             const dayShifts = shifts.filter((s) => s.shift_date === day.iso);
             return (
               <div key={day.iso}>
@@ -1186,6 +1283,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
           </div>
           <div style={{ fontSize: 20, fontWeight: 500, color: "#fff" }}>{profile.first_name} {profile.last_name}</div>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>{profile.email}</div>
+          <ProfilRecap userId={userId} />
           <div className="flex items-center gap-1.5 mt-3 flex-wrap justify-center">
             {profile.contract && (
               <span className="rounded-full px-2.5 py-1" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.85)", border: "0.5px solid rgba(255,255,255,0.12)" }}>{profile.contract}</span>
