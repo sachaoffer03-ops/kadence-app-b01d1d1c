@@ -208,6 +208,23 @@ export const EMAIL_REGISTRY: EmailTemplate[] = [
     },
   },
   {
+    id: "dispo-deadline-reminder",
+    name: "Rappel deadline dispos (auto)",
+    category: "employee",
+    description:
+      "Envoyé automatiquement par le cron aux seuils 3j / 24h / 1h avant deadline. Le variant urgency change le ton et la couleur.",
+    subject: "📅 Plus que 3 jours pour tes dispos de Juillet 2026",
+    component: DispoDeadlineReminderEmail,
+    mockData: {
+      firstName: "Léa",
+      monthLabel: "Juillet 2026",
+      deadlineLabel: "Vendredi 25 juin à 23h59",
+      urgency: "soft",
+      studioName: "Skult Châtelain",
+      statsAppUrl: "https://app.shyft.flashsite.fr/staff-app",
+    },
+  },
+  {
     id: "nouvelle-demande",
     name: "Nouvelle demande employé",
     category: "admin",
