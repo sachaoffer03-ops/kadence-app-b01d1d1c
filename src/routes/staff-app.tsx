@@ -1137,11 +1137,6 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
                 <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", marginBottom: 4, marginTop: 8, textTransform: "capitalize" }}>{day.label}</div>
                 {dayShifts.length === 0 ? (
                   <div className="rounded-lg px-4 py-3" style={{ backgroundColor: "var(--muted)", fontSize: 12, color: "var(--muted-foreground)" }}>Repos</div>
-            return (
-              <div key={day.iso}>
-                <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", marginBottom: 4, marginTop: 8, textTransform: "capitalize" }}>{day.label}</div>
-                {dayShifts.length === 0 ? (
-                  <div className="rounded-lg px-4 py-3" style={{ backgroundColor: "var(--muted)", fontSize: 12, color: "var(--muted-foreground)" }}>Repos</div>
                 ) : dayShifts.map((s) => {
                   const rc = roleColors[s.business_role as Role];
                   const studioName = (s.studio_id && studios[s.studio_id]) || "";
