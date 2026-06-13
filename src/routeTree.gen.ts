@@ -40,6 +40,7 @@ import { Route as StaffAppPropositionsRouteImport } from './routes/staff-app_.pr
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as DisposMonitoringUserIdRouteImport } from './routes/dispos-monitoring.$userId'
 import { Route as DisplayStudioIdRouteImport } from './routes/display.$studioId'
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminSeedRouteImport } from './routes/admin.seed'
@@ -215,6 +216,11 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DisposMonitoringUserIdRoute = DisposMonitoringUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => DisposMonitoringRoute,
+} as any)
 const DisplayStudioIdRoute = DisplayStudioIdRouteImport.update({
   id: '/display/$studioId',
   path: '/display/$studioId',
@@ -325,7 +331,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
-  '/dispos-monitoring': typeof DisposMonitoringRoute
+  '/dispos-monitoring': typeof DisposMonitoringRouteWithChildren
   '/feedbacks': typeof FeedbacksRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
@@ -352,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
+  '/dispos-monitoring/$userId': typeof DisposMonitoringUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -377,7 +384,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
-  '/dispos-monitoring': typeof DisposMonitoringRoute
+  '/dispos-monitoring': typeof DisposMonitoringRouteWithChildren
   '/feedbacks': typeof FeedbacksRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
@@ -403,6 +410,7 @@ export interface FileRoutesByTo {
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
+  '/dispos-monitoring/$userId': typeof DisposMonitoringUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -429,7 +437,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
-  '/dispos-monitoring': typeof DisposMonitoringRoute
+  '/dispos-monitoring': typeof DisposMonitoringRouteWithChildren
   '/feedbacks': typeof FeedbacksRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
@@ -456,6 +464,7 @@ export interface FileRoutesById {
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
+  '/dispos-monitoring/$userId': typeof DisposMonitoringUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -510,6 +519,7 @@ export interface FileRouteTypes {
     | '/admin/seed'
     | '/admin/seeder'
     | '/display/$studioId'
+    | '/dispos-monitoring/$userId'
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
@@ -561,6 +571,7 @@ export interface FileRouteTypes {
     | '/admin/seed'
     | '/admin/seeder'
     | '/display/$studioId'
+    | '/dispos-monitoring/$userId'
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
@@ -613,6 +624,7 @@ export interface FileRouteTypes {
     | '/admin/seed'
     | '/admin/seeder'
     | '/display/$studioId'
+    | '/dispos-monitoring/$userId'
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
@@ -639,7 +651,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DemandesRoute: typeof DemandesRoute
   DimonaRoute: typeof DimonaRoute
-  DisposMonitoringRoute: typeof DisposMonitoringRoute
+  DisposMonitoringRoute: typeof DisposMonitoringRouteWithChildren
   FeedbacksRoute: typeof FeedbacksRoute
   FormationRoute: typeof FormationRouteWithChildren
   LoginRoute: typeof LoginRoute
@@ -896,6 +908,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dispos-monitoring/$userId': {
+      id: '/dispos-monitoring/$userId'
+      path: '/$userId'
+      fullPath: '/dispos-monitoring/$userId'
+      preLoaderRoute: typeof DisposMonitoringUserIdRouteImport
+      parentRoute: typeof DisposMonitoringRoute
+    }
     '/display/$studioId': {
       id: '/display/$studioId'
       path: '/display/$studioId'
@@ -1032,6 +1051,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DisposMonitoringRouteChildren {
+  DisposMonitoringUserIdRoute: typeof DisposMonitoringUserIdRoute
+}
+
+const DisposMonitoringRouteChildren: DisposMonitoringRouteChildren = {
+  DisposMonitoringUserIdRoute: DisposMonitoringUserIdRoute,
+}
+
+const DisposMonitoringRouteWithChildren =
+  DisposMonitoringRoute._addFileChildren(DisposMonitoringRouteChildren)
+
 interface FormationRouteChildren {
   FormationCourseIdRoute: typeof FormationCourseIdRoute
 }
@@ -1080,7 +1110,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DemandesRoute: DemandesRoute,
   DimonaRoute: DimonaRoute,
-  DisposMonitoringRoute: DisposMonitoringRoute,
+  DisposMonitoringRoute: DisposMonitoringRouteWithChildren,
   FeedbacksRoute: FeedbacksRoute,
   FormationRoute: FormationRouteWithChildren,
   LoginRoute: LoginRoute,
