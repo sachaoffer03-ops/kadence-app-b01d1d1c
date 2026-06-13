@@ -97,7 +97,7 @@ function UserDisposPage() {
     <div className="p-6 max-w-6xl mx-auto" style={{ color: "var(--foreground)" }}>
       {/* Back link */}
       <Link
-        to="/dispo-detail-back"
+        to="/dispos-monitoring"
         className="inline-flex items-center gap-1.5 mb-4"
         style={{ fontSize: 12, color: "var(--muted-foreground)" }}
       >
