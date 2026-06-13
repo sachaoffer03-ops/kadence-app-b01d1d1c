@@ -79,7 +79,7 @@ function AISettings() {
   });
   const [bounds, setBounds] = useState({ min: 3, max: 6 });
   const [weekly, setWeekly] = useState({ student: 15, flexi: 20, cdi: 48 });
-  const [deadlineDay, setDeadlineDay] = useState<number>(20);
+  const [deadlineDay, setDeadlineDay] = useState<number>(25);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
