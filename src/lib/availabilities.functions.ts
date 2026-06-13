@@ -346,3 +346,149 @@ export const checkUserDispoStatus = createServerFn({ method: "GET" })
     };
   });
 
+
+// =============================================================================
+// MONITORING ADMIN — vue par mois des dispos remplies / partielles / vides
+// =============================================================================
+export interface MonthlyDispoStatus {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  contract: string | null;
+  studioIds: string[];
+  availsCount: number;
+  lastSubmittedAt: string | null;
+  status: "complete" | "partial" | "empty";
+}
+
+export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      year: z.number().int().min(2020).max(2100),
+      month: z.number().int().min(1).max(12),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: roleRow } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "manager"])
+      .maybeSingle();
+    if (!roleRow) throw new Error("Admin/manager uniquement");
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const start = `${data.year}-${pad(data.month)}-01`;
+    const lastDay = new Date(data.year, data.month, 0).getDate();
+    const end = `${data.year}-${pad(data.month)}-${pad(lastDay)}`;
+
+    const { data: adminIds } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .in("role", ["admin", "manager"]);
+    const adminSet = new Set((adminIds ?? []).map((r: any) => r.user_id));
+
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, first_name, last_name, contract")
+      .eq("status", "active");
+    const employees = (profiles ?? []).filter((p: any) => !adminSet.has(p.id));
+
+    const { data: avails } = await supabaseAdmin
+      .from("availabilities")
+      .select("user_id, avail_date, created_at")
+      .gte("avail_date", start)
+      .lte("avail_date", end);
+
+    const byUser = new Map<string, { count: number; lastAt: string | null }>();
+    for (const a of avails ?? []) {
+      const existing = byUser.get(a.user_id) ?? { count: 0, lastAt: null };
+      existing.count++;
+      if (!existing.lastAt || a.created_at > existing.lastAt) existing.lastAt = a.created_at;
+      byUser.set(a.user_id, existing);
+    }
+
+    const { data: studios } = await supabaseAdmin
+      .from("user_studios")
+      .select("user_id, studio_id");
+    const studiosByUser = new Map<string, string[]>();
+    for (const s of studios ?? []) {
+      const arr = studiosByUser.get(s.user_id) ?? [];
+      arr.push(s.studio_id);
+      studiosByUser.set(s.user_id, arr);
+    }
+
+    const rows: MonthlyDispoStatus[] = employees.map((p: any) => {
+      const info = byUser.get(p.id) ?? { count: 0, lastAt: null };
+      let status: "complete" | "partial" | "empty";
+      if (info.count === 0) status = "empty";
+      else if (info.count < 5) status = "partial";
+      else status = "complete";
+      return {
+        userId: p.id,
+        firstName: p.first_name ?? "",
+        lastName: p.last_name ?? "",
+        contract: p.contract,
+        studioIds: studiosByUser.get(p.id) ?? [],
+        availsCount: info.count,
+        lastSubmittedAt: info.lastAt,
+        status,
+      };
+    });
+
+    const order: Record<string, number> = { empty: 0, partial: 1, complete: 2 };
+    rows.sort((a, b) => order[a.status] - order[b.status] || a.lastName.localeCompare(b.lastName));
+
+    return {
+      year: data.year,
+      month: data.month,
+      total: rows.length,
+      complete: rows.filter((r) => r.status === "complete").length,
+      partial: rows.filter((r) => r.status === "partial").length,
+      empty: rows.filter((r) => r.status === "empty").length,
+      rows,
+    };
+  });
+
+export const remindLateEmployees = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      year: z.number().int(),
+      month: z.number().int(),
+      userIds: z.array(z.string().uuid()).min(1).max(200),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: roleRow } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "manager"])
+      .maybeSingle();
+    if (!roleRow) throw new Error("Admin uniquement");
+
+    const monthLabel = new Date(data.year, data.month - 1, 1)
+      .toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+
+    const notifs = data.userIds.map((uid) => ({
+      user_id: uid,
+      type: "dispo_manual_reminder",
+      title: "Rappel : tes dispos sont attendues",
+      body: `Ton manager te demande de remplir tes dispos pour ${monthLabel}.`,
+      link: "/staff-app?tab=accueil",
+      priority: "high",
+      category: "general",
+    }));
+    if (notifs.length > 0) {
+      const { error } = await supabaseAdmin.from("notifications").insert(notifs);
+      if (error) throw new Error(error.message);
+    }
+
+    return { ok: true, sent: data.userIds.length };
+  });

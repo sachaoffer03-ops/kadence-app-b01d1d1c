@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarCheck,
   Users,
   AlertTriangle,
   FileEdit,
@@ -44,7 +45,7 @@ function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSecti
         { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
         { label: "Rapports", to: "/rapports", icon: BarChart3 },
         { label: "Planning", to: "/planning", icon: CalendarDays },
-        
+        { label: "Monitoring dispos", to: "/dispos-monitoring", icon: CalendarCheck },
         { label: "Staff", to: "/staff", icon: Users },
         { label: "Trous à combler", to: "/trous", icon: AlertTriangle, badge: counts.trous, badgeType: "danger" },
       ],

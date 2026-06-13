@@ -24,6 +24,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FormationRouteImport } from './routes/formation'
 import { Route as FeedbacksRouteImport } from './routes/feedbacks'
+import { Route as DisposMonitoringRouteImport } from './routes/dispos-monitoring'
 import { Route as DimonaRouteImport } from './routes/dimona'
 import { Route as DemandesRouteImport } from './routes/demandes'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -132,6 +133,11 @@ const FormationRoute = FormationRouteImport.update({
 const FeedbacksRoute = FeedbacksRouteImport.update({
   id: '/feedbacks',
   path: '/feedbacks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisposMonitoringRoute = DisposMonitoringRouteImport.update({
+  id: '/dispos-monitoring',
+  path: '/dispos-monitoring',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DimonaRoute = DimonaRouteImport.update({
@@ -319,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
+  '/dispos-monitoring': typeof DisposMonitoringRoute
   '/feedbacks': typeof FeedbacksRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
@@ -370,6 +377,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
+  '/dispos-monitoring': typeof DisposMonitoringRoute
   '/feedbacks': typeof FeedbacksRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
@@ -421,6 +429,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
+  '/dispos-monitoring': typeof DisposMonitoringRoute
   '/feedbacks': typeof FeedbacksRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
@@ -474,6 +483,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/demandes'
     | '/dimona'
+    | '/dispos-monitoring'
     | '/feedbacks'
     | '/formation'
     | '/login'
@@ -525,6 +535,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/demandes'
     | '/dimona'
+    | '/dispos-monitoring'
     | '/feedbacks'
     | '/formation'
     | '/login'
@@ -575,6 +586,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/demandes'
     | '/dimona'
+    | '/dispos-monitoring'
     | '/feedbacks'
     | '/formation'
     | '/login'
@@ -627,6 +639,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DemandesRoute: typeof DemandesRoute
   DimonaRoute: typeof DimonaRoute
+  DisposMonitoringRoute: typeof DisposMonitoringRoute
   FeedbacksRoute: typeof FeedbacksRoute
   FormationRoute: typeof FormationRouteWithChildren
   LoginRoute: typeof LoginRoute
@@ -769,6 +782,13 @@ declare module '@tanstack/react-router' {
       path: '/feedbacks'
       fullPath: '/feedbacks'
       preLoaderRoute: typeof FeedbacksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dispos-monitoring': {
+      id: '/dispos-monitoring'
+      path: '/dispos-monitoring'
+      fullPath: '/dispos-monitoring'
+      preLoaderRoute: typeof DisposMonitoringRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dimona': {
@@ -1060,6 +1080,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DemandesRoute: DemandesRoute,
   DimonaRoute: DimonaRoute,
+  DisposMonitoringRoute: DisposMonitoringRoute,
   FeedbacksRoute: FeedbacksRoute,
   FormationRoute: FormationRouteWithChildren,
   LoginRoute: LoginRoute,
