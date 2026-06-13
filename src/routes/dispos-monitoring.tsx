@@ -136,13 +136,6 @@ function DisposMonitoringPage() {
             ))}
           </SelectContent>
         </Select>
-        <button
-          onClick={() => refetch()}
-          className="rounded-md border px-3 py-2"
-          style={{ fontSize: 13, borderColor: "var(--border)" }}
-        >
-          Rafraîchir
-        </button>
       </div>
 
       {/* KPIs */}
