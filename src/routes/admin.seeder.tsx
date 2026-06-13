@@ -12,7 +12,7 @@ export const Route = createFileRoute("/admin/seeder")({
   head: () => ({ meta: [{ title: "Seeder données fictives — Kadence" }] }),
 });
 
-function SeederPage() {
+export function SeederPage() {
   const navigate = useNavigate();
   const seed = useServerFn(seedFakeData);
   const addKitchen = useServerFn(addKitchenWeekendStaff);

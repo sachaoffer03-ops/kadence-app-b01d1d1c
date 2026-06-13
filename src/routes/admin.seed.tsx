@@ -28,7 +28,7 @@ const ROLE_COLORS: Record<string, string> = {
   Barista: "#D97706", Accueil: "#2563EB", Host: "#7C3AED", Cuisine: "#DC2626",
 };
 
-function SeedDemoPage() {
+export function SeedDemoPage() {
   const fetchStatus = useServerFn(getDemoStatus);
   const reset = useServerFn(resetDemoEnvironment);
   const cleanup = useServerFn(cleanupAllDemoData);
