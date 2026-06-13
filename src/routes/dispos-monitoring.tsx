@@ -9,6 +9,9 @@ import {
   remindLateEmployees,
 } from "@/lib/availabilities.functions";
 import { useStudios } from "@/hooks/use-studios";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/dispos-monitoring")({
   component: DisposMonitoringPage,
