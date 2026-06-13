@@ -117,6 +117,7 @@ function AISettings() {
       max_weekly_flexi_hours: weekly.flexi,
       max_weekly_cdi_hours: weekly.cdi,
       availability_deadline_day: deadlineDay,
+      availability_lock_day: deadlineDay,
       ...rules,
     };
     const { error } = id
