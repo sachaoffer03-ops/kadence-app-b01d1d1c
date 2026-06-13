@@ -659,3 +659,84 @@ export const getUserAvailabilitiesAll = createServerFn({ method: "GET" })
       availabilities: avails ?? [],
     };
   });
+
+// =============================================================================
+// getClosedDaysForMonth — jours grisés pour l'employé (fermetures + absence
+// totale de besoin staffing) dans tous ses studios. Un jour est "fermé" si,
+// POUR CHACUN des studios de l'employé : (a) une studio_exception de type
+// 'fermeture' existe ce jour-là, OU (b) aucun staffing_template avec
+// required_count > 0 n'existe pour ce day_of_week. Si l'employé n'est lié à
+// aucun studio, on retourne [] (rien de grisé).
+// =============================================================================
+export const getClosedDaysForMonth = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      year: z.number().int().min(2020).max(2100),
+      month: z.number().int().min(1).max(12), // 1-12
+    }).parse(i),
+  )
+  .handler(async ({ data, context }): Promise<{ closedDays: number[] }> => {
+    const { supabase, userId } = context;
+
+    // Studios de l'employé : user_studios + profiles.studio_id en fallback
+    const [{ data: us }, { data: prof }] = await Promise.all([
+      supabase.from("user_studios").select("studio_id").eq("user_id", userId),
+      supabase.from("profiles").select("studio_id").eq("id", userId).maybeSingle(),
+    ]);
+    const studioSet = new Set<string>();
+    (us ?? []).forEach((r: any) => r.studio_id && studioSet.add(r.studio_id));
+    if ((prof as any)?.studio_id) studioSet.add((prof as any).studio_id);
+    const studioIds = Array.from(studioSet);
+    if (studioIds.length === 0) return { closedDays: [] };
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const daysInMonth = new Date(data.year, data.month, 0).getDate();
+    const start = `${data.year}-${pad(data.month)}-01`;
+    const end = `${data.year}-${pad(data.month)}-${pad(daysInMonth)}`;
+
+    const [{ data: tpl }, { data: exc }] = await Promise.all([
+      supabase
+        .from("staffing_templates")
+        .select("studio_id, day_of_week, required_count")
+        .in("studio_id", studioIds),
+      supabase
+        .from("studio_exceptions")
+        .select("studio_id, exception_date, exception_type")
+        .in("studio_id", studioIds)
+        .gte("exception_date", start)
+        .lte("exception_date", end),
+    ]);
+
+    // hasNeed[studio][dow] = true si au moins un template requis > 0
+    const hasNeed: Record<string, Record<number, boolean>> = {};
+    for (const sid of studioIds) hasNeed[sid] = {};
+    for (const t of (tpl ?? []) as any[]) {
+      if ((t.required_count ?? 0) > 0) {
+        hasNeed[t.studio_id][t.day_of_week] = true;
+      }
+    }
+
+    // closures[studio][YYYY-MM-DD] = true
+    const closures: Record<string, Set<string>> = {};
+    for (const sid of studioIds) closures[sid] = new Set<string>();
+    for (const e of (exc ?? []) as any[]) {
+      if (e.exception_type === "fermeture") {
+        closures[e.studio_id].add(e.exception_date);
+      }
+    }
+
+    const closedDays: number[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const iso = `${data.year}-${pad(data.month)}-${pad(day)}`;
+      const dow = new Date(data.year, data.month - 1, day).getDay();
+      let allClosed = true;
+      for (const sid of studioIds) {
+        const closedHere = closures[sid].has(iso) || !hasNeed[sid][dow];
+        if (!closedHere) { allClosed = false; break; }
+      }
+      if (allClosed) closedDays.push(day);
+    }
+
+    return { closedDays };
+  });
