@@ -1,11 +1,7 @@
-import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { render } from "@react-email/components";
 
-const SITE_NAME = "Skult Studios";
-const SENDER_DOMAIN = "notify.app.shyft.flashsite.fr";
-const FROM_DOMAIN = "app.shyft.flashsite.fr";
 const APP_URL = "https://app.shyft.flashsite.fr/staff-app";
+
 
 type Threshold = "3d" | "2d" | "24h" | "5h" | "1h";
 type Urgency = "soft" | "urgent" | "ultimate";
