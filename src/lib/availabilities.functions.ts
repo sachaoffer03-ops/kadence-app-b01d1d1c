@@ -465,6 +465,7 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
     const { data: roleRow } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -476,6 +477,7 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
     const monthLabel = new Date(data.year, data.month - 1, 1)
       .toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
+    // 1. Notifications in-app
     const notifs = data.userIds.map((uid) => ({
       user_id: uid,
       type: "dispo_manual_reminder",
@@ -490,7 +492,75 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    return { ok: true, sent: data.userIds.length };
+    // 2. Emails
+    let emailsSent = 0;
+    try {
+      const { data: profiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id, first_name, email")
+        .in("id", data.userIds);
+
+      // Deadline = lockDay du mois précédent
+      const { data: settings } = await supabaseAdmin
+        .from("ai_planning_settings")
+        .select("availability_lock_day")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const lockDay = (settings as any)?.availability_lock_day ?? 25;
+      const deadlineMonth = data.month === 1 ? 12 : data.month - 1;
+      const deadlineYear = data.month === 1 ? data.year - 1 : data.year;
+      const deadline = new Date(deadlineYear, deadlineMonth - 1, lockDay, 23, 59, 0);
+      const deadlineLabel =
+        deadline.toLocaleDateString("fr-FR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        }) +
+        " à " +
+        deadline.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+      const host = getRequestHeader("host");
+      const proto = getRequestHeader("x-forwarded-proto") ?? "https";
+      const baseUrl = host ? `${proto}://${host}` : "https://app.shyft.flashsite.fr";
+      const statsAppUrl = `${baseUrl}/staff-app`;
+      const authHeader = getRequestHeader("authorization");
+
+      const recipients = (profiles ?? []).filter((p: any) => p.email);
+      const results = await Promise.allSettled(
+        recipients.map((p: any) =>
+          fetch(`${baseUrl}/lovable/email/transactional/send`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(authHeader ? { Authorization: authHeader } : {}),
+            },
+            body: JSON.stringify({
+              templateName: "dispo-reminder",
+              recipientEmail: p.email,
+              idempotencyKey: `dispo-reminder-${data.year}-${data.month}-${p.id}-${Date.now()}`,
+              templateData: {
+                firstName: p.first_name ?? "",
+                monthLabel,
+                deadlineLabel,
+                statsAppUrl,
+              },
+            }),
+          }).then(async (r) => {
+            if (!r.ok) {
+              console.error("[remindLateEmployees] email failed", p.email, r.status, await r.text().catch(() => ""));
+              return null;
+            }
+            return r;
+          }),
+        ),
+      );
+      emailsSent = results.filter((r) => r.status === "fulfilled" && r.value).length;
+    } catch (e) {
+      console.error("[remindLateEmployees] email block error", e);
+    }
+
+    return { ok: true, sent: data.userIds.length, notifsSent: data.userIds.length, emailsSent };
   });
 
 // =============================================================================
