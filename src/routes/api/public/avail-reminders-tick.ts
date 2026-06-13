@@ -203,120 +203,42 @@ export const Route = createFileRoute("/api/public/avail-reminders-tick")({
         // 8) Emails on critical thresholds only
         let emailsSent = 0;
         if (urgency) {
-          const template = EMAIL_REGISTRY.find(
-            (t) => t.id === "dispo-deadline-reminder",
+          const { enqueueTemplateEmail } = await import(
+            "@/lib/email-send.server"
           );
-          if (!template) {
-            console.error("dispo-deadline-reminder template missing");
-          } else {
-            const deadlineDateKey = `${deadline.getFullYear()}${String(
-              deadline.getMonth() + 1,
-            ).padStart(2, "0")}${String(deadline.getDate()).padStart(2, "0")}`;
-
-            const subjectByUrgency: Record<Urgency, string> = {
-              soft: `📅 Plus que 3 jours pour tes dispos de ${monthLabel}`,
-              urgent: `⚠️ Plus que 24h pour tes dispos de ${monthLabel}`,
-              ultimate: `🔥 Dernière heure ! Tes dispos pour ${monthLabel}`,
-            };
-
-            for (const p of toNotify) {
-              const email = (p as any).email as string | null;
-              if (!email) continue;
-              try {
-                const recipient = email.toLowerCase();
-
-                // suppression check
-                const { data: suppressed } = await supabaseAdmin
-                  .from("suppressed_emails")
-                  .select("id")
-                  .eq("email", recipient)
-                  .maybeSingle();
-                if (suppressed) continue;
-
-                // ensure unsubscribe token
-                let token: string | null = null;
-                const { data: existingTok } = await supabaseAdmin
-                  .from("email_unsubscribe_tokens")
-                  .select("token, used_at")
-                  .eq("email", recipient)
-                  .maybeSingle();
-                if (existingTok?.used_at) continue;
-                if (existingTok?.token) {
-                  token = existingTok.token;
-                } else {
-                  const bytes = new Uint8Array(32);
-                  crypto.getRandomValues(bytes);
-                  token = Array.from(bytes)
-                    .map((b) => b.toString(16).padStart(2, "0"))
-                    .join("");
-                  await supabaseAdmin
-                    .from("email_unsubscribe_tokens")
-                    .upsert(
-                      { token, email: recipient },
-                      { onConflict: "email", ignoreDuplicates: true },
-                    );
-                  const { data: stored } = await supabaseAdmin
-                    .from("email_unsubscribe_tokens")
-                    .select("token")
-                    .eq("email", recipient)
-                    .maybeSingle();
-                  token = stored?.token ?? token;
-                }
-
-                const templateData = {
+          const deadlineDateKey = `${deadline.getFullYear()}${String(
+            deadline.getMonth() + 1,
+          ).padStart(2, "0")}${String(deadline.getDate()).padStart(2, "0")}`;
+          const subjectByUrgency: Record<Urgency, string> = {
+            soft: `📅 Plus que 3 jours pour tes dispos de ${monthLabel}`,
+            urgent: `⚠️ Plus que 24h pour tes dispos de ${monthLabel}`,
+            ultimate: `🔥 Dernière heure ! Tes dispos pour ${monthLabel}`,
+          };
+          for (const p of toNotify) {
+            const email = (p as any).email as string | null;
+            if (!email) continue;
+            try {
+              const res = await enqueueTemplateEmail({
+                templateId: "dispo-deadline-reminder",
+                recipient: email,
+                subject: subjectByUrgency[urgency],
+                idempotencyKey: `dispo-reminder-${threshold}-${(p as any).id}-${deadlineDateKey}`,
+                data: {
                   firstName: (p as any).first_name ?? "",
                   monthLabel,
                   deadlineLabel,
                   urgency,
                   statsAppUrl: APP_URL,
-                };
-                const element = React.createElement(
-                  template.component,
-                  templateData,
-                );
-                const html = await render(element);
-                const text = await render(element, { plainText: true });
-                const messageId = crypto.randomUUID();
-                const idempotencyKey = `dispo-reminder-${threshold}-${(p as any).id}-${deadlineDateKey}`;
-
-                await supabaseAdmin.from("email_send_log").insert({
-                  message_id: messageId,
-                  template_name: "dispo-deadline-reminder",
-                  recipient_email: recipient,
-                  status: "pending",
-                });
-
-                const { error: enqErr } = await supabaseAdmin.rpc(
-                  "enqueue_email",
-                  {
-                    queue_name: "transactional_emails",
-                    payload: {
-                      message_id: messageId,
-                      to: recipient,
-                      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-                      sender_domain: SENDER_DOMAIN,
-                      subject: subjectByUrgency[urgency],
-                      html,
-                      text,
-                      purpose: "transactional",
-                      label: "dispo-deadline-reminder",
-                      idempotency_key: idempotencyKey,
-                      unsubscribe_token: token,
-                      queued_at: new Date().toISOString(),
-                    } as any,
-                  },
-                );
-                if (enqErr) {
-                  console.error("enqueue dispo reminder failed", enqErr);
-                  continue;
-                }
-                emailsSent++;
-              } catch (e) {
-                console.error("dispo reminder email failed", e);
-              }
+                },
+              });
+              if (res.ok) emailsSent++;
+              else console.error("dispo reminder email failed", email, res.reason);
+            } catch (e) {
+              console.error("dispo reminder email exception", e);
             }
           }
         }
+
 
         return Response.json({
           threshold,
