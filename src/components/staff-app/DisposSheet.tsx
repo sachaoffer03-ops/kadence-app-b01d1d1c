@@ -83,6 +83,9 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     try { if (typeof window !== "undefined") flag = window.localStorage?.getItem(disposKey(userId, year, month)) ?? null; } catch {}
     setValidated(!!flag);
     refreshLockInfo();
+    closedDaysFn({ data: { year, month: month + 1 } })
+      .then((r: any) => setClosedDays(new Set(r?.closedDays ?? [])))
+      .catch(() => setClosedDays(new Set()));
     (async () => {
       setLoading(true);
       const start = dateISO(1);
@@ -106,7 +109,8 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       setRanges(map);
       setLoading(false);
     })();
-  }, [open, userId, year, month, daysInMonth, refreshLockInfo]);
+  }, [open, userId, year, month, daysInMonth, refreshLockInfo, closedDaysFn]);
+
 
   // Tick countdown (every 30s suffisant)
   useEffect(() => {
