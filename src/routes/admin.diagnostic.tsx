@@ -129,39 +129,9 @@ function SystemTab({ sys, integ, loading, err }: any) {
             )}
         </Card>
 
-        {/* Locale */}
-        <Card title="🇫🇷 Locale française">
-          {!sys?.locale ? <Empty>—</Empty> : (
-            <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-              <KV k="Mois" v={sys.locale.month_locale} />
-              <KV k="Jour" v={sys.locale.day_locale} />
-              <KV k="lc_time" v={sys.locale.server_locale || "(non défini)"} />
-              <KV k="Attendu" v={sys.locale.expected} muted />
-              <div className="mt-2">
-                {/^[A-ZÀ-Ÿ][a-zà-ÿ]+/.test(sys.locale.month_locale || "")
-                  ? <BadgeOk label="Locale OK" />
-                  : <BadgeKo label="Locale non française" />}
-              </div>
-            </div>
-          )}
-        </Card>
+        <AvailRemindersCard crons={sys?.crons} />
 
-        {/* Signature enqueue_email */}
-        <Card title="📧 Signature enqueue_email">
-          {!sys?.enqueueEmail ? <Empty>—</Empty> :
-            !Array.isArray(sys.enqueueEmail) || sys.enqueueEmail.length === 0 ? (
-              <div><BadgeKo label="Fonction absente" /></div>
-            ) : (
-              <div className="space-y-2">
-                {sys.enqueueEmail.map((f: any, i: number) => (
-                  <div key={i} style={{ fontSize: 11, fontFamily: "monospace" }}>
-                    <div><strong>{f.function_name}</strong>({f.arguments})</div>
-                    <div style={{ color: "var(--muted-foreground)" }}>→ {f.returns}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-        </Card>
+        <RecentEmailLogsCard />
 
         {/* Realtime */}
         <Card title="📡 Tables realtime">
