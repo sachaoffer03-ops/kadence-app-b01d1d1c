@@ -330,3 +330,35 @@ export const getAvailabilityLockInfo = createServerFn({ method: "GET" })
       lockedMonthsForUser,
     };
   });
+
+// =============================================================================
+// checkUserDispoStatus — l'utilisateur a-t-il rempli ses dispos pour le mois
+// prochain ? Utilisé par la home staff-app pour afficher un encart de rappel.
+// =============================================================================
+export const checkUserDispoStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const now = new Date();
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const { count } = await supabase
+      .from("availabilities")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .gte("avail_date", fmt(nextMonthStart))
+      .lte("avail_date", fmt(nextMonthEnd));
+
+    const c = count ?? 0;
+    return {
+      nextMonthYear: nextMonthStart.getFullYear(),
+      nextMonthMonth: nextMonthStart.getMonth() + 1,
+      hasFilledNextMonth: c > 0,
+      countNextMonth: c,
+    };
+  });
+
