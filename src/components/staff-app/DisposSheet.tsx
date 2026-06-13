@@ -62,6 +62,21 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [lockInfo, setLockInfo] = useState<AvailabilityLockInfo | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [closedDays, setClosedDays] = useState<Set<number>>(new Set());
+  const [minShiftHours, setMinShiftHours] = useState<number>(3);
+
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("ai_planning_settings")
+      .select("min_shift_hours")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const v = Number((data as any)?.min_shift_hours);
+        if (Number.isFinite(v) && v > 0) setMinShiftHours(v);
+      });
+  }, [open]);
 
   const createFn = useServerFn(createAvailability);
   const updateFn = useServerFn(updateAvailability);
@@ -198,7 +213,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   };
 
   const findFirstFreeSlot = (day: number): { start: string; end: string } | null => {
-    const MIN = 4 * 60;
+    const MIN = Math.round(minShiftHours * 60);
     const DAY_START = 6 * 60;
     const DAY_END = 23 * 60 + 30;
     const list = (ranges[day] ?? [])
@@ -208,14 +223,14 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     for (const r of list) {
       if (r.s - cursor >= MIN) {
         const start = cursor;
-        const end = Math.min(start + 4 * 60, r.s);
+        const end = Math.min(start + MIN, r.s);
         return { start: fmtMin(start), end: fmtMin(end) };
       }
       cursor = Math.max(cursor, r.e);
     }
     if (DAY_END - cursor >= MIN) {
       const start = cursor;
-      const end = Math.min(start + 4 * 60, DAY_END);
+      const end = Math.min(start + MIN, DAY_END);
       return { start: fmtMin(start), end: fmtMin(end) };
     }
     return null;
