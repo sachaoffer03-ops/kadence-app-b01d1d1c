@@ -85,7 +85,7 @@ function UserDisposPage() {
   const goMonth = (delta: number) => {
     const d = new Date(year, month - 1 + delta, 1);
     navigate({
-      to: "/dispos-monitoring/$userId",
+      to: "/dispo-detail/$userId",
       params: { userId },
       search: { year: d.getFullYear(), month: d.getMonth() + 1 },
     });
@@ -97,7 +97,7 @@ function UserDisposPage() {
     <div className="p-6 max-w-6xl mx-auto" style={{ color: "var(--foreground)" }}>
       {/* Back link */}
       <Link
-        to="/dispos-monitoring"
+        to="/dispo-detail-back"
         className="inline-flex items-center gap-1.5 mb-4"
         style={{ fontSize: 12, color: "var(--muted-foreground)" }}
       >
