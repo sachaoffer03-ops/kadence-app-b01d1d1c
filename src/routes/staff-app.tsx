@@ -465,6 +465,21 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
 
       </div>
 
+      {!online && (
+        <div
+          className="rounded-xl px-4 py-2.5 mb-4 flex items-center gap-2.5"
+          style={{ backgroundColor: "var(--muted)", border: "0.5px solid rgba(0,0,0,0.08)" }}
+        >
+          <WifiOff size={14} style={{ color: "var(--muted-foreground)" }} />
+          <div className="flex-1" style={{ fontSize: 12 }}>
+            <div style={{ fontWeight: 500 }}>Hors ligne</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              Dernière synchro {fmtLastSync(lastSync)} · le pointage nécessite une connexion
+            </div>
+          </div>
+        </div>
+      )}
+
       <ProposalsInline userId={userId} studios={studios} />
 
       {showDispoBanner && (
