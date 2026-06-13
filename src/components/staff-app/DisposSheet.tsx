@@ -10,8 +10,10 @@ import {
   updateAvailability,
   deleteAvailability,
   getAvailabilityLockInfo,
+  getClosedDaysForMonth,
   type AvailabilityLockInfo,
 } from "@/lib/availabilities.functions";
+
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
