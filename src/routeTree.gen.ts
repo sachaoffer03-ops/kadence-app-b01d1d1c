@@ -40,6 +40,7 @@ import { Route as StaffAppPropositionsRouteImport } from './routes/staff-app_.pr
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as DispoDetailUserIdRouteImport } from './routes/dispo-detail.$userId'
 import { Route as DisplayStudioIdRouteImport } from './routes/display.$studioId'
 import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
 import { Route as AdminSeedRouteImport } from './routes/admin.seed'
@@ -215,6 +216,11 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DispoDetailUserIdRoute = DispoDetailUserIdRouteImport.update({
+  id: '/dispo-detail/$userId',
+  path: '/dispo-detail/$userId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DisplayStudioIdRoute = DisplayStudioIdRouteImport.update({
   id: '/display/$studioId',
   path: '/display/$studioId',
@@ -352,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
+  '/dispo-detail/$userId': typeof DispoDetailUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -403,6 +410,7 @@ export interface FileRoutesByTo {
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
+  '/dispo-detail/$userId': typeof DispoDetailUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -456,6 +464,7 @@ export interface FileRoutesById {
   '/admin/seed': typeof AdminSeedRoute
   '/admin/seeder': typeof AdminSeederRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
+  '/dispo-detail/$userId': typeof DispoDetailUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
@@ -510,6 +519,7 @@ export interface FileRouteTypes {
     | '/admin/seed'
     | '/admin/seeder'
     | '/display/$studioId'
+    | '/dispo-detail/$userId'
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
@@ -561,6 +571,7 @@ export interface FileRouteTypes {
     | '/admin/seed'
     | '/admin/seeder'
     | '/display/$studioId'
+    | '/dispo-detail/$userId'
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
@@ -613,6 +624,7 @@ export interface FileRouteTypes {
     | '/admin/seed'
     | '/admin/seeder'
     | '/display/$studioId'
+    | '/dispo-detail/$userId'
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
@@ -666,6 +678,7 @@ export interface RootRouteChildren {
   AdminSeedRoute: typeof AdminSeedRoute
   AdminSeederRoute: typeof AdminSeederRoute
   DisplayStudioIdRoute: typeof DisplayStudioIdRoute
+  DispoDetailUserIdRoute: typeof DispoDetailUserIdRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   StaffAppPropositionsRoute: typeof StaffAppPropositionsRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -896,6 +909,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dispo-detail/$userId': {
+      id: '/dispo-detail/$userId'
+      path: '/dispo-detail/$userId'
+      fullPath: '/dispo-detail/$userId'
+      preLoaderRoute: typeof DispoDetailUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/display/$studioId': {
       id: '/display/$studioId'
       path: '/display/$studioId'
@@ -1107,6 +1127,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSeedRoute: AdminSeedRoute,
   AdminSeederRoute: AdminSeederRoute,
   DisplayStudioIdRoute: DisplayStudioIdRoute,
+  DispoDetailUserIdRoute: DispoDetailUserIdRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   StaffAppPropositionsRoute: StaffAppPropositionsRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
