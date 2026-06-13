@@ -1,14 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sheet, PrimaryButton } from "./shared";
-import { CheckCircle2, Plus, X, Lock } from "lucide-react";
-import { createAvailability, updateAvailability, deleteAvailability, getAvailabilityDeadline } from "@/lib/availabilities.functions";
+import { CheckCircle2, Plus, X, Lock, ChevronLeft, ChevronRight, Pencil, Clock } from "lucide-react";
+import {
+  createAvailability,
+  updateAvailability,
+  deleteAvailability,
+  getAvailabilityLockInfo,
+  type AvailabilityLockInfo,
+} from "@/lib/availabilities.functions";
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
-// Créneaux horaires (pas de 30 min)
 const HOURS: string[] = (() => {
   const out: string[] = [];
   for (let h = 6; h <= 23; h++) {
@@ -19,9 +24,9 @@ const HOURS: string[] = (() => {
 })();
 
 interface Range {
-  id?: string; // db id (existant) ou undefined (nouveau)
-  start: string; // HH:MM
-  end: string;   // HH:MM
+  id?: string;
+  start: string;
+  end: string;
 }
 
 export function disposKey(userId: string, year: number, month: number) {
@@ -29,11 +34,14 @@ export function disposKey(userId: string, year: number, month: number) {
 }
 
 export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose: () => void; userId: string }) {
+  // Mois affiché (offset par rapport au mois courant, 0 = mois courant, max 12)
+  const [monthOffset, setMonthOffset] = useState(1); // par défaut : mois prochain
   const monthRef = useMemo(() => {
     const d = new Date();
-    d.setMonth(d.getMonth() + 1, 1);
+    d.setDate(1);
+    d.setMonth(d.getMonth() + monthOffset);
     return d;
-  }, []);
+  }, [monthOffset]);
   const year = monthRef.getFullYear();
   const month = monthRef.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -42,23 +50,27 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [ranges, setRanges] = useState<Record<number, Range[]>>({});
   const [loading, setLoading] = useState(true);
   const [validated, setValidated] = useState(false);
-  const [deadline, setDeadline] = useState<{ days_left: number; passed: boolean; deadline_day: number; planning_published?: boolean; deadline_iso?: string } | null>(null);
+  const [lockInfo, setLockInfo] = useState<AvailabilityLockInfo | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const createFn = useServerFn(createAvailability);
   const updateFn = useServerFn(updateAvailability);
   const deleteFn = useServerFn(deleteAvailability);
-  const deadlineFn = useServerFn(getAvailabilityDeadline);
+  const lockInfoFn = useServerFn(getAvailabilityLockInfo);
 
   const dateISO = (day: number) =>
     `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  const refreshLockInfo = useCallback(() => {
+    lockInfoFn().then((d) => setLockInfo(d as AvailabilityLockInfo)).catch(() => {});
+  }, [lockInfoFn]);
 
   useEffect(() => {
     if (!open) return;
     let flag: string | null = null;
     try { if (typeof window !== "undefined") flag = window.localStorage?.getItem(disposKey(userId, year, month)) ?? null; } catch {}
     setValidated(!!flag);
-    deadlineFn().then((d: any) => setDeadline(d)).catch(() => {});
+    refreshLockInfo();
     (async () => {
       setLoading(true);
       const start = dateISO(1);
@@ -82,39 +94,59 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       setRanges(map);
       setLoading(false);
     })();
-  }, [open, userId, year, month, daysInMonth]);
+  }, [open, userId, year, month, daysInMonth, refreshLockInfo]);
 
-  // Tick du compte à rebours
+  // Tick countdown (every 30s suffisant)
   useEffect(() => {
     if (!open) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, [open]);
 
-  const deadlineMs = deadline?.deadline_iso ? new Date(deadline.deadline_iso).getTime() : null;
-  const msLeft = deadlineMs ? deadlineMs - now : null;
-  const deadlinePassed = msLeft !== null ? msLeft <= 0 : !!deadline?.passed;
-  const planningPublished = deadline?.planning_published ?? false;
-  const locked = planningPublished || deadlinePassed;
+  // Statut verrou pour le mois affiché
+  const displayedMonthLock = lockInfo?.lockedMonthsForUser.find(
+    (m) => m.year === year && m.month === month + 1,
+  );
+  const locked = displayedMonthLock?.locked ?? false;
+
+  // Prochaine deadline live
+  const nextDeadlineMs = lockInfo?.nextDeadline ? new Date(lockInfo.nextDeadline).getTime() : null;
+  const msLeftGlobal = nextDeadlineMs ? Math.max(0, nextDeadlineMs - now) : null;
+
+  // Deadline du mois affiché : lockDay du mois précédent à 23:59
+  const displayedMonthDeadline = useMemo(() => {
+    if (!lockInfo) return null;
+    const d = new Date(year, month - 1, lockInfo.lockDay, 23, 59, 59, 999);
+    return d;
+  }, [lockInfo, year, month]);
 
   const formatCountdown = (ms: number) => {
     const s = Math.max(0, Math.floor(ms / 1000));
     const days = Math.floor(s / 86400);
     const h = Math.floor((s % 86400) / 3600);
     const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
     if (days > 0) return `${days}j ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m`;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+    const sec = s % 60;
+    return `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(sec).padStart(2, "0")}s`;
   };
 
+  const countdownColor = (ms: number) => {
+    const days = ms / 86_400_000;
+    if (days > 7) return "#16a34a"; // vert
+    if (days >= 1) return "#ea580c"; // orange
+    return "#dc2626"; // rouge
+  };
 
-  // Convertit "HH:MM" en minutes pour comparaison
+  const fmtDateFR = (d: Date) =>
+    d.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) +
+    " à " +
+    d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
   const toMin = (t: string) => {
     const [h, m] = t.split(":").map(Number);
     return h * 60 + (m || 0);
   };
   const fmtMin = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  // Détecte un chevauchement entre une plage candidate et les plages existantes (en excluant éventuellement un index)
   const overlapsExisting = (day: number, start: string, end: string, excludeIdx?: number) => {
     const s = toMin(start);
     const e = toMin(end);
@@ -129,11 +161,10 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     return null;
   };
 
-  // Trouve le premier sous-créneau libre >= 4h dans la journée (entre 06:00 et 23:30)
   const findFirstFreeSlot = (day: number): { start: string; end: string } | null => {
-    const MIN = 4 * 60; // 4 heures
-    const DAY_START = 6 * 60;    // 06:00 — éviter du créneau 00:00-06:00 par défaut
-    const DAY_END = 23 * 60 + 30; // 23:30
+    const MIN = 4 * 60;
+    const DAY_START = 6 * 60;
+    const DAY_END = 23 * 60 + 30;
     const list = (ranges[day] ?? [])
       .map(r => ({ s: toMin(r.start), e: toMin(r.end) }))
       .sort((a, b) => a.s - b.s);
@@ -141,7 +172,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     for (const r of list) {
       if (r.s - cursor >= MIN) {
         const start = cursor;
-        const end = Math.min(start + Math.max(MIN, 4 * 60), r.s);
+        const end = Math.min(start + 4 * 60, r.s);
         return { start: fmtMin(start), end: fmtMin(end) };
       }
       cursor = Math.max(cursor, r.e);
@@ -175,14 +206,8 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     const updated = { ...list[idx], ...patch };
     if (!updated.id) return;
     const conflict = overlapsExisting(day, updated.start, updated.end, idx);
-    if (conflict === "invalid") {
-      toast.error("L'heure de fin doit être après l'heure de début");
-      return;
-    }
-    if (conflict === "overlap") {
-      toast.error("Cette plage chevauche une autre plage du même jour");
-      return;
-    }
+    if (conflict === "invalid") { toast.error("L'heure de fin doit être après l'heure de début"); return; }
+    if (conflict === "overlap") { toast.error("Cette plage chevauche une autre plage du même jour"); return; }
     try {
       await updateFn({ data: { id: updated.id, start_time: updated.start, end_time: updated.end } });
       setRanges((p) => ({ ...p, [day]: list.map((r, i) => (i === idx ? updated : r)) }));
@@ -207,76 +232,114 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const configured = Object.values(ranges).filter((r) => r.length > 0).length;
 
   const validate = () => {
-    if (configured === 0) {
-      toast.error("Indique au moins une disponibilité");
-      return;
-    }
+    if (configured === 0) { toast.error("Indique au moins une disponibilité"); return; }
     try { window.localStorage?.setItem(disposKey(userId, year, month), new Date().toISOString()); } catch {}
     setValidated(true);
     toast.success("Dispos envoyées pour " + monthLabel);
   };
 
-  const deadlineLabel = deadlineMs
-    ? new Date(deadlineMs).toLocaleDateString("fr-FR", { day: "2-digit", month: "long" }) + " à 23:59"
-    : `jour ${deadline?.deadline_day ?? "?"} à 23:59`;
+  const canPrev = monthOffset > 0;
+  const canNext = monthOffset < 12;
 
   return (
-    <Sheet open={open} onClose={onClose} title={`Dispos · ${monthLabel}`}>
-      {/* Bannière statut : verrouillé / compte à rebours / à remplir */}
-      {locked ? (
-        <div className="rounded-xl px-3 py-3 mb-3 flex items-start gap-2" style={{ backgroundColor: "var(--danger-bg)" }}>
-          <Lock size={14} style={{ color: "var(--danger-text)", marginTop: 1 }} />
-          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--danger-text)", lineHeight: 1.5 }}>
-            {planningPublished
-              ? <>Le planning de <span style={{ textTransform: "capitalize" }}>{monthLabel}</span> est publié. Tu ne peux plus modifier tes dispos. Pour signaler une indisponibilité, fais une demande de modification depuis l'accueil.</>
-              : <>Deadline dépassée pour <span style={{ textTransform: "capitalize" }}>{monthLabel}</span>. Pour tout changement, fais une demande de modification depuis l'accueil.</>}
+    <Sheet open={open} onClose={onClose} title="Mes disponibilités">
+      {/* Countdown global vers la prochaine deadline */}
+      {msLeftGlobal !== null && nextDeadlineMs && (
+        <div
+          className="rounded-xl px-3 py-2 mb-3 flex items-center justify-between gap-2"
+          style={{ backgroundColor: "var(--muted)" }}
+        >
+          <div className="flex items-center gap-2" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            <Clock size={13} />
+            <span>Prochaine deadline : <strong>{fmtDateFR(new Date(nextDeadlineMs))}</strong></span>
+          </div>
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: countdownColor(msLeftGlobal),
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {formatCountdown(msLeftGlobal)}
           </span>
         </div>
-      ) : validated ? (
-        <div className="rounded-xl px-4 py-4 flex flex-col items-center gap-2 mb-3" style={{ backgroundColor: "var(--success-bg)" }}>
-          <CheckCircle2 size={28} style={{ color: "var(--success-text)" }} />
-          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--success-text)" }}>Dispos envoyées</div>
-          {msLeft !== null && (
-            <div style={{ fontSize: 12, color: "var(--success-text)", textAlign: "center" }}>
-              Tu peux encore modifier jusqu'au <strong>{deadlineLabel}</strong>
-            </div>
-          )}
-          {msLeft !== null && (
-            <div style={{ fontSize: 20, fontWeight: 600, color: "var(--success-text)", fontVariantNumeric: "tabular-nums" }}>
-              {formatCountdown(msLeft)}
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)", textAlign: "center", lineHeight: 1.4 }}>
-            Après la deadline, toute modification passera par une demande à l'admin.
-          </div>
+      )}
+
+      {/* Navigation mois */}
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => canPrev && setMonthOffset((o) => o - 1)}
+          disabled={!canPrev}
+          className="rounded-md p-1.5"
+          style={{
+            border: "0.5px solid var(--border)",
+            backgroundColor: "#fff",
+            opacity: canPrev ? 1 : 0.3,
+            cursor: canPrev ? "pointer" : "not-allowed",
+          }}
+          aria-label="Mois précédent"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <div style={{ fontSize: 14, fontWeight: 600, textTransform: "capitalize" }}>{monthLabel}</div>
+        <button
+          onClick={() => canNext && setMonthOffset((o) => o + 1)}
+          disabled={!canNext}
+          className="rounded-md p-1.5"
+          style={{
+            border: "0.5px solid var(--border)",
+            backgroundColor: "#fff",
+            opacity: canNext ? 1 : 0.3,
+            cursor: canNext ? "pointer" : "not-allowed",
+          }}
+          aria-label="Mois suivant"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
+      {/* Bandeau verrou ou bandeau ouverture */}
+      {locked ? (
+        <div className="rounded-xl px-3 py-3 mb-3 flex items-start gap-2" style={{ backgroundColor: "var(--danger-bg, #fee2e2)" }}>
+          <Lock size={14} style={{ color: "var(--danger-text, #991b1b)", marginTop: 1, flexShrink: 0 }} />
+          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--danger-text, #991b1b)", lineHeight: 1.5 }}>
+            Ce mois est verrouillé.
+            {displayedMonthDeadline && (
+              <> La deadline était le <strong>{fmtDateFR(displayedMonthDeadline)}</strong>.</>
+            )}
+            {" "}Tu ne peux plus modifier tes dispos pour ce mois — contacte ton manager si tu dois changer quelque chose.
+          </span>
         </div>
       ) : (
-        <>
-          <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12, lineHeight: 1.5 }}>
-            Indique tes plages horaires de disponibilité pour <span style={{ textTransform: "capitalize" }}>{monthLabel}</span>. Tu peux ajouter plusieurs plages par jour.
-          </div>
-          {msLeft !== null && (
-            <div className="rounded-xl px-3 py-2 mb-2 flex items-center justify-between gap-2" style={{ backgroundColor: "var(--muted)" }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>
-                Deadline : {deadlineLabel}
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--coral)", fontVariantNumeric: "tabular-nums" }}>
-                {formatCountdown(msLeft)}
-              </span>
-            </div>
-          )}
-          <div className="rounded-xl px-3 py-2 mb-3" style={{ backgroundColor: configured >= 10 ? "var(--success-bg)" : "var(--warning-bg)" }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: configured >= 10 ? "var(--success-text)" : "var(--warning-text)" }}>
-              {configured} / {daysInMonth} jours configurés
-            </span>
-          </div>
-        </>
+        <div className="rounded-xl px-3 py-2 mb-3 flex items-start gap-2" style={{ backgroundColor: "var(--success-bg, #dcfce7)" }}>
+          <Pencil size={13} style={{ color: "var(--success-text, #166534)", marginTop: 2, flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: "var(--success-text, #166534)", lineHeight: 1.5 }}>
+            Tu peux modifier les dispos de <span style={{ textTransform: "capitalize", fontWeight: 600 }}>{monthLabel}</span>
+            {displayedMonthDeadline && <> jusqu'au <strong>{fmtDateFR(displayedMonthDeadline)}</strong></>}.
+          </span>
+        </div>
+      )}
+
+      {!locked && validated && (
+        <div className="rounded-xl px-3 py-2 mb-3 flex items-center gap-2" style={{ backgroundColor: "var(--success-bg, #dcfce7)" }}>
+          <CheckCircle2 size={14} style={{ color: "var(--success-text, #166534)" }} />
+          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--success-text, #166534)" }}>Dispos envoyées</span>
+        </div>
+      )}
+
+      {!locked && (
+        <div className="rounded-xl px-3 py-2 mb-3" style={{ backgroundColor: configured >= 10 ? "var(--success-bg, #dcfce7)" : "var(--warning-bg, #fef3c7)" }}>
+          <span style={{ fontSize: 12, fontWeight: 500, color: configured >= 10 ? "var(--success-text, #166534)" : "var(--warning-text, #92400e)" }}>
+            {configured} / {daysInMonth} jours configurés
+          </span>
+        </div>
       )}
 
       {loading ? (
         <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
       ) : (
-        <div className="flex flex-col gap-1.5 mb-3" style={{ opacity: locked ? 0.6 : 1, pointerEvents: locked ? "none" : "auto" }}>
+        <div className="flex flex-col gap-1.5 mb-3" style={{ opacity: locked ? 0.6 : 1 }}>
           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
             const dow = DAY_NAMES[new Date(year, month, day).getDay()];
             const dayRanges = ranges[day] ?? [];
@@ -284,13 +347,15 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
               <div key={day} className="rounded-lg border px-3 py-2" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
                 <div className="flex items-center justify-between mb-1.5">
                   <div style={{ fontSize: 12, fontWeight: 500 }}>{dow} {day}</div>
-                  <button
-                    onClick={() => addRange(day)}
-                    className="flex items-center gap-1 rounded-md px-2 py-0.5"
-                    style={{ fontSize: 10, color: "var(--coral)", border: "0.5px solid var(--coral)" }}
-                  >
-                    <Plus size={11} /> Ajouter
-                  </button>
+                  {!locked && (
+                    <button
+                      onClick={() => addRange(day)}
+                      className="flex items-center gap-1 rounded-md px-2 py-0.5"
+                      style={{ fontSize: 10, color: "var(--coral)", border: "0.5px solid var(--coral)" }}
+                    >
+                      <Plus size={11} /> Ajouter
+                    </button>
+                  )}
                 </div>
                 {dayRanges.length === 0 ? (
                   <div style={{ fontSize: 11, color: "var(--muted-foreground)", fontStyle: "italic" }}>Aucune dispo</div>
@@ -298,31 +363,39 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
                   <div className="flex flex-col gap-1">
                     {dayRanges.map((r, idx) => (
                       <div key={idx} className="flex items-center gap-1.5">
-                        <select
-                          value={r.start}
-                          onChange={(e) => updateRange(day, idx, { start: e.target.value })}
-                          className="rounded-md px-1.5 py-0.5"
-                          style={{ fontSize: 11, border: "0.5px solid var(--border)", backgroundColor: "#fff" }}
-                        >
-                          {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-                        </select>
-                        <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>→</span>
-                        <select
-                          value={r.end}
-                          onChange={(e) => updateRange(day, idx, { end: e.target.value })}
-                          className="rounded-md px-1.5 py-0.5"
-                          style={{ fontSize: 11, border: "0.5px solid var(--border)", backgroundColor: "#fff" }}
-                        >
-                          {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-                        </select>
-                        <button
-                          onClick={() => removeRange(day, idx)}
-                          className="ml-auto rounded-md p-1"
-                          style={{ color: "var(--muted-foreground)" }}
-                          aria-label="Supprimer"
-                        >
-                          <X size={12} />
-                        </button>
+                        {locked ? (
+                          <span style={{ fontSize: 11, color: "var(--foreground)" }}>
+                            {r.start} → {r.end}
+                          </span>
+                        ) : (
+                          <>
+                            <select
+                              value={r.start}
+                              onChange={(e) => updateRange(day, idx, { start: e.target.value })}
+                              className="rounded-md px-1.5 py-0.5"
+                              style={{ fontSize: 11, border: "0.5px solid var(--border)", backgroundColor: "#fff" }}
+                            >
+                              {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>→</span>
+                            <select
+                              value={r.end}
+                              onChange={(e) => updateRange(day, idx, { end: e.target.value })}
+                              className="rounded-md px-1.5 py-0.5"
+                              style={{ fontSize: 11, border: "0.5px solid var(--border)", backgroundColor: "#fff" }}
+                            >
+                              {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                            <button
+                              onClick={() => removeRange(day, idx)}
+                              className="ml-auto rounded-md p-1"
+                              style={{ color: "var(--muted-foreground)" }}
+                              aria-label="Supprimer"
+                            >
+                              <X size={12} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -339,4 +412,3 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     </Sheet>
   );
 }
-
