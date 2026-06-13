@@ -734,43 +734,49 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         );
       })()}
 
-      {/* Collègues du jour */}
-      <TodayColleaguesCard userId={userId} />
-
-      {/* Notifications formation */}
-      <FormationNotifBanner onGoFormation={onGoFormation} />
-
-
-
-
-
+      {/* ─── À FAIRE ─── */}
+      <ZoneLabel>À faire</ZoneLabel>
 
       <button
         onClick={() => setDisposOpen(true)}
-        className="w-full rounded-xl px-4 py-4 mb-5 flex items-center gap-3 text-left"
+        className="w-full rounded-xl px-4 py-4 mb-3 flex items-center gap-3 text-left"
         style={{
           backgroundColor: disposValidated ? "var(--success-bg)" : "#fff",
           border: `0.5px solid ${disposValidated ? "var(--success-text)" : "var(--coral)"}`,
           cursor: "pointer",
         }}
       >
-        <div className="rounded-lg flex items-center justify-center" style={{ width: 40, height: 40, backgroundColor: disposValidated ? "var(--success-text)" : "var(--coral-light)", color: disposValidated ? "#fff" : "var(--coral-dark)" }}>
-          {disposValidated ? <CheckCircle2 size={18} /> : <CalendarCheck size={18} />}
+        <div className="rounded-lg flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: disposValidated ? "var(--success-text)" : "var(--coral-light)", color: disposValidated ? "#fff" : "var(--coral-dark)" }}>
+          {disposValidated ? <CheckCircle2 size={16} /> : <CalendarCheck size={16} />}
         </div>
         <div className="flex-1">
           <div style={{ fontSize: 13, fontWeight: 500 }}>
-              {disposValidated ? "Dispos envoyées" : "Indique tes dispos"}
+            {disposValidated ? "Dispos envoyées" : "Indique tes dispos"}
           </div>
           <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-              {disposValidated ? `Modifiables jusqu'à la deadline — touche pour ajuster` : <>Pour <span style={{ textTransform: "capitalize" }}>{nextMonthLabel}</span></>}
+            {disposValidated ? "Modifiables jusqu'à la deadline — touche pour ajuster" : <>Pour <span style={{ textTransform: "capitalize" }}>{nextMonthLabel}</span></>}
           </div>
         </div>
         <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />
       </button>
 
+      <TodoCard
+        userId={userId}
+        onOpenMyRequests={() => setMyReqOpen(true)}
+        onOpenSignal={() => setSignalOpen(true)}
+        onOpenRequest={() => setReqOpen(true)}
+      />
+
+      {/* Notifications formation */}
+      <FormationNotifBanner onGoFormation={onGoFormation} />
+
+      {/* ─── CETTE SEMAINE ─── */}
+      <ZoneLabel>Cette semaine</ZoneLabel>
+
+      <TodayColleaguesCard userId={userId} />
 
       {shifts.length > 1 && (
-        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Shifts suivants</div>
+        <div style={{ fontSize: 12, fontWeight: 500, marginTop: 12, marginBottom: 8, color: "var(--muted-foreground)" }}>Shifts suivants</div>
       )}
       {shifts.slice(1).map((s) => {
         const role = s.business_role as Role;
@@ -798,21 +804,24 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         );
       })}
 
-      <div style={{ fontSize: 13, fontWeight: 500, marginTop: 20, marginBottom: 8 }}>Actions rapides</div>
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <QuickLink
-          icon={<Send size={18} />}
-          label="Propositions"
-          sub={proposals.length > 0 ? `${proposals.length} en attente` : "Aucune en attente"}
-          badge={proposals.length > 0 ? proposals.length : undefined}
-          highlight={proposals.length > 0}
+      {/* Propositions accessibles via leur page dédiée si présentes (badge déjà visible via ProposalsInline ci-dessus) */}
+      {proposals.length > 0 && (
+        <button
           onClick={() => navigate({ to: "/staff-app/propositions" })}
-        />
-        <QuickLink icon={<AlertCircle size={18} />} label="Signaler" sub="Stock, matériel, hygiène" onClick={() => setSignalOpen(true)} />
-        <QuickLink icon={<Replace size={18} />} label="Demande" sub="Échange, annulation…" onClick={() => setReqOpen(true)} />
-        <QuickLink icon={<Inbox size={18} />} label="Mes demandes" sub="Suivi des réponses" onClick={() => setMyReqOpen(true)} />
-        <QuickLink icon={<CalendarCheck size={18} />} label="Mes dispos" sub={disposValidated ? "Validées" : "À envoyer"} onClick={() => setDisposOpen(true)} />
-      </div>
+          className="w-full rounded-xl px-4 py-3 mt-3 flex items-center gap-3 text-left"
+          style={{ backgroundColor: "var(--coral-light)", border: "0.5px solid var(--coral)", cursor: "pointer" }}
+        >
+          <Send size={16} style={{ color: "var(--coral-dark)" }} />
+          <div className="flex-1">
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--coral-dark)" }}>
+              {proposals.length} proposition{proposals.length > 1 ? "s" : ""} de shift
+            </div>
+            <div style={{ fontSize: 11, color: "var(--coral-dark)", opacity: 0.8 }}>Touche pour répondre</div>
+          </div>
+          <ChevronRight size={16} style={{ color: "var(--coral-dark)" }} />
+        </button>
+      )}
+
 
       <ShiftDetailSheet
         open={!!shiftDetail} onClose={() => setShiftDetail(null)}
