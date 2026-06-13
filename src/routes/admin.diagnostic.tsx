@@ -369,3 +369,131 @@ function SimpleTable({ rows }: { rows: any[][] }) {
     </table>
   );
 }
+
+/* ============== Cards spécifiques rappels dispos ============== */
+function AvailRemindersCard({ crons }: { crons: any }) {
+  const triggerFn = useServerFn(triggerAvailRemindersTick);
+  const [running, setRunning] = useState(false);
+  const [lastRun, setLastRun] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("diag_avail_reminders_last");
+      if (raw) setLastRun(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const cron = Array.isArray(crons)
+    ? crons.find((c: any) => c.jobname === "process-avail-reminders")
+    : null;
+
+  const handleTrigger = async () => {
+    setRunning(true);
+    try {
+      const r = await triggerFn();
+      setLastRun(r);
+      try { localStorage.setItem("diag_avail_reminders_last", JSON.stringify(r)); } catch {}
+    } catch (e: any) {
+      const r = { ok: false, error: e?.message || "erreur", ranAt: new Date().toISOString() };
+      setLastRun(r);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Card title="🚦 Rappels dispos (route + cron)">
+      <div style={{ fontSize: 12, lineHeight: 1.7 }}>
+        <div className="flex items-center gap-2 mb-2">
+          {cron
+            ? (cron.active ? <BadgeOk label={`cron actif (${cron.schedule})`} /> : <BadgeKo label="cron inactif" />)
+            : <BadgeKo label="cron absent" />}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--muted-foreground)", fontFamily: "monospace", wordBreak: "break-all" }}>
+          POST /api/public/avail-reminders-tick
+        </div>
+        <button
+          onClick={handleTrigger}
+          disabled={running}
+          className="mt-3 rounded-md px-3 py-2 flex items-center gap-2 hover:opacity-90 disabled:opacity-50"
+          style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+        >
+          {running ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          Déclencher maintenant
+        </button>
+        {lastRun && (
+          <div className="mt-3 rounded p-2" style={{ backgroundColor: "var(--muted)", fontSize: 11 }}>
+            <div className="flex items-center gap-2 mb-1">
+              {lastRun.ok ? <BadgeOk label={`HTTP ${lastRun.status}`} /> : <BadgeKo label={`HTTP ${lastRun.status ?? "—"}`} />}
+              <span style={{ color: "var(--muted-foreground)" }}>{new Date(lastRun.ranAt).toLocaleString("fr-FR")}</span>
+            </div>
+            <pre style={{ fontSize: 10, fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all", margin: 0 }}>
+              {JSON.stringify(lastRun.result ?? lastRun.error, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function RecentEmailLogsCard() {
+  const fn = useServerFn(getRecentEmailLogs);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r: any = await fn();
+      if (r.error) setErr(r.error);
+      else { setErr(null); setLogs(r.logs || []); }
+    } catch (e: any) {
+      setErr(e?.message || "Erreur");
+    } finally {
+      setLoading(false);
+    }
+  }, [fn]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const statusColor = (s: string) => {
+    if (s === "sent" || s === "delivered") return { color: "#15803d", bg: "#dcfce7" };
+    if (s === "failed" || s === "bounced" || s === "dlq" || s === "complained") return { color: "#b91c1c", bg: "#fee2e2" };
+    if (s === "suppressed") return { color: "#92400e", bg: "#fef3c7" };
+    return { color: "var(--muted-foreground)", bg: "var(--muted)" };
+  };
+
+  return (
+    <Card title="📨 Logs envoi emails (10 derniers)">
+      <div className="flex items-center justify-between mb-2">
+        <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{logs.length} entrées</span>
+        <button onClick={load} disabled={loading} className="rounded px-2 py-1 flex items-center gap-1" style={{ fontSize: 11, border: "0.5px solid var(--border)" }}>
+          {loading ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />} Recharger
+        </button>
+      </div>
+      {err ? <ErrInline>{err}</ErrInline> :
+        logs.length === 0 ? <Empty>Aucun email récent</Empty> : (
+          <div className="space-y-1.5" style={{ maxHeight: 320, overflowY: "auto" }}>
+            {logs.map((l, i) => {
+              const c = statusColor(l.status);
+              return (
+                <div key={i} className="pb-1.5" style={{ borderBottom: "0.5px solid var(--border)", fontSize: 11 }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span style={{ fontFamily: "monospace" }}>{l.template_name || "—"}</span>
+                    <span className="rounded px-1.5 py-0.5" style={{ fontSize: 10, color: c.color, backgroundColor: c.bg }}>{l.status}</span>
+                  </div>
+                  <div style={{ color: "var(--muted-foreground)" }}>{l.recipient_email}</div>
+                  <div style={{ color: "var(--muted-foreground)", fontSize: 10 }}>{new Date(l.created_at).toLocaleString("fr-FR")}</div>
+                  {l.error_message && (
+                    <div style={{ fontSize: 10, color: "#b91c1c", fontFamily: "monospace", marginTop: 2 }}>{l.error_message}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+    </Card>
+  );
+}
