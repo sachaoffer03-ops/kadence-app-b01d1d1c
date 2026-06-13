@@ -53,9 +53,10 @@ function DisposMonitoringPage() {
   const fetchMonitoring = useServerFn(getMonthlyDispoMonitoring);
   const sendReminders = useServerFn(remindLateEmployees);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["dispo-monitoring", year, month],
     queryFn: () => fetchMonitoring({ data: { year, month } }),
+    refetchInterval: 30_000,
   });
 
   const rows = data?.rows ?? [];
