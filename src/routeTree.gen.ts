@@ -50,6 +50,7 @@ import { Route as AdminIntegrityReportRouteImport } from './routes/admin.integri
 import { Route as AdminHardcodingAuditRouteImport } from './routes/admin.hardcoding-audit'
 import { Route as AdminEmailPreviewRouteImport } from './routes/admin.email-preview'
 import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
+import { Route as AdminDemoToolsRouteImport } from './routes/admin.demo-tools'
 import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as StaffChecklistShiftIdRouteImport } from './routes/staff.checklist.$shiftId'
@@ -267,6 +268,11 @@ const AdminDiagnosticRoute = AdminDiagnosticRouteImport.update({
   path: '/admin/diagnostic',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDemoToolsRoute = AdminDemoToolsRouteImport.update({
+  id: '/admin/demo-tools',
+  path: '/admin/demo-tools',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminDataDiagnosticRoute = AdminDataDiagnosticRouteImport.update({
   id: '/admin/data-diagnostic',
   path: '/admin/data-diagnostic',
@@ -356,6 +362,7 @@ export interface FileRoutesByFullPath {
   '/trous': typeof TrousRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
+  '/admin/demo-tools': typeof AdminDemoToolsRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
   '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
@@ -409,6 +416,7 @@ export interface FileRoutesByTo {
   '/trous': typeof TrousRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
+  '/admin/demo-tools': typeof AdminDemoToolsRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
   '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
@@ -464,6 +472,7 @@ export interface FileRoutesById {
   '/trous': typeof TrousRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
+  '/admin/demo-tools': typeof AdminDemoToolsRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
   '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
@@ -520,6 +529,7 @@ export interface FileRouteTypes {
     | '/trous'
     | '/admin/audit'
     | '/admin/data-diagnostic'
+    | '/admin/demo-tools'
     | '/admin/diagnostic'
     | '/admin/email-preview'
     | '/admin/hardcoding-audit'
@@ -573,6 +583,7 @@ export interface FileRouteTypes {
     | '/trous'
     | '/admin/audit'
     | '/admin/data-diagnostic'
+    | '/admin/demo-tools'
     | '/admin/diagnostic'
     | '/admin/email-preview'
     | '/admin/hardcoding-audit'
@@ -627,6 +638,7 @@ export interface FileRouteTypes {
     | '/trous'
     | '/admin/audit'
     | '/admin/data-diagnostic'
+    | '/admin/demo-tools'
     | '/admin/diagnostic'
     | '/admin/email-preview'
     | '/admin/hardcoding-audit'
@@ -682,6 +694,7 @@ export interface RootRouteChildren {
   TrousRoute: typeof TrousRoute
   AdminAuditRoute: typeof AdminAuditRoute
   AdminDataDiagnosticRoute: typeof AdminDataDiagnosticRoute
+  AdminDemoToolsRoute: typeof AdminDemoToolsRoute
   AdminDiagnosticRoute: typeof AdminDiagnosticRoute
   AdminEmailPreviewRoute: typeof AdminEmailPreviewRoute
   AdminHardcodingAuditRoute: typeof AdminHardcodingAuditRoute
@@ -993,6 +1006,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDiagnosticRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/demo-tools': {
+      id: '/admin/demo-tools'
+      path: '/admin/demo-tools'
+      fullPath: '/admin/demo-tools'
+      preLoaderRoute: typeof AdminDemoToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/data-diagnostic': {
       id: '/admin/data-diagnostic'
       path: '/admin/data-diagnostic'
@@ -1139,6 +1159,7 @@ const rootRouteChildren: RootRouteChildren = {
   TrousRoute: TrousRoute,
   AdminAuditRoute: AdminAuditRoute,
   AdminDataDiagnosticRoute: AdminDataDiagnosticRoute,
+  AdminDemoToolsRoute: AdminDemoToolsRoute,
   AdminDiagnosticRoute: AdminDiagnosticRoute,
   AdminEmailPreviewRoute: AdminEmailPreviewRoute,
   AdminHardcodingAuditRoute: AdminHardcodingAuditRoute,
