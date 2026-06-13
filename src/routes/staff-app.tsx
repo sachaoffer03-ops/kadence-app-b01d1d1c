@@ -562,9 +562,9 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
             <div style={{ position: "relative" }}>
               <div
                 style={{
-                  fontSize: 10, color: "rgba(250,248,244,0.55)",
-                  fontWeight: 500, letterSpacing: "0.18em",
-                  textTransform: "uppercase", marginBottom: 14,
+                  fontSize: 11, color: "rgba(250,248,244,0.5)",
+                  fontWeight: 400, letterSpacing: "0.01em",
+                  marginBottom: 12,
                 }}
               >
                 {kicker}
@@ -573,12 +573,13 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
               <div
                 style={{
                   fontSize: 28, fontWeight: 500, color: "#FAF8F4",
-                  lineHeight: 1.15, textTransform: "capitalize",
-                  letterSpacing: "-0.01em",
+                  lineHeight: 1.15,
+                  letterSpacing: "-0.015em",
                 }}
               >
                 {bigLine}
               </div>
+
               {subLine && (
                 <div style={{ fontSize: 12, color: "rgba(250,248,244,0.55)", marginTop: 6 }}>
                   {subLine}
