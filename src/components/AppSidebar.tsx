@@ -16,7 +16,6 @@ import {
   Building2,
   Settings,
   Bell,
-  Eye,
   Bot,
   X,
 } from "lucide-react";
