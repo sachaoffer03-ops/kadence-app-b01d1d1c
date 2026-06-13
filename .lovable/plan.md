@@ -1,71 +1,49 @@
-# Plan — Améliorer l'Assistant IA Kadence (3 ajouts)
+## Plan — Améliorations app employée
 
-Cible : `src/components/staff-app/AIChatPanel.tsx` + `src/lib/ai-chat.functions.ts`
+DA Kadence respectée partout : #FAFAF8, coral #F0997B, Inter 400/500, pas d'emoji, pas de gradient (sauf hero sombre déjà existant), pas d'ALL CAPS.
 
-## 1. Actions exécutables depuis le chat
+### 2. Accueil — 3 zones claires
+Restructurer `AccueilTab` en 3 sections nommées :
+- **Maintenant** — la carte sombre (shift en cours / prochain) reste telle quelle
+- **À faire** — 1 carte qui regroupe : dispos à remplir + propositions de shifts + demandes en attente + formations obligatoires non faites. Compteur unique "X actions". Si rien → carte masquée.
+- **Cette semaine** — collègues du jour + stats semaine (heures, shifts)
 
-Le bot peut déclencher des actions concrètes au lieu de juste répondre du texte.
+Supprime les boutons éparpillés actuels au profit d'une carte "À faire" unifiée.
 
-**Actions activées au lancement :**
-- "Poser un congé" → ouvre `DisposSheet` / `StaffActionsSheets` (demande absence) pré-rempli
-- "Voir mon prochain shift" → scroll/ouvre la carte planning
-- "Voir mes formations à valider" → ouvre `FormationHub`
-- "Signaler un problème" → ouvre la sheet signalement
+### 3. Planning — mini-calendrier mensuel
+Au-dessus de la liste de shifts dans `PlanningTab`, ajouter une grille mensuelle 7×6 :
+- Jours du mois avec un point coloré (couleur de rôle) par shift
+- Multi-shifts = plusieurs points empilés
+- Tap sur un jour → filtre la liste en dessous
+- Navigation mois précédent / suivant (flèches discrètes)
+- Aujourd'hui : cercle coral fin
 
-**Mécanique :**
-- Le system prompt apprend au modèle à émettre, en fin de réponse, un bloc structuré `[[ACTION:type|param=value]]` (ex : `[[ACTION:open_leave_request]]`).
-- Côté `AIChatPanel`, on parse la réponse : on retire le bloc du texte affiché et on rend un bouton CTA sous le message (ex : "Ouvrir la demande de congé").
-- Clic → callback typé qui ouvre la bonne sheet via un `onAction` prop passé par `staff-app.tsx`.
-- Liste d'actions whitelistée côté client (sécurité : on ignore toute action non reconnue).
+### 4. Demandes visibles sur Accueil
+Intégrer "Mes demandes (X en attente)" dans la carte "À faire" (zone 2 ci-dessus). Clic ouvre `MyRequestsSheet` existant. Plus besoin d'aller chercher dans le Profil.
 
-## 2. Suggestions rapides contextuelles
+### 5. Profil — recap mensuel discret
+Au-dessus de la carte stats existante, une ligne discrète :
+> Juin 2026 · 142 h · 0 retard · score 92
 
-Aujourd'hui : 3 suggestions statiques (`SUGGESTIONS` hardcodé).
+Source : `getMyStats` server fn (déjà existante). Pas de nouvelle carte, juste un sous-titre élégant sous le nom.
 
-**Nouveau :** suggestions dynamiques calculées côté serveur dans `getChatHistory` (ou nouveau `getChatSuggestions`) selon le contexte de l'employé :
-- A un shift demain → "C'est quoi mon shift de demain ?"
-- Formation obligatoire non validée → "Quelles formations dois-je valider ?"
-- Pas de dispos posées pour la semaine N+1 → "Comment poser mes dispos ?"
-- Score < 7 → "Comment améliorer mon score ?"
-- Proposition en attente → "J'ai une proposition de shift, je dois faire quoi ?"
-- Fallback : 3 suggestions génériques si rien de pertinent
+### 7. Mode offline — version pragmatique
+Approche **cache + indicateur** (pas de queue offline complexe, trop risqué pour pointage) :
+- Cache les shifts à venir dans `localStorage` à chaque load
+- Au démarrage sans réseau : affiche le cache + bandeau discret "Hors ligne — dernière sync : il y a Xmin"
+- Pointage en offline : **bloqué** avec message clair "Reviens en ligne pour pointer" (la donnée pointage est trop critique pour être bufferisée sans risque de double-pointage)
+- Listener `online`/`offline` pour masquer/montrer le bandeau
 
-Affichage : mêmes cartes que maintenant, mais re-calculées à chaque ouverture du panel + suggestions de follow-up après chaque réponse du bot (3 boutons sous le dernier message assistant).
+### Détails techniques
+- Fichiers principaux modifiés : `src/routes/staff-app.tsx` (AccueilTab + PlanningTab + ProfilTab)
+- Nouveau composant : `src/components/staff-app/MonthCalendar.tsx`
+- Nouveau composant : `src/components/staff-app/TodoCard.tsx` (carte "À faire" unifiée)
+- Nouveau hook : `src/hooks/use-offline-cache.ts`
+- Aucune migration DB nécessaire
 
-## 3. Entrée vocale (Web Speech API)
+### Hors périmètre
+- Queue de pointage offline (trop risqué)
+- Service Worker complet PWA (peut être ajouté plus tard si besoin)
+- Refactor des 1538 lignes de staff-app.tsx en sous-fichiers (peut être fait ensuite)
 
-Bouton micro à côté du bouton "envoyer" dans la barre d'input.
-- Tap → démarre `SpeechRecognition` (Webkit/Standard), langue `fr-FR`, mode continu off (un énoncé à la fois).
-- Pendant l'écoute : icône micro pulse en coral, textarea affiche la transcription en temps réel (interim results).
-- Tap à nouveau ou silence détecté → arrête et laisse l'utilisateur valider/éditer avant `send()`.
-- Fallback : si `SpeechRecognition` indisponible (Safari iOS < 14.5, certains Android), le bouton est masqué.
-- Permission micro refusée → toast "Active le micro dans les réglages du navigateur".
-
-Pas d'appel externe, pas d'API key : 100% navigateur, gratuit, latence quasi nulle.
-
-## Technique
-
-### Fichiers modifiés
-- `src/components/staff-app/AIChatPanel.tsx` :
-  - Parse `[[ACTION:...]]` dans la réponse assistant
-  - Rendu de boutons CTA sous les messages
-  - Bouton micro + hook `useVoiceInput` (nouveau)
-  - Suggestions de follow-up sous chaque réponse
-  - Prop `onAction?: (action: ChatAction) => void`
-- `src/hooks/use-voice-input.ts` *(nouveau)* : wrapper `SpeechRecognition` propre + cleanup
-- `src/lib/ai-chat.functions.ts` :
-  - System prompt enrichi : explique les actions disponibles et la syntaxe `[[ACTION:...]]`
-  - Nouvelle serverFn `getChatSuggestions` qui retourne 3 suggestions contextuelles basées sur shifts/formations/dispos/score
-- `src/routes/staff-app.tsx` (ou parent du panel) : branche `onAction` pour ouvrir les sheets existantes
-
-### Pas de migration DB
-Tout est calculé à la volée à partir des tables existantes (`shifts`, `training_course_completions`, `availabilities`, `profiles`, `proposals`).
-
-### Pas de nouvelle dépendance
-- Web Speech API : natif navigateur
-- Parsing actions : regex simple
-
-## Hors scope (volontairement)
-- Pas d'exécution serveur d'actions sensibles (poser le congé directement) — on ouvre juste l'UI existante, l'utilisateur valide. Plus sûr et plus simple.
-- Pas de TTS (réponse audio du bot).
-- Pas de wake-word ("Hey Kadence").
+OK pour partir là-dessus ?
