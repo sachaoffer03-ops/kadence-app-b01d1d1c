@@ -1098,6 +1098,15 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
         )}
       </div>
 
+      {view === "month" && (
+        <MonthCalendar
+          monthCursor={cursor}
+          shifts={shifts}
+          selectedISO={selectedDay}
+          onSelect={setSelectedDay}
+        />
+      )}
+
       {loading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div> : !hasAnyShift ? (() => {
         const periodLabel = rangeLabel;
         const isPast = toISO(rangeEnd) < today;
@@ -1121,8 +1130,13 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
       })()
       : (
         <div className="flex flex-col gap-2">
-          {days.map(day => {
+          {(selectedDay ? days.filter(d => d.iso === selectedDay) : days).map(day => {
             const dayShifts = shifts.filter((s) => s.shift_date === day.iso);
+            return (
+              <div key={day.iso}>
+                <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", marginBottom: 4, marginTop: 8, textTransform: "capitalize" }}>{day.label}</div>
+                {dayShifts.length === 0 ? (
+                  <div className="rounded-lg px-4 py-3" style={{ backgroundColor: "var(--muted)", fontSize: 12, color: "var(--muted-foreground)" }}>Repos</div>
             return (
               <div key={day.iso}>
                 <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", marginBottom: 4, marginTop: 8, textTransform: "capitalize" }}>{day.label}</div>
