@@ -304,7 +304,7 @@ function GeneratePlanningPage() {
           style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
           <History size={12} /> Voir l'historique
         </button>
-        <Link to="/admin/data-diagnostic" className="hover:underline"
+        <Link to="/admin/diagnostic" className="hover:underline"
           style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
           Diagnostic des données
         </Link>

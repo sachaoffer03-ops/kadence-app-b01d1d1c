@@ -26,8 +26,8 @@ const KNOWN_ROUTES = [
   "/dimona", "/contingents",
   "/studios", "/reglages",
   "/staff-app",
-  "/admin/diagnostic", "/admin/data-diagnostic", "/admin/migrate-studios",
-  "/admin/seeder", "/admin/audit",
+  "/admin/diagnostic", "/admin/migrate-studios", "/admin/demo-tools",
+
 ];
 
 // Heuristic implementation flags — based on what we know exists in the repo today.
