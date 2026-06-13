@@ -28,6 +28,11 @@ import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSh
 import { Send } from "lucide-react";
 import { WorkedHoursEmployeeCard, EmployeeLastShifts } from "@/components/WorkedHoursCard";
 import { MyStatsCard } from "@/components/staff-app/MyStatsCard";
+import { TodoCard } from "@/components/staff-app/TodoCard";
+import { MonthCalendar } from "@/components/staff-app/MonthCalendar";
+import { useOnlineStatus, useLocalCache, fmtLastSync } from "@/hooks/use-offline-cache";
+import { getMyStats } from "@/lib/my-stats.functions";
+import { WifiOff } from "lucide-react";
 
 import { ClockInSheet } from "@/components/staff-app/ClockInSheet";
 import { ProposalsInline } from "@/components/staff-app/ProposalsInline";
