@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * Rapport d'intégrité — collecte des stats live depuis la DB
- * pour alimenter la page /admin/integrity-report.
+ * pour alimenter la page /admin/diagnostic.
  */
 
 const ALL_TABLES = [
