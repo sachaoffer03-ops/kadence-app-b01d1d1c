@@ -346,74 +346,194 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
         <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
       ) : (
         <div className="flex flex-col gap-1.5 mb-3" style={{ opacity: locked ? 0.6 : 1 }}>
-          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-            const dow = DAY_NAMES[new Date(year, month, day).getDay()];
-            const dayRanges = ranges[day] ?? [];
-            return (
-              <div key={day} className="rounded-lg border px-3 py-2" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)" }}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <div style={{ fontSize: 12, fontWeight: 500 }}>{dow} {day}</div>
-                  {!locked && (
-                    <button
-                      onClick={() => addRange(day)}
-                      className="flex items-center gap-1 rounded-md px-2 py-0.5"
-                      style={{ fontSize: 10, color: "var(--coral)", border: "0.5px solid var(--coral)" }}
-                    >
-                      <Plus size={11} /> Ajouter
-                    </button>
+      {loading ? (
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
+      ) : (
+        <div style={{ opacity: locked ? 0.6 : 1 }}>
+          {/* Mini-calendrier */}
+          <div className="grid grid-cols-7 gap-1.5 mb-2">
+            {["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map((d) => (
+              <div key={d} className="text-center" style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", paddingBottom: 2 }}>{d}</div>
+            ))}
+            {/* Offset (lundi = colonne 1) */}
+            {Array.from({ length: (new Date(year, month, 1).getDay() + 6) % 7 }).map((_, i) => (
+              <div key={`pad-${i}`} className="aspect-square" />
+            ))}
+            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+              const dow = new Date(year, month, day).getDay();
+              const isWeekend = dow === 0 || dow === 6;
+              const hasDispo = (ranges[day] ?? []).length > 0;
+              const isSelected = day === selectedDay;
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(day)}
+                  className="aspect-square rounded-xl relative flex items-center justify-center transition-all"
+                  style={{
+                    backgroundColor: isSelected ? "#fff" : isWeekend ? "rgba(0,0,0,0.025)" : "#fff",
+                    border: isSelected
+                      ? "1.5px solid var(--coral)"
+                      : hasDispo
+                        ? "1px solid color-mix(in oklab, var(--coral) 35%, transparent)"
+                        : "1px solid rgba(0,0,0,0.06)",
+                    color: isWeekend && !hasDispo ? "var(--muted-foreground)" : "var(--foreground)",
+                    fontSize: 12,
+                    fontWeight: hasDispo || isSelected ? 600 : 400,
+                    cursor: "pointer",
+                  }}
+                  aria-label={`Jour ${day}`}
+                >
+                  {day}
+                  {hasDispo && (
+                    <span
+                      className="absolute"
+                      style={{
+                        bottom: 4,
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        backgroundColor: "var(--coral)",
+                      }}
+                    />
                   )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Détail du jour sélectionné */}
+          {(() => {
+            const dayRanges = ranges[selectedDay] ?? [];
+            const dateLong = new Date(year, month, selectedDay).toLocaleDateString("fr-FR", {
+              weekday: "long", day: "numeric", month: "long",
+            });
+            return (
+              <div className="rounded-2xl mt-4 p-4" style={{ backgroundColor: "#fff", border: "1px solid rgba(0,0,0,0.06)" }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", letterSpacing: "0.08em" }}>
+                      Détail du jour
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 500, textTransform: "capitalize" }}>{dateLong}</div>
+                  </div>
+                  <div
+                    className="rounded-full px-2.5 py-0.5"
+                    style={{
+                      backgroundColor: dayRanges.length > 0 ? "color-mix(in oklab, var(--coral) 12%, transparent)" : "rgba(0,0,0,0.05)",
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: dayRanges.length > 0 ? "var(--coral)" : "var(--muted-foreground)",
+                    }}
+                  >
+                    {dayRanges.length > 0 ? `${dayRanges.length} créneau${dayRanges.length > 1 ? "x" : ""}` : "À configurer"}
+                  </div>
                 </div>
+
                 {dayRanges.length === 0 ? (
-                  <div style={{ fontSize: 11, color: "var(--muted-foreground)", fontStyle: "italic" }}>Aucune dispo</div>
+                  <div
+                    className="flex flex-col items-center justify-center py-5 rounded-xl"
+                    style={{ border: "1.5px dashed rgba(0,0,0,0.1)" }}
+                  >
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12 }}>Aucune disponibilité définie</div>
+                    {!locked && (
+                      <button
+                        onClick={() => addRange(selectedDay)}
+                        className="flex items-center gap-1.5 rounded-full px-5 py-2"
+                        style={{ backgroundColor: "var(--coral)", color: "var(--coral-text)", fontSize: 12, fontWeight: 500 }}
+                      >
+                        <Plus size={13} /> Ajouter un créneau
+                      </button>
+                    )}
+                  </div>
                 ) : (
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1.5">
                     {dayRanges.map((r, idx) => (
-                      <div key={idx} className="flex items-center gap-1.5">
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2"
+                        style={{ backgroundColor: "rgba(0,0,0,0.025)" }}
+                      >
                         {locked ? (
-                          <span style={{ fontSize: 11, color: "var(--foreground)" }}>
+                          <span style={{ fontSize: 12, color: "var(--foreground)" }}>
                             {r.start} → {r.end}
                           </span>
                         ) : (
                           <>
+                            <span
+                              style={{
+                                width: 5, height: 5, borderRadius: "50%",
+                                backgroundColor: "var(--coral)", flexShrink: 0,
+                              }}
+                            />
                             <select
                               value={r.start}
-                              onChange={(e) => updateRange(day, idx, { start: e.target.value })}
-                              className="rounded-md px-1.5 py-0.5"
-                              style={{ fontSize: 11, border: "0.5px solid var(--border)", backgroundColor: "#fff" }}
+                              onChange={(e) => updateRange(selectedDay, idx, { start: e.target.value })}
+                              className="rounded-md px-1.5 py-1 bg-transparent"
+                              style={{ fontSize: 12, border: "0.5px solid rgba(0,0,0,0.08)" }}
                             >
                               {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
                             </select>
                             <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>→</span>
                             <select
                               value={r.end}
-                              onChange={(e) => updateRange(day, idx, { end: e.target.value })}
-                              className="rounded-md px-1.5 py-0.5"
-                              style={{ fontSize: 11, border: "0.5px solid var(--border)", backgroundColor: "#fff" }}
+                              onChange={(e) => updateRange(selectedDay, idx, { end: e.target.value })}
+                              className="rounded-md px-1.5 py-1 bg-transparent"
+                              style={{ fontSize: 12, border: "0.5px solid rgba(0,0,0,0.08)" }}
                             >
                               {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
                             </select>
                             <button
-                              onClick={() => removeRange(day, idx)}
+                              onClick={() => removeRange(selectedDay, idx)}
                               className="ml-auto rounded-md p-1"
                               style={{ color: "var(--muted-foreground)" }}
                               aria-label="Supprimer"
                             >
-                              <X size={12} />
+                              <X size={13} />
                             </button>
                           </>
                         )}
                       </div>
                     ))}
+                    {!locked && (
+                      <button
+                        onClick={() => addRange(selectedDay)}
+                        className="flex items-center justify-center gap-1.5 rounded-xl py-2 mt-1"
+                        style={{
+                          fontSize: 12, fontWeight: 500, color: "var(--coral)",
+                          border: "1px dashed color-mix(in oklab, var(--coral) 40%, transparent)",
+                        }}
+                      >
+                        <Plus size={13} /> Ajouter un créneau
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
             );
-          })}
+          })()}
+
+          {/* Progression du mois */}
+          {!locked && (
+            <div className="mt-5 mb-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)" }}>Progression du mois</span>
+                <span style={{ fontSize: 11, fontWeight: 500 }}>{configured} / {daysInMonth} jours</span>
+              </div>
+              <div className="w-full rounded-full overflow-hidden" style={{ height: 4, backgroundColor: "rgba(0,0,0,0.06)" }}>
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${(configured / daysInMonth) * 100}%`, backgroundColor: "var(--coral)" }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {!validated && !loading && !locked && (
-        <PrimaryButton onClick={validate}>Valider mes dispos</PrimaryButton>
+        <div className="mt-4">
+          <PrimaryButton onClick={validate}>Valider mes dispos</PrimaryButton>
+        </div>
       )}
     </Sheet>
   );
