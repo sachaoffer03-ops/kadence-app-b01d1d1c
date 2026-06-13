@@ -345,10 +345,6 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       {loading ? (
         <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
       ) : (
-        <div className="flex flex-col gap-1.5 mb-3" style={{ opacity: locked ? 0.6 : 1 }}>
-      {loading ? (
-        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
-      ) : (
         <div style={{ opacity: locked ? 0.6 : 1 }}>
           {/* Mini-calendrier */}
           <div className="grid grid-cols-7 gap-1.5 mb-2">
