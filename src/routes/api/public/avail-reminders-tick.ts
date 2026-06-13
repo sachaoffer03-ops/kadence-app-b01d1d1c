@@ -47,7 +47,7 @@ export const Route = createFileRoute("/api/public/avail-reminders-tick")({
         const { supabaseAdmin } = await import(
           "@/integrations/supabase/client.server"
         );
-        const { EMAIL_REGISTRY } = await import("@/emails");
+
 
         // 1) Lock day from AI planning settings
         const { data: settings } = await supabaseAdmin
