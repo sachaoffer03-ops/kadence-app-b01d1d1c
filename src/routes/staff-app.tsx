@@ -1256,6 +1256,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
           </div>
           <div style={{ fontSize: 20, fontWeight: 500, color: "#fff" }}>{profile.first_name} {profile.last_name}</div>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>{profile.email}</div>
+          <ProfilRecap userId={userId} />
           <div className="flex items-center gap-1.5 mt-3 flex-wrap justify-center">
             {profile.contract && (
               <span className="rounded-full px-2.5 py-1" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.85)", border: "0.5px solid rgba(255,255,255,0.12)" }}>{profile.contract}</span>
