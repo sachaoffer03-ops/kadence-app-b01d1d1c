@@ -75,6 +75,7 @@ function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSecti
         { label: "Studios & postes", to: "/studios", icon: Building2 },
         { label: "Assistant IA", to: "/assistant-ia", icon: Bot },
         { label: "Réglages", to: "/reglages", icon: Settings },
+        { label: "Outils démo", to: "/admin/demo-tools", icon: Eye },
       ],
     },
   ];
