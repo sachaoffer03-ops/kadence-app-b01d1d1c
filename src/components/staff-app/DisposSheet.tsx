@@ -270,7 +270,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
           <Clock size={13} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
           <span style={{ fontSize: 12, color: "var(--muted-foreground)", overflow: "hidden", textOverflow: "ellipsis" }}>
             Dispos <span style={{ textTransform: "capitalize", fontWeight: 600, color: "var(--foreground)" }}>{monthLabel}</span>
-            <span style={{ margin: "0 6px" }}>·</span>
+            <span style={{ margin: "0 4px" }}>à soumettre avant</span>
             <strong style={{ color: "var(--foreground)" }}>{new Date(nextDeadlineMs).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}</strong>
           </span>
           <span
