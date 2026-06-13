@@ -389,9 +389,6 @@ function useMemoGroups(avails: Array<{ id: string; avail_date: string; start_tim
   }, [avails]);
 }
 
-  );
-}
-
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-baseline gap-1.5">
