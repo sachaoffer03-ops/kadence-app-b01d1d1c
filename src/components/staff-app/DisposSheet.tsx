@@ -47,6 +47,12 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthLabel = monthRef.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
+  // Jour sélectionné (1..daysInMonth)
+  const [selectedDay, setSelectedDay] = useState(1);
+  useEffect(() => {
+    setSelectedDay(1);
+  }, [year, month]);
+
   const [ranges, setRanges] = useState<Record<number, Range[]>>({});
   const [loading, setLoading] = useState(true);
   const [validated, setValidated] = useState(false);
