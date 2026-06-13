@@ -2591,6 +2591,10 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      diag_function_signature: { Args: { fname: string }; Returns: Json }
+      diag_get_crons: { Args: never; Returns: Json }
+      diag_realtime_tables: { Args: never; Returns: Json }
+      diag_test_locale: { Args: never; Returns: Json }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
