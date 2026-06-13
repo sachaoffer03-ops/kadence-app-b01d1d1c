@@ -912,6 +912,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
   const [clockInShift, setClockInShift] = useState<ShiftRow | null>(null);
   const [reqOpen, setReqOpen] = useState(false);
   const [reqShiftId, setReqShiftId] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   async function handleEndShift(s: ShiftRow) {
     if (s.clocked_out_at) { toast.info("Ce shift est déjà clôturé"); return; }
