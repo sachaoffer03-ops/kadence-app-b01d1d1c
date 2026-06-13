@@ -373,31 +373,38 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
               <div key={`pad-${i}`} className="aspect-square" />
             ))}
             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-              const dow = new Date(year, month, day).getDay();
-              const isWeekend = dow === 0 || dow === 6;
+              const isClosed = closedDays.has(day);
               const hasDispo = (ranges[day] ?? []).length > 0;
               const isSelected = day === selectedDay;
               return (
                 <button
                   key={day}
-                  onClick={() => setSelectedDay(day)}
+                  onClick={() => { if (!isClosed) setSelectedDay(day); }}
+                  disabled={isClosed}
+                  title={isClosed ? "Studio fermé ce jour-là" : undefined}
                   className="aspect-square rounded-xl relative flex items-center justify-center transition-all"
                   style={{
-                    backgroundColor: isSelected ? "#fff" : isWeekend ? "rgba(0,0,0,0.025)" : "#fff",
-                    border: isSelected
-                      ? "1.5px solid var(--coral)"
-                      : hasDispo
-                        ? "1px solid color-mix(in oklab, var(--coral) 35%, transparent)"
-                        : "1px solid rgba(0,0,0,0.06)",
-                    color: isWeekend && !hasDispo ? "var(--muted-foreground)" : "var(--foreground)",
+                    backgroundColor: isClosed
+                      ? "rgba(0,0,0,0.04)"
+                      : isSelected ? "#fff" : "#fff",
+                    border: isClosed
+                      ? "1px dashed rgba(0,0,0,0.12)"
+                      : isSelected
+                        ? "1.5px solid var(--coral)"
+                        : hasDispo
+                          ? "1px solid color-mix(in oklab, var(--coral) 35%, transparent)"
+                          : "1px solid rgba(0,0,0,0.06)",
+                    color: isClosed
+                      ? "rgba(0,0,0,0.3)"
+                      : "var(--foreground)",
                     fontSize: 12,
                     fontWeight: hasDispo || isSelected ? 600 : 400,
-                    cursor: "pointer",
+                    cursor: isClosed ? "not-allowed" : "pointer",
                   }}
-                  aria-label={`Jour ${day}`}
+                  aria-label={`Jour ${day}${isClosed ? " — fermé" : ""}`}
                 >
                   {day}
-                  {hasDispo && (
+                  {hasDispo && !isClosed && (
                     <span
                       className="absolute"
                       style={{
@@ -413,6 +420,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
               );
             })}
           </div>
+
 
           {/* Détail du jour sélectionné */}
           {(() => {
