@@ -449,6 +449,32 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
 
       <ProposalsInline userId={userId} studios={studios} />
 
+      {showDispoBanner && (
+        <button
+          onClick={() => setDisposOpen(true)}
+          className="w-full text-left rounded-2xl p-4 mb-4 flex items-center gap-3 transition-transform active:scale-[0.99]"
+          style={{
+            border: "1.5px solid var(--coral)",
+            backgroundColor: "var(--coral-light, #FDEFEA)",
+          }}
+        >
+          <CalendarDays size={22} style={{ color: "var(--coral-dark, #C5664A)", flexShrink: 0 }} />
+          <div className="flex-1 min-w-0">
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", lineHeight: 1.3 }}>
+              Tes dispos pour <span style={{ textTransform: "capitalize" }}>{nextMonthLabel}</span> sont attendues
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+              Deadline : {dispoDeadlineLabel}{" "}
+              <span style={{ color: dispoBannerColor, fontWeight: 600 }}>
+                (dans {dispoCountdownLabel})
+              </span>
+            </div>
+          </div>
+          <ChevronRight size={18} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+        </button>
+      )}
+
+
       {/* Carte sombre — prochain shift en vedette */}
 
       {(() => {
