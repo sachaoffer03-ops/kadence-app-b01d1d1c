@@ -462,23 +462,19 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
                                 backgroundColor: "var(--coral)", flexShrink: 0,
                               }}
                             />
-                            <select
+                            <Dropdown
                               value={r.start}
-                              onChange={(e) => updateRange(selectedDay, idx, { start: e.target.value })}
-                              className="rounded-md px-1.5 py-1 bg-transparent"
-                              style={{ fontSize: 12, border: "0.5px solid rgba(0,0,0,0.08)" }}
-                            >
-                              {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-                            </select>
+                              options={HOURS}
+                              onChange={(v) => updateRange(selectedDay, idx, { start: v })}
+                              minWidth={72}
+                            />
                             <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>→</span>
-                            <select
+                            <Dropdown
                               value={r.end}
-                              onChange={(e) => updateRange(selectedDay, idx, { end: e.target.value })}
-                              className="rounded-md px-1.5 py-1 bg-transparent"
-                              style={{ fontSize: 12, border: "0.5px solid rgba(0,0,0,0.08)" }}
-                            >
-                              {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-                            </select>
+                              options={HOURS}
+                              onChange={(v) => updateRange(selectedDay, idx, { end: v })}
+                              minWidth={72}
+                            />
                             <button
                               onClick={() => removeRange(selectedDay, idx)}
                               className="ml-auto rounded-md p-1"
