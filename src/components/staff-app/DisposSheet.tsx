@@ -84,8 +84,17 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     setValidated(!!flag);
     refreshLockInfo();
     closedDaysFn({ data: { year, month: month + 1 } })
-      .then((r: any) => setClosedDays(new Set(r?.closedDays ?? [])))
+      .then((r: any) => {
+        const set = new Set<number>(r?.closedDays ?? []);
+        setClosedDays(set);
+        setSelectedDay((cur) => {
+          if (!set.has(cur)) return cur;
+          for (let d = 1; d <= daysInMonth; d++) if (!set.has(d)) return d;
+          return cur;
+        });
+      })
       .catch(() => setClosedDays(new Set()));
+
     (async () => {
       setLoading(true);
       const start = dateISO(1);
