@@ -50,6 +50,7 @@ function DisposMonitoringPage() {
   const [sending, setSending] = useState(false);
 
   const { studios } = useStudios();
+  const navigate = useNavigate();
   const fetchMonitoring = useServerFn(getMonthlyDispoMonitoring);
   const sendReminders = useServerFn(remindLateEmployees);
 
