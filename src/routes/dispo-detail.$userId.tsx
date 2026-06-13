@@ -4,11 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { z } from "zod";
 import { ArrowLeft, ChevronLeft, ChevronRight, CalendarCheck } from "lucide-react";
-import { getUserAvailabilitiesForMonth } from "@/lib/availabilities.functions";
+import { getUserAvailabilitiesForMonth, getUserAvailabilitiesAll } from "@/lib/availabilities.functions";
 
 const searchSchema = z.object({
   year: z.number().int().optional(),
   month: z.number().int().optional(),
+  view: z.enum(["month", "all"]).optional(),
 });
 
 export const Route = createFileRoute("/dispo-detail/$userId")({
@@ -33,16 +34,28 @@ function UserDisposPage() {
   const fallback = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const year = search.year ?? fallback.getFullYear();
   const month = search.month ?? fallback.getMonth() + 1;
+  const view = search.view ?? "month";
 
-  const fetchFn = useServerFn(getUserAvailabilitiesForMonth);
-  const { data, isLoading } = useQuery({
+  const fetchMonthFn = useServerFn(getUserAvailabilitiesForMonth);
+  const fetchAllFn = useServerFn(getUserAvailabilitiesAll);
+  const monthQ = useQuery({
     queryKey: ["user-dispos", userId, year, month],
-    queryFn: () => fetchFn({ data: { userId, year, month } }),
+    queryFn: () => fetchMonthFn({ data: { userId, year, month } }),
     refetchInterval: 30_000,
+    enabled: view === "month",
   });
+  const allQ = useQuery({
+    queryKey: ["user-dispos-all", userId],
+    queryFn: () => fetchAllFn({ data: { userId } }),
+    refetchInterval: 30_000,
+    enabled: view === "all",
+  });
+  const data = view === "month" ? monthQ.data : allQ.data;
+  const isLoading = view === "month" ? monthQ.isLoading : allQ.isLoading;
 
   const profile = data?.profile;
   const avails = data?.availabilities ?? [];
+
 
   // Group by date
   const byDate = useMemo(() => {
