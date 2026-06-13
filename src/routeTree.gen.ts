@@ -54,6 +54,7 @@ import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-dia
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as StaffChecklistShiftIdRouteImport } from './routes/staff.checklist.$shiftId'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiPublicAvailRemindersTickRouteImport } from './routes/api/public/avail-reminders-tick'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -286,6 +287,12 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAvailRemindersTickRoute =
+  ApiPublicAvailRemindersTickRouteImport.update({
+    id: '/api/public/avail-reminders-tick',
+    path: '/api/public/avail-reminders-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
     id: '/lovable/email/transactional/send',
@@ -365,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
+  '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
@@ -417,6 +425,7 @@ export interface FileRoutesByTo {
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
+  '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
@@ -471,6 +480,7 @@ export interface FileRoutesById {
   '/staff-app_/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
+  '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
@@ -526,6 +536,7 @@ export interface FileRouteTypes {
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff/'
+    | '/api/public/avail-reminders-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
     | '/api/public/studio-qr/$studioId'
@@ -578,6 +589,7 @@ export interface FileRouteTypes {
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff'
+    | '/api/public/avail-reminders-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
     | '/api/public/studio-qr/$studioId'
@@ -631,6 +643,7 @@ export interface FileRouteTypes {
     | '/staff-app_/propositions'
     | '/staff/$id'
     | '/staff/'
+    | '/api/public/avail-reminders-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
     | '/api/public/studio-qr/$studioId'
@@ -681,6 +694,7 @@ export interface RootRouteChildren {
   DispoDetailUserIdRoute: typeof DispoDetailUserIdRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   StaffAppPropositionsRoute: typeof StaffAppPropositionsRoute
+  ApiPublicAvailRemindersTickRoute: typeof ApiPublicAvailRemindersTickRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicStudioQrStudioIdRoute: typeof ApiPublicStudioQrStudioIdRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -1007,6 +1021,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/avail-reminders-tick': {
+      id: '/api/public/avail-reminders-tick'
+      path: '/api/public/avail-reminders-tick'
+      fullPath: '/api/public/avail-reminders-tick'
+      preLoaderRoute: typeof ApiPublicAvailRemindersTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
       path: '/lovable/email/transactional/send'
@@ -1130,6 +1151,7 @@ const rootRouteChildren: RootRouteChildren = {
   DispoDetailUserIdRoute: DispoDetailUserIdRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   StaffAppPropositionsRoute: StaffAppPropositionsRoute,
+  ApiPublicAvailRemindersTickRoute: ApiPublicAvailRemindersTickRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicStudioQrStudioIdRoute: ApiPublicStudioQrStudioIdRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,

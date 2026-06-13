@@ -11,6 +11,7 @@ import PlanningPublieEmail from "./employee/PlanningPublieEmail";
 import RappelShiftEmail from "./employee/RappelShiftEmail";
 import DebriefingShiftEmail from "./employee/DebriefingShiftEmail";
 import DispoReminderEmail from "./employee/DispoReminderEmail";
+import DispoDeadlineReminderEmail from "./employee/DispoDeadlineReminderEmail";
 
 import NouvelleDemandeEmail from "./admin/NouvelleDemandeEmail";
 import TrouCritiqueEmail from "./admin/TrouCritiqueEmail";
@@ -204,6 +205,23 @@ export const EMAIL_REGISTRY: EmailTemplate[] = [
       deadlineLabel: "Vendredi 25 juin à 23h59",
       studioName: "Skult Châtelain",
       statsAppUrl: "https://app.kadence.io/staff-app",
+    },
+  },
+  {
+    id: "dispo-deadline-reminder",
+    name: "Rappel deadline dispos (auto)",
+    category: "employee",
+    description:
+      "Envoyé automatiquement par le cron aux seuils 3j / 24h / 1h avant deadline. Le variant urgency change le ton et la couleur.",
+    subject: "📅 Plus que 3 jours pour tes dispos de Juillet 2026",
+    component: DispoDeadlineReminderEmail,
+    mockData: {
+      firstName: "Léa",
+      monthLabel: "Juillet 2026",
+      deadlineLabel: "Vendredi 25 juin à 23h59",
+      urgency: "soft",
+      studioName: "Skult Châtelain",
+      statsAppUrl: "https://app.shyft.flashsite.fr/staff-app",
     },
   },
   {

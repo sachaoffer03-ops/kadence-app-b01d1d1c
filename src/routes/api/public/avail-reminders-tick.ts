@@ -1,0 +1,332 @@
+import * as React from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { render } from "@react-email/components";
+
+const SITE_NAME = "Skult Studios";
+const SENDER_DOMAIN = "notify.app.shyft.flashsite.fr";
+const FROM_DOMAIN = "app.shyft.flashsite.fr";
+const APP_URL = "https://app.shyft.flashsite.fr/staff-app";
+
+type Threshold = "3d" | "2d" | "24h" | "5h" | "1h";
+type Urgency = "soft" | "urgent" | "ultimate";
+
+const NOTIF_TITLES: Record<Threshold, string> = {
+  "3d": "📅 Plus que 3 jours pour tes dispos",
+  "2d": "⏰ Plus que 2 jours pour tes dispos",
+  "24h": "⚠️ Plus que 24h pour tes dispos !",
+  "5h": "⏱ 5h restantes !",
+  "1h": "🔥 Dernière heure !",
+};
+
+const URGENCY_BY_THRESHOLD: Partial<Record<Threshold, Urgency>> = {
+  "3d": "soft",
+  "24h": "urgent",
+  "1h": "ultimate",
+};
+
+const MONTHS_FR = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+const DAYS_FR = [
+  "Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi",
+];
+
+function formatMonthLabel(d: Date) {
+  return `${MONTHS_FR[d.getMonth()]} ${d.getFullYear()}`;
+}
+function formatDeadlineLabel(d: Date) {
+  const day = DAYS_FR[d.getDay()];
+  const dd = String(d.getDate()).padStart(2, "0");
+  const month = MONTHS_FR[d.getMonth()].toLowerCase();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${day} ${dd} ${month} à ${hh}h${mm}`;
+}
+
+export const Route = createFileRoute("/api/public/avail-reminders-tick")({
+  server: {
+    handlers: {
+      POST: async () => {
+        const { supabaseAdmin } = await import(
+          "@/integrations/supabase/client.server"
+        );
+        const { EMAIL_REGISTRY } = await import("@/emails");
+
+        // 1) Lock day from AI planning settings
+        const { data: settings } = await supabaseAdmin
+          .from("ai_planning_settings")
+          .select("availability_lock_day, updated_at")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const lockDay = settings?.availability_lock_day ?? 25;
+
+        // 2) Compute next deadline (current month, or next if passed)
+        const now = new Date();
+        let deadline = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          lockDay,
+          23,
+          59,
+          59,
+        );
+        if (now.getTime() > deadline.getTime()) {
+          deadline = new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            lockDay,
+            23,
+            59,
+            59,
+          );
+        }
+        const daysLeft =
+          (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (daysLeft <= 0) {
+          return Response.json({ skipped: "deadline_passed" });
+        }
+
+        let threshold: Threshold;
+        if (daysLeft < 0.0417) threshold = "1h";
+        else if (daysLeft < 0.208) threshold = "5h";
+        else if (daysLeft < 1) threshold = "24h";
+        else if (daysLeft < 2) threshold = "2d";
+        else if (daysLeft < 3) threshold = "3d";
+        else
+          return Response.json({ skipped: "too_far", days_left: daysLeft });
+
+        const urgency = URGENCY_BY_THRESHOLD[threshold] ?? null;
+
+        // 3) Target month = month containing the deadline (next month after lock)
+        const targetMonthStart = new Date(
+          deadline.getFullYear(),
+          deadline.getMonth() + 1,
+          1,
+        );
+        const targetMonthEnd = new Date(
+          deadline.getFullYear(),
+          deadline.getMonth() + 2,
+          1,
+        );
+        const monthLabel = formatMonthLabel(targetMonthStart);
+        const deadlineLabel = formatDeadlineLabel(deadline);
+
+        // 4) Active employees (non-admin/manager)
+        const { data: adminIdsRows } = await supabaseAdmin
+          .from("user_roles")
+          .select("user_id, role")
+          .in("role", ["admin", "manager"]);
+        const adminIds = new Set(
+          (adminIdsRows ?? []).map((r: any) => r.user_id as string),
+        );
+
+        const { data: profiles } = await supabaseAdmin
+          .from("profiles")
+          .select("id, first_name, email")
+          .eq("status", "active");
+
+        const candidates = (profiles ?? []).filter(
+          (p: any) => !adminIds.has(p.id),
+        );
+        if (candidates.length === 0) {
+          return Response.json({
+            threshold,
+            urgency,
+            notifs_sent: 0,
+            emails_sent: 0,
+          });
+        }
+        const candidateIds = candidates.map((p: any) => p.id);
+
+        // 5) Who already filled at least one avail in target month
+        const { data: filled } = await supabaseAdmin
+          .from("availabilities")
+          .select("user_id")
+          .in("user_id", candidateIds)
+          .gte("avail_date", targetMonthStart.toISOString().slice(0, 10))
+          .lt("avail_date", targetMonthEnd.toISOString().slice(0, 10));
+        const filledSet = new Set(
+          (filled ?? []).map((r: any) => r.user_id as string),
+        );
+
+        // 6) Who already got notif for this threshold in last 7 days
+        const sevenDaysAgo = new Date(
+          deadline.getTime() - 7 * 24 * 60 * 60 * 1000,
+        ).toISOString();
+        const notifType = `dispo_reminder_${threshold}`;
+        const { data: alreadyNotified } = await supabaseAdmin
+          .from("notifications")
+          .select("user_id")
+          .in("user_id", candidateIds)
+          .eq("type", notifType)
+          .gt("created_at", sevenDaysAgo);
+        const notifiedSet = new Set(
+          (alreadyNotified ?? []).map((r: any) => r.user_id as string),
+        );
+
+        const toNotify = candidates.filter(
+          (p: any) => !filledSet.has(p.id) && !notifiedSet.has(p.id),
+        );
+
+        if (toNotify.length === 0) {
+          return Response.json({
+            threshold,
+            urgency,
+            notifs_sent: 0,
+            emails_sent: 0,
+          });
+        }
+
+        // 7) Insert in-app notifications (one row per user)
+        const notifRows = toNotify.map((p: any) => ({
+          user_id: p.id,
+          type: notifType,
+          title: NOTIF_TITLES[threshold],
+          body: "N'oublie pas de remplir tes dispos pour le mois prochain.",
+          link: "/staff-app?tab=accueil",
+          priority:
+            threshold === "5h" || threshold === "1h" || threshold === "24h"
+              ? "urgent"
+              : "normal",
+          category: "general",
+        }));
+        const { error: notifErr } = await supabaseAdmin
+          .from("notifications")
+          .insert(notifRows);
+        if (notifErr) {
+          console.error("avail-reminders notif insert failed", notifErr);
+        }
+
+        // 8) Emails on critical thresholds only
+        let emailsSent = 0;
+        if (urgency) {
+          const template = EMAIL_REGISTRY.find(
+            (t) => t.id === "dispo-deadline-reminder",
+          );
+          if (!template) {
+            console.error("dispo-deadline-reminder template missing");
+          } else {
+            const deadlineDateKey = `${deadline.getFullYear()}${String(
+              deadline.getMonth() + 1,
+            ).padStart(2, "0")}${String(deadline.getDate()).padStart(2, "0")}`;
+
+            const subjectByUrgency: Record<Urgency, string> = {
+              soft: `📅 Plus que 3 jours pour tes dispos de ${monthLabel}`,
+              urgent: `⚠️ Plus que 24h pour tes dispos de ${monthLabel}`,
+              ultimate: `🔥 Dernière heure ! Tes dispos pour ${monthLabel}`,
+            };
+
+            for (const p of toNotify) {
+              const email = (p as any).email as string | null;
+              if (!email) continue;
+              try {
+                const recipient = email.toLowerCase();
+
+                // suppression check
+                const { data: suppressed } = await supabaseAdmin
+                  .from("suppressed_emails")
+                  .select("id")
+                  .eq("email", recipient)
+                  .maybeSingle();
+                if (suppressed) continue;
+
+                // ensure unsubscribe token
+                let token: string | null = null;
+                const { data: existingTok } = await supabaseAdmin
+                  .from("email_unsubscribe_tokens")
+                  .select("token, used_at")
+                  .eq("email", recipient)
+                  .maybeSingle();
+                if (existingTok?.used_at) continue;
+                if (existingTok?.token) {
+                  token = existingTok.token;
+                } else {
+                  const bytes = new Uint8Array(32);
+                  crypto.getRandomValues(bytes);
+                  token = Array.from(bytes)
+                    .map((b) => b.toString(16).padStart(2, "0"))
+                    .join("");
+                  await supabaseAdmin
+                    .from("email_unsubscribe_tokens")
+                    .upsert(
+                      { token, email: recipient },
+                      { onConflict: "email", ignoreDuplicates: true },
+                    );
+                  const { data: stored } = await supabaseAdmin
+                    .from("email_unsubscribe_tokens")
+                    .select("token")
+                    .eq("email", recipient)
+                    .maybeSingle();
+                  token = stored?.token ?? token;
+                }
+
+                const templateData = {
+                  firstName: (p as any).first_name ?? "",
+                  monthLabel,
+                  deadlineLabel,
+                  urgency,
+                  statsAppUrl: APP_URL,
+                };
+                const element = React.createElement(
+                  template.component,
+                  templateData,
+                );
+                const html = await render(element);
+                const text = await render(element, { plainText: true });
+                const messageId = crypto.randomUUID();
+                const idempotencyKey = `dispo-reminder-${threshold}-${(p as any).id}-${deadlineDateKey}`;
+
+                await supabaseAdmin.from("email_send_log").insert({
+                  message_id: messageId,
+                  template_name: "dispo-deadline-reminder",
+                  recipient_email: recipient,
+                  status: "pending",
+                });
+
+                const { error: enqErr } = await supabaseAdmin.rpc(
+                  "enqueue_email",
+                  {
+                    queue_name: "transactional_emails",
+                    payload: {
+                      message_id: messageId,
+                      to: recipient,
+                      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+                      sender_domain: SENDER_DOMAIN,
+                      subject: subjectByUrgency[urgency],
+                      html,
+                      text,
+                      purpose: "transactional",
+                      label: "dispo-deadline-reminder",
+                      idempotency_key: idempotencyKey,
+                      unsubscribe_token: token,
+                      queued_at: new Date().toISOString(),
+                    } as any,
+                  },
+                );
+                if (enqErr) {
+                  console.error("enqueue dispo reminder failed", enqErr);
+                  continue;
+                }
+                emailsSent++;
+              } catch (e) {
+                console.error("dispo reminder email failed", e);
+              }
+            }
+          }
+        }
+
+        return Response.json({
+          threshold,
+          urgency,
+          deadline: deadline.toISOString(),
+          month_label: monthLabel,
+          notifs_sent: toNotify.length,
+          emails_sent: emailsSent,
+        });
+      },
+    },
+  },
+});
