@@ -18,6 +18,8 @@ import { SignalementSheet, RequestModificationSheet, MyRequestsSheet } from "@/c
 import { ShiftDetailSheet, DocumentsSheet, NotificationsSheet } from "@/components/staff-app/ProfileSheets";
 import { EditProfileSheet, type EditableProfile } from "@/components/staff-app/EditProfileSheet";
 import { DisposSheet, disposKey } from "@/components/staff-app/DisposSheet";
+import { useServerFn } from "@tanstack/react-start";
+import { checkUserDispoStatus, getAvailabilityLockInfo } from "@/lib/availabilities.functions";
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
 import { AIChatPanel } from "@/components/staff-app/AIChatPanel";
