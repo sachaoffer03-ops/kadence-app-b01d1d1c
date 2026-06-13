@@ -78,7 +78,7 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
       {open && pos && typeof document !== "undefined" && createPortal(
         <div
           ref={menuRef}
-          className="rounded-lg overflow-hidden"
+          className="rounded-lg"
           style={{
             position: "fixed",
             top: pos.top,
@@ -89,7 +89,11 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
             border: "0.5px solid var(--border)",
             boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
             padding: 4,
+            maxHeight: Math.max(160, window.innerHeight - pos.top - 16),
+            overflowY: "auto",
+            overscrollBehavior: "contain",
           }}
+
         >
           {options.map(o => {
             const sel = o === value;
