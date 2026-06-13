@@ -355,6 +355,7 @@ export interface MonthlyDispoStatus {
   firstName: string;
   lastName: string;
   contract: string | null;
+  contracts: string[];
   studioIds: string[];
   availsCount: number;
   lastSubmittedAt: string | null;
@@ -393,7 +394,7 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
 
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
-      .select("id, first_name, last_name, contract")
+      .select("id, first_name, last_name, contract, studio_id")
       .eq("status", "active");
     const employees = (profiles ?? []).filter((p: any) => !adminSet.has(p.id));
 
@@ -414,11 +415,21 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
     const { data: studios } = await supabaseAdmin
       .from("user_studios")
       .select("user_id, studio_id");
-    const studiosByUser = new Map<string, string[]>();
+    const studiosByUser = new Map<string, Set<string>>();
     for (const s of studios ?? []) {
-      const arr = studiosByUser.get(s.user_id) ?? [];
-      arr.push(s.studio_id);
-      studiosByUser.set(s.user_id, arr);
+      const set = studiosByUser.get(s.user_id) ?? new Set<string>();
+      set.add(s.studio_id);
+      studiosByUser.set(s.user_id, set);
+    }
+
+    const { data: contractsRows } = await supabaseAdmin
+      .from("user_contracts")
+      .select("user_id, contract");
+    const contractsByUser = new Map<string, Set<string>>();
+    for (const c of contractsRows ?? []) {
+      const set = contractsByUser.get(c.user_id) ?? new Set<string>();
+      set.add(c.contract);
+      contractsByUser.set(c.user_id, set);
     }
 
     const rows: MonthlyDispoStatus[] = employees.map((p: any) => {
@@ -427,12 +438,20 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
       if (info.count === 0) status = "empty";
       else if (info.count < 5) status = "partial";
       else status = "complete";
+
+      const studioSet = studiosByUser.get(p.id) ?? new Set<string>();
+      if (p.studio_id) studioSet.add(p.studio_id);
+
+      const contractSet = contractsByUser.get(p.id) ?? new Set<string>();
+      if (p.contract) contractSet.add(p.contract);
+
       return {
         userId: p.id,
         firstName: p.first_name ?? "",
         lastName: p.last_name ?? "",
         contract: p.contract,
-        studioIds: studiosByUser.get(p.id) ?? [],
+        contracts: Array.from(contractSet),
+        studioIds: Array.from(studioSet),
         availsCount: info.count,
         lastSubmittedAt: info.lastAt,
         status,

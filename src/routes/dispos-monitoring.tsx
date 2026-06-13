@@ -57,13 +57,18 @@ function DisposMonitoringPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["dispo-monitoring", year, month],
     queryFn: () => fetchMonitoring({ data: { year, month } }),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
 
   const rows = data?.rows ?? [];
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
-      if (contractFilter !== "all" && (r.contract ?? "") !== contractFilter) return false;
+      if (contractFilter !== "all") {
+        const contracts = r.contracts && r.contracts.length > 0 ? r.contracts : (r.contract ? [r.contract] : []);
+        if (!contracts.includes(contractFilter)) return false;
+      }
       if (studioFilter.length > 0 && !r.studioIds.some((s) => studioFilter.includes(s))) return false;
       return true;
     });
@@ -278,7 +283,7 @@ function DisposMonitoringPage() {
                 </td>
                 <td className="px-3 py-2" style={{ fontWeight: 500 }}>{r.firstName} {r.lastName}</td>
                 <td className="px-3 py-2" style={{ color: "var(--muted-foreground)" }}>
-                  {r.contract ?? "—"}
+                  {(r.contracts && r.contracts.length > 0 ? r.contracts : (r.contract ? [r.contract] : [])).join(", ") || "—"}
                 </td>
                 <td className="px-3 py-2" style={{ color: "var(--muted-foreground)" }}>
                   {r.studioIds.length === 0 ? "—" : r.studioIds.map(studioName).join(", ")}
