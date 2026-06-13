@@ -120,7 +120,7 @@ function MigrateStudiosPage() {
         <Button onClick={run} disabled={running || !data?.pairs.length} variant="destructive">
           {running ? "Migration en cours…" : "Lancer la migration"}
         </Button>
-        <Link to="/admin/seeder"><Button variant="outline">Retour au seeder</Button></Link>
+        <Link to="/admin/demo-tools"><Button variant="outline">Retour aux outils démo</Button></Link>
       </div>
 
       {result && (

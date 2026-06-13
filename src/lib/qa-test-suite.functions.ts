@@ -1,7 +1,7 @@
 // =============================================================================
 // QA TEST SUITE — Moteur de génération de planning
 // =============================================================================
-// Server functions appelées par /admin/qa-test-suite (DevOnly).
+// Server functions appelées par /admin/demo-tools (DevOnly).
 // Crée un dataset isolé (Test Studio Alpha/Beta + 30 employés is_test=true),
 // lance 8 tests sur generatePlanning, nettoie tout en fin de session.
 // =============================================================================

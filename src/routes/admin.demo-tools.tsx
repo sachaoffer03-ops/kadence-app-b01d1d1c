@@ -2,9 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DevOnly } from "@/components/DevOnly";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertTriangle } from "lucide-react";
-import { SeederPage } from "./admin.seeder";
-import { SeedDemoPage } from "./admin.seed";
-import { QAPage } from "./admin.qa-test-suite";
+import { SeederPage } from "@/components/admin/SeederPage";
+import { SeedDemoPage } from "@/components/admin/SeedDemoPage";
+import { QAPage } from "@/components/admin/QAPage";
 
 export const Route = createFileRoute("/admin/demo-tools")({
   component: () => (

@@ -42,17 +42,10 @@ import { Route as FormationCourseIdRouteImport } from './routes/formation.$cours
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as DispoDetailUserIdRouteImport } from './routes/dispo-detail.$userId'
 import { Route as DisplayStudioIdRouteImport } from './routes/display.$studioId'
-import { Route as AdminSeederRouteImport } from './routes/admin.seeder'
-import { Route as AdminSeedRouteImport } from './routes/admin.seed'
-import { Route as AdminQaTestSuiteRouteImport } from './routes/admin.qa-test-suite'
 import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-studios'
-import { Route as AdminIntegrityReportRouteImport } from './routes/admin.integrity-report'
-import { Route as AdminHardcodingAuditRouteImport } from './routes/admin.hardcoding-audit'
 import { Route as AdminEmailPreviewRouteImport } from './routes/admin.email-preview'
 import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
 import { Route as AdminDemoToolsRouteImport } from './routes/admin.demo-tools'
-import { Route as AdminDataDiagnosticRouteImport } from './routes/admin.data-diagnostic'
-import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as StaffChecklistShiftIdRouteImport } from './routes/staff.checklist.$shiftId'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicAvailRemindersTickRouteImport } from './routes/api/public/avail-reminders-tick'
@@ -228,34 +221,9 @@ const DisplayStudioIdRoute = DisplayStudioIdRouteImport.update({
   path: '/display/$studioId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminSeederRoute = AdminSeederRouteImport.update({
-  id: '/admin/seeder',
-  path: '/admin/seeder',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminSeedRoute = AdminSeedRouteImport.update({
-  id: '/admin/seed',
-  path: '/admin/seed',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminQaTestSuiteRoute = AdminQaTestSuiteRouteImport.update({
-  id: '/admin/qa-test-suite',
-  path: '/admin/qa-test-suite',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminMigrateStudiosRoute = AdminMigrateStudiosRouteImport.update({
   id: '/admin/migrate-studios',
   path: '/admin/migrate-studios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminIntegrityReportRoute = AdminIntegrityReportRouteImport.update({
-  id: '/admin/integrity-report',
-  path: '/admin/integrity-report',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminHardcodingAuditRoute = AdminHardcodingAuditRouteImport.update({
-  id: '/admin/hardcoding-audit',
-  path: '/admin/hardcoding-audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminEmailPreviewRoute = AdminEmailPreviewRouteImport.update({
@@ -271,16 +239,6 @@ const AdminDiagnosticRoute = AdminDiagnosticRouteImport.update({
 const AdminDemoToolsRoute = AdminDemoToolsRouteImport.update({
   id: '/admin/demo-tools',
   path: '/admin/demo-tools',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminDataDiagnosticRoute = AdminDataDiagnosticRouteImport.update({
-  id: '/admin/data-diagnostic',
-  path: '/admin/data-diagnostic',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminAuditRoute = AdminAuditRouteImport.update({
-  id: '/admin/audit',
-  path: '/admin/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StaffChecklistShiftIdRoute = StaffChecklistShiftIdRouteImport.update({
@@ -360,17 +318,10 @@ export interface FileRoutesByFullPath {
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
-  '/admin/audit': typeof AdminAuditRoute
-  '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/demo-tools': typeof AdminDemoToolsRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
-  '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
-  '/admin/integrity-report': typeof AdminIntegrityReportRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
-  '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
-  '/admin/seed': typeof AdminSeedRoute
-  '/admin/seeder': typeof AdminSeederRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
   '/dispo-detail/$userId': typeof DispoDetailUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -414,17 +365,10 @@ export interface FileRoutesByTo {
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
-  '/admin/audit': typeof AdminAuditRoute
-  '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/demo-tools': typeof AdminDemoToolsRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
-  '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
-  '/admin/integrity-report': typeof AdminIntegrityReportRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
-  '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
-  '/admin/seed': typeof AdminSeedRoute
-  '/admin/seeder': typeof AdminSeederRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
   '/dispo-detail/$userId': typeof DispoDetailUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -470,17 +414,10 @@ export interface FileRoutesById {
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
-  '/admin/audit': typeof AdminAuditRoute
-  '/admin/data-diagnostic': typeof AdminDataDiagnosticRoute
   '/admin/demo-tools': typeof AdminDemoToolsRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
-  '/admin/hardcoding-audit': typeof AdminHardcodingAuditRoute
-  '/admin/integrity-report': typeof AdminIntegrityReportRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
-  '/admin/qa-test-suite': typeof AdminQaTestSuiteRoute
-  '/admin/seed': typeof AdminSeedRoute
-  '/admin/seeder': typeof AdminSeederRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
   '/dispo-detail/$userId': typeof DispoDetailUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -527,17 +464,10 @@ export interface FileRouteTypes {
     | '/staff-app'
     | '/studios'
     | '/trous'
-    | '/admin/audit'
-    | '/admin/data-diagnostic'
     | '/admin/demo-tools'
     | '/admin/diagnostic'
     | '/admin/email-preview'
-    | '/admin/hardcoding-audit'
-    | '/admin/integrity-report'
     | '/admin/migrate-studios'
-    | '/admin/qa-test-suite'
-    | '/admin/seed'
-    | '/admin/seeder'
     | '/display/$studioId'
     | '/dispo-detail/$userId'
     | '/email/unsubscribe'
@@ -581,17 +511,10 @@ export interface FileRouteTypes {
     | '/staff-app'
     | '/studios'
     | '/trous'
-    | '/admin/audit'
-    | '/admin/data-diagnostic'
     | '/admin/demo-tools'
     | '/admin/diagnostic'
     | '/admin/email-preview'
-    | '/admin/hardcoding-audit'
-    | '/admin/integrity-report'
     | '/admin/migrate-studios'
-    | '/admin/qa-test-suite'
-    | '/admin/seed'
-    | '/admin/seeder'
     | '/display/$studioId'
     | '/dispo-detail/$userId'
     | '/email/unsubscribe'
@@ -636,17 +559,10 @@ export interface FileRouteTypes {
     | '/staff-app'
     | '/studios'
     | '/trous'
-    | '/admin/audit'
-    | '/admin/data-diagnostic'
     | '/admin/demo-tools'
     | '/admin/diagnostic'
     | '/admin/email-preview'
-    | '/admin/hardcoding-audit'
-    | '/admin/integrity-report'
     | '/admin/migrate-studios'
-    | '/admin/qa-test-suite'
-    | '/admin/seed'
-    | '/admin/seeder'
     | '/display/$studioId'
     | '/dispo-detail/$userId'
     | '/email/unsubscribe'
@@ -692,17 +608,10 @@ export interface RootRouteChildren {
   StaffAppRoute: typeof StaffAppRoute
   StudiosRoute: typeof StudiosRoute
   TrousRoute: typeof TrousRoute
-  AdminAuditRoute: typeof AdminAuditRoute
-  AdminDataDiagnosticRoute: typeof AdminDataDiagnosticRoute
   AdminDemoToolsRoute: typeof AdminDemoToolsRoute
   AdminDiagnosticRoute: typeof AdminDiagnosticRoute
   AdminEmailPreviewRoute: typeof AdminEmailPreviewRoute
-  AdminHardcodingAuditRoute: typeof AdminHardcodingAuditRoute
-  AdminIntegrityReportRoute: typeof AdminIntegrityReportRoute
   AdminMigrateStudiosRoute: typeof AdminMigrateStudiosRoute
-  AdminQaTestSuiteRoute: typeof AdminQaTestSuiteRoute
-  AdminSeedRoute: typeof AdminSeedRoute
-  AdminSeederRoute: typeof AdminSeederRoute
   DisplayStudioIdRoute: typeof DisplayStudioIdRoute
   DispoDetailUserIdRoute: typeof DispoDetailUserIdRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -950,46 +859,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DisplayStudioIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/seeder': {
-      id: '/admin/seeder'
-      path: '/admin/seeder'
-      fullPath: '/admin/seeder'
-      preLoaderRoute: typeof AdminSeederRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/seed': {
-      id: '/admin/seed'
-      path: '/admin/seed'
-      fullPath: '/admin/seed'
-      preLoaderRoute: typeof AdminSeedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/qa-test-suite': {
-      id: '/admin/qa-test-suite'
-      path: '/admin/qa-test-suite'
-      fullPath: '/admin/qa-test-suite'
-      preLoaderRoute: typeof AdminQaTestSuiteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/migrate-studios': {
       id: '/admin/migrate-studios'
       path: '/admin/migrate-studios'
       fullPath: '/admin/migrate-studios'
       preLoaderRoute: typeof AdminMigrateStudiosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/integrity-report': {
-      id: '/admin/integrity-report'
-      path: '/admin/integrity-report'
-      fullPath: '/admin/integrity-report'
-      preLoaderRoute: typeof AdminIntegrityReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/hardcoding-audit': {
-      id: '/admin/hardcoding-audit'
-      path: '/admin/hardcoding-audit'
-      fullPath: '/admin/hardcoding-audit'
-      preLoaderRoute: typeof AdminHardcodingAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/email-preview': {
@@ -1011,20 +885,6 @@ declare module '@tanstack/react-router' {
       path: '/admin/demo-tools'
       fullPath: '/admin/demo-tools'
       preLoaderRoute: typeof AdminDemoToolsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/data-diagnostic': {
-      id: '/admin/data-diagnostic'
-      path: '/admin/data-diagnostic'
-      fullPath: '/admin/data-diagnostic'
-      preLoaderRoute: typeof AdminDataDiagnosticRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/audit': {
-      id: '/admin/audit'
-      path: '/admin/audit'
-      fullPath: '/admin/audit'
-      preLoaderRoute: typeof AdminAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/staff/checklist/$shiftId': {
@@ -1157,17 +1017,10 @@ const rootRouteChildren: RootRouteChildren = {
   StaffAppRoute: StaffAppRoute,
   StudiosRoute: StudiosRoute,
   TrousRoute: TrousRoute,
-  AdminAuditRoute: AdminAuditRoute,
-  AdminDataDiagnosticRoute: AdminDataDiagnosticRoute,
   AdminDemoToolsRoute: AdminDemoToolsRoute,
   AdminDiagnosticRoute: AdminDiagnosticRoute,
   AdminEmailPreviewRoute: AdminEmailPreviewRoute,
-  AdminHardcodingAuditRoute: AdminHardcodingAuditRoute,
-  AdminIntegrityReportRoute: AdminIntegrityReportRoute,
   AdminMigrateStudiosRoute: AdminMigrateStudiosRoute,
-  AdminQaTestSuiteRoute: AdminQaTestSuiteRoute,
-  AdminSeedRoute: AdminSeedRoute,
-  AdminSeederRoute: AdminSeederRoute,
   DisplayStudioIdRoute: DisplayStudioIdRoute,
   DispoDetailUserIdRoute: DispoDetailUserIdRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,

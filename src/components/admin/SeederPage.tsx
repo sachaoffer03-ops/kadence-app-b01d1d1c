@@ -1,16 +1,10 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { DevOnly } from "@/components/DevOnly";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Sparkles, ArrowLeft, Check, AlertTriangle, ArrowRight, Loader2, ChefHat, Link2, Tag, GraduationCap } from "lucide-react";
 import { seedFakeData, addKitchenWeekendStaff } from "@/lib/seed.functions";
 import { linkAllEmployeesToAllStudios, giveAllRolesToAllEmployees, validateAllRequiredTrainingsForEmployees } from "@/lib/data-repair.functions";
 
-
-export const Route = createFileRoute("/admin/seeder")({
-  component: () => (<DevOnly label="Le seeder de données fictives"><SeederPage /></DevOnly>),
-  head: () => ({ meta: [{ title: "Seeder données fictives — Kadence" }] }),
-});
 
 export function SeederPage() {
   const navigate = useNavigate();

@@ -1,7 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { DevOnly } from "@/components/DevOnly";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -14,10 +13,6 @@ import {
   purgeNonDemoEmployees,
 } from "@/lib/seed-demo.functions";
 
-export const Route = createFileRoute("/admin/seed")({
-  component: () => (<DevOnly label="L'environnement de démo"><SeedDemoPage /></DevOnly>),
-  head: () => ({ meta: [{ title: "Environnement de démo — Kadence" }] }),
-});
 
 type DemoStatus = Awaited<ReturnType<typeof getDemoStatus>>;
 type Emp = DemoStatus["employees"][number];
