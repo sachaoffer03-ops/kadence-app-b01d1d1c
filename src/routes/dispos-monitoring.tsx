@@ -266,7 +266,7 @@ function DisposMonitoringPage() {
                 style={{ borderTop: "1px solid var(--border)", cursor: "pointer" }}
                 className="hover:bg-[var(--muted)]/40 transition-colors"
                 onClick={() =>
-                  navigate({ to: "/dispos-monitoring/$userId", params: { userId: r.userId }, search: { year, month } })
+                  navigate({ to: "/dispo-detail/$userId", params: { userId: r.userId }, search: { year, month } })
                 }
               >
                 <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
