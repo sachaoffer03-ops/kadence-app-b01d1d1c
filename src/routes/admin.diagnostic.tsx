@@ -8,7 +8,7 @@ import { runDiagnostic } from "@/lib/diagnostic.functions";
 import { runDataDiagnostic } from "@/lib/data-diagnostic.functions";
 import { runAudit } from "@/lib/audit.functions";
 import { collectIntegrityStats } from "@/lib/integrity-report.functions";
-import { getSystemHealthChecks } from "@/lib/system-health.functions";
+import { getSystemHealthChecks, triggerAvailRemindersTick, getRecentEmailLogs } from "@/lib/system-health.functions";
 
 export const Route = createFileRoute("/admin/diagnostic")({
   component: () => (
