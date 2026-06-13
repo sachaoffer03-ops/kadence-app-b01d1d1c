@@ -258,7 +258,9 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
         >
           <div className="flex items-center gap-2" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
             <Clock size={13} />
-            <span>Prochaine deadline : <strong>{fmtDateFR(new Date(nextDeadlineMs))}</strong></span>
+            <span>
+              Deadline <span style={{ textTransform: "capitalize", fontWeight: 600, color: "var(--foreground)" }}>{monthLabel}</span> · <strong>{fmtDateFR(new Date(nextDeadlineMs))}</strong>
+            </span>
           </div>
           <span
             style={{
