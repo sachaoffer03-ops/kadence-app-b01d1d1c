@@ -1,206 +1,401 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DevOnly } from "@/components/DevOnly";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { runDiagnostic } from "@/lib/diagnostic.functions";
+import { runDataDiagnostic } from "@/lib/data-diagnostic.functions";
+import { runAudit } from "@/lib/audit.functions";
+import { collectIntegrityStats } from "@/lib/integrity-report.functions";
+import { getSystemHealthChecks } from "@/lib/system-health.functions";
 
 export const Route = createFileRoute("/admin/diagnostic")({
-  component: () => (<DevOnly label="Le diagnostic planning"><DiagnosticPage /></DevOnly>),
+  component: () => (
+    <DevOnly label="Le diagnostic système">
+      <DiagnosticPage />
+    </DevOnly>
+  ),
   head: () => ({ meta: [{ title: "Diagnostic — Kadence" }] }),
 });
 
-const EXPECTED_TPL: Record<string, { start: string; end: string; req?: string; allowed?: string[] }> = {
-  Lundi: { start: "07:00:00", end: "15:30:00", req: "CDI" },
-  Mardi: { start: "07:00:00", end: "14:30:00", req: "CDI" },
-  Mercredi: { start: "07:00:00", end: "14:30:00", req: "CDI" },
-  Jeudi: { start: "07:00:00", end: "14:30:00", req: "CDI" },
-  Vendredi: { start: "07:00:00", end: "16:30:00", req: "CDI" },
-  Samedi: { start: "08:30:00", end: "15:30:00", allowed: ["CDI", "Étudiant", "Flexi"] },
-  Dimanche: { start: "08:30:00", end: "15:30:00", allowed: ["CDI", "Étudiant", "Flexi"] },
-};
+const DAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
 function DiagnosticPage() {
-  const run = useServerFn(runDiagnostic);
+  const sysFn = useServerFn(getSystemHealthChecks);
+  const integFn = useServerFn(collectIntegrityStats);
+  const dataFn = useServerFn(runDataDiagnostic);
+  const auditFn = useServerFn(runAudit);
+  const diagFn = useServerFn(runDiagnostic);
+
+  const [sys, setSys] = useState<any>(null);
+  const [integ, setInteg] = useState<any>(null);
   const [data, setData] = useState<any>(null);
+  const [audit, setAudit] = useState<any>(null);
+  const [diag, setDiag] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+  const [errs, setErrs] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    run({ data: undefined } as any).then(setData).catch((e: any) => setErr(e?.message || "Erreur")).finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <div className="p-8 flex items-center gap-2"><Loader2 className="animate-spin" size={16} /> Diagnostic en cours…</div>;
-  if (err) return <div className="p-8" style={{ color: "#b91c1c" }}>{err}</div>;
-  if (!data) return null;
-
-  // Anomalies
-  const anomalies: { level: "warn" | "crit"; msg: string }[] = [];
-  // S1 check
-  const tplByStudioJour = new Map<string, any>();
-  for (const t of data.s1) tplByStudioJour.set(`${t.studio}|${t.jour}`, t);
-  const chatStudios = Array.from(new Set(data.s1.map((t: any) => t.studio))) as string[];
-  for (const studio of chatStudios) {
-    if (!studio.toLowerCase().includes("châtelain") && !studio.toLowerCase().includes("chatelain")) continue;
-    for (const [jour, exp] of Object.entries(EXPECTED_TPL)) {
-      const t = tplByStudioJour.get(`${studio}|${jour}`);
-      if (!t) { anomalies.push({ level: "crit", msg: `S1: template manquant ${studio} ${jour}` }); continue; }
-      if (t.start_time !== exp.start || t.end_time !== exp.end) {
-        anomalies.push({ level: "crit", msg: `S1: ${studio} ${jour} horaires ${t.start_time}-${t.end_time} ≠ attendu ${exp.start}-${exp.end}` });
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    setErrs({});
+    const safe = async <T,>(key: string, p: Promise<T>): Promise<T | null> => {
+      try { return await p; } catch (e: any) {
+        setErrs((s) => ({ ...s, [key]: e?.message || "Erreur" }));
+        return null;
       }
-      if (exp.req && t.required_contract !== exp.req) {
-        anomalies.push({ level: "crit", msg: `S1: ${studio} ${jour} required_contract=${t.required_contract} ≠ ${exp.req}` });
-      }
-      if (exp.allowed) {
-        const got = (t.allowed_contracts ?? []).slice().sort().join(",");
-        const want = exp.allowed.slice().sort().join(",");
-        if (got !== want) anomalies.push({ level: "warn", msg: `S1: ${studio} ${jour} allowed_contracts=[${got}] ≠ [${want}]` });
-      }
-    }
-  }
-  // S2 — au moins un CDI cuisine présent
-  const hasCdiKitchen = (data.s2 ?? []).some((p: any) => (p.contrats ?? []).includes("CDI"));
-  if (!hasCdiKitchen) anomalies.push({ level: "crit", msg: `S2: aucun profil CDI cuisine trouvé` });
-  // S3 — le CDI cuisine identifié doit avoir des dispos lun-ven
-  const cdiName = data.cdi_cuisine_employee?.nom ?? "—";
-  const cdiJours = new Set(data.s3.map((a: any) => a.jour));
-  for (const j of ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]) if (!cdiJours.has(j)) anomalies.push({ level: "warn", msg: `S3: ${cdiName} pas dispo ${j}` });
-  // S4 — au moins une dispo cuisine non-CDI le week-end
-  if (!data.s4.length) anomalies.push({ level: "crit", msg: `S4: aucune dispo cuisine non-CDI sur le week-end` });
-  // S6
-  if (data.s6.target.includes("solo") || data.s6.cap.toLowerCase().includes("solo")) {
-    anomalies.push({ level: "warn", msg: "S6: référence à 'solo' encore présente dans target/cap" });
-  }
-  // S7
-  const exp = { target_weekly_cdi_hours: 35, cdi_hours_tolerance: 2, max_shift_hours_cdi: 8, default_score_when_null: 7 };
-  if (data.settings) {
-    for (const [k, v] of Object.entries(exp)) {
-      if (Number(data.settings[k]) !== v) anomalies.push({ level: "warn", msg: `S7: ${k}=${data.settings[k]} ≠ ${v}` });
-    }
-  }
+    };
+    const [s, i, d, a, dg] = await Promise.all([
+      safe("sys", sysFn()),
+      safe("integ", integFn()),
+      safe("data", dataFn()),
+      safe("audit", auditFn({ data: undefined } as any)),
+      safe("diag", diagFn({ data: undefined } as any)),
+    ]);
+    setSys(s); setInteg(i); setData(d); setAudit(a); setDiag(dg);
+    setLoading(false);
+  }, [sysFn, integFn, dataFn, auditFn, diagFn]);
 
-  const crit = anomalies.filter(a => a.level === "crit").length;
-  const warn = anomalies.filter(a => a.level === "warn").length;
+  useEffect(() => { loadAll(); }, []);
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto" style={{ fontSize: 13 }}>
-      <Link to="/admin/seeder" className="flex items-center gap-1 mb-4" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+    <div className="p-4 md:p-8 max-w-6xl mx-auto" style={{ fontSize: 13 }}>
+      <Link to="/" className="flex items-center gap-1 mb-3" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
         <ArrowLeft size={12} /> Retour
       </Link>
-      <h1 style={{ fontSize: 26, fontWeight: 500, marginBottom: 24 }}>Diagnostic planning cuisine</h1>
-
-      {/* Verdict */}
-      <Card>
-        <Title>Diagnostic global</Title>
-        <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 12 }}>
-          {crit > 0 ? "🔴 Anomalies critiques à investiguer" : warn > 0 ? "🟡 Anomalies mineures à corriger" : "🟢 Pas d'anomalie détectée"}
+      <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 style={{ fontSize: 26, fontWeight: 500 }}>🩺 Diagnostic système</h1>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>
+            Vue globale de la santé technique du SaaS
+          </p>
         </div>
-        {anomalies.length === 0 ? <div style={{ color: "var(--muted-foreground)" }}>Tout correspond aux attendus.</div> : (
-          <ul style={{ paddingLeft: 16 }}>
-            {anomalies.map((a, i) => (
-              <li key={i} style={{ color: a.level === "crit" ? "#b91c1c" : "#a16207", marginBottom: 4 }}>
-                {a.level === "crit" ? "🔴" : "🟡"} {a.msg}
-              </li>
+        <button onClick={loadAll} disabled={loading}
+          className="rounded-md px-3 py-2 flex items-center gap-2 hover:opacity-90 disabled:opacity-50"
+          style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          Tout recharger
+        </button>
+      </div>
+
+      <Tabs defaultValue="systeme" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="systeme">🔧 Système</TabsTrigger>
+          <TabsTrigger value="donnees">📊 Données</TabsTrigger>
+          <TabsTrigger value="features">✨ Features</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="systeme">
+          <SystemTab sys={sys} integ={integ} loading={loading} err={errs.sys || errs.integ} />
+        </TabsContent>
+        <TabsContent value="donnees">
+          <DataTab data={data} loading={loading} err={errs.data} />
+        </TabsContent>
+        <TabsContent value="features">
+          <FeaturesTab audit={audit} diag={diag} loading={loading} err={errs.audit || errs.diag} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ============== TAB 1 — SYSTÈME ============== */
+function SystemTab({ sys, integ, loading, err }: any) {
+  if (loading && !sys) return <Loading />;
+  if (err && !sys) return <ErrBox msg={err} />;
+
+  return (
+    <div>
+      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+        {/* Cron jobs */}
+        <Card title="⏰ Cron jobs">
+          {!sys?.crons ? <Empty>—</Empty> :
+            sys.crons.error ? <ErrInline>{sys.crons.error}</ErrInline> :
+            !Array.isArray(sys.crons) || sys.crons.length === 0 ? <Empty>Aucun cron job programmé</Empty> : (
+              <div className="space-y-2">
+                {sys.crons.map((c: any) => (
+                  <div key={c.jobid} className="flex items-start justify-between gap-2 pb-2" style={{ borderBottom: "0.5px solid var(--border)" }}>
+                    <div className="min-w-0 flex-1">
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{c.jobname || `job ${c.jobid}`}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted-foreground)", fontFamily: "monospace" }}>{c.schedule}</div>
+                      <div style={{ fontSize: 10, color: "var(--muted-foreground)", fontFamily: "monospace", marginTop: 2, wordBreak: "break-all" }}>
+                        {String(c.command).slice(0, 100)}{String(c.command).length > 100 ? "…" : ""}
+                      </div>
+                    </div>
+                    {c.active ? <BadgeOk label="actif" /> : <BadgeKo label="inactif" />}
+                  </div>
+                ))}
+              </div>
+            )}
+        </Card>
+
+        {/* Locale */}
+        <Card title="🇫🇷 Locale française">
+          {!sys?.locale ? <Empty>—</Empty> : (
+            <div style={{ fontSize: 12, lineHeight: 1.8 }}>
+              <KV k="Mois" v={sys.locale.month_locale} />
+              <KV k="Jour" v={sys.locale.day_locale} />
+              <KV k="lc_time" v={sys.locale.server_locale || "(non défini)"} />
+              <KV k="Attendu" v={sys.locale.expected} muted />
+              <div className="mt-2">
+                {/^[A-ZÀ-Ÿ][a-zà-ÿ]+/.test(sys.locale.month_locale || "")
+                  ? <BadgeOk label="Locale OK" />
+                  : <BadgeKo label="Locale non française" />}
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Signature enqueue_email */}
+        <Card title="📧 Signature enqueue_email">
+          {!sys?.enqueueEmail ? <Empty>—</Empty> :
+            !Array.isArray(sys.enqueueEmail) || sys.enqueueEmail.length === 0 ? (
+              <div><BadgeKo label="Fonction absente" /></div>
+            ) : (
+              <div className="space-y-2">
+                {sys.enqueueEmail.map((f: any, i: number) => (
+                  <div key={i} style={{ fontSize: 11, fontFamily: "monospace" }}>
+                    <div><strong>{f.function_name}</strong>({f.arguments})</div>
+                    <div style={{ color: "var(--muted-foreground)" }}>→ {f.returns}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+        </Card>
+
+        {/* Realtime */}
+        <Card title="📡 Tables realtime">
+          {!sys?.realtime ? <Empty>—</Empty> :
+            !Array.isArray(sys.realtime) || sys.realtime.length === 0 ? <Empty>Aucune table publiée</Empty> : (
+              <div className="flex flex-wrap gap-1.5">
+                {sys.realtime.map((t: any, i: number) => (
+                  <span key={i} className="rounded px-2 py-0.5" style={{ fontSize: 11, backgroundColor: "var(--muted)", color: "var(--foreground)" }}>
+                    {t.schemaname}.{t.tablename}
+                  </span>
+                ))}
+              </div>
+            )}
+        </Card>
+
+        {/* Intégrité — fonctions SQL + admins + dernière gen */}
+        <Card title="🧬 Intégrité SQL">
+          {!integ ? <Empty>—</Empty> : (
+            <div style={{ fontSize: 12, lineHeight: 1.8 }}>
+              <div className="flex items-center gap-2">
+                {integ.scoreFnOk ? <CheckCircle2 size={14} style={{ color: "#16a34a" }} /> : <XCircle size={14} style={{ color: "#b91c1c" }} />}
+                <span>calculate_profile_score</span>
+              </div>
+              <KV k="Admins" v={integ.adminCount} />
+              <KV k="Settings IA" v={integ.settingsPresent ? "présents" : "absents"} />
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4 }}>Fonctions attendues</div>
+                <div className="flex flex-wrap gap-1">
+                  {integ.expectedFunctions.map((f: string) => (
+                    <span key={f} className="rounded px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: "var(--muted)", fontFamily: "monospace" }}>{f}</span>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4 }}>Triggers attendus</div>
+                <div className="flex flex-wrap gap-1">
+                  {integ.expectedTriggers.map((t: any) => (
+                    <span key={t.name} className="rounded px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: "var(--muted)", fontFamily: "monospace" }}>{t.name}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+
+        <Card title="🚀 Dernière génération planning">
+          {!integ?.lastRun ? <Empty>Aucune génération</Empty> : (
+            <div style={{ fontSize: 12, lineHeight: 1.8 }}>
+              <KV k="Statut" v={integ.lastRun.status} />
+              <KV k="Démarrée" v={new Date(integ.lastRun.started_at).toLocaleString("fr-FR")} />
+              <KV k="Couverture" v={integ.lastRun.coverage_rate != null ? `${Math.round(integ.lastRun.coverage_rate * 100)}%` : "—"} />
+              <KV k="Shifts" v={integ.lastRun.shifts_generated ?? "—"} />
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {integ?.tableCounts && (
+        <Card title="📦 Compte par table" className="mt-4">
+          <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+            {Object.entries(integ.tableCounts).map(([t, c]: any) => (
+              <div key={t} className="flex items-center justify-between" style={{ fontSize: 11, padding: "3px 6px", borderBottom: "0.5px solid var(--border)" }}>
+                <span style={{ fontFamily: "monospace", color: "var(--muted-foreground)" }}>{t}</span>
+                <span style={{ fontWeight: 500, color: typeof c === "string" ? "#b91c1c" : "var(--foreground)" }}>{String(c)}</span>
+              </div>
             ))}
-          </ul>
-        )}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ============== TAB 2 — DONNÉES ============== */
+function DataTab({ data, loading, err }: any) {
+  if (loading && !data) return <Loading />;
+  if (err && !data) return <ErrBox msg={err} />;
+  if (!data) return <Empty>Aucune donnée</Empty>;
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12 }}>
+        Période analysée : {data.period.start} → {data.period.end}
+      </div>
+      <div className="grid gap-4 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+        <Card title="Profils">
+          <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+            <KV k="Total" v={data.counts.total_profiles} />
+            <KV k="Actifs" v={data.counts.active_profiles} />
+            <KV k="Avec contrat" v={data.counts.active_with_contract_row} />
+            <KV k="Avec rôle métier" v={data.counts.active_with_business_role} />
+            <KV k="Avec studio" v={data.counts.active_with_studio} />
+            <KV k="Rôle Cuisine" v={data.cuisine_role_count} />
+          </div>
+        </Card>
+        <Card title="Par contrat principal">
+          <SimpleTable rows={Object.entries(data.by_contract).map(([k, v]: any) => [k, v])} />
+        </Card>
+      </div>
+
+      <Card title="Capacité par studio (semaine)" className="mb-4">
+        <Table headers={["Studio", "Demandé", "Dispo", "Ratio"]}
+          rows={data.studio_capacity.map((s: any) => [
+            s.studio, `${s.demanded_hours}h`, `${s.available_hours}h`,
+            <span style={{ color: s.ratio != null && s.ratio > 90 ? "#b91c1c" : "var(--foreground)", fontWeight: 500 }}>
+              {s.ratio === null ? "—" : `${s.ratio}%`}
+            </span>,
+          ])} />
       </Card>
 
-      {/* S1 */}
-      <Card>
-        <Title>1. Staffing templates cuisine</Title>
-        <Table headers={["Studio", "Jour", "Début", "Fin", "Durée", "Req", "Allowed", "Conformité"]}
-          rows={data.s1.map((t: any) => {
-            const exp = EXPECTED_TPL[t.jour];
-            const isChat = t.studio.toLowerCase().includes("châtelain") || t.studio.toLowerCase().includes("chatelain");
-            let ok = true;
-            if (isChat && exp) {
-              if (t.start_time !== exp.start || t.end_time !== exp.end) ok = false;
-              if (exp.req && t.required_contract !== exp.req) ok = false;
-            }
-            return [t.studio, t.jour, t.start_time, t.end_time, `${t.duree_heures}h`, t.required_contract ?? "—", (t.allowed_contracts ?? []).join(",") || "—", ok ? <Badge ok /> : <Badge />];
-          })}
-        />
+      <Card title="Staffing templates par studio × jour" className="mb-4">
+        {data.templates_by_studio_day.length === 0 ? <Empty>Aucun template</Empty> :
+          <Table headers={["Studio", "Jour", "Slots"]}
+            rows={data.templates_by_studio_day.map((r: any) => [r.studio, DAYS[r.day], r.count])} />}
       </Card>
 
-      {/* S2 */}
-      <Card>
-        <Title>2. Profils cuisine</Title>
-        <Table headers={["Nom", "Email", "Contrats", "Rôles", "Studios", "Score", "Status", "Test"]}
-          rows={data.s2.map((p: any) => [p.nom, p.email, (p.contrats ?? []).join(","), (p.roles ?? []).join(","), (p.studios ?? []).join(","), p.score ?? "—", p.status, p.is_test ? "✓" : ""])}
-        />
+      <Card title={`Employés sans aucune dispo (${data.employees_without_dispo.length})`} className="mb-4">
+        {data.employees_without_dispo.length === 0
+          ? <div style={{ fontSize: 12, color: "#16a34a" }}>✓ Tout le monde a au moins une dispo</div>
+          : <div style={{ maxHeight: 240, overflowY: "auto" }}>
+              {data.employees_without_dispo.map((e: any) => (
+                <div key={e.user_id} style={{ fontSize: 12, padding: "4px 0", borderBottom: "0.5px solid var(--border)" }}>{e.name}</div>
+              ))}
+            </div>}
       </Card>
 
-      {/* S3 */}
-      <Card>
-        <Title>3. Dispos {data.cdi_cuisine_employee?.nom ?? "(aucun CDI cuisine trouvé)"} — {data.period?.start} → {data.period?.end}</Title>
-        {data.s3.length === 0 ? <Empty>Aucune dispo</Empty> :
-          <Table headers={["Date", "Jour", "Début", "Fin", "Durée"]} rows={data.s3.map((a: any) => [a.avail_date, a.jour, a.start_time, a.end_time, `${a.duree}h`])} />}
-      </Card>
-
-      {/* S4 */}
-      <Card>
-        <Title>4. Dispos cuisine non-CDI le week-end — {data.period?.start} → {data.period?.end}</Title>
-        {data.s4.length === 0 ? <Empty>Aucune dispo cuisine non-CDI le week-end</Empty> :
-          <Table headers={["Nom", "Date", "Jour", "Début", "Fin"]} rows={data.s4.map((a: any) => [a.nom, a.avail_date, a.jour, a.start_time, a.end_time])} />}
-      </Card>
-
-      {/* S5 */}
-      <Card>
-        <Title>5. Shifts {data.cdi_cuisine_employee?.nom ?? "(CDI cuisine)"} sur la période</Title>
-        {data.s5.length === 0 ? <Empty>Aucun shift écrit (probablement dry_run uniquement)</Empty> :
-          <Table headers={["Date", "Jour", "Début", "Fin", "Rôle", "Studio", "Durée"]} rows={data.s5.map((s: any) => [s.shift_date, s.jour, s.start_time, s.end_time, s.business_role, s.studio, `${s.duree}h`])} />}
-      </Card>
-
-      {/* S6 */}
-      <Card>
-        <Title>6. Extraits du moteur ({data.s6.path})</Title>
-        <Sub>Bloc target_weekly_cdi_hours</Sub>
-        <Pre>{data.s6.target || "—"}</Pre>
-        <Sub>Bloc kitchen_solo</Sub>
-        <Pre>{data.s6.solo || "—"}</Pre>
-        <Sub>Bloc max_shift_hours_cdi</Sub>
-        <Pre>{data.s6.cap || "—"}</Pre>
-      </Card>
-
-      {/* S7 */}
-      <Card>
-        <Title>7. Settings IA actuels</Title>
-        {data.settings ? (
-          <Table headers={["Clé", "Valeur", "Attendu", "OK"]} rows={[
-            ["target_weekly_cdi_hours", data.settings.target_weekly_cdi_hours, 35, Number(data.settings.target_weekly_cdi_hours) === 35 ? <Badge ok /> : <Badge />],
-            ["cdi_hours_tolerance", data.settings.cdi_hours_tolerance, 2, Number(data.settings.cdi_hours_tolerance) === 2 ? <Badge ok /> : <Badge />],
-            ["max_weekly_cdi_hours", data.settings.max_weekly_cdi_hours, 48, ""],
-            ["max_shift_hours_cdi", data.settings.max_shift_hours_cdi, 8, Number(data.settings.max_shift_hours_cdi) === 8 ? <Badge ok /> : <Badge />],
-            ["default_score_when_null", data.settings.default_score_when_null, 7, Number(data.settings.default_score_when_null) === 7 ? <Badge ok /> : <Badge />],
-          ]} />
-        ) : <Empty>Aucun settings</Empty>}
+      <Card title="Dispos par employé">
+        <div style={{ maxHeight: 360, overflowY: "auto" }}>
+          <Table headers={["Employé", "Lignes"]}
+            rows={data.dispo_per_employee.map((e: any) => [
+              e.name,
+              <span style={{ color: e.dispo_count === 0 ? "#b91c1c" : "var(--foreground)", fontWeight: 500 }}>{e.dispo_count}</span>,
+            ])} />
+        </div>
       </Card>
     </div>
   );
 }
 
-function Card({ children }: any) { return <div className="rounded-xl border p-4 mb-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>{children}</div>; }
-function Title({ children }: any) { return <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>{children}</div>; }
-function Sub({ children }: any) { return <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 10, marginBottom: 4 }}>{children}</div>; }
+/* ============== TAB 3 — FEATURES ============== */
+function FeaturesTab({ audit, diag, loading, err }: any) {
+  if (loading && !audit) return <Loading />;
+  if (err && !audit && !diag) return <ErrBox msg={err} />;
+
+  return (
+    <div>
+      {audit?.sections && (
+        <div className="space-y-4">
+          {audit.sections.map((s: any) => (
+            <Card key={s.key} title={`${s.key}. ${s.title}`}>
+              {s.error ? <ErrInline>{s.error}</ErrInline> : (
+                <div className="space-y-1.5">
+                  {s.checks.map((c: any) => (
+                    <div key={c.id} className="flex items-start gap-2" style={{ fontSize: 12 }}>
+                      <StatusDot status={c.status} />
+                      <div className="flex-1 min-w-0">
+                        <div><span style={{ color: "var(--muted-foreground)", fontFamily: "monospace", fontSize: 11 }}>{c.id}</span> {c.label}</div>
+                        {c.detail && <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{c.detail}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {audit?.orphans?.length > 0 && (
+        <Card title="🧹 Orphelins détectés" className="mt-4">
+          <Table headers={["Relation", "Manquants"]}
+            rows={audit.orphans.map((o: any) => [
+              o.rel,
+              <span style={{ color: o.count > 0 ? "#b91c1c" : "#16a34a", fontWeight: 500 }}>{o.error ? `err: ${o.error}` : o.count}</span>,
+            ])} />
+        </Card>
+      )}
+
+      {diag?.settings && (
+        <Card title="⚙️ Settings IA détectés" className="mt-4">
+          <Table headers={["Clé", "Valeur"]}
+            rows={Object.entries(diag.settings).map(([k, v]: any) => [k, String(v)])} />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ============== Helpers ============== */
+function Card({ title, children, className = "" }: any) {
+  return (
+    <div className={`rounded-xl border p-4 ${className}`} style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+      <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+function KV({ k, v, muted }: any) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span style={{ color: "var(--muted-foreground)", fontSize: 11 }}>{k}</span>
+      <span style={{ fontWeight: muted ? 400 : 500, color: muted ? "var(--muted-foreground)" : "var(--foreground)", fontFamily: "monospace", fontSize: 11 }}>{String(v)}</span>
+    </div>
+  );
+}
 function Empty({ children }: any) { return <div style={{ color: "var(--muted-foreground)", fontSize: 12 }}>{children}</div>; }
-function Pre({ children }: any) { return <pre style={{ fontFamily: "monospace", fontSize: 11, padding: 10, background: "var(--muted)", borderRadius: 6, overflowX: "auto", whiteSpace: "pre" }}>{children}</pre>; }
-function Badge({ ok }: { ok?: boolean }) {
-  return ok
-    ? <span className="inline-flex items-center gap-1" style={{ color: "#16a34a", fontSize: 11 }}><CheckCircle2 size={12} /> ✅</span>
-    : <span className="inline-flex items-center gap-1" style={{ color: "#b91c1c", fontSize: 11 }}><XCircle size={12} /> ❌</span>;
+function ErrInline({ children }: any) { return <div style={{ fontSize: 11, color: "#b91c1c", fontFamily: "monospace" }}>{children}</div>; }
+function ErrBox({ msg }: { msg: string }) { return <div className="rounded border p-4" style={{ borderColor: "#fecaca", backgroundColor: "#fef2f2", color: "#b91c1c", fontSize: 12 }}><AlertTriangle size={14} className="inline mr-2" />{msg}</div>; }
+function Loading() { return <div className="p-6 flex items-center gap-2" style={{ color: "var(--muted-foreground)" }}><Loader2 size={14} className="animate-spin" /> Chargement…</div>; }
+function BadgeOk({ label }: { label: string }) { return <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5" style={{ fontSize: 10, color: "#15803d", backgroundColor: "#dcfce7" }}><CheckCircle2 size={10} /> {label}</span>; }
+function BadgeKo({ label }: { label: string }) { return <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5" style={{ fontSize: 10, color: "#b91c1c", backgroundColor: "#fee2e2" }}><XCircle size={10} /> {label}</span>; }
+function StatusDot({ status }: { status: string }) {
+  const color = status === "ok" ? "#16a34a" : status === "partial" ? "#F0997B" : "#b91c1c";
+  return <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, backgroundColor: color, marginTop: 5, flexShrink: 0 }} />;
 }
 function Table({ headers, rows }: { headers: string[]; rows: any[][] }) {
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
         <thead><tr>{headers.map((h, i) => <th key={i} style={{ textAlign: "left", padding: "6px 8px", borderBottom: "0.5px solid var(--border)", fontWeight: 500, color: "var(--muted-foreground)", fontSize: 11 }}>{h}</th>)}</tr></thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>{r.map((c, j) => <td key={j} style={{ padding: "6px 8px", borderBottom: "0.5px solid var(--border)" }}>{c as any}</td>)}</tr>
-          ))}
-        </tbody>
+        <tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j} style={{ padding: "6px 8px", borderBottom: "0.5px solid var(--border)" }}>{c as any}</td>)}</tr>)}</tbody>
       </table>
     </div>
+  );
+}
+function SimpleTable({ rows }: { rows: any[][] }) {
+  return (
+    <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+      <tbody>{rows.map((r, i) => (
+        <tr key={i}>
+          <td style={{ padding: "4px 6px", borderBottom: "0.5px solid var(--border)" }}>{r[0]}</td>
+          <td style={{ padding: "4px 6px", borderBottom: "0.5px solid var(--border)", textAlign: "right", fontWeight: 500 }}>{r[1]}</td>
+        </tr>
+      ))}</tbody>
+    </table>
   );
 }
