@@ -61,11 +61,14 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [validated, setValidated] = useState(false);
   const [lockInfo, setLockInfo] = useState<AvailabilityLockInfo | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [closedDays, setClosedDays] = useState<Set<number>>(new Set());
 
   const createFn = useServerFn(createAvailability);
   const updateFn = useServerFn(updateAvailability);
   const deleteFn = useServerFn(deleteAvailability);
   const lockInfoFn = useServerFn(getAvailabilityLockInfo);
+  const closedDaysFn = useServerFn(getClosedDaysForMonth);
+
 
   const dateISO = (day: number) =>
     `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
