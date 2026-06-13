@@ -869,6 +869,24 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
   );
 }
 
+function ZoneLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 11,
+        fontWeight: 500,
+        color: "var(--muted-foreground)",
+        letterSpacing: "0.04em",
+        marginTop: 8,
+        marginBottom: 10,
+        paddingLeft: 2,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function QuickLink({ icon, label, sub, onClick, badge, highlight }: { icon: React.ReactNode; label: string; sub: string; onClick?: () => void; badge?: number; highlight?: boolean }) {
   return (
     <button onClick={onClick} className="relative rounded-xl border px-4 py-4 text-left" style={{ backgroundColor: highlight ? "var(--coral-light)" : "#fff", borderColor: highlight ? "var(--coral)" : "rgba(0,0,0,0.08)", cursor: "pointer" }}>
