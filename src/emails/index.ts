@@ -10,6 +10,7 @@ import DemandeRefuseeEmail from "./employee/DemandeRefuseeEmail";
 import PlanningPublieEmail from "./employee/PlanningPublieEmail";
 import RappelShiftEmail from "./employee/RappelShiftEmail";
 import DebriefingShiftEmail from "./employee/DebriefingShiftEmail";
+import DispoReminderEmail from "./employee/DispoReminderEmail";
 
 import NouvelleDemandeEmail from "./admin/NouvelleDemandeEmail";
 import TrouCritiqueEmail from "./admin/TrouCritiqueEmail";
@@ -187,6 +188,22 @@ export const EMAIL_REGISTRY: EmailTemplate[] = [
       managerComment:
         "Super énergie ce soir, les clients étaient ravis !",
       statsUrl: "https://app.kadence.io/staff-app/stats",
+    },
+  },
+  {
+    id: "dispo-reminder",
+    name: "Rappel dispos employé",
+    category: "employee",
+    description:
+      "Envoyé quand l'admin relance un employé qui n'a pas saisi ses dispos pour le mois prochain",
+    subject: "📅 Rappel — tes dispos pour Juillet 2026 sont attendues",
+    component: DispoReminderEmail,
+    mockData: {
+      firstName: "Léa",
+      monthLabel: "Juillet 2026",
+      deadlineLabel: "Vendredi 25 juin à 23h59",
+      studioName: "Skult Châtelain",
+      statsAppUrl: "https://app.kadence.io/staff-app",
     },
   },
   {

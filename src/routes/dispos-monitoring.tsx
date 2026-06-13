@@ -96,7 +96,7 @@ function DisposMonitoringPage() {
       const res = await sendReminders({
         data: { year, month, userIds: Array.from(selected) },
       });
-      toast.success(`Rappel envoyé à ${res.sent} employé${res.sent > 1 ? "s" : ""}`);
+      toast.success(`✅ Relance envoyée : ${res.notifsSent} notification${res.notifsSent > 1 ? "s" : ""} + ${res.emailsSent} email${res.emailsSent > 1 ? "s" : ""}`);
       clearSelection();
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur lors de l'envoi");
