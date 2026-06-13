@@ -261,15 +261,22 @@ function DisposMonitoringPage() {
               <tr><td colSpan={7} className="px-3 py-6 text-center" style={{ color: "var(--muted-foreground)" }}>Aucun employé</td></tr>
             )}
             {filteredRows.map((r) => (
-              <tr key={r.userId} style={{ borderTop: "1px solid var(--border)" }}>
-                <td className="px-3 py-2">
+              <tr
+                key={r.userId}
+                style={{ borderTop: "1px solid var(--border)", cursor: "pointer" }}
+                className="hover:bg-[var(--muted)]/40 transition-colors"
+                onClick={() =>
+                  navigate({ to: "/dispos-monitoring/$userId", params: { userId: r.userId }, search: { year, month } })
+                }
+              >
+                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={selected.has(r.userId)}
                     onChange={() => toggle(r.userId)}
                   />
                 </td>
-                <td className="px-3 py-2">{r.firstName} {r.lastName}</td>
+                <td className="px-3 py-2" style={{ fontWeight: 500 }}>{r.firstName} {r.lastName}</td>
                 <td className="px-3 py-2" style={{ color: "var(--muted-foreground)" }}>
                   {r.contract ?? "—"}
                 </td>
