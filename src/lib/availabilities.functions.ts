@@ -621,3 +621,41 @@ export const getUserAvailabilitiesForMonth = createServerFn({ method: "GET" })
       availabilities: avails ?? [],
     };
   });
+
+// =============================================================================
+// getUserAvailabilitiesAll — toutes les dispos d'un employé (tous mois)
+// =============================================================================
+export const getUserAvailabilitiesAll = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ userId: z.string().uuid() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: roleRow } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "manager"])
+      .maybeSingle();
+    if (!roleRow) throw new Error("Admin/manager uniquement");
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, first_name, last_name, contract")
+      .eq("id", data.userId)
+      .maybeSingle();
+
+    const { data: avails } = await supabaseAdmin
+      .from("availabilities")
+      .select("id, avail_date, start_time, end_time, created_at")
+      .eq("user_id", data.userId)
+      .order("avail_date", { ascending: true })
+      .order("start_time", { ascending: true });
+
+    return {
+      profile: profile ?? null,
+      availabilities: avails ?? [],
+    };
+  });
