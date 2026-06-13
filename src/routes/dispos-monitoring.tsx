@@ -283,7 +283,7 @@ function DisposMonitoringPage() {
                 </td>
                 <td className="px-3 py-2" style={{ fontWeight: 500 }}>{r.firstName} {r.lastName}</td>
                 <td className="px-3 py-2" style={{ color: "var(--muted-foreground)" }}>
-                  {r.contract ?? "—"}
+                  {(r.contracts && r.contracts.length > 0 ? r.contracts : (r.contract ? [r.contract] : [])).join(", ") || "—"}
                 </td>
                 <td className="px-3 py-2" style={{ color: "var(--muted-foreground)" }}>
                   {r.studioIds.length === 0 ? "—" : r.studioIds.map(studioName).join(", ")}
