@@ -62,6 +62,21 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [lockInfo, setLockInfo] = useState<AvailabilityLockInfo | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [closedDays, setClosedDays] = useState<Set<number>>(new Set());
+  const [minShiftHours, setMinShiftHours] = useState<number>(3);
+
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("ai_planning_settings")
+      .select("min_shift_hours")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const v = Number((data as any)?.min_shift_hours);
+        if (Number.isFinite(v) && v > 0) setMinShiftHours(v);
+      });
+  }, [open]);
 
   const createFn = useServerFn(createAvailability);
   const updateFn = useServerFn(updateAvailability);
