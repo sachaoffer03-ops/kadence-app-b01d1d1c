@@ -79,7 +79,7 @@ function AISettings() {
   });
   const [bounds, setBounds] = useState({ min: 3, max: 6 });
   const [weekly, setWeekly] = useState({ student: 15, flexi: 20, cdi: 48 });
-  const [deadlineDay, setDeadlineDay] = useState<number>(20);
+  const [deadlineDay, setDeadlineDay] = useState<number>(25);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -101,7 +101,7 @@ function AISettings() {
             flexi: r.max_weekly_flexi_hours ?? 20,
             cdi: r.max_weekly_cdi_hours ?? 48,
           });
-          setDeadlineDay(r.availability_deadline_day ?? 20);
+          setDeadlineDay((r as any).availability_lock_day ?? r.availability_deadline_day ?? 25);
         }
         setLoading(false);
       });
@@ -117,11 +117,12 @@ function AISettings() {
       max_weekly_flexi_hours: weekly.flexi,
       max_weekly_cdi_hours: weekly.cdi,
       availability_deadline_day: deadlineDay,
+      availability_lock_day: deadlineDay,
       ...rules,
     };
     const { error } = id
-      ? await supabase.from("ai_planning_settings").update(payload).eq("id", id)
-      : await supabase.from("ai_planning_settings").insert(payload);
+      ? await supabase.from("ai_planning_settings").update(payload as any).eq("id", id)
+      : await supabase.from("ai_planning_settings").insert(payload as any);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Réglages enregistrés");
@@ -193,16 +194,16 @@ function AISettings() {
       </div>
 
       <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Deadline de saisie des dispos</div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Jour limite de saisie des dispos</div>
         <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16 }}>
-          Jour du mois M-1 à partir duquel les employés ne peuvent plus saisir/modifier leurs dispos pour le mois M. Une bannière de countdown s'affiche dans leur app à 3 jours.
+          Jusqu'à quel jour du mois les employés peuvent saisir leurs dispos pour le mois suivant. Ex : 25 = les dispos de juillet doivent être saisies avant le 25 juin 23h59.
         </div>
         <label className="flex items-center gap-2" style={{ fontSize: 13 }}>
           Jour
           <input type="number" min={1} max={28} value={deadlineDay}
             onChange={(e) => setDeadlineDay(Math.min(28, Math.max(1, Number(e.target.value))))}
             className="rounded-md px-2 py-1 outline-none" style={{ width: 70, fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
-          <span style={{ color: "var(--muted-foreground)" }}>du mois précédent</span>
+          <span style={{ color: "var(--muted-foreground)" }}>du mois</span>
         </label>
       </div>
 

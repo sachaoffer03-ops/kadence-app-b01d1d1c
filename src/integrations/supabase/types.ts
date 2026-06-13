@@ -218,6 +218,7 @@ export type Database = {
       ai_planning_settings: {
         Row: {
           availability_deadline_day: number | null
+          availability_lock_day: number
           cdi_hours_tolerance: number
           default_score_when_null: number
           enforce_max_weekly_cdi: boolean
@@ -243,6 +244,7 @@ export type Database = {
         }
         Insert: {
           availability_deadline_day?: number | null
+          availability_lock_day?: number
           cdi_hours_tolerance?: number
           default_score_when_null?: number
           enforce_max_weekly_cdi?: boolean
@@ -268,6 +270,7 @@ export type Database = {
         }
         Update: {
           availability_deadline_day?: number | null
+          availability_lock_day?: number
           cdi_hours_tolerance?: number
           default_score_when_null?: number
           enforce_max_weekly_cdi?: boolean

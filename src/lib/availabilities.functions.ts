@@ -261,3 +261,72 @@ export const getAvailabilityDeadline = createServerFn({ method: "GET" })
       planning_published: published,
     };
   });
+
+// =============================================================================
+// getAvailabilityLockInfo
+// Dispos ouvertes en permanence. Chaque mois a une deadline : jour
+// `availability_lock_day` du mois précédent à 23:59. Les mois passés / courant
+// sont verrouillés, le mois suivant l'est aussi quand la deadline est passée.
+// =============================================================================
+export interface AvailabilityLockInfo {
+  lockDay: number;
+  currentMonth: { year: number; month: number };
+  nextDeadline: string;
+  msUntilDeadline: number;
+  lockedMonthsForUser: Array<{ year: number; month: number; locked: boolean }>;
+}
+
+export const getAvailabilityLockInfo = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AvailabilityLockInfo> => {
+    const { supabase } = context;
+    const { data: settings } = await supabase
+      .from("ai_planning_settings")
+      .select("availability_lock_day")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lockDay = (settings as any)?.availability_lock_day ?? 25;
+
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+
+    // Prochaine deadline = lockDay ce mois si pas encore passée, sinon lockDay le mois prochain
+    const thisMonthDeadline = new Date(currentYear, currentMonth - 1, lockDay, 23, 59, 59, 999);
+    let nextDeadlineDate: Date;
+    if (now.getTime() <= thisMonthDeadline.getTime()) {
+      nextDeadlineDate = thisMonthDeadline;
+    } else {
+      const ny = currentMonth === 12 ? currentYear + 1 : currentYear;
+      const nm = currentMonth === 12 ? 1 : currentMonth + 1;
+      nextDeadlineDate = new Date(ny, nm - 1, lockDay, 23, 59, 59, 999);
+    }
+
+    const nextMonthYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+    const nextMonthMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+    const nextMonthLocked = currentDay > lockDay;
+
+    const lockedMonthsForUser: Array<{ year: number; month: number; locked: boolean }> = [];
+    for (let offset = 0; offset < 13; offset++) {
+      const target = new Date(currentYear, currentMonth - 1 + offset, 1);
+      const ty = target.getFullYear();
+      const tm = target.getMonth() + 1;
+      let locked = false;
+      if (ty < currentYear || (ty === currentYear && tm <= currentMonth)) {
+        locked = true;
+      } else if (ty === nextMonthYear && tm === nextMonthMonth) {
+        locked = nextMonthLocked;
+      }
+      lockedMonthsForUser.push({ year: ty, month: tm, locked });
+    }
+
+    return {
+      lockDay,
+      currentMonth: { year: currentYear, month: currentMonth },
+      nextDeadline: nextDeadlineDate.toISOString(),
+      msUntilDeadline: Math.max(0, nextDeadlineDate.getTime() - now.getTime()),
+      lockedMonthsForUser,
+    };
+  });
