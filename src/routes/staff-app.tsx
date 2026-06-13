@@ -349,15 +349,23 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     : "";
 
 
+  const online = useOnlineStatus();
+  const { cached: cachedShifts, save: saveShiftsCache, lastSync } = useLocalCache<ShiftRow[]>(`kadence:upcoming:${userId}`);
+
   useEffect(() => {
     const today = todayISO();
     const in7 = new Date(); in7.setDate(in7.getDate() + 7);
     const weekEnd = in7.toISOString().slice(0, 10);
     const load = async () => {
-      const { data: next } = await supabase.from("shifts")
+      const { data: next, error } = await supabase.from("shifts")
         .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
         .eq("user_id", userId).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
-      if (next) setShifts(next);
+      if (next) {
+        setShifts(next);
+        saveShiftsCache(next as ShiftRow[]);
+      } else if (error && cachedShifts) {
+        setShifts(cachedShifts);
+      }
 
       const { data: week } = await supabase.from("shifts")
         .select("start_time,end_time").eq("user_id", userId)
@@ -371,7 +379,11 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         setWeekStats({ hours: Math.round(hours), count: week.length });
       }
     };
-    load();
+    if (online) {
+      load();
+    } else if (cachedShifts) {
+      setShifts(cachedShifts);
+    }
 
     const channel = supabase.channel(`shifts-accueil-${userId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` }, () => {
@@ -381,7 +393,8 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, online]);
 
   const firstName = profile?.first_name || "";
   const initial = (firstName.charAt(0) || "?").toUpperCase();
