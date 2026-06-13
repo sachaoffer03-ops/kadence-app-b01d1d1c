@@ -10,8 +10,10 @@ import {
   updateAvailability,
   deleteAvailability,
   getAvailabilityLockInfo,
+  getClosedDaysForMonth,
   type AvailabilityLockInfo,
 } from "@/lib/availabilities.functions";
+
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
@@ -59,11 +61,14 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [validated, setValidated] = useState(false);
   const [lockInfo, setLockInfo] = useState<AvailabilityLockInfo | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [closedDays, setClosedDays] = useState<Set<number>>(new Set());
 
   const createFn = useServerFn(createAvailability);
   const updateFn = useServerFn(updateAvailability);
   const deleteFn = useServerFn(deleteAvailability);
   const lockInfoFn = useServerFn(getAvailabilityLockInfo);
+  const closedDaysFn = useServerFn(getClosedDaysForMonth);
+
 
   const dateISO = (day: number) =>
     `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -78,6 +83,18 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     try { if (typeof window !== "undefined") flag = window.localStorage?.getItem(disposKey(userId, year, month)) ?? null; } catch {}
     setValidated(!!flag);
     refreshLockInfo();
+    closedDaysFn({ data: { year, month: month + 1 } })
+      .then((r: any) => {
+        const set = new Set<number>(r?.closedDays ?? []);
+        setClosedDays(set);
+        setSelectedDay((cur) => {
+          if (!set.has(cur)) return cur;
+          for (let d = 1; d <= daysInMonth; d++) if (!set.has(d)) return d;
+          return cur;
+        });
+      })
+      .catch(() => setClosedDays(new Set()));
+
     (async () => {
       setLoading(true);
       const start = dateISO(1);
@@ -101,7 +118,8 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       setRanges(map);
       setLoading(false);
     })();
-  }, [open, userId, year, month, daysInMonth, refreshLockInfo]);
+  }, [open, userId, year, month, daysInMonth, refreshLockInfo, closedDaysFn]);
+
 
   // Tick countdown (every 30s suffisant)
   useEffect(() => {
@@ -364,31 +382,38 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
               <div key={`pad-${i}`} className="aspect-square" />
             ))}
             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-              const dow = new Date(year, month, day).getDay();
-              const isWeekend = dow === 0 || dow === 6;
+              const isClosed = closedDays.has(day);
               const hasDispo = (ranges[day] ?? []).length > 0;
               const isSelected = day === selectedDay;
               return (
                 <button
                   key={day}
-                  onClick={() => setSelectedDay(day)}
+                  onClick={() => { if (!isClosed) setSelectedDay(day); }}
+                  disabled={isClosed}
+                  title={isClosed ? "Studio fermé ce jour-là" : undefined}
                   className="aspect-square rounded-xl relative flex items-center justify-center transition-all"
                   style={{
-                    backgroundColor: isSelected ? "#fff" : isWeekend ? "rgba(0,0,0,0.025)" : "#fff",
-                    border: isSelected
-                      ? "1.5px solid var(--coral)"
-                      : hasDispo
-                        ? "1px solid color-mix(in oklab, var(--coral) 35%, transparent)"
-                        : "1px solid rgba(0,0,0,0.06)",
-                    color: isWeekend && !hasDispo ? "var(--muted-foreground)" : "var(--foreground)",
+                    backgroundColor: isClosed
+                      ? "rgba(0,0,0,0.04)"
+                      : isSelected ? "#fff" : "#fff",
+                    border: isClosed
+                      ? "1px dashed rgba(0,0,0,0.12)"
+                      : isSelected
+                        ? "1.5px solid var(--coral)"
+                        : hasDispo
+                          ? "1px solid color-mix(in oklab, var(--coral) 35%, transparent)"
+                          : "1px solid rgba(0,0,0,0.06)",
+                    color: isClosed
+                      ? "rgba(0,0,0,0.3)"
+                      : "var(--foreground)",
                     fontSize: 12,
                     fontWeight: hasDispo || isSelected ? 600 : 400,
-                    cursor: "pointer",
+                    cursor: isClosed ? "not-allowed" : "pointer",
                   }}
-                  aria-label={`Jour ${day}`}
+                  aria-label={`Jour ${day}${isClosed ? " — fermé" : ""}`}
                 >
                   {day}
-                  {hasDispo && (
+                  {hasDispo && !isClosed && (
                     <span
                       className="absolute"
                       style={{
@@ -404,6 +429,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
               );
             })}
           </div>
+
 
           {/* Détail du jour sélectionné */}
           {(() => {
