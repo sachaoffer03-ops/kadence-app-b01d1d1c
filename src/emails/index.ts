@@ -11,6 +11,7 @@ import PlanningPublieEmail from "./employee/PlanningPublieEmail";
 import RappelShiftEmail from "./employee/RappelShiftEmail";
 import DebriefingShiftEmail from "./employee/DebriefingShiftEmail";
 import DispoReminderEmail from "./employee/DispoReminderEmail";
+import DispoDeadlineReminderEmail from "./employee/DispoDeadlineReminderEmail";
 
 import NouvelleDemandeEmail from "./admin/NouvelleDemandeEmail";
 import TrouCritiqueEmail from "./admin/TrouCritiqueEmail";
