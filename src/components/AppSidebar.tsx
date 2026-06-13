@@ -123,22 +123,23 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 <>
                   <item.icon size={15} strokeWidth={1.8} />
                   <span className="flex-1">{item.label}</span>
-                  {item.badge && (
+                  {item.badge ? (
                     <span
-                      className="inline-flex items-center justify-center rounded-full"
+                      className="inline-flex items-center justify-center rounded-full tabular-nums"
                       style={{
                         fontSize: 10,
                         fontWeight: 500,
-                        minWidth: 18,
+                        lineHeight: 1,
+                        minWidth: 20,
                         height: 18,
-                        padding: "0 5px",
+                        padding: "0 6px",
                         backgroundColor: item.badgeType === "danger" ? "var(--danger-bg)" : "var(--muted)",
                         color: item.badgeType === "danger" ? "var(--danger-text)" : "var(--muted-foreground)",
                       }}
                     >
                       {item.badge}
                     </span>
-                  )}
+                  ) : null}
                 </>
               );
               if (isExternal) {
