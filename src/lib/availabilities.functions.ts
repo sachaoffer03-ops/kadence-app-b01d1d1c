@@ -492,3 +492,52 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
 
     return { ok: true, sent: data.userIds.length };
   });
+
+// =============================================================================
+// getUserAvailabilitiesForMonth — détail des dispos d'un employé pour un mois
+// =============================================================================
+export const getUserAvailabilitiesForMonth = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      userId: z.string().uuid(),
+      year: z.number().int().min(2020).max(2100),
+      month: z.number().int().min(1).max(12),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: roleRow } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "manager"])
+      .maybeSingle();
+    if (!roleRow) throw new Error("Admin/manager uniquement");
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const start = `${data.year}-${pad(data.month)}-01`;
+    const lastDay = new Date(data.year, data.month, 0).getDate();
+    const end = `${data.year}-${pad(data.month)}-${pad(lastDay)}`;
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, first_name, last_name, contract")
+      .eq("id", data.userId)
+      .maybeSingle();
+
+    const { data: avails } = await supabaseAdmin
+      .from("availabilities")
+      .select("id, avail_date, start_time, end_time, created_at")
+      .eq("user_id", data.userId)
+      .gte("avail_date", start)
+      .lte("avail_date", end)
+      .order("avail_date", { ascending: true })
+      .order("start_time", { ascending: true });
+
+    return {
+      profile: profile ?? null,
+      availabilities: avails ?? [],
+    };
+  });
