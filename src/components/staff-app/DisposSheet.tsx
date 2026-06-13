@@ -137,6 +137,17 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     return `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(sec).padStart(2, "0")}s`;
   };
 
+  const formatCountdownShort = (ms: number) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const days = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (days > 0) return `${days}j ${h}h`;
+    if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+    const sec = s % 60;
+    return `${m}m ${String(sec).padStart(2, "0")}s`;
+  };
+
   const countdownColor = (ms: number) => {
     const days = ms / 86_400_000;
     if (days > 7) return "#16a34a"; // vert
@@ -253,24 +264,26 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       {/* Countdown global vers la prochaine deadline */}
       {msLeftGlobal !== null && nextDeadlineMs && (
         <div
-          className="rounded-xl px-3 py-2 mb-3 flex items-center justify-between gap-2"
+          className="rounded-xl px-3 py-2 mb-3 flex items-center gap-2 whitespace-nowrap overflow-hidden"
           style={{ backgroundColor: "var(--muted)" }}
         >
-          <div className="flex items-center gap-2" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-            <Clock size={13} />
-            <span>
-              Deadline <span style={{ textTransform: "capitalize", fontWeight: 600, color: "var(--foreground)" }}>{monthLabel}</span> · <strong>{fmtDateFR(new Date(nextDeadlineMs))}</strong>
-            </span>
-          </div>
+          <Clock size={13} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: "var(--muted-foreground)", overflow: "hidden", textOverflow: "ellipsis" }}>
+            Deadline <span style={{ textTransform: "capitalize", fontWeight: 600, color: "var(--foreground)" }}>{monthLabel}</span>
+            <span style={{ margin: "0 6px" }}>·</span>
+            <strong style={{ color: "var(--foreground)" }}>{new Date(nextDeadlineMs).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}</strong>
+          </span>
           <span
+            className="ml-auto"
             style={{
               fontSize: 13,
               fontWeight: 600,
               color: countdownColor(msLeftGlobal),
               fontVariantNumeric: "tabular-nums",
+              flexShrink: 0,
             }}
           >
-            {formatCountdown(msLeftGlobal)}
+            {formatCountdownShort(msLeftGlobal)}
           </span>
         </div>
       )}
