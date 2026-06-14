@@ -318,7 +318,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       open={open}
       onClose={onClose}
       title="Mes disponibilités"
-      footer={showValidate ? <PrimaryButton onClick={validate}>Valider mes dispos</PrimaryButton> : undefined}
+      footer={<PrimaryButton onClick={validate} disabled={!showValidate}>Valider mes dispos</PrimaryButton>}
     >
       {/* Countdown global vers la prochaine deadline */}
       {msLeftGlobal !== null && nextDeadlineMs && (
