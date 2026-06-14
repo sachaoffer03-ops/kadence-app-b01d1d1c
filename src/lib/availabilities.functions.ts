@@ -322,9 +322,9 @@ export const getAvailabilityLockInfo = createServerFn({ method: "GET" })
 
     const lockedMonthsForUser: Array<{ year: number; month: number; locked: boolean }> = [];
     for (let offset = 0; offset < 13; offset++) {
-      const target = new Date(currentYear, currentMonth - 1 + offset, 1);
-      const ty = target.getFullYear();
-      const tm = target.getMonth() + 1;
+      const target = addMonthsYM(currentYear, currentMonth, offset);
+      const ty = target.year;
+      const tm = target.month;
       let locked = false;
       if (ty < currentYear || (ty === currentYear && tm <= currentMonth)) {
         locked = true;
@@ -351,24 +351,22 @@ export const checkUserDispoStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const now = new Date();
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const now = getBrusselsDateParts();
+    const nextMonth = addMonthsYM(now.year, now.month, 1);
+    const nextMonthStart = monthStartISO(nextMonth.year, nextMonth.month);
+    const nextMonthEnd = monthEndISO(nextMonth.year, nextMonth.month);
 
     const { count } = await supabase
       .from("availabilities")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
-      .gte("avail_date", fmt(nextMonthStart))
-      .lte("avail_date", fmt(nextMonthEnd));
+      .gte("avail_date", nextMonthStart)
+      .lte("avail_date", nextMonthEnd);
 
     const c = count ?? 0;
     return {
-      nextMonthYear: nextMonthStart.getFullYear(),
-      nextMonthMonth: nextMonthStart.getMonth() + 1,
+      nextMonthYear: nextMonth.year,
+      nextMonthMonth: nextMonth.month,
       hasFilledNextMonth: c > 0,
       countNextMonth: c,
     };
