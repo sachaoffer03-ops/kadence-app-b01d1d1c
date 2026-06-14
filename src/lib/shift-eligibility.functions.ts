@@ -186,7 +186,8 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       );
 
       const weekly = hoursByUser.get(p.id) || 0;
-      const cap = maxForContract(p.contract);
+      const userContractsList = contractsByUser.get(p.id) || (p.contract ? [p.contract] : []);
+      const { cap } = getWeeklyCapForUser(p as any, userContractsList, settings as any);
       const is_saturated = weekly + shiftDurH > cap;
       const pending_proposal = pendingSet.has(p.id);
 
