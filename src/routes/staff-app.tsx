@@ -35,6 +35,15 @@ import { MonthCalendar } from "@/components/staff-app/MonthCalendar";
 import { useOnlineStatus, useLocalCache, fmtLastSync } from "@/hooks/use-offline-cache";
 import { getMyStats } from "@/lib/my-stats.functions";
 import { WifiOff } from "lucide-react";
+import {
+  addDaysISO,
+  addMonthsYM,
+  formatBrusselsDate,
+  formatBrusselsMonthLabel,
+  formatBrusselsTime,
+  getBrusselsDateParts,
+  todayBrusselsISO,
+} from "@/lib/brussels-time";
 
 import { ClockInSheet } from "@/components/staff-app/ClockInSheet";
 import { ProposalsInline } from "@/components/staff-app/ProposalsInline";
@@ -65,7 +74,7 @@ interface ShiftRow {
 }
 
 function fmtTime(t: string) { return t.slice(0, 5).replace(":", "h"); }
-function todayISO() { return new Date().toISOString().slice(0, 10); }
+function todayISO() { return todayBrusselsISO(); }
 
 function StaffAppPage() {
   const { user, loading } = useAuth();
