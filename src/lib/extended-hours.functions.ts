@@ -9,7 +9,6 @@ export const updateExtendedHours = createServerFn({ method: "POST" })
       .object({
         userId: z.string().uuid(),
         allowed: z.boolean(),
-        cap: z.number().int().min(1).max(48).nullable().optional(),
         reason: z.string().max(500).optional(),
       })
       .parse(input),
@@ -33,13 +32,12 @@ export const updateExtendedHours = createServerFn({ method: "POST" })
     if (e0) throw new Error(e0.message);
 
     const newAllowed = data.allowed;
-    const newCap = newAllowed ? (data.cap ?? null) : null;
 
     const { error: e1 } = await supabaseAdmin
       .from("profiles")
       .update({
         allow_extended_hours: newAllowed,
-        weekly_hours_cap: newCap,
+        weekly_hours_cap: null,
       })
       .eq("id", data.userId);
     if (e1) throw new Error(e1.message);
@@ -50,9 +48,9 @@ export const updateExtendedHours = createServerFn({ method: "POST" })
       previous_allowed: (prev as any)?.allow_extended_hours ?? null,
       new_allowed: newAllowed,
       previous_cap: (prev as any)?.weekly_hours_cap ?? null,
-      new_cap: newCap,
+      new_cap: null,
       reason: data.reason ?? null,
     });
 
-    return { ok: true, allowed: newAllowed, cap: newCap };
+    return { ok: true, allowed: newAllowed };
   });
