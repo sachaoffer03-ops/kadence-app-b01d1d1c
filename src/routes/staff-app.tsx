@@ -73,7 +73,14 @@ function StaffAppPage() {
   const [tab, setTab] = useState<Tab>(() => {
     if (typeof window === "undefined") return "accueil";
     const t = new URLSearchParams(window.location.search).get("tab");
-    const allowed: Tab[] = ["accueil", "planning", "pointage", "formation", "chat", "profil"];
+    const allowed: Tab[] = ["accueil", "planning", "pointage", "formation", "profil"];
+    if (t === "chat") {
+      // Legacy: l'ancien onglet "chat" ouvre désormais le FAB
+      if (typeof window !== "undefined") {
+        setTimeout(() => window.dispatchEvent(new CustomEvent("kadence:open-assistant")), 0);
+      }
+      return "accueil";
+    }
     return (allowed.includes(t as Tab) ? (t as Tab) : "accueil");
   });
 
@@ -82,12 +89,17 @@ function StaffAppPage() {
     if (typeof window === "undefined") return;
     const onPop = () => {
       const t = new URLSearchParams(window.location.search).get("tab");
-      const allowed: Tab[] = ["accueil", "planning", "pointage", "formation", "chat", "profil"];
+      const allowed: Tab[] = ["accueil", "planning", "pointage", "formation", "profil"];
+      if (t === "chat") {
+        window.dispatchEvent(new CustomEvent("kadence:open-assistant"));
+        return;
+      }
       if (t && allowed.includes(t as Tab)) setTab(t as Tab);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
 
   // Persiste l'onglet courant dans l'URL pour que tout remount (erreur,
   // refresh, retour navigateur) restitue l'onglet actif au lieu de l'accueil.
