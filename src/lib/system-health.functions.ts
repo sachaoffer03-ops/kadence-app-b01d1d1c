@@ -38,9 +38,10 @@ export const triggerAvailRemindersTick = createServerFn({ method: "POST" })
     const proto = getRequestHeader("x-forwarded-proto") ?? "https";
     const url = `${proto}://${host}/api/public/avail-reminders-tick`;
     try {
+      const apikey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
       const r = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", apikey },
         body: "{}",
       });
       const text = await r.text();
