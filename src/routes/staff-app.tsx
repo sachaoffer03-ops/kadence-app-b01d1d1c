@@ -23,6 +23,8 @@ import { checkUserDispoStatus, getAvailabilityLockInfo } from "@/lib/availabilit
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
 import { AIChatPanel } from "@/components/staff-app/AIChatPanel";
+import { AssistantFab } from "@/components/staff-app/AssistantFab";
+
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSheet";
 import { Send } from "lucide-react";
