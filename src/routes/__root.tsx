@@ -177,6 +177,21 @@ function AppShell() {
   const navigate = useNavigate();
   const { session, appRole, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage?.getItem("kadence_sidebar_collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage?.setItem("kadence_sidebar_collapsed", sidebarCollapsed ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  }, [sidebarCollapsed]);
 
   const isPublic = currentPath === "/" || PUBLIC_ROUTES.some((p) => currentPath.startsWith(p));
   const isStaffApp = currentPath.startsWith("/staff-app") || currentPath.startsWith("/staff/checklist");
