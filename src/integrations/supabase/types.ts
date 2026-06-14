@@ -887,6 +887,50 @@ export type Database = {
         }
         Relationships: []
       }
+      extended_hours_audit: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_allowed: boolean | null
+          new_cap: number | null
+          previous_allowed: boolean | null
+          previous_cap: number | null
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_allowed?: boolean | null
+          new_cap?: number | null
+          previous_allowed?: boolean | null
+          previous_cap?: number | null
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_allowed?: boolean | null
+          new_cap?: number | null
+          previous_allowed?: boolean | null
+          previous_cap?: number | null
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extended_hours_audit_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedbacks: {
         Row: {
           admin_reply: string | null
@@ -1286,6 +1330,7 @@ export type Database = {
         Row: {
           address: string | null
           ai_contributor: boolean
+          allow_extended_hours: boolean
           avatar_url: string | null
           birth_date: string | null
           city: string | null
@@ -1313,10 +1358,12 @@ export type Database = {
           student_card_valid: boolean | null
           studio_id: string | null
           updated_at: string
+          weekly_hours_cap: number | null
         }
         Insert: {
           address?: string | null
           ai_contributor?: boolean
+          allow_extended_hours?: boolean
           avatar_url?: string | null
           birth_date?: string | null
           city?: string | null
@@ -1344,10 +1391,12 @@ export type Database = {
           student_card_valid?: boolean | null
           studio_id?: string | null
           updated_at?: string
+          weekly_hours_cap?: number | null
         }
         Update: {
           address?: string | null
           ai_contributor?: boolean
+          allow_extended_hours?: boolean
           avatar_url?: string | null
           birth_date?: string | null
           city?: string | null
@@ -1375,6 +1424,7 @@ export type Database = {
           student_card_valid?: boolean | null
           studio_id?: string | null
           updated_at?: string
+          weekly_hours_cap?: number | null
         }
         Relationships: [
           {

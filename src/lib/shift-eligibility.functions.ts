@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getWeeklyCapForUser } from "@/lib/weekly-cap";
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -79,7 +80,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
     ] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("id, first_name, last_name, score, contract")
+        .select("id, first_name, last_name, score, contract, allow_extended_hours, weekly_hours_cap")
         .eq("status", "active"),
       supabaseAdmin.from("user_business_roles").select("user_id, role"),
       supabaseAdmin.from("user_studios").select("user_id, studio_id"),
@@ -165,11 +166,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       c.is_required_for_all || (c.business_role_id && roleNameById.get(c.business_role_id) === shift.business_role)
     );
 
-    const maxForContract = (c: string | null): number => {
-      if (c === "student") return Number(settings.max_weekly_student_hours);
-      if (c === "flexi") return Number(settings.max_weekly_flexi_hours);
-      return Number(settings.max_weekly_cdi_hours);
-    };
+    // NB: cap par employé via getWeeklyCapForUser (respecte allow_extended_hours/weekly_hours_cap)
 
     const eligible: EligibleEmployee[] = [];
     const partial: EligibleEmployee[] = [];
@@ -189,7 +186,8 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       );
 
       const weekly = hoursByUser.get(p.id) || 0;
-      const cap = maxForContract(p.contract);
+      const userContractsList = contractsByUser.get(p.id) || (p.contract ? [p.contract] : []);
+      const { cap } = getWeeklyCapForUser(p as any, userContractsList, settings as any);
       const is_saturated = weekly + shiftDurH > cap;
       const pending_proposal = pendingSet.has(p.id);
 

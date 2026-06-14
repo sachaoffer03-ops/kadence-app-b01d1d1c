@@ -19,6 +19,7 @@ import { EmployeeProposalsCard } from "@/components/staff/EmployeeProposalsCard"
 import { AdminEditEmployeeSheet } from "@/components/staff/AdminEditEmployeeSheet";
 import { countUnviewedDocuments } from "@/lib/documents.functions";
 import { RatingInput, RatingBadge } from "@/components/RatingInput";
+import { ExtendedHoursCard } from "@/components/staff/ExtendedHoursCard";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -39,6 +40,8 @@ interface Profile {
   student_card_valid: boolean | null;
   avatar_url: string | null;
   hourly_rate: number | null;
+  allow_extended_hours: boolean | null;
+  weekly_hours_cap: number | null;
 }
 interface ShiftRow { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; status: string; clocked_in_at: string | null; clocked_out_at: string | null; }
 interface FB { id: string; rating: number; message: string | null; created_at: string; shift_id: string | null; author_id: string; }
@@ -300,6 +303,16 @@ function EmployeeDetailPage() {
           </div>
 
           <WorkedHoursAdminCard userId={emp.id} hourlyRate={emp.hourly_rate} />
+          {canEditProfile && (
+            <ExtendedHoursCard
+              userId={emp.id}
+              firstName={emp.first_name}
+              contracts={userContracts.length > 0 ? userContracts : emp.contract ? [emp.contract] : []}
+              allowed={!!emp.allow_extended_hours}
+              cap={emp.weekly_hours_cap ?? null}
+              onSaved={load}
+            />
+          )}
           <ClockedShiftsTable userId={emp.id} />
           <EmployeeProposalsCard userId={emp.id} studios={studios} />
 

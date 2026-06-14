@@ -13,6 +13,8 @@ interface Student {
   id: string; first_name: string; last_name: string;
   quota_used: number | null; quota_max: number | null;
   studio_id: string | null;
+  allow_extended_hours: boolean | null;
+  weekly_hours_cap: number | null;
 }
 
 type StatusFilter = "tous" | "danger" | "warning" | "safe";
@@ -34,7 +36,7 @@ function ContingentsPage() {
   useEffect(() => {
     const load = async () => {
       const [{ data: profs }, { data: ubr }] = await Promise.all([
-        supabase.from("profiles").select("id,first_name,last_name,quota_used,quota_max,studio_id").eq("contract", "Étudiant"),
+        supabase.from("profiles").select("id,first_name,last_name,quota_used,quota_max,studio_id,allow_extended_hours,weekly_hours_cap").eq("contract", "Étudiant"),
         supabase.from("user_business_roles").select("user_id,role"),
       ]);
       setStudents((profs || []) as Student[]);
@@ -60,6 +62,7 @@ function ContingentsPage() {
   const warning = students.filter((e) => getQuotaStatus(e.quota_used || 0, e.quota_max || 650) === "warning").length;
   const totalUsed = students.reduce((s, e) => s + (e.quota_used || 0), 0);
   const totalMax = students.length * 650;
+  const extendedCount = students.filter((e) => e.allow_extended_hours).length;
 
   return (
     <div className="p-4 md:p-6">
@@ -68,11 +71,12 @@ function ContingentsPage() {
         <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Suivi du plafond légal de 650h par étudiant jobiste.</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5">
         <Kpi label="Étudiants actifs" value={students.length.toString()} />
         <Kpi label="Heures totales" value={`${totalUsed.toLocaleString("fr-BE")}`} sub={`/ ${totalMax.toLocaleString("fr-BE")}h`} />
         <Kpi label="Quota critique" value={atRisk.toString()} color={atRisk > 0 ? "var(--danger-text)" : undefined} sub="(>90%)" />
         <Kpi label="À surveiller" value={warning.toString()} color={warning > 0 ? "var(--warning-text)" : undefined} sub="(>50%)" />
+        <Kpi label="Avec heures étendues" value={extendedCount.toString()} color={extendedCount > 0 ? "var(--coral)" : undefined} sub="plafond perso" />
       </div>
 
       {atRisk > 0 && (
@@ -105,14 +109,14 @@ function ContingentsPage() {
         <table className="w-full" style={{ fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "0.5px solid var(--border)" }}>
-              {["Étudiant", "Postes", "Heures", "Quota", "Progression", "Statut"].map((h) => (
+              {["Étudiant", "Postes", "Plafond hebdo", "Heures", "Quota", "Progression", "Statut"].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5" style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun étudiant.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun étudiant.</td></tr>
             ) : filtered.map((emp) => {
               const used = emp.quota_used || 0, max = emp.quota_max || 650;
               const pct = Math.round((used / max) * 100);
@@ -123,6 +127,7 @@ function ContingentsPage() {
               const empRoles = roles.get(emp.id) || [];
               const firstRole = empRoles[0];
               const rc = getRoleStyle(firstRole);
+              const weeklyCap = emp.allow_extended_hours ? (emp.weekly_hours_cap ?? 48) : 15;
 
               return (
                 <tr key={emp.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
@@ -141,6 +146,16 @@ function ContingentsPage() {
                         return <span key={r} className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: c.bg, color: c.text }}>{r}</span>;
                       })}
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {emp.allow_extended_hours ? (
+                      <div className="flex items-center gap-1.5">
+                        <span style={{ fontSize: 12, fontWeight: 500 }}>{weeklyCap}h</span>
+                        <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text, #fff)" }}>étendu</span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>15h</span>
+                    )}
                   </td>
                   <td className="px-4 py-3" style={{ fontWeight: 500 }}>{used}h</td>
                   <td className="px-4 py-3" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{max}h</td>

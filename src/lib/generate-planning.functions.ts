@@ -16,6 +16,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchAll } from "@/lib/supabase-paginate";
+import { getWeeklyCapForUser } from "@/lib/weekly-cap";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const CELL_MIN = 15;             // granularité (15 min)
@@ -64,6 +65,8 @@ interface Employee {
   // Tous les shifts attribués pendant ce run (lookup conflit + repos)
   assigned: Array<{ date: string; startMin: number; endMin: number; studio_id: string; role: Role; reqId: string }>;
   totalAssignedMin: number;
+  allow_extended_hours: boolean;
+  weekly_hours_cap: number | null;
 }
 
 interface AvailRange { startMin: number; endMin: number; }
@@ -311,7 +314,7 @@ async function runEngine(ctx: EngineCtx) {
   const t_load = Date.now();
   const [settingsRows, profilesRows, contractsRows, rolesRows, studiosRows, availsRows, templatesRows, existingShifts, kitchenRolesRows, trainingCoursesRows, trainingCompletionsRows, businessRolesRows, unavailRows] = await Promise.all([
     supabase.from("ai_planning_settings").select("*").order("updated_at", { ascending: false }).limit(1),
-    fetchAll<any>(supabase.from("profiles").select("id, first_name, last_name, score, contract, status").eq("status", "active")),
+    fetchAll<any>(supabase.from("profiles").select("id, first_name, last_name, score, contract, status, allow_extended_hours, weekly_hours_cap").eq("status", "active")),
     fetchAll<any>(supabase.from("user_contracts").select("user_id, contract")),
     fetchAll<any>(supabase.from("user_business_roles").select("user_id, role")),
     fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
@@ -388,6 +391,8 @@ async function runEngine(ctx: EngineCtx) {
       weeklyMin: new Map(),
       assigned: [],
       totalAssignedMin: 0,
+      allow_extended_hours: !!p.allow_extended_hours,
+      weekly_hours_cap: p.weekly_hours_cap ?? null,
     });
     if (p.contract) employees.get(p.id)!.contracts.add(p.contract);
   }
@@ -576,10 +581,11 @@ async function runEngine(ctx: EngineCtx) {
   };
 
   const maxWeeklyHFor = (e: Employee, _studioId: string): number => {
-    if (e.contracts.has("CDI")) return s.max_weekly_cdi_hours;
-    if (e.contracts.has("Étudiant")) return s.max_weekly_student_hours;
-    if (e.contracts.has("Flexi")) return s.max_weekly_flexi_hours;
-    return 40;
+    return getWeeklyCapForUser(
+      { allow_extended_hours: e.allow_extended_hours, weekly_hours_cap: e.weekly_hours_cap },
+      e.contracts,
+      s,
+    ).cap;
   };
 
   // Conflit (chevauchement) : dans assigned[] + cellules pré-bloquées
