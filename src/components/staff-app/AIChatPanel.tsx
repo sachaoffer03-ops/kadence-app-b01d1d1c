@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Send, Bot, Sparkles, Mic, MicOff, ArrowRight } from "lucide-react";
+import { Send, Bot, Sparkles, Mic, MicOff, ArrowRight, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { askKadenceAI, getChatHistory, getChatSuggestions } from "@/lib/ai-chat.functions";
 import { useVoiceInput } from "@/hooks/use-voice-input";
+
 
 type ChatActionType =
   | "open_dispos"
