@@ -354,7 +354,7 @@ interface PendingProposal {
 export function NotificationsSheet({ open, onClose, userId, studios, onNavigate }: {
   open: boolean; onClose: () => void; userId: string;
   studios?: Record<string, string>;
-  onNavigate?: (tab: "accueil" | "planning" | "pointage" | "chat") => void;
+  onNavigate?: (tab: "accueil" | "planning" | "pointage") => void;
 }) {
   const { items, unread, markAllRead, dismissNotif } = useStaffNotifications(userId);
   const [proposals, setProposals] = useState<PendingProposal[]>([]);
@@ -437,7 +437,7 @@ export function NotificationsSheet({ open, onClose, userId, studios, onNavigate 
       return;
     }
     if (!onNavigate) return;
-    if (n.kind === "message") onNavigate("chat");
+    if (n.kind === "message") { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("kadence:open-assistant")); }
     else if (n.kind === "shift") onNavigate("planning");
     else onNavigate("accueil");
   };

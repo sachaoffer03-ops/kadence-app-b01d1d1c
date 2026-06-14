@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Home, Calendar, User, ChevronRight, ChevronLeft, Clock, GraduationCap, ArrowLeft, CheckSquare,
   AlertCircle, Replace, Inbox, MessageCircle, CalendarCheck, CheckCircle2, Phone,
-  MapPin, Cake, CreditCard, Hash, Mail, Bell, Sparkles, QrCode, CalendarDays, Bot
+  MapPin, Cake, CreditCard, Hash, Mail, Bell, Sparkles, QrCode, CalendarDays
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
@@ -22,7 +22,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { checkUserDispoStatus, getAvailabilityLockInfo } from "@/lib/availabilities.functions";
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
-import { AIChatPanel } from "@/components/staff-app/AIChatPanel";
+
+import { AssistantFab } from "@/components/staff-app/AssistantFab";
+
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSheet";
 import { Send } from "lucide-react";
@@ -43,7 +45,7 @@ export const Route = createFileRoute("/staff-app")({
   component: StaffAppPage,
 });
 
-type Tab = "accueil" | "planning" | "pointage" | "formation" | "chat" | "profil";
+type Tab = "accueil" | "planning" | "pointage" | "formation" | "profil";
 
 interface ProfileRow {
   first_name: string; last_name: string; email: string; phone: string | null;
@@ -71,7 +73,14 @@ function StaffAppPage() {
   const [tab, setTab] = useState<Tab>(() => {
     if (typeof window === "undefined") return "accueil";
     const t = new URLSearchParams(window.location.search).get("tab");
-    const allowed: Tab[] = ["accueil", "planning", "pointage", "formation", "chat", "profil"];
+    const allowed: Tab[] = ["accueil", "planning", "pointage", "formation", "profil"];
+    if (t === "chat") {
+      // Legacy: l'ancien onglet "chat" ouvre désormais le FAB
+      if (typeof window !== "undefined") {
+        setTimeout(() => window.dispatchEvent(new CustomEvent("kadence:open-assistant")), 0);
+      }
+      return "accueil";
+    }
     return (allowed.includes(t as Tab) ? (t as Tab) : "accueil");
   });
 
@@ -80,12 +89,17 @@ function StaffAppPage() {
     if (typeof window === "undefined") return;
     const onPop = () => {
       const t = new URLSearchParams(window.location.search).get("tab");
-      const allowed: Tab[] = ["accueil", "planning", "pointage", "formation", "chat", "profil"];
+      const allowed: Tab[] = ["accueil", "planning", "pointage", "formation", "profil"];
+      if (t === "chat") {
+        window.dispatchEvent(new CustomEvent("kadence:open-assistant"));
+        return;
+      }
       if (t && allowed.includes(t as Tab)) setTab(t as Tab);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
 
   // Persiste l'onglet courant dans l'URL pour que tout remount (erreur,
   // refresh, retour navigateur) restitue l'onglet actif au lieu de l'accueil.
@@ -179,11 +193,15 @@ function StaffAppPage() {
         {tab === "planning" && <PlanningTab studios={studios} userId={user.id} />}
         {tab === "pointage" && <PointageTab studios={studios} userId={user.id} />}
         {tab === "formation" && <FormationPanel userId={user.id} />}
-        {tab === "chat" && <AIChatPanel />}
+        
         {tab === "profil" && <ProfilTab profile={profile} businessRoles={businessRoles} studios={studios} userId={user.id} onProfileChange={(patch) => setProfile((p) => p ? { ...p, ...patch } : p)} onNavigate={setTab} />}
       </div>
 
       <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} userId={user.id} studios={studios} onNavigate={(t) => setTab(t)} />
+
+      <AssistantFab />
+
+
 
       <div
         className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40"
@@ -207,7 +225,6 @@ function StaffAppPage() {
             { id: "planning" as Tab, label: "Planning", icon: Calendar },
             { id: "pointage" as Tab, label: "Pointage", icon: Clock },
             { id: "formation" as Tab, label: "Formation", icon: GraduationCap },
-            { id: "chat" as Tab, label: "Assistant", icon: Bot },
             { id: "profil" as Tab, label: "Profil", icon: User },
           ]).map(t => {
             const active = tab === t.id;
@@ -1342,7 +1359,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
         {[
           { label: "Mes formations", icon: GraduationCap, action: () => onNavigate("formation") },
           { label: "Mes documents", icon: Inbox, action: () => setDocsOpen(true) },
-          { label: "Conversation admin", icon: MessageCircle, action: () => onNavigate("chat") },
+          { label: "Conversation admin", icon: MessageCircle, action: () => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("kadence:open-assistant")); } },
         ].map((item, i, arr) => (
           <button key={i} onClick={item.action} className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
             style={{ borderBottom: i < arr.length - 1 ? "0.5px solid rgba(0,0,0,0.06)" : "none", cursor: "pointer" }}>

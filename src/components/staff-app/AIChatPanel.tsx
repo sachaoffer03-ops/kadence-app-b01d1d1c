@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Send, Bot, Sparkles, Mic, MicOff, ArrowRight } from "lucide-react";
+import { Send, Bot, Sparkles, Mic, MicOff, ArrowRight, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { askKadenceAI, getChatHistory, getChatSuggestions } from "@/lib/ai-chat.functions";
 import { useVoiceInput } from "@/hooks/use-voice-input";
+
 
 type ChatActionType =
   | "open_dispos"
@@ -56,7 +57,7 @@ function dispatchAction(type: ChatActionType) {
   window.dispatchEvent(new CustomEvent("kadence:chat-action", { detail: { type } }));
 }
 
-export function AIChatPanel() {
+export function AIChatPanel({ onClose }: { onClose?: () => void } = {}) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -179,12 +180,23 @@ export function AIChatPanel() {
           <div className="rounded-full flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: "var(--coral)" }}>
             <Bot size={18} color="var(--coral-text)" strokeWidth={1.8} />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <div style={{ fontSize: 15, fontWeight: 500, color: "var(--foreground)" }}>Kadence Assistant</div>
             <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Pose-moi tes questions sur tes shifts, ton score, tes formations…</div>
           </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              aria-label="Fermer"
+              className="rounded-full flex items-center justify-center transition active:scale-95"
+              style={{ width: 32, height: 32, backgroundColor: "var(--muted)", color: "var(--foreground)", flexShrink: 0 }}
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
       </div>
+
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2">
