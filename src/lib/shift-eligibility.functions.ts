@@ -166,11 +166,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       c.is_required_for_all || (c.business_role_id && roleNameById.get(c.business_role_id) === shift.business_role)
     );
 
-    const maxForContract = (c: string | null): number => {
-      if (c === "student") return Number(settings.max_weekly_student_hours);
-      if (c === "flexi") return Number(settings.max_weekly_flexi_hours);
-      return Number(settings.max_weekly_cdi_hours);
-    };
+    // NB: cap par employé via getWeeklyCapForUser (respecte allow_extended_hours/weekly_hours_cap)
 
     const eligible: EligibleEmployee[] = [];
     const partial: EligibleEmployee[] = [];
