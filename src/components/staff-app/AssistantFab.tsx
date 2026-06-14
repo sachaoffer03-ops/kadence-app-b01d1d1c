@@ -57,41 +57,16 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
         <button
           onClick={() => setOpen(true)}
           aria-label="Ouvrir l'assistant Kadence"
-          className={pulse ? "kadence-fab-pulse" : ""}
-          style={{
-            position: "fixed",
-            bottom: "calc(80px + env(safe-area-inset-bottom))",
-            right: "max(16px, calc(50vw - 215px + 16px))",
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            backgroundColor: "var(--coral)",
-            color: "var(--coral-text)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            zIndex: 45,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "transform 150ms ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          className={`kadence-fab ${pulse ? "kadence-fab-pulse" : ""}`}
         >
-          <img src={kadenceAvatar} alt="Kadence" style={{ width: 28, height: 28 }} />
-          {unread > 0 && (
-            <span
-              style={{
-                position: "absolute",
-                top: -4,
-                right: -4,
-                width: 12,
-                height: 12,
-                borderRadius: "50%",
-                backgroundColor: "#c2410c",
-                border: "2px solid #fff",
-              }}
+          <span className="kadence-fab-inner">
+            <img
+              src={kadenceAvatar}
+              alt="Kadence"
+              style={{ width: 44, height: 44, objectFit: "contain", display: "block" }}
             />
-          )}
+          </span>
+          {unread > 0 && <span className="kadence-fab-badge" />}
         </button>
       )}
 
@@ -102,11 +77,57 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
       )}
 
       <style>{`
-        @keyframes kadence-fab-pulse-kf {
-          0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 0 0 rgba(240,153,123,0.6); }
-          50% { box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 0 12px rgba(240,153,123,0); }
+        .kadence-fab {
+          position: fixed;
+          bottom: calc(80px + env(safe-area-inset-bottom));
+          right: max(16px, calc(50vw - 215px + 16px));
+          width: 60px;
+          height: 60px;
+          padding: 0;
+          border: none;
+          border-radius: 50%;
+          background: transparent;
+          cursor: pointer;
+          z-index: 45;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .kadence-fab-pulse { animation: kadence-fab-pulse-kf 1.4s ease-in-out infinite; }
+        .kadence-fab:hover { transform: translateY(-2px) scale(1.04); }
+        .kadence-fab:active { transform: translateY(0) scale(0.98); }
+        .kadence-fab-inner {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          background: radial-gradient(circle at 30% 25%, #FFFFFF 0%, #FAFAF8 55%, #F5F0EA 100%);
+          box-shadow:
+            0 1px 0 rgba(255,255,255,0.9) inset,
+            0 0 0 1px rgba(240,153,123,0.22),
+            0 10px 24px -8px rgba(60,30,15,0.22),
+            0 4px 10px -4px rgba(60,30,15,0.12);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+        .kadence-fab-badge {
+          position: absolute;
+          top: 2px;
+          right: 2px;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: var(--coral, #F0997B);
+          box-shadow: 0 0 0 2px #FAFAF8;
+        }
+        @keyframes kadence-fab-pulse-kf {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(240,153,123,0.45); }
+          50% { box-shadow: 0 0 0 14px rgba(240,153,123,0); }
+        }
+        .kadence-fab-pulse .kadence-fab-inner {
+          animation: kadence-fab-pulse-kf 1.8s ease-in-out infinite;
+        }
       `}</style>
     </>
   );
