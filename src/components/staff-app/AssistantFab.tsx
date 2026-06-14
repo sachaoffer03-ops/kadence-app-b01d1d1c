@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Bot } from "lucide-react";
 import { AIChatPanel } from "./AIChatPanel";
+import kadenceAvatar from "@/assets/kadence-avatar.png";
 
 function monthKey() {
   const d = new Date();
