@@ -300,11 +300,7 @@ function AppShell() {
         className="flex-1 min-w-0 flex flex-col overflow-x-hidden transition-[margin-left] duration-200 ease-out md:ml-[var(--sidebar-w)]"
         style={{ ["--sidebar-w" as any]: sidebarCollapsed ? "64px" : "220px" }}
       >
-        <TopBar
-          onMenuToggle={() => setMobileMenuOpen(prev => !prev)}
-          onSidebarToggle={() => setSidebarCollapsed((v) => !v)}
-          sidebarCollapsed={sidebarCollapsed}
-        />
+        <TopBar onMenuToggle={() => setMobileMenuOpen(prev => !prev)} />
         <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
           <Outlet />
         </main>
