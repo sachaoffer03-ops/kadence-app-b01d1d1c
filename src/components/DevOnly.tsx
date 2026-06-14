@@ -8,8 +8,6 @@ import { Lock } from "lucide-react";
  * son contenu. En prod, affiche un message verrouillé.
  */
 export function DevOnly({ children, label }: { children: ReactNode; label?: string }) {
-  return <>{children}</>;
-  // eslint-disable-next-line no-unreachable
   if (import.meta.env.DEV) return <>{children}</>;
 
   return (

@@ -9,8 +9,15 @@ const DOW_LABEL_PG = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendre
 
 export const runDiagnostic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
+  .handler(async ({ context }) => {
     const sb = supabaseAdmin;
+    const { data: roleRow } = await sb
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) throw new Error("Réservé aux administrateurs");
 
     // S1 — staffing_templates cuisine
     const { data: tpl } = await sb

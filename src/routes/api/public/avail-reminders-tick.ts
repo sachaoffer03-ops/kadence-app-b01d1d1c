@@ -43,10 +43,20 @@ function formatDeadlineLabel(d: Date) {
 export const Route = createFileRoute("/api/public/avail-reminders-tick")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        // Authentification via apikey Supabase (pattern canonique pour pg_cron)
+        const apikey = request.headers.get("apikey") ?? request.headers.get("x-api-key");
+        const expected =
+          process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
+        if (!expected || apikey !== expected) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { supabaseAdmin } = await import(
           "@/integrations/supabase/client.server"
         );
+
+
 
 
         // 1) Lock day from AI planning settings

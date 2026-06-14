@@ -3,8 +3,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function randomCode(len = 5) {
+  const bytes = new Uint32Array(len);
+  crypto.getRandomValues(bytes);
   let out = "";
-  for (let i = 0; i < len; i++) out += CHARS[Math.floor(Math.random() * CHARS.length)];
+  for (let i = 0; i < len; i++) out += CHARS[bytes[i] % CHARS.length];
   return out;
 }
 

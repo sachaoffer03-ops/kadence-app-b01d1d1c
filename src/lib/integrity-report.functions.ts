@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
@@ -35,7 +36,16 @@ const EXPECTED_FUNCTIONS = [
   "handle_new_user",
 ];
 
-export const collectIntegrityStats = createServerFn({ method: "GET" }).handler(async () => {
+export const collectIntegrityStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+  const { data: roleRow } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (!roleRow) throw new Error("Réservé aux administrateurs");
   const t0 = Date.now();
   const tableCounts: Record<string, number | string> = {};
   await Promise.all(
