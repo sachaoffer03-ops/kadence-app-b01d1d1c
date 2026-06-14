@@ -152,8 +152,18 @@ export function TopBar({ onMenuToggle, onSidebarToggle, sidebarCollapsed }: { on
             <Menu size={20} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
           </button>
         )}
-        <img src={logo} alt="Kadence" className="hidden md:block" style={{ height: 44, width: "auto" }} />
-        <span className="hidden md:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>/</span>
+        {onSidebarToggle && (
+          <button
+            onClick={onSidebarToggle}
+            title={sidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
+            className="hidden md:flex items-center justify-center rounded-md transition-colors hover:bg-[var(--muted)]"
+            style={{ width: 32, height: 32 }}
+          >
+            {sidebarCollapsed
+              ? <PanelLeft size={18} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
+              : <PanelLeftClose size={18} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />}
+          </button>
+        )}
         <span style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>{pageTitle}</span>
       </div>
 
