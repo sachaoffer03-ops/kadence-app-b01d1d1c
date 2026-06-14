@@ -217,7 +217,6 @@ export type Database = {
       }
       ai_planning_settings: {
         Row: {
-          availability_deadline_day: number | null
           availability_lock_day: number
           cdi_hours_tolerance: number
           default_score_when_null: number
@@ -243,7 +242,6 @@ export type Database = {
           weight_random: number
         }
         Insert: {
-          availability_deadline_day?: number | null
           availability_lock_day?: number
           cdi_hours_tolerance?: number
           default_score_when_null?: number
@@ -269,7 +267,6 @@ export type Database = {
           weight_random?: number
         }
         Update: {
-          availability_deadline_day?: number | null
           availability_lock_day?: number
           cdi_hours_tolerance?: number
           default_score_when_null?: number
@@ -2517,7 +2514,15 @@ export type Database = {
           role?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_business_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_contracts: {
         Row: {
@@ -2535,7 +2540,15 @@ export type Database = {
           created_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_contracts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -2571,7 +2584,15 @@ export type Database = {
           studio_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_studios_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
