@@ -77,7 +77,7 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
           onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
           onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
-          <Bot size={24} strokeWidth={2} />
+          <img src={kadenceAvatar} alt="Kadence" style={{ width: 28, height: 28 }} />
           {unread > 0 && (
             <span
               style={{
