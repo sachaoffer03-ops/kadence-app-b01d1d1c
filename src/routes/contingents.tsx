@@ -116,7 +116,7 @@ function ContingentsPage() {
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun étudiant.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun étudiant.</td></tr>
             ) : filtered.map((emp) => {
               const used = emp.quota_used || 0, max = emp.quota_max || 650;
               const pct = Math.round((used / max) * 100);
@@ -127,6 +127,7 @@ function ContingentsPage() {
               const empRoles = roles.get(emp.id) || [];
               const firstRole = empRoles[0];
               const rc = getRoleStyle(firstRole);
+              const weeklyCap = emp.allow_extended_hours ? (emp.weekly_hours_cap ?? 48) : 15;
 
               return (
                 <tr key={emp.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
@@ -145,6 +146,16 @@ function ContingentsPage() {
                         return <span key={r} className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, backgroundColor: c.bg, color: c.text }}>{r}</span>;
                       })}
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {emp.allow_extended_hours ? (
+                      <div className="flex items-center gap-1.5">
+                        <span style={{ fontSize: 12, fontWeight: 500 }}>{weeklyCap}h</span>
+                        <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text, #fff)" }}>étendu</span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>15h</span>
+                    )}
                   </td>
                   <td className="px-4 py-3" style={{ fontWeight: 500 }}>{used}h</td>
                   <td className="px-4 py-3" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{max}h</td>
