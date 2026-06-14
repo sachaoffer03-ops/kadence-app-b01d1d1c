@@ -602,11 +602,6 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
         </div>
       )}
 
-      {!validated && !loading && !locked && (
-        <div className="mt-4">
-          <PrimaryButton onClick={validate}>Valider mes dispos</PrimaryButton>
-        </div>
-      )}
     </Sheet>
   );
 }
