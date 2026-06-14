@@ -1,7 +1,7 @@
 import { useRouterState, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Plus, Menu, LogOut, CheckCheck } from "lucide-react";
+import { Bell, Search, Plus, Menu, LogOut, CheckCheck, PanelLeftClose, PanelLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import logo from "@/assets/kadence-logo.png";
+
 import { CreateShiftModal } from "@/components/CreateShiftModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -43,7 +43,7 @@ interface NotifRow {
 type NotifTab = "all" | "unread" | "urgent";
 
 
-export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
+export function TopBar({ onMenuToggle, onSidebarToggle, sidebarCollapsed }: { onMenuToggle?: () => void; onSidebarToggle?: () => void; sidebarCollapsed?: boolean }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [shiftOpen, setShiftOpen] = useState(false);
@@ -152,8 +152,18 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
             <Menu size={20} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
           </button>
         )}
-        <img src={logo} alt="Kadence" className="hidden md:block" style={{ height: 44, width: "auto" }} />
-        <span className="hidden md:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>/</span>
+        {onSidebarToggle && (
+          <button
+            onClick={onSidebarToggle}
+            title={sidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
+            className="hidden md:flex items-center justify-center rounded-md transition-colors hover:bg-[var(--muted)]"
+            style={{ width: 32, height: 32 }}
+          >
+            {sidebarCollapsed
+              ? <PanelLeft size={18} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
+              : <PanelLeftClose size={18} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />}
+          </button>
+        )}
         <span style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>{pageTitle}</span>
       </div>
 

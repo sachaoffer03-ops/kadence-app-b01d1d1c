@@ -177,6 +177,21 @@ function AppShell() {
   const navigate = useNavigate();
   const { session, appRole, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage?.getItem("kadence_sidebar_collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage?.setItem("kadence_sidebar_collapsed", sidebarCollapsed ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  }, [sidebarCollapsed]);
 
   const isPublic = currentPath === "/" || PUBLIC_ROUTES.some((p) => currentPath.startsWith(p));
   const isStaffApp = currentPath.startsWith("/staff-app") || currentPath.startsWith("/staff/checklist");
@@ -279,10 +294,17 @@ function AppShell() {
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
-      <AppSidebar />
+      <AppSidebar collapsed={sidebarCollapsed} />
       <MobileSidebar open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-      <div className="flex-1 min-w-0 flex flex-col overflow-x-hidden md:ml-[220px]">
-        <TopBar onMenuToggle={() => setMobileMenuOpen(prev => !prev)} />
+      <div
+        className="flex-1 min-w-0 flex flex-col overflow-x-hidden transition-[margin-left] duration-200 ease-out md:ml-[var(--sidebar-w)]"
+        style={{ ["--sidebar-w" as any]: sidebarCollapsed ? "64px" : "220px" }}
+      >
+        <TopBar
+          onMenuToggle={() => setMobileMenuOpen(prev => !prev)}
+          onSidebarToggle={() => setSidebarCollapsed((v) => !v)}
+          sidebarCollapsed={sidebarCollapsed}
+        />
         <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
           <Outlet />
         </main>
