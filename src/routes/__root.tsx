@@ -292,12 +292,20 @@ function AppShell() {
     );
   }
 
+  const desktopSidebarWidth = sidebarCollapsed ? 64 : 220;
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
-      <AppSidebar />
+      <AppSidebar collapsed={sidebarCollapsed} />
       <MobileSidebar open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-      <div className="flex-1 min-w-0 flex flex-col overflow-x-hidden md:ml-[220px]">
-        <TopBar onMenuToggle={() => setMobileMenuOpen(prev => !prev)} />
+      <div
+        className="flex-1 min-w-0 flex flex-col overflow-x-hidden transition-[margin-left] duration-200 ease-out"
+        style={{ marginLeft: typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches ? desktopSidebarWidth : 0 }}
+      >
+        <TopBar
+          onMenuToggle={() => setMobileMenuOpen(prev => !prev)}
+          onSidebarToggle={() => setSidebarCollapsed((v) => !v)}
+          sidebarCollapsed={sidebarCollapsed}
+        />
         <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
           <Outlet />
         </main>
