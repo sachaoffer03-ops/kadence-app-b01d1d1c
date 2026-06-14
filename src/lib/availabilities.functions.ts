@@ -150,7 +150,8 @@ export const createAvailability = createServerFn({ method: "POST" })
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification depuis l'accueil.");
     }
 
-    const { s, e } = validateRangeShape(data.start_time, data.end_time);
+    const minDur = await getMinDurationMin(supabase);
+    const { s, e } = validateRangeShape(data.start_time, data.end_time, minDur);
     await ensureNoOverlap(supabase, userId, data.avail_date, s, e);
 
     const { data: row, error } = await supabase
@@ -195,7 +196,8 @@ export const updateAvailability = createServerFn({ method: "POST" })
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification.");
     }
 
-    const { s, e } = validateRangeShape(data.start_time, data.end_time);
+    const minDur = await getMinDurationMin(supabase);
+    const { s, e } = validateRangeShape(data.start_time, data.end_time, minDur);
     await ensureNoOverlap(supabase, existing.user_id, existing.avail_date, s, e, data.id);
 
     const { error } = await supabase
