@@ -1,14 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { DevOnly } from "@/components/DevOnly";
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, RefreshCw, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2, CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { runDiagnostic } from "@/lib/diagnostic.functions";
 import { runDataDiagnostic } from "@/lib/data-diagnostic.functions";
-import { runAudit } from "@/lib/audit.functions";
 import { collectIntegrityStats } from "@/lib/integrity-report.functions";
 import { getSystemHealthChecks, triggerAvailRemindersTick, getRecentEmailLogs } from "@/lib/system-health.functions";
+import { diagnoseLastPlanningRun } from "@/lib/planning-diagnose.functions";
 
 export const Route = createFileRoute("/admin/diagnostic")({
   component: () => (
