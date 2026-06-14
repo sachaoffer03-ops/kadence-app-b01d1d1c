@@ -229,7 +229,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void } = {}) {
               <div className={`flex ${mine ? "justify-end" : "justify-start"} gap-1.5 items-end`}>
                 {!mine && (
                   <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 24, height: 24, backgroundColor: "var(--coral)" }}>
-                    <Bot size={13} color="var(--coral-text)" strokeWidth={2} />
+                    <img src={kadenceAvatar} alt="Kadence" style={{ width: 16, height: 16 }} />
                   </div>
                 )}
                 <div className="rounded-2xl px-3.5 py-2.5" style={{
