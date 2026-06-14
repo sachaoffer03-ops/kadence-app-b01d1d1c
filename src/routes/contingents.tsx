@@ -62,6 +62,7 @@ function ContingentsPage() {
   const warning = students.filter((e) => getQuotaStatus(e.quota_used || 0, e.quota_max || 650) === "warning").length;
   const totalUsed = students.reduce((s, e) => s + (e.quota_used || 0), 0);
   const totalMax = students.length * 650;
+  const extendedCount = students.filter((e) => e.allow_extended_hours).length;
 
   return (
     <div className="p-4 md:p-6">
