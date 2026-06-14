@@ -290,21 +290,36 @@ export const getAvailabilityLockInfo = createServerFn({ method: "GET" })
       .maybeSingle();
     const lockDay = (settings as any)?.availability_lock_day ?? 25;
 
+    // Construit la deadline en Europe/Brussels (sinon décalage UTC fait passer
+    // au jour suivant côté client : "20 juin 23h59" devient "21 juin 01h59").
+    const brusselsDeadlineISO = (y: number, m0: number, day: number) => {
+      const utcGuess = Date.UTC(y, m0, day, 23, 59, 59, 999);
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Europe/Brussels",
+        timeZoneName: "shortOffset",
+      }).formatToParts(new Date(utcGuess));
+      const off = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT+1";
+      const match = off.match(/GMT([+-]?\d+)/);
+      const offsetHours = match ? parseInt(match[1], 10) : 1;
+      return new Date(utcGuess - offsetHours * 3_600_000);
+    };
+
     const now = new Date();
     const currentDay = now.getDate();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1; // 1-12
 
     // Prochaine deadline = lockDay ce mois si pas encore passée, sinon lockDay le mois prochain
-    const thisMonthDeadline = new Date(currentYear, currentMonth - 1, lockDay, 23, 59, 59, 999);
+    const thisMonthDeadline = brusselsDeadlineISO(currentYear, currentMonth - 1, lockDay);
     let nextDeadlineDate: Date;
     if (now.getTime() <= thisMonthDeadline.getTime()) {
       nextDeadlineDate = thisMonthDeadline;
     } else {
       const ny = currentMonth === 12 ? currentYear + 1 : currentYear;
       const nm = currentMonth === 12 ? 1 : currentMonth + 1;
-      nextDeadlineDate = new Date(ny, nm - 1, lockDay, 23, 59, 59, 999);
+      nextDeadlineDate = brusselsDeadlineISO(ny, nm - 1, lockDay);
     }
+
 
     const nextMonthYear = currentMonth === 12 ? currentYear + 1 : currentYear;
     const nextMonthMonth = currentMonth === 12 ? 1 : currentMonth + 1;
