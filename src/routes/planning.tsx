@@ -1054,7 +1054,7 @@ function PlanningCalendarPage() {
                       ? `${start.getDate()}`
                       : `${start.getDate()} ${monthNames[start.getMonth()]}${sameYear ? "" : ` ${start.getFullYear()}`}`;
                     const endStr = `${end.getDate()} ${monthNames[end.getMonth()]} ${end.getFullYear()}`;
-                    return `${startStr} – ${endStr} · sem. ${weekNumber}`;
+                    return `${startStr} – ${endStr}`;
                   })()}
                 </button>
               </PopoverTrigger>
