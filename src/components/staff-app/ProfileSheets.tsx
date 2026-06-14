@@ -354,7 +354,7 @@ interface PendingProposal {
 export function NotificationsSheet({ open, onClose, userId, studios, onNavigate }: {
   open: boolean; onClose: () => void; userId: string;
   studios?: Record<string, string>;
-  onNavigate?: (tab: "accueil" | "planning" | "pointage" | "chat") => void;
+  onNavigate?: (tab: "accueil" | "planning" | "pointage") => void;
 }) {
   const { items, unread, markAllRead, dismissNotif } = useStaffNotifications(userId);
   const [proposals, setProposals] = useState<PendingProposal[]>([]);
