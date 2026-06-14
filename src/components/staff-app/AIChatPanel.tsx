@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Send, Bot, Sparkles, Mic, MicOff, ArrowRight, X } from "lucide-react";
+import { Send, Mic, MicOff, ArrowRight, X } from "lucide-react";
+import kadenceAvatar from "@/assets/kadence-avatar.png";
 import ReactMarkdown from "react-markdown";
 import { askKadenceAI, getChatHistory, getChatSuggestions } from "@/lib/ai-chat.functions";
 import { useVoiceInput } from "@/hooks/use-voice-input";
@@ -178,7 +179,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void } = {}) {
       <div className="px-4 pt-5 pb-3" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)", backgroundColor: "#fff" }}>
         <div className="flex items-center gap-2.5">
           <div className="rounded-full flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: "var(--coral)" }}>
-            <Bot size={18} color="var(--coral-text)" strokeWidth={1.8} />
+            <img src={kadenceAvatar} alt="Kadence" style={{ width: 22, height: 22 }} />
           </div>
           <div className="flex-1 min-w-0">
             <div style={{ fontSize: 15, fontWeight: 500, color: "var(--foreground)" }}>Kadence Assistant</div>
@@ -203,7 +204,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void } = {}) {
         {loaded && messages.length === 0 && suggestions.length > 0 && (
           <div className="flex flex-col gap-3 px-1 pt-2">
             <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-              <Sparkles size={13} /> Quelques idées pour commencer
+              Quelques idées pour commencer
             </div>
             {suggestions.map((s) => (
               <button key={s} onClick={() => send(s)}
@@ -228,7 +229,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void } = {}) {
               <div className={`flex ${mine ? "justify-end" : "justify-start"} gap-1.5 items-end`}>
                 {!mine && (
                   <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: 24, height: 24, backgroundColor: "var(--coral)" }}>
-                    <Bot size={13} color="var(--coral-text)" strokeWidth={2} />
+                    <img src={kadenceAvatar} alt="Kadence" style={{ width: 16, height: 16 }} />
                   </div>
                 )}
                 <div className="rounded-2xl px-3.5 py-2.5" style={{
