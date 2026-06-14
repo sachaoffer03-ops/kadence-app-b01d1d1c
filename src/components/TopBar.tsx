@@ -1,7 +1,7 @@
 import { useRouterState, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, Plus, Menu, LogOut, CheckCheck, PanelLeftClose, PanelLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import logo from "@/assets/kadence-logo.png";
+
 import { CreateShiftModal } from "@/components/CreateShiftModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
