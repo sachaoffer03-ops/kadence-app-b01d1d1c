@@ -318,7 +318,7 @@ export const getAvailabilityLockInfo = createServerFn({ method: "GET" })
     const nextMonth = addMonthsYM(currentYear, currentMonth, 1);
     const nextMonthYear = nextMonth.year;
     const nextMonthMonth = nextMonth.month;
-    const nextMonthLocked = currentDay > lockDay;
+    const nextMonthLocked = now.getTime() > thisMonthDeadline.getTime();
 
     const lockedMonthsForUser: Array<{ year: number; month: number; locked: boolean }> = [];
     for (let offset = 0; offset < 13; offset++) {
