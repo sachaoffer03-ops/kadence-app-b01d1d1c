@@ -1,5 +1,5 @@
 import { useRouterState, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Plus, Menu, LogOut, CheckCheck, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Bell, Search, Plus, Menu, LogOut, CheckCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CreateShiftModal } from "@/components/CreateShiftModal";
