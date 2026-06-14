@@ -24,14 +24,10 @@ function DiagnosticPage() {
   const sysFn = useServerFn(getSystemHealthChecks);
   const integFn = useServerFn(collectIntegrityStats);
   const dataFn = useServerFn(runDataDiagnostic);
-  const auditFn = useServerFn(runAudit);
-  const diagFn = useServerFn(runDiagnostic);
 
   const [sys, setSys] = useState<any>(null);
   const [integ, setInteg] = useState<any>(null);
   const [data, setData] = useState<any>(null);
-  const [audit, setAudit] = useState<any>(null);
-  const [diag, setDiag] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [errs, setErrs] = useState<Record<string, string>>({});
 
@@ -44,16 +40,14 @@ function DiagnosticPage() {
         return null;
       }
     };
-    const [s, i, d, a, dg] = await Promise.all([
+    const [s, i, d] = await Promise.all([
       safe("sys", sysFn()),
       safe("integ", integFn()),
       safe("data", dataFn()),
-      safe("audit", auditFn({ data: undefined } as any)),
-      safe("diag", diagFn({ data: undefined } as any)),
     ]);
-    setSys(s); setInteg(i); setData(d); setAudit(a); setDiag(dg);
+    setSys(s); setInteg(i); setData(d);
     setLoading(false);
-  }, [sysFn, integFn, dataFn, auditFn, diagFn]);
+  }, [sysFn, integFn, dataFn]);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -81,7 +75,6 @@ function DiagnosticPage() {
         <TabsList className="mb-4">
           <TabsTrigger value="systeme">🔧 Système</TabsTrigger>
           <TabsTrigger value="donnees">📊 Données</TabsTrigger>
-          <TabsTrigger value="features">✨ Features</TabsTrigger>
         </TabsList>
 
         <TabsContent value="systeme">
@@ -89,9 +82,6 @@ function DiagnosticPage() {
         </TabsContent>
         <TabsContent value="donnees">
           <DataTab data={data} loading={loading} err={errs.data} />
-        </TabsContent>
-        <TabsContent value="features">
-          <FeaturesTab audit={audit} diag={diag} loading={loading} err={errs.audit || errs.diag} />
         </TabsContent>
       </Tabs>
     </div>
