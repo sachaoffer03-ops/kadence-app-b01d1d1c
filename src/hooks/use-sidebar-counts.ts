@@ -53,18 +53,20 @@ export function useSidebarCounts(): SidebarCounts {
 
   useEffect(() => {
     load();
-    let ch = supabase.channel("sidebar-counts-" + Math.random().toString(36).slice(2, 10))
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, debouncedLoad)
-      .on("postgres_changes", { event: "*", schema: "public", table: "modification_requests" }, debouncedLoad)
-      .on("postgres_changes", { event: "*", schema: "public", table: "signalements" }, debouncedLoad)
-      .on("postgres_changes", { event: "*", schema: "public", table: "feedbacks" }, debouncedLoad);
+    // Realtime: seules les notifications restent dans la publication realtime.
+    // Les autres compteurs (trous/demandes/signalements/feedbacks) sont rafraîchis
+    // via un polling 60s + au mount + sur navigation.
+    let ch: ReturnType<typeof supabase.channel> | null = null;
     if (user?.id) {
-      ch = ch.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, debouncedLoad);
+      ch = supabase.channel("sidebar-counts-" + Math.random().toString(36).slice(2, 10))
+        .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, debouncedLoad);
+      ch.subscribe();
     }
-    ch.subscribe();
+    const interval = setInterval(() => { load(); }, 60_000);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      supabase.removeChannel(ch);
+      clearInterval(interval);
+      if (ch) supabase.removeChannel(ch);
     };
   }, [load, debouncedLoad, user?.id]);
 

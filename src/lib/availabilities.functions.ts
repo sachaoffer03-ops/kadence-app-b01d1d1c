@@ -44,10 +44,10 @@ async function isAdmin(supabase: any, userId: string) {
 async function getDeadlineDay(supabase: any): Promise<number> {
   const { data } = await supabase
     .from("ai_planning_settings")
-    .select("availability_deadline_day")
+    .select("availability_lock_day")
     .order("updated_at", { ascending: false })
     .limit(1);
-  return data?.[0]?.availability_deadline_day ?? 20;
+  return data?.[0]?.availability_lock_day ?? 20;
 }
 
 /**
