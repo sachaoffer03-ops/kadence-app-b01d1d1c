@@ -263,7 +263,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
 }
 
 /* Desktop sidebar */
-export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
+export function AppSidebar({ collapsed = false, onToggleCollapse }: { collapsed?: boolean; onToggleCollapse?: () => void }) {
   return (
     <aside
       className="fixed left-0 top-0 bottom-0 flex-col border-r hidden md:flex transition-[width] duration-200 ease-out"
@@ -273,7 +273,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
         borderColor: "var(--border)",
       }}
     >
-      <SidebarContent collapsed={collapsed} />
+      <SidebarContent collapsed={collapsed} onToggleCollapse={onToggleCollapse} />
     </aside>
   );
 }
