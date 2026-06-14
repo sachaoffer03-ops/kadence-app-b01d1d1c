@@ -221,7 +221,6 @@ function StaffAppPage() {
             { id: "planning" as Tab, label: "Planning", icon: Calendar },
             { id: "pointage" as Tab, label: "Pointage", icon: Clock },
             { id: "formation" as Tab, label: "Formation", icon: GraduationCap },
-            { id: "chat" as Tab, label: "Assistant", icon: Bot },
             { id: "profil" as Tab, label: "Profil", icon: User },
           ]).map(t => {
             const active = tab === t.id;
