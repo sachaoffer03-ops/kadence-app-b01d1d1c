@@ -18,6 +18,8 @@ import {
   Bell,
   Bot,
   X,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 import logo from "@/assets/kadence-logo.png";
 import { useSidebarCounts } from "@/hooks/use-sidebar-counts";
@@ -79,7 +81,7 @@ function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSecti
   ];
 }
 
-function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
+function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { onNavigate?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const counts = useSidebarCounts();
   const navSections = buildNavSections(counts);
@@ -213,6 +215,18 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
         ))}
       </nav>
 
+      {/* Toggle collapse */}
+      {onToggleCollapse && (
+        <button
+          onClick={onToggleCollapse}
+          title={collapsed ? "Déplier le menu" : "Replier le menu"}
+          className="flex items-center justify-center mx-auto mb-1 rounded-md transition-colors hover:bg-[var(--muted)]"
+          style={{ width: 28, height: 28, color: "var(--muted-foreground)" }}
+        >
+          {collapsed ? <PanelLeft size={16} strokeWidth={1.8} /> : <PanelLeftClose size={16} strokeWidth={1.8} />}
+        </button>
+      )}
+
       {/* User */}
       <div
         className={
@@ -249,7 +263,7 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
 }
 
 /* Desktop sidebar */
-export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
+export function AppSidebar({ collapsed = false, onToggleCollapse }: { collapsed?: boolean; onToggleCollapse?: () => void }) {
   return (
     <aside
       className="fixed left-0 top-0 bottom-0 flex-col border-r hidden md:flex transition-[width] duration-200 ease-out"
@@ -259,7 +273,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
         borderColor: "var(--border)",
       }}
     >
-      <SidebarContent collapsed={collapsed} />
+      <SidebarContent collapsed={collapsed} onToggleCollapse={onToggleCollapse} />
     </aside>
   );
 }

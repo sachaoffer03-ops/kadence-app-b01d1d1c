@@ -1,5 +1,5 @@
 import { useRouterState, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Plus, Menu, LogOut, CheckCheck, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Bell, Search, Plus, Menu, LogOut, CheckCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CreateShiftModal } from "@/components/CreateShiftModal";
@@ -43,7 +43,7 @@ interface NotifRow {
 type NotifTab = "all" | "unread" | "urgent";
 
 
-export function TopBar({ onMenuToggle, onSidebarToggle, sidebarCollapsed }: { onMenuToggle?: () => void; onSidebarToggle?: () => void; sidebarCollapsed?: boolean }) {
+export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [shiftOpen, setShiftOpen] = useState(false);
@@ -150,18 +150,6 @@ export function TopBar({ onMenuToggle, onSidebarToggle, sidebarCollapsed }: { on
         {onMenuToggle && (
           <button onClick={onMenuToggle} className="flex items-center justify-center rounded-md md:hidden" style={{ width: 32, height: 32 }}>
             <Menu size={20} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
-          </button>
-        )}
-        {onSidebarToggle && (
-          <button
-            onClick={onSidebarToggle}
-            title={sidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
-            className="hidden md:flex items-center justify-center rounded-md transition-colors hover:bg-[var(--muted)]"
-            style={{ width: 32, height: 32 }}
-          >
-            {sidebarCollapsed
-              ? <PanelLeft size={18} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />
-              : <PanelLeftClose size={18} strokeWidth={1.8} style={{ color: "var(--foreground)" }} />}
           </button>
         )}
         <span style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>{pageTitle}</span>
