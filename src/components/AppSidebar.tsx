@@ -18,6 +18,8 @@ import {
   Bell,
   Bot,
   X,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 import logo from "@/assets/kadence-logo.png";
 import { useSidebarCounts } from "@/hooks/use-sidebar-counts";
