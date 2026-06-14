@@ -964,14 +964,6 @@ function PlanningCalendarPage() {
   };
 
 
-  // Compute ISO-ish week number
-  const weekNumber = useMemo(() => {
-    const d = new Date(weekDays[3]);
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-    const yearStart = new Date(d.getFullYear(), 0, 1);
-    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  }, [weekDays]);
 
   const startD = weekDays[0];
   const endD = weekDays[6];
