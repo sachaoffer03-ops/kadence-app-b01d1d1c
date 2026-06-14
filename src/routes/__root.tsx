@@ -294,7 +294,7 @@ function AppShell() {
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
-      <AppSidebar collapsed={sidebarCollapsed} />
+      <AppSidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed((v) => !v)} />
       <MobileSidebar open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <div
         className="flex-1 min-w-0 flex flex-col overflow-x-hidden transition-[margin-left] duration-200 ease-out md:ml-[var(--sidebar-w)]"
