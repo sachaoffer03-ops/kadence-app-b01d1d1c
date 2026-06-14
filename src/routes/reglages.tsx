@@ -119,11 +119,14 @@ function AISettings() {
       availability_lock_day: deadlineDay,
       ...rules,
     };
-    const { error } = id
-      ? await supabase.from("ai_planning_settings").update(payload as any).eq("id", id)
-      : await supabase.from("ai_planning_settings").insert(payload as any);
+    const { data, error } = id
+      ? await supabase.from("ai_planning_settings").update(payload as any).eq("id", id).select("id")
+      : await supabase.from("ai_planning_settings").insert(payload as any).select("id");
     setSaving(false);
     if (error) return toast.error(error.message);
+    if (!data || data.length === 0) {
+      return toast.error("Enregistrement bloqué : votre compte n'a pas les droits administrateur sur ces réglages.");
+    }
     toast.success("Réglages enregistrés");
   };
 
