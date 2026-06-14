@@ -12,6 +12,7 @@ import { useStudios } from "@/hooks/use-studios";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { addMonthsYM, formatBrusselsDate, getBrusselsDateParts } from "@/lib/brussels-time";
 
 export const Route = createFileRoute("/dispos-monitoring")({
   component: DisposMonitoringPage,
@@ -23,16 +24,13 @@ const MONTHS_FR = [
 ];
 
 function nextMonth(): { year: number; month: number } {
-  const d = new Date();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + 1);
-  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+  const now = getBrusselsDateParts();
+  return addMonthsYM(now.year, now.month, 1);
 }
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleDateString("fr-FR", {
+  return formatBrusselsDate(iso, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
