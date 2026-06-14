@@ -337,6 +337,7 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
   // Statut dispos (mois prochain) + lock info pour bannière de rappel
   const [dispoStatus, setDispoStatus] = useState<{ hasFilledNextMonth: boolean } | null>(null);
   const [lockInfo, setLockInfo] = useState<{ nextDeadline: string; msUntilDeadline: number } | null>(null);
+  const [deadlineNow, setDeadlineNow] = useState(() => Date.now());
   const checkStatusFn = useServerFn(checkUserDispoStatus);
   const lockInfoFn = useServerFn(getAvailabilityLockInfo);
   useEffect(() => {
@@ -349,17 +350,22 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
       });
     return () => { alive = false; };
   }, [disposOpen, checkStatusFn, lockInfoFn]);
-  const showDispoBanner = !!(lockInfo && lockInfo.msUntilDeadline > 0 && dispoStatus && !dispoStatus.hasFilledNextMonth);
+  useEffect(() => {
+    const t = window.setInterval(() => setDeadlineNow(Date.now()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const dispoMsUntilDeadline = lockInfo?.nextDeadline ? Math.max(0, new Date(lockInfo.nextDeadline).getTime() - deadlineNow) : 0;
+  const showDispoBanner = !!(lockInfo && dispoMsUntilDeadline > 0 && dispoStatus && !dispoStatus.hasFilledNextMonth);
   const dispoBannerColor = (() => {
     if (!lockInfo) return "#16a34a";
-    const days = lockInfo.msUntilDeadline / 86_400_000;
+    const days = dispoMsUntilDeadline / 86_400_000;
     if (days > 7) return "#16a34a";
     if (days >= 1) return "#ea580c";
     return "#dc2626";
   })();
   const dispoCountdownLabel = (() => {
     if (!lockInfo) return "";
-    const ms = lockInfo.msUntilDeadline;
+    const ms = dispoMsUntilDeadline;
     const s = Math.max(0, Math.floor(ms / 1000));
     const days = Math.floor(s / 86400);
     const h = Math.floor((s % 86400) / 3600);
