@@ -64,7 +64,7 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
             <img
               src={kadenceAvatar}
               alt="Kadence"
-              style={{ width: 44, height: 44, objectFit: "contain", display: "block" }}
+              style={{ width: 32, height: 32, objectFit: "contain", display: "block" }}
             />
           </span>
           {unread > 0 && <span className="kadence-fab-badge" />}
