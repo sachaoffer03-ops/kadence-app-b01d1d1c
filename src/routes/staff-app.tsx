@@ -199,6 +199,10 @@ function StaffAppPage() {
 
       <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} userId={user.id} studios={studios} onNavigate={(t) => setTab(t)} />
 
+      <AssistantFab />
+
+
+
       <div
         className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40"
         style={{ width: "100%", maxWidth: 430, paddingBottom: "env(safe-area-inset-bottom)", pointerEvents: "none" }}
