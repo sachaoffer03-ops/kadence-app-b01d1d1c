@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Check, Search, X, Package, Wrench, Sparkles, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Dropdown } from "@/components/Dropdown";
 
 export const Route = createFileRoute("/signalements")({
   component: SignalementsPage,
@@ -12,32 +12,33 @@ export const Route = createFileRoute("/signalements")({
 
 type Category = "stock" | "materiel" | "hygiene" | "autre";
 const CAT_LABEL: Record<Category, string> = { stock: "Stock", materiel: "Matériel", hygiene: "Hygiène", autre: "Autre" };
+const CAT_ICON: Record<Category, typeof Package> = { stock: Package, materiel: Wrench, hygiene: Sparkles, autre: MoreHorizontal };
 
 interface Row {
   id: string; category: Category; message: string; studio_id: string | null;
   author_id: string; created_at: string; resolved: boolean; photos: string[] | null;
 }
 interface ProfileLite { id: string; first_name: string; last_name: string; }
-
 interface StudioLite { id: string; name: string; }
 
-const formatRelative = (iso: string) => {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.round(diff / 60_000);
+const fmtRel = (iso: string) => {
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (m < 1) return "à l'instant";
   if (m < 60) return `il y a ${m} min`;
-  const h = Math.round(m / 60); if (h < 24) return `il y a ${h}h`;
-  return `il y a ${Math.round(h / 24)}j`;
+  const h = Math.floor(m / 60); if (h < 24) return `il y a ${h}h`;
+  return `il y a ${Math.floor(h / 24)}j`;
 };
+
+type Tab = "actifs" | "resolus";
 
 function SignalementsPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<Row[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({});
   const [studios, setStudios] = useState<Record<string, StudioLite>>({});
-  const [tab, setTab] = useState<"actifs" | "resolus">("actifs");
-  const [studio, setStudio] = useState<string>("Tous");
-  const [cat, setCat] = useState<string>("Toutes");
+  const [tab, setTab] = useState<Tab>("actifs");
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState<Category | "toutes">("toutes");
   const [dismissing, setDismissing] = useState<Record<string, "strike" | "fade">>({});
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
 
@@ -70,18 +71,30 @@ function SignalementsPage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const studioNames = useMemo(() => ["Tous", ...Object.values(studios).map(s => s.name)], [studios]);
-
-  const filtered = items
-    .filter(s => tab === "actifs" ? !s.resolved : s.resolved)
-    .filter(s => studio === "Tous" || (s.studio_id && studios[s.studio_id]?.name === studio))
-    .filter(s => cat === "Toutes" || CAT_LABEL[s.category] === cat);
-
   const activeCount = items.filter(s => !s.resolved).length;
+  const resolvedCount = items.length - activeCount;
+  const stockCount = items.filter(s => !s.resolved && s.category === "stock").length;
+  const todayCount = items.filter(s => {
+    const d = new Date(s.created_at); const n = new Date();
+    return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  }).length;
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter(s => {
+      if (tab === "actifs" ? s.resolved : !s.resolved) return false;
+      if (catFilter !== "toutes" && s.category !== catFilter) return false;
+      if (q) {
+        const emp = profiles[s.author_id];
+        const name = emp ? `${emp.first_name} ${emp.last_name}`.toLowerCase() : "";
+        if (!name.includes(q) && !s.message.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [items, tab, catFilter, search, profiles]);
 
   const setResolved = async (id: string, val: boolean) => {
     if (val) {
-      // Animate: strike-through, then fade out, then commit
       setDismissing((d) => ({ ...d, [id]: "strike" }));
       await new Promise((r) => setTimeout(r, 350));
       setDismissing((d) => ({ ...d, [id]: "fade" }));
@@ -103,87 +116,158 @@ function SignalementsPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl">
-
-      <div className="mb-5">
-        <div style={{ fontSize: 20, fontWeight: 500 }}>Signalements</div>
-        <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>
-          Remarques et réassorts remontés par l'équipe.
+    <div className="p-4 md:p-6 max-w-5xl">
+      {/* Hero header */}
+      <div className="rounded-xl p-6 md:p-7 mb-5" style={{ backgroundColor: "var(--coral-light)", borderRadius: 14 }}>
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />
+              <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Remontées de l'équipe
+              </span>
+            </div>
+            <h1 style={{ fontSize: 28, fontWeight: 500, lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+              Signalements
+            </h1>
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 6 }}>
+              {activeCount} à traiter{todayCount > 0 ? ` · ${todayCount} aujourd'hui` : ""}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-6 md:gap-8">
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--coral)" }}>
+                {activeCount}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>À traiter</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em" }}>{stockCount}</div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>Stock</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em" }}>{resolvedCount}</div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>Résolus</div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="flex items-center gap-1 mb-4 border-b" style={{ borderColor: "var(--border)" }}>
-        <Tab active={tab === "actifs"} onClick={() => setTab("actifs")}>
-          À traiter <span style={{ marginLeft: 6, fontSize: 11, color: "var(--muted-foreground)" }}>{activeCount}</span>
-        </Tab>
-        <Tab active={tab === "resolus"} onClick={() => setTab("resolus")}>Résolus</Tab>
+        <TabBtn active={tab === "actifs"} onClick={() => setTab("actifs")}>
+          À traiter <Count>{activeCount}</Count>
+        </TabBtn>
+        <TabBtn active={tab === "resolus"} onClick={() => setTab("resolus")}>
+          Résolus <Count>{resolvedCount}</Count>
+        </TabBtn>
       </div>
 
-      <div className="flex items-center gap-3 mb-4 flex-wrap" style={{ fontSize: 12 }}>
-        <Dropdown label="Studio" value={studio} options={studioNames} onChange={setStudio} />
-        <Dropdown label="Catégorie" value={cat} options={["Toutes", "Stock", "Matériel", "Hygiène", "Autre"]} onChange={setCat} />
+      {/* Search + category chips */}
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 rounded-lg border px-3 py-2 flex-1" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+          <Search size={13} style={{ color: "var(--muted-foreground)" }} className="shrink-0" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un employé ou un mot…"
+            className="outline-none bg-transparent flex-1" style={{ fontSize: 12 }} />
+          {search && (
+            <button onClick={() => setSearch("")} className="shrink-0" style={{ color: "var(--muted-foreground)" }}>
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Chip active={catFilter === "toutes"} onClick={() => setCatFilter("toutes")}>Toutes</Chip>
+          {(["stock", "materiel", "hygiene", "autre"] as Category[]).map(c => (
+            <Chip key={c} active={catFilter === c} onClick={() => setCatFilter(c)}>{CAT_LABEL[c]}</Chip>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-lg border p-6 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: 13, color: "var(--muted-foreground)" }}>
-          Aucun signalement.
+        <div className="rounded-xl border p-10 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+          <div className="mx-auto rounded-full flex items-center justify-center mb-3" style={{ width: 40, height: 40, backgroundColor: "var(--muted)" }}>
+            <AlertTriangle size={16} style={{ color: "var(--muted-foreground)" }} />
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
+            {tab === "actifs" ? "Tout est en ordre" : "Aucun signalement résolu"}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            {tab === "actifs" ? "Les remontées de l'équipe apparaîtront ici." : "Les signalements traités apparaîtront ici."}
+          </div>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-          {filtered.map((s, i) => {
+        <div className="flex flex-col gap-2.5">
+          {filtered.map(s => {
             const emp = profiles[s.author_id];
-            const studioName = (s.studio_id && studios[s.studio_id]?.name) || "—";
+            const studioName = s.studio_id ? studios[s.studio_id]?.name : "";
             const initials = emp ? `${emp.first_name?.[0] || ""}${emp.last_name?.[0] || ""}`.toUpperCase() : "—";
+            const Icon = CAT_ICON[s.category];
+            const isStock = s.category === "stock";
+
             return (
-              <div key={s.id} className="flex items-start gap-4 px-4 py-3"
+              <div key={s.id}
+                className="rounded-xl border p-4 md:p-5"
                 style={{
-                  borderTop: i === 0 ? "none" : "0.5px solid var(--border)",
+                  backgroundColor: "var(--card)",
+                  borderColor: "var(--border)",
                   transition: "opacity 300ms ease, max-height 300ms ease, padding 300ms ease",
                   opacity: dismissing[s.id] === "fade" ? 0 : 1,
-                  maxHeight: dismissing[s.id] === "fade" ? 0 : 200,
+                  maxHeight: dismissing[s.id] === "fade" ? 0 : 600,
                   paddingTop: dismissing[s.id] === "fade" ? 0 : undefined,
                   paddingBottom: dismissing[s.id] === "fade" ? 0 : undefined,
                   overflow: "hidden",
                 }}>
-                <div className="flex-1 min-w-0"
-                  style={{
-                    textDecoration: dismissing[s.id] ? "line-through" : "none",
-                    color: dismissing[s.id] ? "var(--muted-foreground)" : undefined,
-                    transition: "color 300ms ease",
-                  }}>
-                  <div className="flex items-center gap-x-2 gap-y-1 mb-1 flex-wrap" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-
-                    <div className="flex items-center justify-center rounded-full" style={{ width: 18, height: 18, fontSize: 9, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--foreground)" }}>{initials}</div>
-                    <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{emp ? `${emp.first_name} ${emp.last_name}` : "Inconnu"}</span>
-                    <span>·</span><span>{studioName.replace("Skult ", "")}</span>
-                    <span>·</span><span>{formatRelative(s.created_at)}</span>
-                    <span>·</span><span>{CAT_LABEL[s.category]}</span>
+                <div className="flex items-start gap-3">
+                  <div className="rounded-full flex items-center justify-center shrink-0"
+                    style={{ width: 38, height: 38, backgroundColor: isStock ? "var(--coral-light)" : "var(--muted)", color: isStock ? "var(--coral-text)" : "var(--foreground)" }}>
+                    <Icon size={16} strokeWidth={1.8} />
                   </div>
-                  <div style={{ fontSize: 13 }}>{s.message}</div>
-                  {s.photos && s.photos.length > 0 && (
-                    <div className="flex gap-1.5 mt-2 flex-wrap">
-                      {s.photos.map((url, idx) => (
-                        <button key={idx} type="button"
-                          onClick={() => setLightbox({ urls: s.photos!, index: idx })}
-                          className="block rounded-md overflow-hidden hover:opacity-80 transition-opacity"
-                          style={{ width: 56, height: 56, border: "0.5px solid var(--border)" }}>
-                          <img src={url} alt="" className="w-full h-full object-cover" />
-                        </button>
-                      ))}
+                  <div className="flex-1 min-w-0"
+                    style={{
+                      textDecoration: dismissing[s.id] ? "line-through" : "none",
+                      color: dismissing[s.id] ? "var(--muted-foreground)" : undefined,
+                      transition: "color 300ms ease",
+                    }}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 13 }}>
+                        <span style={{ fontWeight: 500 }}>{emp ? `${emp.first_name} ${emp.last_name}` : "—"}</span>
+                        <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                          {CAT_LABEL[s.category]}{studioName ? ` · ${studioName.replace("Skult ", "")}` : ""}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{fmtRel(s.created_at)}</span>
                     </div>
-                  )}
+
+                    <div style={{ fontSize: 13, marginTop: 8, lineHeight: 1.55 }}>{s.message}</div>
+
+                    {s.photos && s.photos.length > 0 && (
+                      <div className="flex gap-1.5 mt-3 flex-wrap">
+                        {s.photos.map((url, idx) => (
+                          <button key={idx} type="button"
+                            onClick={() => setLightbox({ urls: s.photos!, index: idx })}
+                            className="block rounded-md overflow-hidden hover:opacity-80 transition-opacity"
+                            style={{ width: 60, height: 60, border: "0.5px solid var(--border)" }}>
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-2 mt-3">
+                      <button onClick={() => setResolved(s.id, !s.resolved)}
+                        disabled={!!dismissing[s.id]}
+                        className="rounded-md px-3 py-1.5 flex items-center gap-1.5"
+                        style={{
+                          fontSize: 11, fontWeight: 500,
+                          border: s.resolved ? "0.5px solid var(--border)" : "none",
+                          backgroundColor: s.resolved ? "transparent" : "var(--foreground)",
+                          color: s.resolved ? "var(--muted-foreground)" : "var(--card)",
+                        }}>
+                        {s.resolved ? "Rouvrir" : <><Check size={11} /> Marquer résolu</>}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <button onClick={() => setResolved(s.id, !s.resolved)}
-                  disabled={!!dismissing[s.id]}
-                  className="rounded-md px-3 py-1.5 shrink-0"
-                  style={{
-                    fontSize: 11, fontWeight: 500,
-                    border: "0.5px solid var(--border)",
-                    backgroundColor: s.resolved ? "transparent" : "var(--foreground)",
-                    color: s.resolved ? "var(--muted-foreground)" : "var(--background)",
-                  }}>
-                  {s.resolved ? "Rouvrir" : "Résolu"}
-                </button>
               </div>
             );
           })}
@@ -242,13 +326,40 @@ function SignalementsPage() {
   );
 }
 
-function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className="px-3 py-2" style={{
-      fontSize: 13, fontWeight: active ? 500 : 400,
-      color: active ? "var(--foreground)" : "var(--muted-foreground)",
-      borderBottom: active ? "1.5px solid var(--foreground)" : "1.5px solid transparent",
-      marginBottom: -1,
-    }}>{children}</button>
+    <button onClick={onClick}
+      className="px-3 py-2 flex items-center gap-1.5 transition-colors"
+      style={{
+        fontSize: 12, fontWeight: 500,
+        color: active ? "var(--foreground)" : "var(--muted-foreground)",
+        borderBottom: active ? "1.5px solid var(--coral)" : "1.5px solid transparent",
+        marginBottom: -1,
+      }}>
+      {children}
+    </button>
+  );
+}
+
+function Count({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{ fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)", backgroundColor: "var(--muted)", padding: "1px 6px", borderRadius: 999 }}>
+      {children}
+    </span>
+  );
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick}
+      className="rounded-full px-3 py-1.5 transition-colors"
+      style={{
+        fontSize: 11, fontWeight: 500,
+        border: "0.5px solid " + (active ? "var(--foreground)" : "var(--border)"),
+        backgroundColor: active ? "var(--foreground)" : "var(--card)",
+        color: active ? "var(--card)" : "var(--muted-foreground)",
+      }}>
+      {children}
+    </button>
   );
 }
