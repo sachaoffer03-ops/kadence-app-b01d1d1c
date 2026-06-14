@@ -7,6 +7,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  addMonthsYM,
+  brusselsDeadlineDate,
+  formatBrusselsDeadlineLabel,
+  formatBrusselsMonthLabel,
+  getBrusselsDateParts,
+  monthEndISO,
+  monthStartISO,
+  todayBrusselsISO,
+} from "@/lib/brussels-time";
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,8 +58,7 @@ function t2m(t: string) {
 }
 
 function todayIso() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayBrusselsISO();
 }
 
 async function isAdmin(supabase: any, userId: string) {
@@ -74,12 +83,9 @@ async function getDeadlineDay(supabase: any): Promise<number> {
 async function isMonthLocked(supabase: any, targetDate: string, _userId?: string): Promise<boolean> {
 
 
-  const target = new Date(`${targetDate}T00:00:00`);
-  const y = target.getFullYear();
-  const m = target.getMonth();
-  const monthStart = `${y}-${String(m + 1).padStart(2, "0")}-01`;
-  const lastDay = new Date(y, m + 1, 0).getDate();
-  const monthEnd = `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const [y, m] = targetDate.split("-").map(Number);
+  const monthStart = monthStartISO(y, m);
+  const monthEnd = monthEndISO(y, m);
   const { data } = await supabase
     .from("planning_publications")
     .select("id")
@@ -88,9 +94,10 @@ async function isMonthLocked(supabase: any, targetDate: string, _userId?: string
     .limit(1);
   if ((data?.length ?? 0) > 0) return true;
 
-  // Deadline : jour J du mois précédent la cible, à 23:59:59.999 locale.
+  // Deadline : jour J du mois précédent la cible, à 23:59:59.999 heure Brussels.
   const day = await getDeadlineDay(supabase);
-  const deadline = new Date(y, m - 1, day, 23, 59, 59, 999);
+  const deadlineMonth = addMonthsYM(y, m, -1);
+  const deadline = brusselsDeadlineDate(deadlineMonth.year, deadlineMonth.month, day);
   return Date.now() > deadline.getTime();
 }
 
