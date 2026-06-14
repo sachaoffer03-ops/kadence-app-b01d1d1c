@@ -76,7 +76,7 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
       <style>{`
         .kadence-fab {
           position: fixed;
-          bottom: calc(80px + env(safe-area-inset-bottom));
+          bottom: calc(88px + env(safe-area-inset-bottom));
           right: max(16px, calc(50vw - 215px + 16px));
           width: 48px;
           height: 48px;
