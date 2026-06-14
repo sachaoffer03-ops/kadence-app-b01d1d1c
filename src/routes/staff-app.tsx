@@ -22,7 +22,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { checkUserDispoStatus, getAvailabilityLockInfo } from "@/lib/availabilities.functions";
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
-import { AIChatPanel } from "@/components/staff-app/AIChatPanel";
+
 import { AssistantFab } from "@/components/staff-app/AssistantFab";
 
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
