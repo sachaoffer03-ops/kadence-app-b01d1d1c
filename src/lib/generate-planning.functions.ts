@@ -580,10 +580,11 @@ async function runEngine(ctx: EngineCtx) {
   };
 
   const maxWeeklyHFor = (e: Employee, _studioId: string): number => {
-    if (e.contracts.has("CDI")) return s.max_weekly_cdi_hours;
-    if (e.contracts.has("Étudiant")) return s.max_weekly_student_hours;
-    if (e.contracts.has("Flexi")) return s.max_weekly_flexi_hours;
-    return 40;
+    return getWeeklyCapForUser(
+      { allow_extended_hours: e.allow_extended_hours, weekly_hours_cap: e.weekly_hours_cap },
+      e.contracts,
+      s,
+    ).cap;
   };
 
   // Conflit (chevauchement) : dans assigned[] + cellules pré-bloquées
