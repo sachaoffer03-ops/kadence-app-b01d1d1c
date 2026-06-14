@@ -13,6 +13,15 @@ import {
   getClosedDaysForMonth,
   type AvailabilityLockInfo,
 } from "@/lib/availabilities.functions";
+import {
+  addMonthsYM,
+  brusselsDeadlineDate,
+  daysInMonth as getDaysInMonth,
+  formatBrusselsDateTime,
+  formatBrusselsMonthLabel,
+  formatBrusselsShortDayMonth,
+  getBrusselsDateParts,
+} from "@/lib/brussels-time";
 
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
@@ -40,15 +49,13 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   // Mois affiché (offset par rapport au mois courant, 0 = mois courant, max 12)
   const [monthOffset, setMonthOffset] = useState(1); // par défaut : mois prochain
   const monthRef = useMemo(() => {
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() + monthOffset);
-    return d;
+    const now = getBrusselsDateParts();
+    return addMonthsYM(now.year, now.month, monthOffset);
   }, [monthOffset]);
-  const year = monthRef.getFullYear();
-  const month = monthRef.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = monthRef.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const year = monthRef.year;
+  const month = monthRef.month - 1;
+  const daysInMonth = getDaysInMonth(year, monthRef.month);
+  const monthLabel = formatBrusselsMonthLabel(year, monthRef.month);
 
   // Jour sélectionné (1..daysInMonth)
   const [selectedDay, setSelectedDay] = useState(1);
@@ -156,8 +163,8 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   // Deadline du mois affiché : lockDay du mois précédent à 23:59
   const displayedMonthDeadline = useMemo(() => {
     if (!lockInfo) return null;
-    const d = new Date(year, month - 1, lockInfo.lockDay, 23, 59, 59, 999);
-    return d;
+    const deadlineMonth = addMonthsYM(year, month + 1, -1);
+    return brusselsDeadlineDate(deadlineMonth.year, deadlineMonth.month, lockInfo.lockDay);
   }, [lockInfo, year, month]);
 
   const formatCountdown = (ms: number) => {
@@ -188,10 +195,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     return "#dc2626"; // rouge
   };
 
-  const fmtDateFR = (d: Date) =>
-    d.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) +
-    " à " +
-    d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const fmtDateFR = (d: Date) => formatBrusselsDateTime(d);
 
   const toMin = (t: string) => {
     const [h, m] = t.split(":").map(Number);
