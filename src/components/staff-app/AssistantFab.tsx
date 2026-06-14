@@ -11,18 +11,21 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
   const [open, setOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
 
-  // Open via ?openAssistant=1 (legacy deeplink)
+  // Open via ?openAssistant=1 (legacy deeplink) or custom event
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("openAssistant") === "1") {
       setOpen(true);
-      params.delete("openAssistant");
       const url = new URL(window.location.href);
       url.searchParams.delete("openAssistant");
       window.history.replaceState({}, "", url.toString());
     }
+    const onOpen = () => setOpen(true);
+    window.addEventListener("kadence:open-assistant", onOpen);
+    return () => window.removeEventListener("kadence:open-assistant", onOpen);
   }, []);
+
 
   // Pulse au premier affichage du mois
   useEffect(() => {
