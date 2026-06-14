@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import { AIChatPanel } from "./AIChatPanel";
 import kadenceAvatar from "@/assets/kadence-avatar.png";
 
