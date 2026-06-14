@@ -252,55 +252,6 @@ function DataTab({ data, loading, err }: any) {
   );
 }
 
-/* ============== TAB 3 — FEATURES ============== */
-function FeaturesTab({ audit, diag, loading, err }: any) {
-  if (loading && !audit) return <Loading />;
-  if (err && !audit && !diag) return <ErrBox msg={err} />;
-
-  return (
-    <div>
-      {audit?.sections && (
-        <div className="space-y-4">
-          {audit.sections.map((s: any) => (
-            <Card key={s.key} title={`${s.key}. ${s.title}`}>
-              {s.error ? <ErrInline>{s.error}</ErrInline> : (
-                <div className="space-y-1.5">
-                  {s.checks.map((c: any) => (
-                    <div key={c.id} className="flex items-start gap-2" style={{ fontSize: 12 }}>
-                      <StatusDot status={c.status} />
-                      <div className="flex-1 min-w-0">
-                        <div><span style={{ color: "var(--muted-foreground)", fontFamily: "monospace", fontSize: 11 }}>{c.id}</span> {c.label}</div>
-                        {c.detail && <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{c.detail}</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {audit?.orphans?.length > 0 && (
-        <Card title="🧹 Orphelins détectés" className="mt-4">
-          <Table headers={["Relation", "Manquants"]}
-            rows={audit.orphans.map((o: any) => [
-              o.rel,
-              <span style={{ color: o.count > 0 ? "#b91c1c" : "#16a34a", fontWeight: 500 }}>{o.error ? `err: ${o.error}` : o.count}</span>,
-            ])} />
-        </Card>
-      )}
-
-      {diag?.settings && (
-        <Card title="⚙️ Settings IA détectés" className="mt-4">
-          <Table headers={["Clé", "Valeur"]}
-            rows={Object.entries(diag.settings).map(([k, v]: any) => [k, String(v)])} />
-        </Card>
-      )}
-    </div>
-  );
-}
-
 /* ============== Helpers ============== */
 function Card({ title, children, className = "" }: any) {
   return (
