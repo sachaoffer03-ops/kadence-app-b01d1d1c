@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import { AIChatPanel } from "./AIChatPanel";
 import kadenceAvatar from "@/assets/kadence-avatar.png";
 
@@ -63,7 +64,7 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
             <img
               src={kadenceAvatar}
               alt="Kadence"
-              style={{ width: 44, height: 44, objectFit: "contain", display: "block" }}
+              style={{ width: 32, height: 32, objectFit: "contain", display: "block" }}
             />
           </span>
           {unread > 0 && <span className="kadence-fab-badge" />}
@@ -81,8 +82,8 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
           position: fixed;
           bottom: calc(80px + env(safe-area-inset-bottom));
           right: max(16px, calc(50vw - 215px + 16px));
-          width: 60px;
-          height: 60px;
+          width: 48px;
+          height: 48px;
           padding: 0;
           border: none;
           border-radius: 50%;
@@ -115,8 +116,8 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
           position: absolute;
           top: 2px;
           right: 2px;
-          width: 10px;
-          height: 10px;
+          width: 8px;
+          height: 8px;
           border-radius: 50%;
           background: var(--coral, #F0997B);
           box-shadow: 0 0 0 2px #FAFAF8;
