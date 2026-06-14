@@ -1577,7 +1577,7 @@ function PlanningCalendar({
                     {dayNamesShort[d.getDay()]}
                   </div>
                   <div className="flex items-center gap-1.5" style={{ fontSize: 13, fontWeight: 500, marginTop: 1 }}>
-                    {d.getDate()} {monthNames[d.getMonth()].slice(0, 3).toLowerCase()}
+                    {d.getDate()} {monthNames[d.getMonth()].toLowerCase()}
                     {isToday && <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />}
                     <span style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 400, marginLeft: "auto" }}>
                       {dayShifts.length} · {totalH}h
