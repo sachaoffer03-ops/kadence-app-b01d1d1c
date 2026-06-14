@@ -204,7 +204,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void } = {}) {
         {loaded && messages.length === 0 && suggestions.length > 0 && (
           <div className="flex flex-col gap-3 px-1 pt-2">
             <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-              <Sparkles size={13} /> Quelques idées pour commencer
+              Quelques idées pour commencer
             </div>
             {suggestions.map((s) => (
               <button key={s} onClick={() => send(s)}
