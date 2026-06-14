@@ -90,11 +90,8 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
     <>
       {/* Logo */}
       <div
-        className={collapsed ? "px-2 pt-6 pb-5 flex items-center justify-center" : "px-4 pt-5 pb-4 flex items-center justify-end gap-2"}
+        className={collapsed ? "px-2 pt-6 pb-5 flex items-center justify-center" : "px-4 pt-6 pb-5 flex items-center justify-center gap-2"}
       >
-        {!collapsed && (
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>Skult Studios</div>
-        )}
         <img
           src={logo}
           alt="Kadence"
@@ -104,6 +101,9 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
             display: "block",
           }}
         />
+        {!collapsed && (
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Skult Studios</div>
+        )}
       </div>
 
       {/* Nav */}
