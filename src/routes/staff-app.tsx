@@ -193,7 +193,7 @@ function StaffAppPage() {
         {tab === "planning" && <PlanningTab studios={studios} userId={user.id} />}
         {tab === "pointage" && <PointageTab studios={studios} userId={user.id} />}
         {tab === "formation" && <FormationPanel userId={user.id} />}
-        {tab === "chat" && <AIChatPanel />}
+        
         {tab === "profil" && <ProfilTab profile={profile} businessRoles={businessRoles} studios={studios} userId={user.id} onProfileChange={(patch) => setProfile((p) => p ? { ...p, ...patch } : p)} onNavigate={setTab} />}
       </div>
 
