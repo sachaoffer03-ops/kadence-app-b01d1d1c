@@ -149,10 +149,7 @@ function ContingentsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {emp.allow_extended_hours ? (
-                      <div className="flex items-center gap-1.5">
-                        <span style={{ fontSize: 12, fontWeight: 500 }}>{weeklyCap}h</span>
-                        <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text, #fff)" }}>étendu</span>
-                      </div>
+                      <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text, #fff)" }}>étendu</span>
                     ) : (
                       <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>15h</span>
                     )}
