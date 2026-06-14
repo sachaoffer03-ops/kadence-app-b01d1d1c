@@ -303,6 +303,16 @@ function EmployeeDetailPage() {
           </div>
 
           <WorkedHoursAdminCard userId={emp.id} hourlyRate={emp.hourly_rate} />
+          {canEditProfile && (
+            <ExtendedHoursCard
+              userId={emp.id}
+              firstName={emp.first_name}
+              contracts={userContracts.length > 0 ? userContracts : emp.contract ? [emp.contract] : []}
+              allowed={!!emp.allow_extended_hours}
+              cap={emp.weekly_hours_cap ?? null}
+              onSaved={load}
+            />
+          )}
           <ClockedShiftsTable userId={emp.id} />
           <EmployeeProposalsCard userId={emp.id} studios={studios} />
 
