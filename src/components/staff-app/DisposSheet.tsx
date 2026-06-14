@@ -316,8 +316,15 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const canPrev = monthOffset > 0;
   const canNext = monthOffset < 12;
 
+  const showValidate = !validated && !loading && !locked;
+
   return (
-    <Sheet open={open} onClose={onClose} title="Mes disponibilités">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Mes disponibilités"
+      footer={showValidate ? <PrimaryButton onClick={validate}>Valider mes dispos</PrimaryButton> : undefined}
+    >
       {/* Countdown global vers la prochaine deadline */}
       {msLeftGlobal !== null && nextDeadlineMs && (
         <div
