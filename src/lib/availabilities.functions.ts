@@ -7,6 +7,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  addMonthsYM,
+  brusselsDeadlineDate,
+  formatBrusselsDeadlineLabel,
+  formatBrusselsMonthLabel,
+  getBrusselsDateParts,
+  monthEndISO,
+  monthStartISO,
+  todayBrusselsISO,
+} from "@/lib/brussels-time";
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,8 +58,7 @@ function t2m(t: string) {
 }
 
 function todayIso() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayBrusselsISO();
 }
 
 async function isAdmin(supabase: any, userId: string) {
@@ -74,12 +83,9 @@ async function getDeadlineDay(supabase: any): Promise<number> {
 async function isMonthLocked(supabase: any, targetDate: string, _userId?: string): Promise<boolean> {
 
 
-  const target = new Date(`${targetDate}T00:00:00`);
-  const y = target.getFullYear();
-  const m = target.getMonth();
-  const monthStart = `${y}-${String(m + 1).padStart(2, "0")}-01`;
-  const lastDay = new Date(y, m + 1, 0).getDate();
-  const monthEnd = `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const [y, m] = targetDate.split("-").map(Number);
+  const monthStart = monthStartISO(y, m);
+  const monthEnd = monthEndISO(y, m);
   const { data } = await supabase
     .from("planning_publications")
     .select("id")
@@ -88,9 +94,10 @@ async function isMonthLocked(supabase: any, targetDate: string, _userId?: string
     .limit(1);
   if ((data?.length ?? 0) > 0) return true;
 
-  // Deadline : jour J du mois précédent la cible, à 23:59:59.999 locale.
+  // Deadline : jour J du mois précédent la cible, à 23:59:59.999 heure Brussels.
   const day = await getDeadlineDay(supabase);
-  const deadline = new Date(y, m - 1, day, 23, 59, 59, 999);
+  const deadlineMonth = addMonthsYM(y, m, -1);
+  const deadline = brusselsDeadlineDate(deadlineMonth.year, deadlineMonth.month, day);
   return Date.now() > deadline.getTime();
 }
 
@@ -246,18 +253,19 @@ export const getAvailabilityDeadline = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase } = context;
     const day = await getDeadlineDay(supabase);
-    const today = new Date();
-    const target = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-    const deadline = new Date(today.getFullYear(), today.getMonth(), day, 23, 59, 59, 999);
-    const msLeft = deadline.getTime() - today.getTime();
+    const now = new Date();
+    const today = getBrusselsDateParts(now);
+    const target = addMonthsYM(today.year, today.month, 1);
+    const deadline = brusselsDeadlineDate(today.year, today.month, day);
+    const msLeft = deadline.getTime() - now.getTime();
     const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-    const targetMonthFirst = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-01`;
+    const targetMonthFirst = monthStartISO(target.year, target.month);
     const published = await isMonthLocked(supabase, targetMonthFirst);
     return {
       deadline_day: day,
       deadline_iso: deadline.toISOString(),
-      target_year: target.getFullYear(),
-      target_month: target.getMonth(), // 0-indexed
+      target_year: target.year,
+      target_month: target.month - 1, // 0-indexed
       days_left: daysLeft,
       passed: msLeft < 0,
       planning_published: published,
@@ -290,46 +298,32 @@ export const getAvailabilityLockInfo = createServerFn({ method: "GET" })
       .maybeSingle();
     const lockDay = (settings as any)?.availability_lock_day ?? 25;
 
-    // Construit la deadline en Europe/Brussels (sinon décalage UTC fait passer
-    // au jour suivant côté client : "20 juin 23h59" devient "21 juin 01h59").
-    const brusselsDeadlineISO = (y: number, m0: number, day: number) => {
-      const utcGuess = Date.UTC(y, m0, day, 23, 59, 59, 999);
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: "Europe/Brussels",
-        timeZoneName: "shortOffset",
-      }).formatToParts(new Date(utcGuess));
-      const off = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT+1";
-      const match = off.match(/GMT([+-]?\d+)/);
-      const offsetHours = match ? parseInt(match[1], 10) : 1;
-      return new Date(utcGuess - offsetHours * 3_600_000);
-    };
-
     const now = new Date();
-    const currentDay = now.getDate();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // 1-12
+    const brusselsNow = getBrusselsDateParts(now);
+    const currentYear = brusselsNow.year;
+    const currentMonth = brusselsNow.month; // 1-12
 
     // Prochaine deadline = lockDay ce mois si pas encore passée, sinon lockDay le mois prochain
-    const thisMonthDeadline = brusselsDeadlineISO(currentYear, currentMonth - 1, lockDay);
+    const thisMonthDeadline = brusselsDeadlineDate(currentYear, currentMonth, lockDay);
     let nextDeadlineDate: Date;
     if (now.getTime() <= thisMonthDeadline.getTime()) {
       nextDeadlineDate = thisMonthDeadline;
     } else {
-      const ny = currentMonth === 12 ? currentYear + 1 : currentYear;
-      const nm = currentMonth === 12 ? 1 : currentMonth + 1;
-      nextDeadlineDate = brusselsDeadlineISO(ny, nm - 1, lockDay);
+      const nextDeadlineMonth = addMonthsYM(currentYear, currentMonth, 1);
+      nextDeadlineDate = brusselsDeadlineDate(nextDeadlineMonth.year, nextDeadlineMonth.month, lockDay);
     }
 
 
-    const nextMonthYear = currentMonth === 12 ? currentYear + 1 : currentYear;
-    const nextMonthMonth = currentMonth === 12 ? 1 : currentMonth + 1;
-    const nextMonthLocked = currentDay > lockDay;
+    const nextMonth = addMonthsYM(currentYear, currentMonth, 1);
+    const nextMonthYear = nextMonth.year;
+    const nextMonthMonth = nextMonth.month;
+    const nextMonthLocked = now.getTime() > thisMonthDeadline.getTime();
 
     const lockedMonthsForUser: Array<{ year: number; month: number; locked: boolean }> = [];
     for (let offset = 0; offset < 13; offset++) {
-      const target = new Date(currentYear, currentMonth - 1 + offset, 1);
-      const ty = target.getFullYear();
-      const tm = target.getMonth() + 1;
+      const target = addMonthsYM(currentYear, currentMonth, offset);
+      const ty = target.year;
+      const tm = target.month;
       let locked = false;
       if (ty < currentYear || (ty === currentYear && tm <= currentMonth)) {
         locked = true;
@@ -356,24 +350,22 @@ export const checkUserDispoStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const now = new Date();
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const now = getBrusselsDateParts();
+    const nextMonth = addMonthsYM(now.year, now.month, 1);
+    const nextMonthStart = monthStartISO(nextMonth.year, nextMonth.month);
+    const nextMonthEnd = monthEndISO(nextMonth.year, nextMonth.month);
 
     const { count } = await supabase
       .from("availabilities")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
-      .gte("avail_date", fmt(nextMonthStart))
-      .lte("avail_date", fmt(nextMonthEnd));
+      .gte("avail_date", nextMonthStart)
+      .lte("avail_date", nextMonthEnd);
 
     const c = count ?? 0;
     return {
-      nextMonthYear: nextMonthStart.getFullYear(),
-      nextMonthMonth: nextMonthStart.getMonth() + 1,
+      nextMonthYear: nextMonth.year,
+      nextMonthMonth: nextMonth.month,
       hasFilledNextMonth: c > 0,
       countNextMonth: c,
     };
@@ -414,10 +406,8 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!roleRow) throw new Error("Admin/manager uniquement");
 
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const start = `${data.year}-${pad(data.month)}-01`;
-    const lastDay = new Date(data.year, data.month, 0).getDate();
-    const end = `${data.year}-${pad(data.month)}-${pad(lastDay)}`;
+    const start = monthStartISO(data.year, data.month);
+    const end = monthEndISO(data.year, data.month);
 
     const { data: adminIds } = await supabaseAdmin
       .from("user_roles")
@@ -526,8 +516,7 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!roleRow) throw new Error("Admin uniquement");
 
-    const monthLabel = new Date(data.year, data.month - 1, 1)
-      .toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    const monthLabel = formatBrusselsMonthLabel(data.year, data.month);
 
     // 1. Notifications in-app
     const notifs = data.userIds.map((uid) => ({
@@ -562,15 +551,8 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
       const lockDay = (settings as any)?.availability_lock_day ?? 25;
       const deadlineMonth = data.month === 1 ? 12 : data.month - 1;
       const deadlineYear = data.month === 1 ? data.year - 1 : data.year;
-      const deadline = new Date(deadlineYear, deadlineMonth - 1, lockDay, 23, 59, 0);
-      const deadlineLabel =
-        deadline.toLocaleDateString("fr-FR", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        }) +
-        " à " +
-        deadline.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      const deadline = brusselsDeadlineDate(deadlineYear, deadlineMonth, lockDay);
+      const deadlineLabel = formatBrusselsDeadlineLabel(deadline);
 
       const statsAppUrl = "https://app.shyft.flashsite.fr/staff-app";
 
@@ -629,10 +611,8 @@ export const getUserAvailabilitiesForMonth = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!roleRow) throw new Error("Admin/manager uniquement");
 
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const start = `${data.year}-${pad(data.month)}-01`;
-    const lastDay = new Date(data.year, data.month, 0).getDate();
-    const end = `${data.year}-${pad(data.month)}-${pad(lastDay)}`;
+    const start = monthStartISO(data.year, data.month);
+    const end = monthEndISO(data.year, data.month);
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
