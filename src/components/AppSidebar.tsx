@@ -215,17 +215,6 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
         ))}
       </nav>
 
-      {/* Toggle collapse */}
-      {onToggleCollapse && (
-        <button
-          onClick={onToggleCollapse}
-          title={collapsed ? "Déplier le menu" : "Replier le menu"}
-          className="flex items-center justify-center mx-auto mb-1 rounded-md transition-colors hover:bg-[var(--muted)]"
-          style={{ width: 28, height: 28, color: "var(--muted-foreground)" }}
-        >
-          {collapsed ? <PanelLeft size={16} strokeWidth={1.8} /> : <PanelLeftClose size={16} strokeWidth={1.8} />}
-        </button>
-      )}
 
       {/* User */}
       <div
