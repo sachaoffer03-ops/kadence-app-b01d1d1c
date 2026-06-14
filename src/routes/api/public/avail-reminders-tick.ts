@@ -1,4 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  addMonthsYM,
+  brusselsDeadlineDate,
+  formatBrusselsDeadlineLabel,
+  formatBrusselsMonthLabel,
+  getBrusselsDateParts,
+  monthStartISO,
+} from "@/lib/brussels-time";
 
 const APP_URL = "https://app.shyft.flashsite.fr/staff-app";
 
@@ -19,26 +27,6 @@ const URGENCY_BY_THRESHOLD: Partial<Record<Threshold, Urgency>> = {
   "24h": "urgent",
   "1h": "ultimate",
 };
-
-const MONTHS_FR = [
-  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
-];
-const DAYS_FR = [
-  "Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi",
-];
-
-function formatMonthLabel(d: Date) {
-  return `${MONTHS_FR[d.getMonth()]} ${d.getFullYear()}`;
-}
-function formatDeadlineLabel(d: Date) {
-  const day = DAYS_FR[d.getDay()];
-  const dd = String(d.getDate()).padStart(2, "0");
-  const month = MONTHS_FR[d.getMonth()].toLowerCase();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${day} ${dd} ${month} à ${hh}h${mm}`;
-}
 
 export const Route = createFileRoute("/api/public/avail-reminders-tick")({
   server: {
