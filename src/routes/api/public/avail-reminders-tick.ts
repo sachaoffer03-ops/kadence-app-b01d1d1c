@@ -58,23 +58,11 @@ export const Route = createFileRoute("/api/public/avail-reminders-tick")({
 
         // 2) Compute next deadline (current month, or next if passed)
         const now = new Date();
-        let deadline = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          lockDay,
-          23,
-          59,
-          59,
-        );
+        const brusselsNow = getBrusselsDateParts(now);
+        let deadline = brusselsDeadlineDate(brusselsNow.year, brusselsNow.month, lockDay);
         if (now.getTime() > deadline.getTime()) {
-          deadline = new Date(
-            now.getFullYear(),
-            now.getMonth() + 1,
-            lockDay,
-            23,
-            59,
-            59,
-          );
+          const nextDeadlineMonth = addMonthsYM(brusselsNow.year, brusselsNow.month, 1);
+          deadline = brusselsDeadlineDate(nextDeadlineMonth.year, nextDeadlineMonth.month, lockDay);
         }
         const daysLeft =
           (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
@@ -95,18 +83,13 @@ export const Route = createFileRoute("/api/public/avail-reminders-tick")({
         const urgency = URGENCY_BY_THRESHOLD[threshold] ?? null;
 
         // 3) Target month = month containing the deadline (next month after lock)
-        const targetMonthStart = new Date(
-          deadline.getFullYear(),
-          deadline.getMonth() + 1,
-          1,
-        );
-        const targetMonthEnd = new Date(
-          deadline.getFullYear(),
-          deadline.getMonth() + 2,
-          1,
-        );
-        const monthLabel = formatMonthLabel(targetMonthStart);
-        const deadlineLabel = formatDeadlineLabel(deadline);
+        const deadlineParts = getBrusselsDateParts(deadline);
+        const targetMonth = addMonthsYM(deadlineParts.year, deadlineParts.month, 1);
+        const afterTargetMonth = addMonthsYM(targetMonth.year, targetMonth.month, 1);
+        const targetMonthStart = monthStartISO(targetMonth.year, targetMonth.month);
+        const targetMonthEnd = monthStartISO(afterTargetMonth.year, afterTargetMonth.month);
+        const monthLabel = formatBrusselsMonthLabel(targetMonth.year, targetMonth.month);
+        const deadlineLabel = formatBrusselsDeadlineLabel(deadline);
 
         // 4) Active employees (non-admin/manager)
         const { data: adminIdsRows } = await supabaseAdmin
@@ -140,8 +123,8 @@ export const Route = createFileRoute("/api/public/avail-reminders-tick")({
           .from("availabilities")
           .select("user_id")
           .in("user_id", candidateIds)
-          .gte("avail_date", targetMonthStart.toISOString().slice(0, 10))
-          .lt("avail_date", targetMonthEnd.toISOString().slice(0, 10));
+          .gte("avail_date", targetMonthStart)
+          .lt("avail_date", targetMonthEnd);
         const filledSet = new Set(
           (filled ?? []).map((r: any) => r.user_id as string),
         );
@@ -201,8 +184,8 @@ export const Route = createFileRoute("/api/public/avail-reminders-tick")({
             "@/lib/email-send.server"
           );
           const deadlineDateKey = `${deadline.getFullYear()}${String(
-            deadline.getMonth() + 1,
-          ).padStart(2, "0")}${String(deadline.getDate()).padStart(2, "0")}`;
+            deadlineParts.month,
+          ).padStart(2, "0")}${String(deadlineParts.day).padStart(2, "0")}`;
           const subjectByUrgency: Record<Urgency, string> = {
             soft: `📅 Plus que 3 jours pour tes dispos de ${monthLabel}`,
             urgent: `⚠️ Plus que 24h pour tes dispos de ${monthLabel}`,
