@@ -81,7 +81,7 @@ function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSecti
   ];
 }
 
-function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
+function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { onNavigate?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const counts = useSidebarCounts();
   const navSections = buildNavSections(counts);
