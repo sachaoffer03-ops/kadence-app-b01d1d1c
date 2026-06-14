@@ -71,11 +71,12 @@ function ContingentsPage() {
         <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Suivi du plafond légal de 650h par étudiant jobiste.</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5">
         <Kpi label="Étudiants actifs" value={students.length.toString()} />
         <Kpi label="Heures totales" value={`${totalUsed.toLocaleString("fr-BE")}`} sub={`/ ${totalMax.toLocaleString("fr-BE")}h`} />
         <Kpi label="Quota critique" value={atRisk.toString()} color={atRisk > 0 ? "var(--danger-text)" : undefined} sub="(>90%)" />
         <Kpi label="À surveiller" value={warning.toString()} color={warning > 0 ? "var(--warning-text)" : undefined} sub="(>50%)" />
+        <Kpi label="Avec heures étendues" value={extendedCount.toString()} color={extendedCount > 0 ? "var(--coral)" : undefined} sub="plafond perso" />
       </div>
 
       {atRisk > 0 && (
