@@ -166,16 +166,8 @@ function SystemTab({ sys, integ, loading, err }: any) {
           )}
         </Card>
 
-        <Card title="🚀 Dernière génération planning">
-          {!integ?.lastRun ? <Empty>Aucune génération</Empty> : (
-            <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-              <KV k="Statut" v={integ.lastRun.status} />
-              <KV k="Démarrée" v={new Date(integ.lastRun.started_at).toLocaleString("fr-FR")} />
-              <KV k="Couverture" v={integ.lastRun.coverage_rate != null ? `${Math.round(integ.lastRun.coverage_rate * 100)}%` : "—"} />
-              <KV k="Shifts" v={integ.lastRun.shifts_generated ?? "—"} />
-            </div>
-          )}
-        </Card>
+        <LastPlanningRunCard run={integ?.lastRun} />
+        <FailedRunDiagnosisCard />
       </div>
 
       {integ?.tableCounts && (
