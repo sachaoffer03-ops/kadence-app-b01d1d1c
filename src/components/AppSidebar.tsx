@@ -121,16 +121,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 <>
                   <item.icon size={15} strokeWidth={1.8} />
                   <span className="flex-1">{item.label}</span>
-                  {item.badge ? (
+                  {item.badge !== undefined && item.badge > 0 ? (
                     <span
                       className="inline-flex items-center justify-center rounded-full tabular-nums"
                       style={{
-                        fontSize: 10,
-                        fontWeight: 500,
+                        fontSize: 11,
+                        fontWeight: 600,
                         lineHeight: 1,
-                        minWidth: 20,
+                        minWidth: 18,
                         height: 18,
                         padding: "0 6px",
+                        boxSizing: "border-box",
                         backgroundColor: item.badgeType === "danger" ? "var(--danger-bg)" : "var(--muted)",
                         color: item.badgeType === "danger" ? "var(--danger-text)" : "var(--muted-foreground)",
                       }}

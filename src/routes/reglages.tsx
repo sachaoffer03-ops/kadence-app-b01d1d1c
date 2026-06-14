@@ -101,7 +101,7 @@ function AISettings() {
             flexi: r.max_weekly_flexi_hours ?? 20,
             cdi: r.max_weekly_cdi_hours ?? 48,
           });
-          setDeadlineDay((r as any).availability_lock_day ?? r.availability_deadline_day ?? 25);
+          setDeadlineDay((r as any).availability_lock_day ?? 25);
         }
         setLoading(false);
       });
@@ -116,7 +116,6 @@ function AISettings() {
       max_weekly_student_hours: weekly.student,
       max_weekly_flexi_hours: weekly.flexi,
       max_weekly_cdi_hours: weekly.cdi,
-      availability_deadline_day: deadlineDay,
       availability_lock_day: deadlineDay,
       ...rules,
     };
