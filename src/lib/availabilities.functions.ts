@@ -23,8 +23,24 @@ const UpdateInput = z.object({
   end_time: z.string().regex(TIME_RE),
 });
 
-const MIN_DURATION_MIN = 4 * 60;
+const DEFAULT_MIN_DURATION_MIN = 4 * 60;
 const STEP_MIN = 15;
+
+async function getMinDurationMin(supabase: any): Promise<number> {
+  const { data } = await supabase
+    .from("ai_planning_settings")
+    .select("min_shift_hours")
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  const v = Number(data?.[0]?.min_shift_hours);
+  if (Number.isFinite(v) && v > 0) return Math.round(v * 60);
+  return DEFAULT_MIN_DURATION_MIN;
+}
+
+function fmtHours(min: number) {
+  const h = min / 60;
+  return Number.isInteger(h) ? `${h}h` : `${h.toFixed(1)}h`;
+}
 
 function t2m(t: string) {
   const [h, m] = t.split(":").map(Number);
@@ -79,15 +95,15 @@ async function isMonthLocked(supabase: any, targetDate: string, _userId?: string
 }
 
 
-function validateRangeShape(start: string, end: string) {
+function validateRangeShape(start: string, end: string, minDurationMin: number) {
   const s = t2m(start);
   const e = t2m(end);
   if (s % STEP_MIN !== 0 || e % STEP_MIN !== 0) {
     throw new Error("Les heures doivent être alignées sur 15 minutes");
   }
   if (e <= s) throw new Error("L'heure de fin doit être après le début");
-  if (e - s < MIN_DURATION_MIN) {
-    throw new Error("Une dispo doit faire au moins 4 heures");
+  if (e - s < minDurationMin) {
+    throw new Error(`Une dispo doit faire au moins ${fmtHours(minDurationMin)}`);
   }
   return { s, e };
 }
@@ -134,7 +150,8 @@ export const createAvailability = createServerFn({ method: "POST" })
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification depuis l'accueil.");
     }
 
-    const { s, e } = validateRangeShape(data.start_time, data.end_time);
+    const minDur = await getMinDurationMin(supabase);
+    const { s, e } = validateRangeShape(data.start_time, data.end_time, minDur);
     await ensureNoOverlap(supabase, userId, data.avail_date, s, e);
 
     const { data: row, error } = await supabase
@@ -179,7 +196,8 @@ export const updateAvailability = createServerFn({ method: "POST" })
       throw new Error("Modifications fermées (deadline dépassée ou planning publié). Fais une demande de modification.");
     }
 
-    const { s, e } = validateRangeShape(data.start_time, data.end_time);
+    const minDur = await getMinDurationMin(supabase);
+    const { s, e } = validateRangeShape(data.start_time, data.end_time, minDur);
     await ensureNoOverlap(supabase, existing.user_id, existing.avail_date, s, e, data.id);
 
     const { error } = await supabase
