@@ -311,7 +311,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const canPrev = monthOffset > 0;
   const canNext = monthOffset < 12;
 
-  const showValidate = !validated && !loading && !locked;
+  const showValidate = !loading && !locked;
 
   return (
     <Sheet
