@@ -40,6 +40,8 @@ interface Profile {
   student_card_valid: boolean | null;
   avatar_url: string | null;
   hourly_rate: number | null;
+  allow_extended_hours: boolean | null;
+  weekly_hours_cap: number | null;
 }
 interface ShiftRow { id: string; shift_date: string; start_time: string; end_time: string; business_role: string; studio_id: string | null; status: string; clocked_in_at: string | null; clocked_out_at: string | null; }
 interface FB { id: string; rating: number; message: string | null; created_at: string; shift_id: string | null; author_id: string; }
