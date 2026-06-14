@@ -41,8 +41,10 @@ export function standardCapForContracts(
 
 /**
  * Plafond hebdomadaire effectif pour un employé.
- * Si allow_extended_hours = true, utilise weekly_hours_cap (ou 48 par défaut, jamais > 48).
+ * Si allow_extended_hours = true, applique le max légal (cap CDI ou 48).
  * Sinon retourne le plafond standard du contrat.
+ *
+ * NB : weekly_hours_cap reste en DB pour l'historique audit mais n'est plus lu.
  */
 export function getWeeklyCapForUser(
   profile: ProfileForCap | null | undefined,
@@ -51,8 +53,7 @@ export function getWeeklyCapForUser(
 ): { cap: number; standardCap: number; isExtended: boolean } {
   const standardCap = standardCapForContracts(contracts, settings);
   if (profile?.allow_extended_hours) {
-    const override = profile.weekly_hours_cap;
-    const cap = typeof override === "number" && override > 0 ? Math.min(48, override) : 48;
+    const cap = Number(settings?.max_weekly_cdi_hours ?? DEFAULTS.cdi);
     return { cap, standardCap, isExtended: true };
   }
   return { cap: standardCap, standardCap, isExtended: false };
