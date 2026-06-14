@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 
 import { AIChatPanel } from "./AIChatPanel";
-import kadenceAvatar from "@/assets/kadence-avatar.png";
 
 function monthKey() {
   const d = new Date();
@@ -61,11 +61,7 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
           className={`kadence-fab ${pulse ? "kadence-fab-pulse" : ""}`}
         >
           <span className="kadence-fab-inner">
-            <img
-              src={kadenceAvatar}
-              alt="Kadence"
-              style={{ width: 32, height: 32, objectFit: "contain", display: "block" }}
-            />
+            <Sparkles size={20} strokeWidth={2} color="#FFFFFF" />
           </span>
           {unread > 0 && <span className="kadence-fab-badge" />}
         </button>
@@ -101,12 +97,11 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
           width: 100%;
           height: 100%;
           border-radius: 50%;
-          background: radial-gradient(circle at 30% 25%, #FFFFFF 0%, #FAFAF8 55%, #F5F0EA 100%);
+          background: linear-gradient(135deg, #F0997B 0%, #E8826A 100%);
           box-shadow:
-            0 1px 0 rgba(255,255,255,0.9) inset,
-            0 0 0 1px rgba(240,153,123,0.22),
-            0 10px 24px -8px rgba(60,30,15,0.22),
-            0 4px 10px -4px rgba(60,30,15,0.12);
+            0 1px 0 rgba(255,255,255,0.25) inset,
+            0 8px 20px -6px rgba(232,130,106,0.45),
+            0 3px 8px -3px rgba(60,30,15,0.18);
           display: flex;
           align-items: center;
           justify-content: center;
