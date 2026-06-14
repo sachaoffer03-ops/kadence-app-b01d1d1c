@@ -100,11 +100,6 @@ export const runDataDiagnostic = createServerFn({ method: "GET" })
 
     // Heures dispo = somme des max contractuels des employés affectés au studio
     const settings = settingsRows[0] ?? {};
-    const maxByContract: Record<string, number> = {
-      CDI: settings.max_weekly_cdi_hours ?? 48,
-      "Étudiant": settings.max_weekly_student_hours ?? 15,
-      Flexi: settings.max_weekly_flexi_hours ?? 20,
-    };
     const userContractsByUser: Record<string, string[]> = {};
     for (const r of userContracts) {
       userContractsByUser[r.user_id] = userContractsByUser[r.user_id] ?? [];
@@ -119,7 +114,8 @@ export const runDataDiagnostic = createServerFn({ method: "GET" })
     for (const p of activeProfiles) {
       const sids = studiosByUser[p.id] ?? (p.studio_id ? [p.studio_id] : []);
       const contracts = userContractsByUser[p.id] ?? (p.contract ? [p.contract] : []);
-      const maxH = Math.max(0, ...contracts.map((c) => maxByContract[c] ?? 0));
+      // Source unique de vérité pour le plafond hebdo (respecte allow_extended_hours)
+      const { cap: maxH } = getWeeklyCapForUser(p as any, contracts, settings as any);
       for (const sid of sids) {
         availableByStudio[sid] = (availableByStudio[sid] ?? 0) + maxH;
       }
