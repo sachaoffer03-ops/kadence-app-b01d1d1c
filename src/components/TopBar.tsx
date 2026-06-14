@@ -43,7 +43,7 @@ interface NotifRow {
 type NotifTab = "all" | "unread" | "urgent";
 
 
-export function TopBar({ onMenuToggle, onSidebarToggle, sidebarCollapsed }: { onMenuToggle?: () => void; onSidebarToggle?: () => void; sidebarCollapsed?: boolean }) {
+export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [shiftOpen, setShiftOpen] = useState(false);
