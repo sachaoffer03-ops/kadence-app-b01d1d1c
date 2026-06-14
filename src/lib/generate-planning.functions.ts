@@ -16,6 +16,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchAll } from "@/lib/supabase-paginate";
+import { getWeeklyCapForUser } from "@/lib/weekly-cap";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const CELL_MIN = 15;             // granularité (15 min)
