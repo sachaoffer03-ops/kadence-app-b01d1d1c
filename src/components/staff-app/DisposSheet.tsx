@@ -16,7 +16,9 @@ import {
 import {
   addMonthsYM,
   brusselsDeadlineDate,
+  brusselsWallTimeDate,
   daysInMonth as getDaysInMonth,
+  formatBrusselsDate,
   formatBrusselsDateTime,
   formatBrusselsMonthLabel,
   formatBrusselsShortDayMonth,
@@ -479,7 +481,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
           {/* Détail du jour sélectionné */}
           {(() => {
             const dayRanges = ranges[selectedDay] ?? [];
-            const dateLong = new Date(year, month, selectedDay).toLocaleDateString("fr-FR", {
+            const dateLong = formatBrusselsDate(brusselsWallTimeDate(year, month + 1, selectedDay, 12), {
               weekday: "long", day: "numeric", month: "long",
             });
             return (
