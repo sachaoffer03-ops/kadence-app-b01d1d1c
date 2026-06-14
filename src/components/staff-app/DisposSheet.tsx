@@ -256,38 +256,33 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     const list = ranges[day] ?? [];
     const current = list[idx];
     if (!current?.id) return;
-    let updated: Range = { ...current, ...patch };
-    const MIN = Math.round(minShiftHours * 60);
-    const DAY_END = 23 * 60 + 30;
+    const updated: Range = { ...current, ...patch };
 
-    // Auto-ajuste pour éviter d'afficher une erreur quand l'utilisateur
-    // modifie d'abord l'heure de début (l'heure de fin sera réglée juste après).
-    if (patch.start !== undefined) {
-      const s = toMin(updated.start);
-      if (toMin(updated.end) <= s) {
-        updated.end = fmtMin(Math.min(DAY_END, s + MIN));
-      }
-    }
-    if (patch.end !== undefined) {
-      const e = toMin(updated.end);
-      if (e <= toMin(updated.start)) {
-        // L'utilisateur descend l'heure de fin avant l'heure de début : on remonte le début.
-        updated.start = fmtMin(Math.max(0, e - MIN));
-      }
-    }
-
-    const conflict = overlapsExisting(day, updated.start, updated.end, idx);
-    if (conflict === "overlap") { toast.error("Cette plage chevauche une autre plage du même jour"); return; }
-    if (conflict === "invalid") { toast.error("L'heure de fin doit être après l'heure de début"); return; }
-
-    // Mise à jour optimiste de l'UI immédiatement (les dropdowns reflètent l'ajustement auto)
+    // Toujours refléter le choix de l'utilisateur dans l'UI, même si invalide.
     setRanges((p) => ({ ...p, [day]: list.map((r, i) => (i === idx ? updated : r)) }));
+
+    const MIN = Math.round(minShiftHours * 60);
+    const s = toMin(updated.start);
+    const e = toMin(updated.end);
+
+    if (e <= s) {
+      toast.error("L'heure de fin doit être après l'heure de début");
+      return; // pas de sauvegarde, l'utilisateur corrigera
+    }
+    if (e - s < MIN) {
+      toast.error(`Un créneau doit durer au moins ${minShiftHours}h`);
+      return;
+    }
+    const conflict = overlapsExisting(day, updated.start, updated.end, idx);
+    if (conflict === "overlap") {
+      toast.error("Cette plage chevauche une autre plage du même jour");
+      return;
+    }
+
     try {
       await updateFn({ data: { id: updated.id, start_time: updated.start, end_time: updated.end } });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erreur");
-      // rollback
-      setRanges((p) => ({ ...p, [day]: list }));
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erreur");
     }
   };
 
