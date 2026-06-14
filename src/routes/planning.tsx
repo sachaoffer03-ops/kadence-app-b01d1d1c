@@ -1045,7 +1045,17 @@ function PlanningCalendarPage() {
             <Popover open={calOpen} onOpenChange={setCalOpen}>
               <PopoverTrigger asChild>
                 <button className="px-2 py-1.5 hover:bg-[var(--muted)] transition-colors" style={{ fontSize: 12, fontWeight: 500, borderLeft: "0.5px solid var(--border)", borderRight: "0.5px solid var(--border)" }}>
-                  Sem. {weekNumber} · {monthNames[weekDays[3].getMonth()]} {weekDays[3].getFullYear()}
+                  {(() => {
+                    const start = weekDays[0];
+                    const end = weekDays[6];
+                    const sameMonth = start.getMonth() === end.getMonth();
+                    const sameYear = start.getFullYear() === end.getFullYear();
+                    const startStr = sameMonth
+                      ? `${start.getDate()}`
+                      : `${start.getDate()} ${monthNames[start.getMonth()]}${sameYear ? "" : ` ${start.getFullYear()}`}`;
+                    const endStr = `${end.getDate()} ${monthNames[end.getMonth()]} ${end.getFullYear()}`;
+                    return `${startStr} – ${endStr} · sem. ${weekNumber}`;
+                  })()}
                 </button>
               </PopoverTrigger>
               <PopoverContent align="center" className="w-auto p-2">
