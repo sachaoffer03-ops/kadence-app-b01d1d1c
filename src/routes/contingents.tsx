@@ -127,7 +127,7 @@ function ContingentsPage() {
               const empRoles = roles.get(emp.id) || [];
               const firstRole = empRoles[0];
               const rc = getRoleStyle(firstRole);
-              const weeklyCap = emp.allow_extended_hours ? (emp.weekly_hours_cap ?? 48) : 15;
+              
 
               return (
                 <tr key={emp.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
