@@ -57,7 +57,7 @@ function dispatchAction(type: ChatActionType) {
   window.dispatchEvent(new CustomEvent("kadence:chat-action", { detail: { type } }));
 }
 
-export function AIChatPanel() {
+export function AIChatPanel({ onClose }: { onClose?: () => void } = {}) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
