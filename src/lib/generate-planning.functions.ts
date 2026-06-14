@@ -390,6 +390,8 @@ async function runEngine(ctx: EngineCtx) {
       weeklyMin: new Map(),
       assigned: [],
       totalAssignedMin: 0,
+      allow_extended_hours: !!p.allow_extended_hours,
+      weekly_hours_cap: p.weekly_hours_cap ?? null,
     });
     if (p.contract) employees.get(p.id)!.contracts.add(p.contract);
   }
