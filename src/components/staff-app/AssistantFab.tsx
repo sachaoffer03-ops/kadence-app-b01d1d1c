@@ -116,8 +116,8 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
           position: absolute;
           top: 2px;
           right: 2px;
-          width: 10px;
-          height: 10px;
+          width: 8px;
+          height: 8px;
           border-radius: 50%;
           background: var(--coral, #F0997B);
           box-shadow: 0 0 0 2px #FAFAF8;
