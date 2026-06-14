@@ -80,7 +80,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
     ] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("id, first_name, last_name, score, contract")
+        .select("id, first_name, last_name, score, contract, allow_extended_hours, weekly_hours_cap")
         .eq("status", "active"),
       supabaseAdmin.from("user_business_roles").select("user_id, role"),
       supabaseAdmin.from("user_studios").select("user_id, studio_id"),
