@@ -53,7 +53,15 @@ export const analyzeClosurePhotoFn = createServerFn({ method: "POST" })
 
 export const notifyOverdueClockOutsFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: roleRow } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "manager"])
+      .maybeSingle();
+    if (!roleRow) throw new Error("Réservé aux administrateurs/managers");
     return notifyOverdueClockOuts();
   });
 
