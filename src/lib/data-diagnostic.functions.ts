@@ -32,7 +32,7 @@ export const runDataDiagnostic = createServerFn({ method: "GET" })
       studios,
       settingsRows,
     ] = await Promise.all([
-      fetchAll<any>(supabase.from("profiles").select("id, first_name, last_name, status, contract")),
+      fetchAll<any>(supabase.from("profiles").select("id, first_name, last_name, status, contract, allow_extended_hours, weekly_hours_cap")),
       fetchAll<any>(supabase.from("user_contracts").select("user_id, contract")),
       fetchAll<any>(supabase.from("user_business_roles").select("user_id, role")),
       fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
