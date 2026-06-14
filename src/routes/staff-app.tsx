@@ -325,14 +325,13 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
 
   // Mois suivant
   const nextMonth = useMemo(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 1, 1);
-    return d;
+    const now = getBrusselsDateParts();
+    return addMonthsYM(now.year, now.month, 1);
   }, []);
-  const nextMonthLabel = nextMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const nextMonthLabel = formatBrusselsMonthLabel(nextMonth.year, nextMonth.month);
 
   useEffect(() => {
-    try { setDisposValidated(!!window.localStorage?.getItem(disposKey(userId, nextMonth.getFullYear(), nextMonth.getMonth()))); } catch { setDisposValidated(false); }
+    try { setDisposValidated(!!window.localStorage?.getItem(disposKey(userId, nextMonth.year, nextMonth.month - 1))); } catch { setDisposValidated(false); }
   }, [userId, disposOpen, nextMonth]);
 
   // Statut dispos (mois prochain) + lock info pour bannière de rappel
@@ -369,9 +368,9 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     return `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m`;
   })();
   const dispoDeadlineLabel = lockInfo
-    ? new Date(lockInfo.nextDeadline).toLocaleDateString("fr-FR", { day: "2-digit", month: "long" }) +
+    ? formatBrusselsDate(lockInfo.nextDeadline, { day: "2-digit", month: "long" }) +
       " à " +
-      new Date(lockInfo.nextDeadline).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+      formatBrusselsTime(lockInfo.nextDeadline)
     : "";
 
 
@@ -380,8 +379,7 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
 
   useEffect(() => {
     const today = todayISO();
-    const in7 = new Date(); in7.setDate(in7.getDate() + 7);
-    const weekEnd = in7.toISOString().slice(0, 10);
+    const weekEnd = addDaysISO(today, 7);
     const load = async () => {
       const { data: next, error } = await supabase.from("shifts")
         .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
