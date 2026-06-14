@@ -64,6 +64,8 @@ interface Employee {
   // Tous les shifts attribués pendant ce run (lookup conflit + repos)
   assigned: Array<{ date: string; startMin: number; endMin: number; studio_id: string; role: Role; reqId: string }>;
   totalAssignedMin: number;
+  allow_extended_hours: boolean;
+  weekly_hours_cap: number | null;
 }
 
 interface AvailRange { startMin: number; endMin: number; }
