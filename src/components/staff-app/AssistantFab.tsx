@@ -82,8 +82,8 @@ export function AssistantFab({ unread = 0 }: { unread?: number }) {
           position: fixed;
           bottom: calc(80px + env(safe-area-inset-bottom));
           right: max(16px, calc(50vw - 215px + 16px));
-          width: 60px;
-          height: 60px;
+          width: 48px;
+          height: 48px;
           padding: 0;
           border: none;
           border-radius: 50%;
