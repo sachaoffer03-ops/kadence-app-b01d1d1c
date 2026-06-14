@@ -309,8 +309,8 @@ function EmployeeDetailPage() {
               firstName={emp.first_name}
               contracts={userContracts.length > 0 ? userContracts : emp.contract ? [emp.contract] : []}
               allowed={!!emp.allow_extended_hours}
-              cap={emp.weekly_hours_cap ?? null}
               onSaved={load}
+
             />
           )}
           <ClockedShiftsTable userId={emp.id} />
