@@ -218,9 +218,17 @@ function SignalementsPage() {
                   overflow: "hidden",
                 }}>
                 <div className="flex items-start gap-3">
-                  <div className="rounded-full flex items-center justify-center shrink-0"
-                    style={{ width: 38, height: 38, backgroundColor: isStock ? "var(--coral-light)" : "var(--muted)", color: isStock ? "var(--coral-text)" : "var(--foreground)" }}>
-                    <Icon size={16} strokeWidth={1.8} />
+                  <div className="rounded-full flex items-center justify-center shrink-0 overflow-hidden relative"
+                    style={{ width: 38, height: 38, backgroundColor: isStock ? "var(--coral-light)" : "var(--muted)", color: isStock ? "var(--coral-text)" : "var(--foreground)", fontSize: 12, fontWeight: 500 }}>
+                    {emp?.avatar_url ? (
+                      <img src={emp.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{initials}</span>
+                    )}
+                    <div className="absolute -bottom-0.5 -right-0.5 rounded-full flex items-center justify-center"
+                      style={{ width: 16, height: 16, backgroundColor: isStock ? "var(--coral)" : "var(--foreground)", color: "var(--card)", border: "1.5px solid var(--card)" }}>
+                      <Icon size={9} strokeWidth={2.2} />
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0"
                     style={{
