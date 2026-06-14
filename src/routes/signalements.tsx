@@ -57,7 +57,7 @@ function SignalementsPage() {
     const load = async () => {
       const [{ data: rows }, { data: ps }, { data: sts }] = await Promise.all([
         supabase.from("signalements").select("*").order("created_at", { ascending: false }),
-        supabase.from("profiles").select("id,first_name,last_name"),
+        supabase.from("profiles").select("id,first_name,last_name,avatar_url"),
         supabase.from("studios").select("id,name"),
       ]);
       if (rows) setItems(rows as Row[]);
