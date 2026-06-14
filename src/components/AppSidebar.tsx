@@ -79,7 +79,7 @@ function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSecti
   ];
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const counts = useSidebarCounts();
   const navSections = buildNavSections(counts);
@@ -87,27 +87,42 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       {/* Logo */}
-      <div className="px-4 pt-6 pb-5">
-        <img src={logo} alt="Kadence" style={{ height: 80, width: "auto", maxWidth: "100%", display: "block", marginLeft: "auto", marginRight: "auto" }} />
-        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 6 }}>Skult Studios</div>
+      <div className={collapsed ? "px-2 pt-6 pb-5" : "px-4 pt-6 pb-5"}>
+        <img
+          src={logo}
+          alt="Kadence"
+          style={{
+            height: collapsed ? 32 : 80,
+            width: "auto",
+            maxWidth: "100%",
+            display: "block",
+            marginLeft: "auto",
+            marginRight: "auto",
+          }}
+        />
+        {!collapsed && (
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 6 }}>Skult Studios</div>
+        )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 pb-3">
+      <nav className={collapsed ? "flex-1 overflow-y-auto px-2 pb-3" : "flex-1 overflow-y-auto px-3 pb-3"}>
         {navSections.map((section) => (
           <div key={section.title} className="mb-4">
-            <div
-              className="px-2 mb-1"
-              style={{
-                fontSize: 9,
-                fontWeight: 500,
-                color: "var(--muted-foreground)",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
-            >
-              {section.title}
-            </div>
+            {!collapsed && (
+              <div
+                className="px-2 mb-1"
+                style={{
+                  fontSize: 9,
+                  fontWeight: 500,
+                  color: "var(--muted-foreground)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                {section.title}
+              </div>
+            )}
             {section.items.map((item) => {
               const isExternal = item.to.includes("?");
               const isActive = !isExternal && (currentPath === item.to || currentPath.startsWith(item.to + "/"));
@@ -117,7 +132,30 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 color: isActive ? "var(--foreground)" : "var(--sidebar-foreground)",
                 backgroundColor: isActive ? "var(--sidebar-accent)" : "transparent",
               } as const;
-              const inner = (
+              const inner = collapsed ? (
+                <div className="relative flex items-center justify-center w-full">
+                  <item.icon size={18} strokeWidth={1.8} />
+                  {item.badge !== undefined && item.badge > 0 ? (
+                    <span
+                      className="absolute rounded-full flex items-center justify-center"
+                      style={{
+                        top: -4,
+                        right: -2,
+                        minWidth: 14,
+                        height: 14,
+                        padding: "0 3px",
+                        fontSize: 9,
+                        fontWeight: 600,
+                        lineHeight: 1,
+                        backgroundColor: item.badgeType === "danger" ? "var(--danger-bg)" : "var(--muted)",
+                        color: item.badgeType === "danger" ? "var(--danger-text)" : "var(--muted-foreground)",
+                      }}
+                    >
+                      {item.badge}
+                    </span>
+                  ) : null}
+                </div>
+              ) : (
                 <>
                   <item.icon size={15} strokeWidth={1.8} />
                   <span className="flex-1">{item.label}</span>
@@ -141,14 +179,18 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   ) : null}
                 </>
               );
+              const className = collapsed
+                ? "flex items-center justify-center px-2 py-2 rounded-md transition-colors mb-0.5"
+                : "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors";
               if (isExternal) {
                 return (
                   <a
                     key={item.to}
                     href={item.to}
                     onClick={onNavigate}
-                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors"
+                    className={className}
                     style={linkStyle}
+                    title={collapsed ? item.label : undefined}
                   >
                     {inner}
                   </a>
@@ -159,8 +201,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   key={item.to}
                   to={item.to}
                   onClick={onNavigate}
-                  className="flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors"
+                  className={className}
                   style={linkStyle}
+                  title={collapsed ? item.label : undefined}
                 >
                   {inner}
                 </Link>
@@ -171,7 +214,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {/* User */}
-      <div className="px-4 py-3 border-t flex items-center gap-2.5" style={{ borderColor: "var(--border)" }}>
+      <div
+        className={
+          collapsed
+            ? "px-2 py-3 border-t flex items-center justify-center"
+            : "px-4 py-3 border-t flex items-center gap-2.5"
+        }
+        style={{ borderColor: "var(--border)" }}
+      >
         <div
           className="flex items-center justify-center rounded-full"
           style={{
@@ -181,31 +231,35 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             color: "var(--coral)",
             fontSize: 11,
             fontWeight: 500,
+            flexShrink: 0,
           }}
+          title={collapsed ? "Sacha — Administrateur" : undefined}
         >
           SA
         </div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>Sacha</div>
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Administrateur</div>
-        </div>
+        {!collapsed && (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>Sacha</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Administrateur</div>
+          </div>
+        )}
       </div>
     </>
   );
 }
 
 /* Desktop sidebar */
-export function AppSidebar() {
+export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <aside
-      className="fixed left-0 top-0 bottom-0 flex-col border-r hidden md:flex"
+      className="fixed left-0 top-0 bottom-0 flex-col border-r hidden md:flex transition-[width] duration-200 ease-out"
       style={{
-        width: 220,
+        width: collapsed ? 64 : 220,
         backgroundColor: "var(--sidebar-bg)",
         borderColor: "var(--border)",
       }}
     >
-      <SidebarContent />
+      <SidebarContent collapsed={collapsed} />
     </aside>
   );
 }
