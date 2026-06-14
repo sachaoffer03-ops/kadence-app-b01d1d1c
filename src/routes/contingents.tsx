@@ -36,7 +36,7 @@ function ContingentsPage() {
   useEffect(() => {
     const load = async () => {
       const [{ data: profs }, { data: ubr }] = await Promise.all([
-        supabase.from("profiles").select("id,first_name,last_name,quota_used,quota_max,studio_id").eq("contract", "Étudiant"),
+        supabase.from("profiles").select("id,first_name,last_name,quota_used,quota_max,studio_id,allow_extended_hours,weekly_hours_cap").eq("contract", "Étudiant"),
         supabase.from("user_business_roles").select("user_id,role"),
       ]);
       setStudents((profs || []) as Student[]);
