@@ -89,20 +89,21 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
   return (
     <>
       {/* Logo */}
-      <div
-        className={collapsed ? "px-2 pt-6 pb-5 flex items-center justify-center" : "px-4 pt-6 pb-5 flex items-center justify-center gap-2"}
-      >
+      <div className={collapsed ? "px-2 pt-6 pb-5" : "px-4 pt-6 pb-5"}>
         <img
           src={logo}
           alt="Kadence"
           style={{
-            height: collapsed ? 32 : 28,
+            height: collapsed ? 32 : 80,
             width: "auto",
+            maxWidth: "100%",
             display: "block",
+            marginLeft: "auto",
+            marginRight: "auto",
           }}
         />
         {!collapsed && (
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Skult Studios</div>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 6 }}>Skult Studios</div>
         )}
       </div>
 
