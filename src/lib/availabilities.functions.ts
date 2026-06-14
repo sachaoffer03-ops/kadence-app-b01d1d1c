@@ -407,10 +407,8 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!roleRow) throw new Error("Admin/manager uniquement");
 
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const start = `${data.year}-${pad(data.month)}-01`;
-    const lastDay = new Date(data.year, data.month, 0).getDate();
-    const end = `${data.year}-${pad(data.month)}-${pad(lastDay)}`;
+    const start = monthStartISO(data.year, data.month);
+    const end = monthEndISO(data.year, data.month);
 
     const { data: adminIds } = await supabaseAdmin
       .from("user_roles")
@@ -519,8 +517,7 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!roleRow) throw new Error("Admin uniquement");
 
-    const monthLabel = new Date(data.year, data.month - 1, 1)
-      .toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    const monthLabel = formatBrusselsMonthLabel(data.year, data.month);
 
     // 1. Notifications in-app
     const notifs = data.userIds.map((uid) => ({
@@ -555,15 +552,8 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
       const lockDay = (settings as any)?.availability_lock_day ?? 25;
       const deadlineMonth = data.month === 1 ? 12 : data.month - 1;
       const deadlineYear = data.month === 1 ? data.year - 1 : data.year;
-      const deadline = new Date(deadlineYear, deadlineMonth - 1, lockDay, 23, 59, 0);
-      const deadlineLabel =
-        deadline.toLocaleDateString("fr-FR", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        }) +
-        " à " +
-        deadline.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      const deadline = brusselsDeadlineDate(deadlineYear, deadlineMonth, lockDay);
+      const deadlineLabel = formatBrusselsDeadlineLabel(deadline);
 
       const statsAppUrl = "https://app.shyft.flashsite.fr/staff-app";
 
@@ -622,10 +612,8 @@ export const getUserAvailabilitiesForMonth = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!roleRow) throw new Error("Admin/manager uniquement");
 
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const start = `${data.year}-${pad(data.month)}-01`;
-    const lastDay = new Date(data.year, data.month, 0).getDate();
-    const end = `${data.year}-${pad(data.month)}-${pad(lastDay)}`;
+    const start = monthStartISO(data.year, data.month);
+    const end = monthEndISO(data.year, data.month);
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
