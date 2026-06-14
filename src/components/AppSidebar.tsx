@@ -109,7 +109,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
               <button
                 onClick={onToggleCollapse}
                 title="Replier le menu"
-                className="flex items-center justify-center rounded-md transition-colors hover:bg-[var(--muted)]"
+                className="flex items-center justify-center rounded-md transition-all duration-150 hover:bg-[var(--muted)] active:scale-90 active:bg-[var(--sidebar-accent)]"
                 style={{ width: 28, height: 28, color: "var(--muted-foreground)" }}
               >
                 <PanelLeftClose size={16} strokeWidth={1.8} />
@@ -122,7 +122,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
             <button
               onClick={onToggleCollapse}
               title="Déplier le menu"
-              className="flex items-center justify-center rounded-md transition-colors hover:bg-[var(--muted)]"
+              className="flex items-center justify-center rounded-md transition-all duration-150 hover:bg-[var(--muted)] active:scale-90 active:bg-[var(--sidebar-accent)]"
               style={{ width: 28, height: 28, color: "var(--muted-foreground)" }}
             >
               <PanelLeft size={16} strokeWidth={1.8} />
