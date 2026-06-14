@@ -183,7 +183,7 @@ export const Route = createFileRoute("/api/public/avail-reminders-tick")({
           const { enqueueTemplateEmail } = await import(
             "@/lib/email-send.server"
           );
-          const deadlineDateKey = `${deadline.getFullYear()}${String(
+          const deadlineDateKey = `${deadlineParts.year}${String(
             deadlineParts.month,
           ).padStart(2, "0")}${String(deadlineParts.day).padStart(2, "0")}`;
           const subjectByUrgency: Record<Urgency, string> = {
