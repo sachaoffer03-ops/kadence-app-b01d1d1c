@@ -179,7 +179,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void } = {}) {
       <div className="px-4 pt-5 pb-3" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)", backgroundColor: "#fff" }}>
         <div className="flex items-center gap-2.5">
           <div className="rounded-full flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: "var(--coral)" }}>
-            <Bot size={18} color="var(--coral-text)" strokeWidth={1.8} />
+            <img src={kadenceAvatar} alt="Kadence" style={{ width: 22, height: 22 }} />
           </div>
           <div className="flex-1 min-w-0">
             <div style={{ fontSize: 15, fontWeight: 500, color: "var(--foreground)" }}>Kadence Assistant</div>
