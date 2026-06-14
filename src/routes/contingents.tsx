@@ -109,7 +109,7 @@ function ContingentsPage() {
         <table className="w-full" style={{ fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "0.5px solid var(--border)" }}>
-              {["Étudiant", "Postes", "Heures", "Quota", "Progression", "Statut"].map((h) => (
+              {["Étudiant", "Postes", "Plafond hebdo", "Heures", "Quota", "Progression", "Statut"].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5" style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
               ))}
             </tr>
