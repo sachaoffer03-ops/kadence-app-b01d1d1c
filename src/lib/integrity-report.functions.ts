@@ -73,7 +73,8 @@ export const collectIntegrityStats = createServerFn({ method: "GET" }).handler(a
 
   // Dernière génération
   const { data: lastRun } = await supabaseAdmin
-    .from("planning_runs").select("id, status, started_at, coverage_rate, shifts_generated")
+    .from("planning_runs")
+    .select("id, status, started_at, completed_at, coverage_rate, shifts_generated, error_message, solver_logs")
     .order("started_at", { ascending: false }).limit(1).maybeSingle();
 
   // Compte d'admins
