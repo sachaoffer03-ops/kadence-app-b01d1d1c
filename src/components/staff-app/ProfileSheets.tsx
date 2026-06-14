@@ -437,7 +437,7 @@ export function NotificationsSheet({ open, onClose, userId, studios, onNavigate 
       return;
     }
     if (!onNavigate) return;
-    if (n.kind === "message") onNavigate("chat");
+    if (n.kind === "message") { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("kadence:open-assistant")); }
     else if (n.kind === "shift") onNavigate("planning");
     else onNavigate("accueil");
   };
