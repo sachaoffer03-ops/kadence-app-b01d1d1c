@@ -254,16 +254,40 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const updateRange = async (day: number, idx: number, patch: Partial<Range>) => {
     if (locked) return;
     const list = ranges[day] ?? [];
-    const updated = { ...list[idx], ...patch };
-    if (!updated.id) return;
+    const current = list[idx];
+    if (!current?.id) return;
+    let updated: Range = { ...current, ...patch };
+    const MIN = Math.round(minShiftHours * 60);
+    const DAY_END = 23 * 60 + 30;
+
+    // Auto-ajuste pour éviter d'afficher une erreur quand l'utilisateur
+    // modifie d'abord l'heure de début (l'heure de fin sera réglée juste après).
+    if (patch.start !== undefined) {
+      const s = toMin(updated.start);
+      if (toMin(updated.end) <= s) {
+        updated.end = fmtMin(Math.min(DAY_END, s + MIN));
+      }
+    }
+    if (patch.end !== undefined) {
+      const e = toMin(updated.end);
+      if (e <= toMin(updated.start)) {
+        // L'utilisateur descend l'heure de fin avant l'heure de début : on remonte le début.
+        updated.start = fmtMin(Math.max(0, e - MIN));
+      }
+    }
+
     const conflict = overlapsExisting(day, updated.start, updated.end, idx);
-    if (conflict === "invalid") { toast.error("L'heure de fin doit être après l'heure de début"); return; }
     if (conflict === "overlap") { toast.error("Cette plage chevauche une autre plage du même jour"); return; }
+    if (conflict === "invalid") { toast.error("L'heure de fin doit être après l'heure de début"); return; }
+
+    // Mise à jour optimiste de l'UI immédiatement (les dropdowns reflètent l'ajustement auto)
+    setRanges((p) => ({ ...p, [day]: list.map((r, i) => (i === idx ? updated : r)) }));
     try {
       await updateFn({ data: { id: updated.id, start_time: updated.start, end_time: updated.end } });
-      setRanges((p) => ({ ...p, [day]: list.map((r, i) => (i === idx ? updated : r)) }));
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur");
+      // rollback
+      setRanges((p) => ({ ...p, [day]: list }));
     }
   };
 
@@ -292,8 +316,15 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const canPrev = monthOffset > 0;
   const canNext = monthOffset < 12;
 
+  const showValidate = !validated && !loading && !locked;
+
   return (
-    <Sheet open={open} onClose={onClose} title="Mes disponibilités">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Mes disponibilités"
+      footer={showValidate ? <PrimaryButton onClick={validate}>Valider mes dispos</PrimaryButton> : undefined}
+    >
       {/* Countdown global vers la prochaine deadline */}
       {msLeftGlobal !== null && nextDeadlineMs && (
         <div
@@ -571,11 +602,6 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
         </div>
       )}
 
-      {!validated && !loading && !locked && (
-        <div className="mt-4">
-          <PrimaryButton onClick={validate}>Valider mes dispos</PrimaryButton>
-        </div>
-      )}
     </Sheet>
   );
 }
