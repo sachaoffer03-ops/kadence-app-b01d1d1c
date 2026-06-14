@@ -13,6 +13,8 @@ interface Student {
   id: string; first_name: string; last_name: string;
   quota_used: number | null; quota_max: number | null;
   studio_id: string | null;
+  allow_extended_hours: boolean | null;
+  weekly_hours_cap: number | null;
 }
 
 type StatusFilter = "tous" | "danger" | "warning" | "safe";
