@@ -2,6 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchAll } from "@/lib/supabase-paginate";
+import { getWeeklyCapForUser } from "@/lib/weekly-cap";
 
 function timeToMin(t: string) {
   const [h, m] = t.split(":").map(Number);
