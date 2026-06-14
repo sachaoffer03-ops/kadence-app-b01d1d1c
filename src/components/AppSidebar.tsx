@@ -107,6 +107,20 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
         )}
       </div>
 
+      {/* Toggle collapse */}
+      {onToggleCollapse && (
+        <div className={collapsed ? "px-2 pb-3" : "px-4 pb-3"}>
+          <button
+            onClick={onToggleCollapse}
+            title={collapsed ? "Déplier le menu" : "Replier le menu"}
+            className="flex items-center justify-center rounded-md transition-colors hover:bg-[var(--muted)]"
+            style={{ width: "100%", height: 28, color: "var(--muted-foreground)" }}
+          >
+            {collapsed ? <PanelLeft size={16} strokeWidth={1.8} /> : <PanelLeftClose size={16} strokeWidth={1.8} />}
+          </button>
+        </div>
+      )}
+
       {/* Nav */}
       <nav className={collapsed ? "flex-1 overflow-y-auto px-2 pb-3" : "flex-1 overflow-y-auto px-3 pb-3"}>
         {navSections.map((section) => (
