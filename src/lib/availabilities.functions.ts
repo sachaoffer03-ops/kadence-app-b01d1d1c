@@ -300,7 +300,6 @@ export const getAvailabilityLockInfo = createServerFn({ method: "GET" })
 
     const now = new Date();
     const brusselsNow = getBrusselsDateParts(now);
-    const currentDay = brusselsNow.day;
     const currentYear = brusselsNow.year;
     const currentMonth = brusselsNow.month; // 1-12
 
