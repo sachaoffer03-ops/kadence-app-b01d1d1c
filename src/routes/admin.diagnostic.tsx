@@ -1,14 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { DevOnly } from "@/components/DevOnly";
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, RefreshCw, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2, CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { runDiagnostic } from "@/lib/diagnostic.functions";
 import { runDataDiagnostic } from "@/lib/data-diagnostic.functions";
-import { runAudit } from "@/lib/audit.functions";
 import { collectIntegrityStats } from "@/lib/integrity-report.functions";
 import { getSystemHealthChecks, triggerAvailRemindersTick, getRecentEmailLogs } from "@/lib/system-health.functions";
+import { diagnoseLastPlanningRun } from "@/lib/planning-diagnose.functions";
 
 export const Route = createFileRoute("/admin/diagnostic")({
   component: () => (
@@ -25,14 +24,10 @@ function DiagnosticPage() {
   const sysFn = useServerFn(getSystemHealthChecks);
   const integFn = useServerFn(collectIntegrityStats);
   const dataFn = useServerFn(runDataDiagnostic);
-  const auditFn = useServerFn(runAudit);
-  const diagFn = useServerFn(runDiagnostic);
 
   const [sys, setSys] = useState<any>(null);
   const [integ, setInteg] = useState<any>(null);
   const [data, setData] = useState<any>(null);
-  const [audit, setAudit] = useState<any>(null);
-  const [diag, setDiag] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [errs, setErrs] = useState<Record<string, string>>({});
 
@@ -45,16 +40,14 @@ function DiagnosticPage() {
         return null;
       }
     };
-    const [s, i, d, a, dg] = await Promise.all([
+    const [s, i, d] = await Promise.all([
       safe("sys", sysFn()),
       safe("integ", integFn()),
       safe("data", dataFn()),
-      safe("audit", auditFn({ data: undefined } as any)),
-      safe("diag", diagFn({ data: undefined } as any)),
     ]);
-    setSys(s); setInteg(i); setData(d); setAudit(a); setDiag(dg);
+    setSys(s); setInteg(i); setData(d);
     setLoading(false);
-  }, [sysFn, integFn, dataFn, auditFn, diagFn]);
+  }, [sysFn, integFn, dataFn]);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -82,7 +75,6 @@ function DiagnosticPage() {
         <TabsList className="mb-4">
           <TabsTrigger value="systeme">🔧 Système</TabsTrigger>
           <TabsTrigger value="donnees">📊 Données</TabsTrigger>
-          <TabsTrigger value="features">✨ Features</TabsTrigger>
         </TabsList>
 
         <TabsContent value="systeme">
@@ -90,9 +82,6 @@ function DiagnosticPage() {
         </TabsContent>
         <TabsContent value="donnees">
           <DataTab data={data} loading={loading} err={errs.data} />
-        </TabsContent>
-        <TabsContent value="features">
-          <FeaturesTab audit={audit} diag={diag} loading={loading} err={errs.audit || errs.diag} />
         </TabsContent>
       </Tabs>
     </div>
@@ -177,16 +166,8 @@ function SystemTab({ sys, integ, loading, err }: any) {
           )}
         </Card>
 
-        <Card title="🚀 Dernière génération planning">
-          {!integ?.lastRun ? <Empty>Aucune génération</Empty> : (
-            <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-              <KV k="Statut" v={integ.lastRun.status} />
-              <KV k="Démarrée" v={new Date(integ.lastRun.started_at).toLocaleString("fr-FR")} />
-              <KV k="Couverture" v={integ.lastRun.coverage_rate != null ? `${Math.round(integ.lastRun.coverage_rate * 100)}%` : "—"} />
-              <KV k="Shifts" v={integ.lastRun.shifts_generated ?? "—"} />
-            </div>
-          )}
-        </Card>
+        <LastPlanningRunCard run={integ?.lastRun} />
+        <FailedRunDiagnosisCard />
       </div>
 
       {integ?.tableCounts && (
@@ -267,55 +248,6 @@ function DataTab({ data, loading, err }: any) {
             ])} />
         </div>
       </Card>
-    </div>
-  );
-}
-
-/* ============== TAB 3 — FEATURES ============== */
-function FeaturesTab({ audit, diag, loading, err }: any) {
-  if (loading && !audit) return <Loading />;
-  if (err && !audit && !diag) return <ErrBox msg={err} />;
-
-  return (
-    <div>
-      {audit?.sections && (
-        <div className="space-y-4">
-          {audit.sections.map((s: any) => (
-            <Card key={s.key} title={`${s.key}. ${s.title}`}>
-              {s.error ? <ErrInline>{s.error}</ErrInline> : (
-                <div className="space-y-1.5">
-                  {s.checks.map((c: any) => (
-                    <div key={c.id} className="flex items-start gap-2" style={{ fontSize: 12 }}>
-                      <StatusDot status={c.status} />
-                      <div className="flex-1 min-w-0">
-                        <div><span style={{ color: "var(--muted-foreground)", fontFamily: "monospace", fontSize: 11 }}>{c.id}</span> {c.label}</div>
-                        {c.detail && <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{c.detail}</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {audit?.orphans?.length > 0 && (
-        <Card title="🧹 Orphelins détectés" className="mt-4">
-          <Table headers={["Relation", "Manquants"]}
-            rows={audit.orphans.map((o: any) => [
-              o.rel,
-              <span style={{ color: o.count > 0 ? "#b91c1c" : "#16a34a", fontWeight: 500 }}>{o.error ? `err: ${o.error}` : o.count}</span>,
-            ])} />
-        </Card>
-      )}
-
-      {diag?.settings && (
-        <Card title="⚙️ Settings IA détectés" className="mt-4">
-          <Table headers={["Clé", "Valeur"]}
-            rows={Object.entries(diag.settings).map(([k, v]: any) => [k, String(v)])} />
-        </Card>
-      )}
     </div>
   );
 }
@@ -492,6 +424,121 @@ function RecentEmailLogsCard() {
                 </div>
               );
             })}
+          </div>
+        )}
+    </Card>
+  );
+}
+
+/* ============== Cards dernière génération + diagnostic ============== */
+function statusBadge(status: string) {
+  const s = (status || "").toLowerCase();
+  if (s === "success" || s === "completed") return <BadgeOk label={status} />;
+  if (s === "partial") return <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5" style={{ fontSize: 10, color: "#92400e", backgroundColor: "#fef3c7" }}>{status}</span>;
+  if (s === "failed" || s === "error") return <BadgeKo label={status} />;
+  return <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5" style={{ fontSize: 10, color: "var(--muted-foreground)", backgroundColor: "var(--muted)" }}>{status}</span>;
+}
+
+function LastPlanningRunCard({ run }: { run: any }) {
+  const navigate = useNavigate();
+  const [showLogs, setShowLogs] = useState(false);
+
+  return (
+    <Card title="🚀 Dernière génération planning">
+      {!run ? <Empty>Aucune génération</Empty> : (
+        <div style={{ fontSize: 12, lineHeight: 1.8 }}>
+          <div className="flex items-center justify-between gap-2">
+            <span style={{ color: "var(--muted-foreground)", fontSize: 11 }}>Statut</span>
+            {statusBadge(run.status)}
+          </div>
+          <KV k="Démarrée" v={run.started_at ? new Date(run.started_at).toLocaleString("fr-FR") : "—"} />
+          <KV k="Terminée" v={run.completed_at ? new Date(run.completed_at).toLocaleString("fr-FR") : "n/a"} />
+          <KV k="Couverture" v={run.coverage_rate != null ? `${Math.round(run.coverage_rate * 100)}%` : "—"} />
+          <KV k="Shifts" v={run.shifts_generated ?? "—"} />
+
+          {run.error_message && (
+            <div className="mt-3 rounded p-2" style={{ backgroundColor: "#fef2f2", border: "0.5px solid #fecaca" }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: "#b91c1c", marginBottom: 4 }}>🔴 Erreur</div>
+              <pre style={{ fontSize: 10, fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all", margin: 0, color: "#b91c1c" }}>
+                {run.error_message}
+              </pre>
+            </div>
+          )}
+
+          {run.solver_logs && (
+            <div className="mt-3">
+              <button
+                onClick={() => setShowLogs((v) => !v)}
+                className="flex items-center gap-1 rounded px-2 py-1"
+                style={{ fontSize: 11, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+              >
+                {showLogs ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {showLogs ? "Masquer les logs" : "Voir les logs solver"}
+              </button>
+              {showLogs && (
+                <pre style={{ fontSize: 10, fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all", marginTop: 8, padding: 8, backgroundColor: "var(--muted)", borderRadius: 6, maxHeight: 360, overflowY: "auto" }}>
+                  {JSON.stringify(run.solver_logs, null, 2)}
+                </pre>
+              )}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={() => navigate({ to: "/planning/generate" })}
+              className="rounded-md px-3 py-2 hover:opacity-90"
+              style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+            >
+              🚀 Nouvelle génération
+            </button>
+            <button
+              onClick={() => navigate({ to: "/planning" })}
+              className="rounded-md px-3 py-2 hover:opacity-90"
+              style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+            >
+              📜 Voir l'historique
+            </button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function FailedRunDiagnosisCard() {
+  const fn = useServerFn(diagnoseLastPlanningRun);
+  const [state, setState] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r: any = await fn();
+      setState(r); setErr(null);
+    } catch (e: any) {
+      setErr(e?.message || "Erreur");
+    } finally {
+      setLoading(false);
+    }
+  }, [fn]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <Card title="🔍 Diagnostic du dernier échec">
+      {loading ? <Empty>Analyse…</Empty> :
+        err ? <ErrInline>{err}</ErrInline> :
+        !state?.hasFailed ? <div style={{ fontSize: 12, color: "#16a34a" }}>✓ Aucun run failed récent</div> : (
+          <div style={{ fontSize: 12, lineHeight: 1.7 }}>
+            <KV k="Run" v={state.run.id?.slice(0, 8)} />
+            <KV k="Date" v={new Date(state.run.started_at).toLocaleString("fr-FR")} />
+            <div className="mt-2 rounded p-2" style={{ backgroundColor: "var(--muted)" }}>
+              <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 4 }}>Hypothèse</div>
+              <div style={{ fontSize: 12, color: "var(--foreground)" }}>{state.hypothesis}</div>
+              <div style={{ fontSize: 11, fontWeight: 500, marginTop: 8, marginBottom: 4 }}>Action recommandée</div>
+              <div style={{ fontSize: 12, color: "var(--foreground)" }}>{state.action}</div>
+            </div>
           </div>
         )}
     </Card>
