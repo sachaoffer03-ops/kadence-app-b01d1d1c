@@ -29,7 +29,24 @@ function ResetPasswordPage() {
           return;
         }
 
-        // PKCE flow : ?code=xxx
+        // Flux token_hash (verifyOtp) — fonctionne cross-device
+        const tokenHash = url.searchParams.get("token_hash");
+        const type = url.searchParams.get("type");
+        if (tokenHash && type === "recovery") {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "recovery",
+          });
+          if (error) {
+            setErrorMsg("Le lien a expiré ou a déjà été utilisé. Demandez un nouvel email.");
+            return;
+          }
+          window.history.replaceState({}, "", "/reset-password");
+          setReady(true);
+          return;
+        }
+
+        // PKCE flow : ?code=xxx (ancien flux, conservé pour compat)
         const code = url.searchParams.get("code");
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -37,7 +54,6 @@ function ResetPasswordPage() {
             setErrorMsg("Le lien a expiré ou a déjà été utilisé. Demandez un nouvel email.");
             return;
           }
-          // Nettoyer l'URL
           window.history.replaceState({}, "", "/reset-password");
         }
 
