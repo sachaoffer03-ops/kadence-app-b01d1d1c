@@ -102,11 +102,21 @@ export const Route = createFileRoute('/lovable/email/auth/webhook')({
           return Response.json({ success: true, skipped: true })
         }
 
+        // Pour le recovery, on construit notre propre URL avec token_hash
+        // (verifyOtp côté client) — robuste cross-device, contrairement au
+        // flux PKCE qui exige le code_verifier dans le navigateur d'origine.
+        let confirmationUrl = payload.data.url
+        if (emailType === 'recovery' && payload.data.token_hash) {
+          confirmationUrl = `https://${ROOT_DOMAIN}/reset-password?token_hash=${encodeURIComponent(
+            payload.data.token_hash,
+          )}&type=recovery`
+        }
+
         const templateProps = {
           siteName: SITE_NAME,
           siteUrl: `https://${ROOT_DOMAIN}`,
           recipient: payload.data.email,
-          confirmationUrl: payload.data.url,
+          confirmationUrl,
           token: payload.data.token,
           email: payload.data.email,
           oldEmail: payload.data.old_email,
