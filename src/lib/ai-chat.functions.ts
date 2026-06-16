@@ -251,6 +251,10 @@ Réponds à sa question en utilisant uniquement ces informations + tes connaissa
         content: m.content as string,
       })),
       { role: "user" as const, content: data.question },
+      // Pré-remplissage assistant : force le modèle à répondre UNIQUEMENT à la dernière question,
+      // sans recopier ni résumer les réponses précédentes (problème observé avec Haiku qui
+      // ré-agrège la question N-1 et la question N dans une même réponse).
+      { role: "assistant" as const, content: "[Je réponds UNIQUEMENT à la toute dernière question de l'utilisateur, sans recopier ni résumer mes réponses précédentes.]\n\n" },
     ];
 
     // 3. Appel Anthropic Claude Haiku
