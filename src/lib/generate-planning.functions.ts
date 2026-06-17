@@ -314,7 +314,7 @@ async function runEngine(ctx: EngineCtx) {
   const t_load = Date.now();
   const [settingsRows, profilesRows, contractsRows, rolesRows, studiosRows, availsRows, templatesRows, existingShifts, kitchenRolesRows, trainingCoursesRows, trainingCompletionsRows, businessRolesRows, unavailRows] = await Promise.all([
     supabase.from("ai_planning_settings").select("*").order("updated_at", { ascending: false }).limit(1),
-    fetchAll<any>(supabase.from("profiles").select("id, first_name, last_name, score, contract, status, allow_extended_hours, weekly_hours_cap").eq("status", "active")),
+    fetchAll<any>(supabase.from("profiles").select("id, first_name, last_name, score, contract, status, allow_extended_hours, weekly_hours_cap, is_test").eq("status", "active").or("is_test.is.null,is_test.eq.false")),
     fetchAll<any>(supabase.from("user_contracts").select("user_id, contract")),
     fetchAll<any>(supabase.from("user_business_roles").select("user_id, role")),
     fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
