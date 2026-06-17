@@ -1674,6 +1674,7 @@ export type Database = {
           clocked_in_at: string | null
           clocked_out_at: string | null
           created_at: string
+          created_by_run_id: string | null
           dimona_status: string | null
           end_time: string
           id: string
@@ -1695,6 +1696,7 @@ export type Database = {
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
+          created_by_run_id?: string | null
           dimona_status?: string | null
           end_time: string
           id?: string
@@ -1716,6 +1718,7 @@ export type Database = {
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
+          created_by_run_id?: string | null
           dimona_status?: string | null
           end_time?: string
           id?: string
@@ -1732,6 +1735,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shifts_created_by_run_id_fkey"
+            columns: ["created_by_run_id"]
+            isOneToOne: false
+            referencedRelation: "planning_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shifts_studio_id_fkey"
             columns: ["studio_id"]
