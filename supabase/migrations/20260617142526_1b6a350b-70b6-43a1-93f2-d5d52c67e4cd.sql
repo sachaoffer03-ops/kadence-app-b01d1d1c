@@ -1,0 +1,1 @@
+UPDATE public.profiles SET is_test = true WHERE id = '1e15491f-7be4-4c5a-beb1-c51fe87ab382';
