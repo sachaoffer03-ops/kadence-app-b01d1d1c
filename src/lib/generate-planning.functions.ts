@@ -867,6 +867,7 @@ async function runEngine(ctx: EngineCtx) {
     user_id: string | null; studio_id: string; business_role: string;
     shift_date: string; start_time: string; end_time: string;
     status: string; is_locked: boolean; is_manual: boolean;
+    created_by_run_id: string;
   }> = [];
   for (const req of requirements) {
     let i = 0;
