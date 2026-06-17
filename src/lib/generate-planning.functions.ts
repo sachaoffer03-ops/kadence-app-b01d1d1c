@@ -730,8 +730,29 @@ async function runEngine(ctx: EngineCtx) {
   }
   logs.phases.pA_ms = Date.now() - t_pA;
 
-  // ─── PASSE B : Comblage Étudiants/Flexis ─────────────────────────────────
+  // ─── PASSE B : Comblage Étudiants/Flexis (avec découpage intelligent) ────
   const t_pB = Date.now();
+  let splitCount = 0;
+
+  // Pour une requirement avec required_contract, l'ouverture (= les `min_shift_hours`
+  // premières minutes du bloc) doit rester couverte par un employé du contrat requis.
+  // Au-delà, on assouplit pour permettre le découpage (ex: CDI 7h30-11h30 + Flexi 11h30-15h30).
+  const openingProtectedUntil = (req: Requirement): number => {
+    if (!req.required_contract) return req.startMin;
+    return req.startMin + (s.min_shift_hours ?? 3) * 60;
+  };
+  const openingAlreadyCoveredByRequired = (req: Requirement): boolean => {
+    if (!req.required_contract) return true;
+    const guardEnd = openingProtectedUntil(req);
+    for (const c of req.cells) {
+      if (c.startMin < req.startMin || c.endMin > guardEnd) continue;
+      if (!c.userId) return false;
+      const u = employees.get(c.userId);
+      if (!u || !u.contracts.has(req.required_contract)) return false;
+    }
+    return true;
+  };
+
   // Parcours chronologique des slots non couverts
   const sortedReqs = [...requirements].sort((a, b) =>
     a.date.localeCompare(b.date) || a.startMin - b.startMin,
@@ -742,23 +763,35 @@ async function runEngine(ctx: EngineCtx) {
       if (cell.userId !== null || cell.blocked) continue;
       const window = contiguousFreeWindow(req, i);
       if (!window) continue;
-      const cands = (reqCandidates.get(req.id) ?? []).filter(
-        (c) => c.contracts.has("Étudiant") || c.contracts.has("Flexi") || c.contracts.has("CDI"),
-      );
-      if (cands.length === 0) continue;
-      const ranked = ranking(cands, req.date);
+
+      // Décide si on peut utiliser les candidats assouplis (ignorer required_contract) :
+      // - soit la fenêtre est entièrement après la zone d'ouverture protégée,
+      // - soit l'ouverture est déjà couverte par un employé du contrat requis.
+      const guardEnd = openingProtectedUntil(req);
+      const windowAfterGuard = window.startMin >= guardEnd;
+      const canRelax = !!req.required_contract && (windowAfterGuard || openingAlreadyCoveredByRequired(req));
+      const candsPool = canRelax
+        ? (reqCandidatesRelaxed.get(req.id) ?? [])
+        : (reqCandidates.get(req.id) ?? []);
+
+      if (candsPool.length === 0) continue;
+      const ranked = ranking(candsPool, req.date);
       let placed = false;
+      let usedRelaxed = false;
       for (const e of ranked) {
+        // Si on est en mode "relaxed", on borne la fenêtre pour ne pas écraser la zone d'ouverture
+        const effWinStart = canRelax && !windowAfterGuard ? Math.max(window.startMin, guardEnd) : window.startMin;
+        if (window.endMin - effWinStart < (s.min_shift_hours ?? 3) * 60) continue;
         // Trouver une dispo couvrant au moins min_shift_hours dans window
         const dispos = availOn(e.id, req.date).filter(
-          (r) => r.startMin < window.endMin && r.endMin > window.startMin,
+          (r) => r.startMin < window.endMin && r.endMin > effWinStart,
         );
         if (dispos.length === 0) {
           if (s.strict_preferences) continue;
           // Pas strict : on autorise sans dispo (rare)
         }
-        for (const d of dispos.length ? dispos : [{ startMin: window.startMin, endMin: window.endMin }]) {
-          const lo = Math.max(window.startMin, d.startMin);
+        for (const d of dispos.length ? dispos : [{ startMin: effWinStart, endMin: window.endMin }]) {
+          const lo = Math.max(effWinStart, d.startMin);
           const hi = Math.min(window.endMin, d.endMin);
           const maxH = maxShiftHFor(e, req.studio_id);
           // Plafond hebdo restant
@@ -774,15 +807,20 @@ async function runEngine(ctx: EngineCtx) {
           if (!restOk(e, req.date, sMin, eMinAligned)) continue;
           assign(req, e, sMin, eMinAligned);
           placed = true;
+          if (canRelax && req.required_contract && !e.contracts.has(req.required_contract)) {
+            usedRelaxed = true;
+          }
           // Avance i au-delà des cellules nouvellement remplies
           while (i < req.cells.length - 1 && req.cells[i + 1].userId !== null) i++;
           break;
         }
         if (placed) break;
       }
+      if (usedRelaxed) splitCount++;
     }
   }
   logs.phases.pB_ms = Date.now() - t_pB;
+  logs.split_assignments = splitCount;
 
   // ─── PASSE C : Optimisation locale (extension de shifts adjacents) ───────
   const t_pC = Date.now();
