@@ -525,7 +525,9 @@ async function runEngine(ctx: EngineCtx) {
   // ─── PHASE 3 — Éligibilité par requirement ───────────────────────────────
   const t_p3 = Date.now();
   // candidatesFor(req) → liste d'employés éligibles aux filtres durs (hors dispo)
-  const candidatesFor = (r: Requirement): Employee[] => {
+  // ignoreRequiredContract=true → ignore le filtre `required_contract` (utilisé pour le
+  // découpage intelligent : après l'ouverture CDI, un Flexi/Étudiant peut prendre la suite)
+  const candidatesFor = (r: Requirement, ignoreRequiredContract = false): Employee[] => {
     const out: Employee[] = [];
     for (const e of employees.values()) {
       // Studio
@@ -539,7 +541,7 @@ async function runEngine(ctx: EngineCtx) {
         if (!e.roles.has(r.role)) continue;
       }
       // Contrat
-      if (r.required_contract) {
+      if (r.required_contract && !ignoreRequiredContract) {
         if (!e.contracts.has(r.required_contract)) continue;
       } else if (r.allowed_contracts.length > 0) {
         if (!r.allowed_contracts.some((ac) => e.contracts.has(ac as ContractType))) continue;
@@ -553,11 +555,17 @@ async function runEngine(ctx: EngineCtx) {
   };
 
   // Pré-calcul des candidats par requirement (utilisé par toutes les passes)
+  // - reqCandidates : strict (respecte required_contract)
+  // - reqCandidatesRelaxed : ignore required_contract → utilisé par Passe B pour
+  //   permettre le découpage intelligent (ex: 7h30-15h30 CDI → CDI prend 7h30-11h30,
+  //   Flexi/Étudiant prend 11h30-15h30 si le CDI a saturé son cap hebdo)
   const reqCandidates = new Map<string, Employee[]>();
+  const reqCandidatesRelaxed = new Map<string, Employee[]>();
   let candidatesSum = 0;
   for (const r of requirements) {
     const cands = candidatesFor(r);
     reqCandidates.set(r.id, cands);
+    reqCandidatesRelaxed.set(r.id, r.required_contract ? candidatesFor(r, true) : cands);
     candidatesSum += cands.length;
   }
   logs.phases.p3_ms = Date.now() - t_p3;
