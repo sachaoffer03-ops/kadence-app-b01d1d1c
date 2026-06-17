@@ -258,13 +258,11 @@ export const cancelPlanningRun = createServerFn({ method: "POST" })
     if (!run) throw new Error("Run introuvable");
     if (run.status === "running") throw new Error("Impossible d'annuler un run encore en cours");
 
-    // Supprime tous les shifts non-manuels / non-lockés sur la période & studios
+    // Supprime UNIQUEMENT les shifts créés par CE run (jamais manuels/lockés/autres runs)
     const { error, count } = await supabase
       .from("shifts")
       .delete({ count: "exact" })
-      .gte("shift_date", run.month_start_date)
-      .lte("shift_date", run.month_end_date)
-      .in("studio_id", run.studios_included)
+      .eq("created_by_run_id", data.run_id)
       .eq("is_locked", false)
       .eq("is_manual", false);
     if (error) throw new Error(`Suppression échouée : ${error.message}`);
