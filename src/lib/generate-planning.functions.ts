@@ -892,6 +892,7 @@ async function runEngine(ctx: EngineCtx) {
           status: "open",
           is_locked: false,
           is_manual: false,
+          created_by_run_id: ctx.runId,
         });
         i = j + 1;
         continue;
