@@ -159,11 +159,11 @@ export const generatePlanning = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    // ── Période : 1 mois (4 semaines = 28 jours) à partir du jour choisi
+    // ── Période : du jour choisi jusqu'à la fin du mois calendaire (28/30/31 jours selon le mois)
     const monthStart = data.month_start_date;
     const startD = new Date(`${monthStart}T00:00:00`);
-    const endD = new Date(startD);
-    endD.setDate(endD.getDate() + 27); // 28 jours inclus
+    // Dernier jour du mois de startD : jour 0 du mois suivant
+    const endD = new Date(startD.getFullYear(), startD.getMonth() + 1, 0);
     const monthEnd = isoDate(endD);
 
     // ── Verrou : refus si un run 'running' existe déjà sur la même période
