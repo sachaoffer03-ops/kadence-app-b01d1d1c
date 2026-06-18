@@ -1004,8 +1004,7 @@ async function runEngine(ctx: EngineCtx) {
       r.startMin <= t2m(sh.start_time) &&
       r.endMin >= t2m(sh.end_time),
     );
-    const minForShift = matchingReq ? minAssignableMinFor(matchingReq) : minShiftMin;
-    if (dur < minForShift) {
+    if (dur < minShiftMin) {
       validation.push(`Shift < min: ${sh.user_id} ${sh.shift_date} ${sh.start_time}-${sh.end_time}`);
     }
   }
