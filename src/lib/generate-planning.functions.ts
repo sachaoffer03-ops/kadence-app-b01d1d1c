@@ -757,8 +757,10 @@ async function runEngine(ctx: EngineCtx) {
       // budget restant pour la semaine (vise target ± tolerance, plafond max)
       const studioForLimits = Array.from(e.studios)[0] ?? "";
       const wkMax = maxWeeklyHFor(e, studioForLimits);
-      // Cible : target + tolérance ; plafond dur : max légal hebdo CDI (ex: 48h)
-      const targetCap = Math.min(wkMax, s.target_weekly_cdi_hours + s.cdi_hours_tolerance);
+      // Plafond CDI : on autorise jusqu'au cap dur hebdo (relâché pour réduire
+      // les trous). La cible target±tolérance reste utilisée comme garde-fou
+      // ailleurs (alertes Passe D), mais Pass A peut grimper jusqu'au cap légal.
+      const targetCap = wkMax;
       const remainingH = Math.max(0, targetCap - wkH);
       if (remainingH * 60 < minShiftMin) continue;
 
