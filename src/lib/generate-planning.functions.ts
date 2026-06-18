@@ -644,6 +644,29 @@ async function runEngine(ctx: EngineCtx) {
     return false;
   };
 
+  // Construit un vrai shift d'au moins min_shift_hours qui couvre le besoin.
+  // Exemple : besoin Accueil 17h30-20h15 (2h45) → shift 17h15-20h15 si la dispo le permet.
+  const buildAssignableWindow = (
+    coverStart: number,
+    coverEnd: number,
+    availability: AvailRange,
+    maxMin: number,
+  ): { startMin: number; endMin: number } | null => {
+    const coverLen = coverEnd - coverStart;
+    if (coverLen <= 0) return null;
+    const targetLen = Math.max(minShiftMin, coverLen);
+    if (targetLen > maxMin) return null;
+
+    const latestStart = Math.min(coverStart, availability.endMin - targetLen);
+    const earliestStart = Math.max(availability.startMin, coverEnd - targetLen);
+    if (latestStart < earliestStart) return null;
+
+    const startMin = Math.max(earliestStart, latestStart);
+    const endMin = startMin + targetLen;
+    if (startMin > coverStart || endMin < coverEnd) return null;
+    return { startMin, endMin };
+  };
+
   // Trouve la plage de cellules contiguës non-attribuées d'un requirement contenant l'index i
   const contiguousFreeWindow = (req: Requirement, i: number): { startMin: number; endMin: number } | null => {
     if (req.cells[i].userId !== null || req.cells[i].blocked) return null;
@@ -826,13 +849,13 @@ async function runEngine(ctx: EngineCtx) {
           const maxH = maxShiftHFor(e, req.studio_id);
           // Plafond hebdo restant
           const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
-          const dur = Math.min(hi - lo, maxH * 60, wkRemainingH * 60);
-          if (dur < minAssignableMinFor(req)) continue;
-          const sMin = lo;
-          const eMin = lo + dur;
-          // Aligner sur cellules
+          const maxAssignableMin = Math.min(maxH * 60, wkRemainingH * 60);
+          const shiftWindow = buildAssignableWindow(lo, hi, d, maxAssignableMin);
+          if (!shiftWindow) continue;
+          const { startMin: sMin, endMin: eMin } = shiftWindow;
           const eMinAligned = Math.floor(eMin / CELL_MIN) * CELL_MIN;
           if (eMinAligned - sMin < minAssignableMinFor(req)) continue;
+          if (eMinAligned < hi) continue;
           if (hasConflict(e, req.date, sMin, eMinAligned)) continue;
           if (!restOk(e, req.date, sMin, eMinAligned)) continue;
           assign(req, e, sMin, eMinAligned);
