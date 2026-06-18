@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -51,24 +52,30 @@ export function useSidebarCounts(): SidebarCounts {
     debounceRef.current = setTimeout(() => { load(); }, 300);
   }, [load]);
 
+  // Rafraîchit à chaque navigation (changement d'URL)
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   useEffect(() => {
     load();
-    // Realtime: seules les notifications restent dans la publication realtime.
-    // Les autres compteurs (trous/demandes/signalements/feedbacks) sont rafraîchis
-    // via un polling 60s + au mount + sur navigation.
     let ch: ReturnType<typeof supabase.channel> | null = null;
     if (user?.id) {
       ch = supabase.channel("sidebar-counts-" + Math.random().toString(36).slice(2, 10))
         .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, debouncedLoad);
       ch.subscribe();
     }
-    const interval = setInterval(() => { load(); }, 60_000);
+    // Polling raccourci à 20s + rafraîchit quand l'onglet redevient visible
+    const interval = setInterval(() => { load(); }, 20_000);
+    const onVisible = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
       if (ch) supabase.removeChannel(ch);
     };
-  }, [load, debouncedLoad, user?.id]);
+  }, [load, debouncedLoad, user?.id, pathname]);
 
   return counts;
 }
