@@ -752,10 +752,30 @@ async function runEngine(ctx: EngineCtx) {
 
   // ─── PASSE B : Comblage Étudiants/Flexis ─────────────────────────────────
   const t_pB = Date.now();
-  // Parcours chronologique des slots non couverts
-  const sortedReqs = [...requirements].sort((a, b) =>
-    a.date.localeCompare(b.date) || a.startMin - b.startMin,
-  );
+  // Tri par rareté (scarcity-first) : on sert d'abord les requirements qui
+  // ont peu de candidats réellement dispos. Sinon les shifts faciles à
+  // pourvoir (matins) bouffent le cap hebdo des employés et les soirs
+  // restent vides. Tie-breaker chronologique pour rester déterministe.
+  const scarcityScore = new Map<string, number>();
+  for (const r of requirements) {
+    const cands = (reqCandidates.get(r.id) ?? []).filter(
+      (c) => c.contracts.has("Étudiant") || c.contracts.has("Flexi") || c.contracts.has("CDI"),
+    );
+    let avail = 0;
+    for (const c of cands) {
+      const has = availOn(c.id, r.date).some(
+        (a) => a.startMin < r.endMin && a.endMin > r.startMin,
+      );
+      if (has) avail++;
+    }
+    scarcityScore.set(r.id, avail);
+  }
+  const sortedReqs = [...requirements].sort((a, b) => {
+    const sa = scarcityScore.get(a.id) ?? 0;
+    const sb = scarcityScore.get(b.id) ?? 0;
+    if (sa !== sb) return sa - sb;
+    return a.date.localeCompare(b.date) || a.startMin - b.startMin;
+  });
   for (const req of sortedReqs) {
     for (let i = 0; i < req.cells.length; i++) {
       const cell = req.cells[i];
