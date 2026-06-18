@@ -586,6 +586,8 @@ async function runEngine(ctx: EngineCtx) {
   // ─── PHASE 4 — Greedy 4-passes ───────────────────────────────────────────
 
   // Helpers de contrainte (inclut les pré-existants déjà comptés via weeklyMin)
+  const minShiftMin = (s.min_shift_hours ?? 3) * 60;
+  const minAssignableMinFor = (req: Requirement) => Math.min(minShiftMin, req.endMin - req.startMin);
   const weeklyHours = (e: Employee, date: string) => (e.weeklyMin.get(isoWeekStart(date)) ?? 0) / 60;
 
   const maxShiftHFor = (e: Employee, _studioId: string): number => {
@@ -720,12 +722,12 @@ async function runEngine(ctx: EngineCtx) {
       // Cible : target + tolérance ; plafond dur : max légal hebdo CDI (ex: 48h)
       const targetCap = Math.min(wkMax, s.target_weekly_cdi_hours + s.cdi_hours_tolerance);
       const remainingH = Math.max(0, targetCap - wkH);
-      if (remainingH < (s.min_shift_hours ?? 3)) continue;
+      if (remainingH * 60 < minShiftMin) continue;
 
       // Pour chaque dispo (≥3h) → placer un shift maximal
       for (const range of ranges) {
         const dispoH = (range.endMin - range.startMin) / 60;
-        if (dispoH < (s.min_shift_hours ?? 3)) continue;
+        if (dispoH * 60 < minShiftMin) continue;
 
         // Trouver le requirement (cells libres) qui chevauche cette dispo et que e couvre
         const fitReqs = requirements.filter((r) =>
@@ -754,11 +756,11 @@ async function runEngine(ctx: EngineCtx) {
               curS = -1;
             }
           }
-          if (bestLen < (s.min_shift_hours ?? 3) * 60) continue;
+          if (bestLen < minShiftMin) continue;
 
           // Cap sur max_shift_hours_cdi (sauf solo)
           const maxBlockMin = Math.min(bestLen, maxShiftHFor(e, req.studio_id) * 60, remainingH * 60);
-          if (maxBlockMin < (s.min_shift_hours ?? 3) * 60) continue;
+          if (maxBlockMin < minShiftMin) continue;
           const sMin = bestS;
           const eMin = bestS + maxBlockMin;
           if (hasConflict(e, date, sMin, eMin)) continue;
@@ -824,12 +826,12 @@ async function runEngine(ctx: EngineCtx) {
           // Plafond hebdo restant
           const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
           const dur = Math.min(hi - lo, maxH * 60, wkRemainingH * 60);
-          if (dur < (s.min_shift_hours ?? 3) * 60) continue;
+          if (dur < minAssignableMinFor(req)) continue;
           const sMin = lo;
           const eMin = lo + dur;
           // Aligner sur cellules
           const eMinAligned = Math.floor(eMin / CELL_MIN) * CELL_MIN;
-          if (eMinAligned - sMin < (s.min_shift_hours ?? 3) * 60) continue;
+          if (eMinAligned - sMin < minAssignableMinFor(req)) continue;
           if (hasConflict(e, req.date, sMin, eMinAligned)) continue;
           if (!restOk(e, req.date, sMin, eMinAligned)) continue;
           assign(req, e, sMin, eMinAligned);
