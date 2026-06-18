@@ -996,23 +996,62 @@ async function runEngine(ctx: EngineCtx) {
           );
           let swapped = false;
           for (const c2 of c2Cands) {
+            // 2a) C2 peut prendre A directement → swap simple (chaîne longueur 2)
             const place2 = tryPlace(c2, reqA, conflictA.startMin, conflictA.endMin);
-            if (!place2) continue;
-            // Vérifier que c peut prendre le trou si on lui retire A
-            unassign(reqA, c, conflictA.startMin, conflictA.endMin);
-            const placeC = tryPlace(c, req, window.startMin, window.endMin, reqA.id);
-            if (!placeC) {
-              // Rollback : remettre c sur A
-              assign(reqA, c, conflictA.startMin, conflictA.endMin);
-              continue;
+            if (place2) {
+              unassign(reqA, c, conflictA.startMin, conflictA.endMin);
+              const placeC = tryPlace(c, req, window.startMin, window.endMin, reqA.id);
+              if (!placeC) {
+                assign(reqA, c, conflictA.startMin, conflictA.endMin);
+                continue;
+              }
+              assign(reqA, c2, place2.startMin, place2.endMin);
+              assign(req, c, placeC.startMin, placeC.endMin);
+              swapped = true;
+              madeChange = true;
+              swapCount++;
+              break;
             }
-            // Appliquer le swap
-            assign(reqA, c2, place2.startMin, place2.endMin);
-            assign(req, c, placeC.startMin, placeC.endMin);
-            swapped = true;
-            madeChange = true;
-            swapCount++;
-            break;
+            // 2b) C2 est occupé sur un shift B qui chevauche A → chaîne à 3
+            const conflictsB = c2.assigned.filter(
+              (a) => a.date === reqA.date &&
+                     a.startMin < conflictA.endMin && a.endMin > conflictA.startMin,
+            );
+            if (conflictsB.length !== 1) continue;
+            const conflictB = conflictsB[0];
+            const reqB = requirements.find((r) => r.id === conflictB.reqId);
+            if (!reqB || reqB.id === reqA.id) continue;
+            // Chercher C3 capable de prendre B exactement
+            const c3Cands = ranking(
+              (reqCandidates.get(reqB.id) ?? []).filter((x) => x.id !== c.id && x.id !== c2.id),
+              reqB.date,
+            );
+            for (const c3 of c3Cands) {
+              const place3 = tryPlace(c3, reqB, conflictB.startMin, conflictB.endMin);
+              if (!place3) continue;
+              // Tester la chaîne : retirer C de A puis C2 de B
+              unassign(reqA, c, conflictA.startMin, conflictA.endMin);
+              unassign(reqB, c2, conflictB.startMin, conflictB.endMin);
+              const place2chain = tryPlace(c2, reqA, conflictA.startMin, conflictA.endMin, reqB.id);
+              const placeCchain = place2chain
+                ? tryPlace(c, req, window.startMin, window.endMin, reqA.id)
+                : null;
+              if (!place2chain || !placeCchain) {
+                // Rollback complet
+                assign(reqB, c2, conflictB.startMin, conflictB.endMin);
+                assign(reqA, c, conflictA.startMin, conflictA.endMin);
+                continue;
+              }
+              // Appliquer la chaîne C3→B, C2→A, C→trou
+              assign(reqB, c3, place3.startMin, place3.endMin);
+              assign(reqA, c2, place2chain.startMin, place2chain.endMin);
+              assign(req, c, placeCchain.startMin, placeCchain.endMin);
+              swapped = true;
+              madeChange = true;
+              swapCount++;
+              break;
+            }
+            if (swapped) break;
           }
           if (swapped) break;
         }
