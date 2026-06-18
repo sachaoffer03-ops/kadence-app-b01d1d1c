@@ -991,11 +991,20 @@ async function runEngine(ctx: EngineCtx) {
   }
 
 
-  // Validation : pas de shift < min, pas de chevauchement (sécurité)
+  // Validation : pas de shift < min, sauf si le besoin lui-même est plus court
+  // (ex: Accueil PM 2h45 ou Barista 13h30-15h). Ces shifts sont voulus.
   const validation: string[] = [];
   for (const sh of finalShifts) {
     const dur = t2m(sh.end_time) - t2m(sh.start_time);
-    if (dur < s.min_shift_hours * 60) {
+    const matchingReq = requirements.find((r) =>
+      r.studio_id === sh.studio_id &&
+      r.date === sh.shift_date &&
+      r.role === sh.business_role &&
+      r.startMin <= t2m(sh.start_time) &&
+      r.endMin >= t2m(sh.end_time),
+    );
+    const minForShift = matchingReq ? minAssignableMinFor(matchingReq) : minShiftMin;
+    if (dur < minForShift) {
       validation.push(`Shift < min: ${sh.user_id} ${sh.shift_date} ${sh.start_time}-${sh.end_time}`);
     }
   }
