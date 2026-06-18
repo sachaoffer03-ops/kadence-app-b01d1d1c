@@ -687,6 +687,20 @@ async function runEngine(ctx: EngineCtx) {
     e.totalAssignedMin += (eMin - sMin);
   };
 
+  // Annule une assignation précédente (utilisé par la Passe E swap-repair)
+  const unassign = (req: Requirement, e: Employee, sMin: number, eMin: number) => {
+    for (const c of req.cells) {
+      if (c.startMin >= sMin && c.endMin <= eMin && c.userId === e.id) c.userId = null;
+    }
+    const idx = e.assigned.findIndex(
+      (a) => a.reqId === req.id && a.date === req.date && a.startMin === sMin && a.endMin === eMin,
+    );
+    if (idx >= 0) e.assigned.splice(idx, 1);
+    const wk = isoWeekStart(req.date);
+    e.weeklyMin.set(wk, Math.max(0, (e.weeklyMin.get(wk) ?? 0) - (eMin - sMin)));
+    e.totalAssignedMin = Math.max(0, e.totalAssignedMin - (eMin - sMin));
+  };
+
   // Score d'un candidat pour un slot (perf + équité tie-breaker + préférence)
   const ranking = (cands: Employee[], date: string): Employee[] => {
     return [...cands].sort((a, b) => {
