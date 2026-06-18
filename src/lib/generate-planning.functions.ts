@@ -345,13 +345,33 @@ async function runEngine(ctx: EngineCtx) {
     if (!completionsByUser.has(c.user_id)) completionsByUser.set(c.user_id, new Set());
     completionsByUser.get(c.user_id)!.add(c.course_id);
   }
+  // Une formation requise ne doit pas rendre un rôle impossible à planifier si
+  // personne ne l'a encore validée. Dans ce cas on garde le planning possible
+  // et on laisse le suivi formation se faire à côté, sinon tous les Barista
+  // peuvent disparaître des candidats d'un coup.
+  const planningCourses = (trainingCoursesRows ?? []).filter((course: any) => {
+    if (!course.required_for_planning) return false;
+    return (trainingCompletionsRows ?? []).some((c: any) => c.course_id === course.id);
+  });
+
+  const ignoredPlanningCourses = (trainingCoursesRows ?? []).filter((course: any) =>
+    course.required_for_planning && !planningCourses.some((active: any) => active.id === course.id),
+  );
+  if (ignoredPlanningCourses.length > 0) {
+    alerts.push({
+      type: "training_not_blocking",
+      severity: "info",
+      message: `${ignoredPlanningCourses.length} formation(s) planning ignorée(s) car aucune validation n'existe encore, pour éviter de créer des trous artificiels.`,
+    });
+  }
+
   // For each user, derive blocked role names
   const blockedRolesByUser = new Map<string, Set<string>>();
   // We'll compute lazily once we have employees; using a helper:
   function computeBlockedRoles(uid: string, userRoles: Set<string>): Set<string> {
     const blocked = new Set<string>();
     const completed = completionsByUser.get(uid) ?? new Set<string>();
-    for (const course of trainingCoursesRows ?? []) {
+    for (const course of planningCourses) {
       if (completed.has(course.id)) continue;
       if (course.is_required_for_all) {
         // blocks ALL roles
