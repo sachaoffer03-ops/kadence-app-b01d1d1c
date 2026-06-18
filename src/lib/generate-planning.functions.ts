@@ -345,13 +345,33 @@ async function runEngine(ctx: EngineCtx) {
     if (!completionsByUser.has(c.user_id)) completionsByUser.set(c.user_id, new Set());
     completionsByUser.get(c.user_id)!.add(c.course_id);
   }
+  // Une formation requise ne doit pas rendre un rôle impossible à planifier si
+  // personne ne l'a encore validée. Dans ce cas on garde le planning possible
+  // et on laisse le suivi formation se faire à côté, sinon tous les Barista
+  // peuvent disparaître des candidats d'un coup.
+  const planningCourses = (trainingCoursesRows ?? []).filter((course: any) => {
+    if (!course.required_for_planning) return false;
+    return (trainingCompletionsRows ?? []).some((c: any) => c.course_id === course.id);
+  });
+
+  const ignoredPlanningCourses = (trainingCoursesRows ?? []).filter((course: any) =>
+    course.required_for_planning && !planningCourses.some((active: any) => active.id === course.id),
+  );
+  if (ignoredPlanningCourses.length > 0) {
+    alerts.push({
+      type: "training_not_blocking",
+      severity: "info",
+      message: `${ignoredPlanningCourses.length} formation(s) planning ignorée(s) car aucune validation n'existe encore, pour éviter de créer des trous artificiels.`,
+    });
+  }
+
   // For each user, derive blocked role names
   const blockedRolesByUser = new Map<string, Set<string>>();
   // We'll compute lazily once we have employees; using a helper:
   function computeBlockedRoles(uid: string, userRoles: Set<string>): Set<string> {
     const blocked = new Set<string>();
     const completed = completionsByUser.get(uid) ?? new Set<string>();
-    for (const course of trainingCoursesRows ?? []) {
+    for (const course of planningCourses) {
       if (completed.has(course.id)) continue;
       if (course.is_required_for_all) {
         // blocks ALL roles
@@ -566,6 +586,8 @@ async function runEngine(ctx: EngineCtx) {
   // ─── PHASE 4 — Greedy 4-passes ───────────────────────────────────────────
 
   // Helpers de contrainte (inclut les pré-existants déjà comptés via weeklyMin)
+  const minShiftMin = (s.min_shift_hours ?? 3) * 60;
+  const minAssignableMinFor = (req: Requirement) => Math.min(minShiftMin, req.endMin - req.startMin);
   const weeklyHours = (e: Employee, date: string) => (e.weeklyMin.get(isoWeekStart(date)) ?? 0) / 60;
 
   const maxShiftHFor = (e: Employee, _studioId: string): number => {
@@ -700,12 +722,12 @@ async function runEngine(ctx: EngineCtx) {
       // Cible : target + tolérance ; plafond dur : max légal hebdo CDI (ex: 48h)
       const targetCap = Math.min(wkMax, s.target_weekly_cdi_hours + s.cdi_hours_tolerance);
       const remainingH = Math.max(0, targetCap - wkH);
-      if (remainingH < (s.min_shift_hours ?? 3)) continue;
+      if (remainingH * 60 < minShiftMin) continue;
 
       // Pour chaque dispo (≥3h) → placer un shift maximal
       for (const range of ranges) {
         const dispoH = (range.endMin - range.startMin) / 60;
-        if (dispoH < (s.min_shift_hours ?? 3)) continue;
+        if (dispoH * 60 < minShiftMin) continue;
 
         // Trouver le requirement (cells libres) qui chevauche cette dispo et que e couvre
         const fitReqs = requirements.filter((r) =>
@@ -734,11 +756,11 @@ async function runEngine(ctx: EngineCtx) {
               curS = -1;
             }
           }
-          if (bestLen < (s.min_shift_hours ?? 3) * 60) continue;
+          if (bestLen < minShiftMin) continue;
 
           // Cap sur max_shift_hours_cdi (sauf solo)
           const maxBlockMin = Math.min(bestLen, maxShiftHFor(e, req.studio_id) * 60, remainingH * 60);
-          if (maxBlockMin < (s.min_shift_hours ?? 3) * 60) continue;
+          if (maxBlockMin < minShiftMin) continue;
           const sMin = bestS;
           const eMin = bestS + maxBlockMin;
           if (hasConflict(e, date, sMin, eMin)) continue;
@@ -804,12 +826,12 @@ async function runEngine(ctx: EngineCtx) {
           // Plafond hebdo restant
           const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
           const dur = Math.min(hi - lo, maxH * 60, wkRemainingH * 60);
-          if (dur < (s.min_shift_hours ?? 3) * 60) continue;
+          if (dur < minAssignableMinFor(req)) continue;
           const sMin = lo;
           const eMin = lo + dur;
           // Aligner sur cellules
           const eMinAligned = Math.floor(eMin / CELL_MIN) * CELL_MIN;
-          if (eMinAligned - sMin < (s.min_shift_hours ?? 3) * 60) continue;
+          if (eMinAligned - sMin < minAssignableMinFor(req)) continue;
           if (hasConflict(e, req.date, sMin, eMinAligned)) continue;
           if (!restOk(e, req.date, sMin, eMinAligned)) continue;
           assign(req, e, sMin, eMinAligned);
@@ -969,11 +991,20 @@ async function runEngine(ctx: EngineCtx) {
   }
 
 
-  // Validation : pas de shift < min, pas de chevauchement (sécurité)
+  // Validation : pas de shift < min, sauf si le besoin lui-même est plus court
+  // (ex: Accueil PM 2h45 ou Barista 13h30-15h). Ces shifts sont voulus.
   const validation: string[] = [];
   for (const sh of finalShifts) {
     const dur = t2m(sh.end_time) - t2m(sh.start_time);
-    if (dur < s.min_shift_hours * 60) {
+    const matchingReq = requirements.find((r) =>
+      r.studio_id === sh.studio_id &&
+      r.date === sh.shift_date &&
+      r.role === sh.business_role &&
+      r.startMin <= t2m(sh.start_time) &&
+      r.endMin >= t2m(sh.end_time),
+    );
+    const minForShift = matchingReq ? minAssignableMinFor(matchingReq) : minShiftMin;
+    if (dur < minForShift) {
       validation.push(`Shift < min: ${sh.user_id} ${sh.shift_date} ${sh.start_time}-${sh.end_time}`);
     }
   }
