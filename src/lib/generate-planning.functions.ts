@@ -998,13 +998,19 @@ async function runEngine(ctx: EngineCtx) {
              req.cells[j + 1].userId === uid &&
              !req.cells[j + 1].blocked &&
              req.cells[j + 1].startMin === req.cells[j].endMin) j++;
+      const assignedEmployee = uid ? employees.get(uid) : null;
+      const assignedWindow = assignedEmployee?.assigned.find((a) =>
+        a.reqId === req.id &&
+        a.startMin <= req.cells[i].startMin &&
+        a.endMin >= req.cells[j].endMin,
+      );
       finalShifts.push({
         user_id: uid,
         studio_id: req.studio_id,
         business_role: req.role,
         shift_date: req.date,
-        start_time: `${m2t(req.cells[i].startMin)}:00`,
-        end_time: `${m2t(req.cells[j].endMin)}:00`,
+        start_time: `${m2t(assignedWindow?.startMin ?? req.cells[i].startMin)}:00`,
+        end_time: `${m2t(assignedWindow?.endMin ?? req.cells[j].endMin)}:00`,
         status: "scheduled",
         is_locked: false,
         is_manual: false,
