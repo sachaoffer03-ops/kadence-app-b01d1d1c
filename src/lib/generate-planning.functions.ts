@@ -587,7 +587,8 @@ async function runEngine(ctx: EngineCtx) {
 
   // Helpers de contrainte (inclut les pré-existants déjà comptés via weeklyMin)
   const minShiftMin = (s.min_shift_hours ?? 3) * 60;
-  const minAssignableMinFor = (req: Requirement) => Math.min(minShiftMin, req.endMin - req.startMin);
+  // Règle stricte : un shift ne peut jamais durer moins que min_shift_hours (par défaut 3h).
+  const minAssignableMinFor = (_req: Requirement) => minShiftMin;
   const weeklyHours = (e: Employee, date: string) => (e.weeklyMin.get(isoWeekStart(date)) ?? 0) / 60;
 
   const maxShiftHFor = (e: Employee, _studioId: string): number => {
@@ -1003,8 +1004,7 @@ async function runEngine(ctx: EngineCtx) {
       r.startMin <= t2m(sh.start_time) &&
       r.endMin >= t2m(sh.end_time),
     );
-    const minForShift = matchingReq ? minAssignableMinFor(matchingReq) : minShiftMin;
-    if (dur < minForShift) {
+    if (dur < minShiftMin) {
       validation.push(`Shift < min: ${sh.user_id} ${sh.shift_date} ${sh.start_time}-${sh.end_time}`);
     }
   }
