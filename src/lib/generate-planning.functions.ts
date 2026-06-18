@@ -919,6 +919,109 @@ async function runEngine(ctx: EngineCtx) {
   logs.phases.pC_ms = Date.now() - t_pC;
   logs.optimization_iterations = optIters;
 
+  // ─── PASSE E : Réparation par échange (swap repair) ──────────────────────
+  // Pour chaque trou restant, on cherche un employé éligible mais déjà placé
+  // ailleurs. Si l'autre shift de cet employé peut être pris par quelqu'un
+  // d'autre (sans casser les règles), on échange : ça transforme deux shifts
+  // pourvus + un trou en deux shifts pourvus + un trou en moins.
+  // C'est exactement la réflexion d'un humain qui fait son planning à la main.
+  const t_pE = Date.now();
+  let swapCount = 0;
+  const MAX_SWAPS = 200;
+
+  const findAvailRangeCovering = (e: Employee, date: string, sMin: number, eMin: number): AvailRange | null => {
+    for (const r of availOn(e.id, date)) {
+      if (r.startMin <= sMin && r.endMin >= eMin) return r;
+    }
+    return null;
+  };
+
+  // Helper : tente de placer e sur req dans la fenêtre [coverStart,coverEnd]
+  // en respectant min_shift et toutes les règles. Retourne la fenêtre choisie.
+  const tryPlace = (
+    e: Employee,
+    req: Requirement,
+    coverStart: number,
+    coverEnd: number,
+    ignoreConflictReqId?: string,
+  ): { startMin: number; endMin: number } | null => {
+    const avail = findAvailRangeCovering(e, req.date, coverStart, coverEnd);
+    if (!avail) return null;
+    const maxH = maxShiftHFor(e, req.studio_id);
+    const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
+    const maxMin = Math.min(maxH * 60, wkRemainingH * 60);
+    const w = buildAssignableWindow(coverStart, coverEnd, avail, maxMin);
+    if (!w) return null;
+    // Conflit (en ignorant éventuellement un shift qu'on vient de retirer)
+    for (const a of e.assigned) {
+      if (a.date !== req.date) continue;
+      if (ignoreConflictReqId && a.reqId === ignoreConflictReqId) continue;
+      if (a.startMin < w.endMin && a.endMin > w.startMin) return null;
+    }
+    if (!restOk(e, req.date, w.startMin, w.endMin)) return null;
+    return w;
+  };
+
+  outer: for (let pass = 0; pass < 3; pass++) {
+    let madeChange = false;
+    for (const req of sortedReqs) {
+      for (let i = 0; i < req.cells.length; i++) {
+        if (req.cells[i].userId !== null || req.cells[i].blocked) continue;
+        const window = contiguousFreeWindow(req, i);
+        if (!window) continue;
+        const cands = ranking(reqCandidates.get(req.id) ?? [], req.date);
+        for (const c of cands) {
+          // 1) Tentative directe (peut-être qu'un slot s'est libéré ailleurs)
+          const direct = tryPlace(c, req, window.startMin, window.endMin);
+          if (direct) {
+            assign(req, c, direct.startMin, direct.endMin);
+            madeChange = true;
+            swapCount++;
+            break;
+          }
+          // 2) Tentative de swap : c est occupé sur un shift A qui chevauche
+          const conflicts = c.assigned.filter(
+            (a) => a.date === req.date && a.startMin < window.endMin && a.endMin > window.startMin,
+          );
+          if (conflicts.length !== 1) continue; // on ne gère que les conflits simples
+          const conflictA = conflicts[0];
+          const reqA = requirements.find((r) => r.id === conflictA.reqId);
+          if (!reqA) continue;
+          // Chercher un remplaçant C2 capable de prendre EXACTEMENT le shift A
+          const c2Cands = ranking(
+            (reqCandidates.get(reqA.id) ?? []).filter((x) => x.id !== c.id),
+            reqA.date,
+          );
+          let swapped = false;
+          for (const c2 of c2Cands) {
+            const place2 = tryPlace(c2, reqA, conflictA.startMin, conflictA.endMin);
+            if (!place2) continue;
+            // Vérifier que c peut prendre le trou si on lui retire A
+            unassign(reqA, c, conflictA.startMin, conflictA.endMin);
+            const placeC = tryPlace(c, req, window.startMin, window.endMin, reqA.id);
+            if (!placeC) {
+              // Rollback : remettre c sur A
+              assign(reqA, c, conflictA.startMin, conflictA.endMin);
+              continue;
+            }
+            // Appliquer le swap
+            assign(reqA, c2, place2.startMin, place2.endMin);
+            assign(req, c, placeC.startMin, placeC.endMin);
+            swapped = true;
+            madeChange = true;
+            swapCount++;
+            break;
+          }
+          if (swapped) break;
+        }
+      }
+    }
+    if (!madeChange) break outer;
+  }
+  logs.phases.pE_ms = Date.now() - t_pE;
+  logs.swap_repairs = swapCount;
+
+
   // ─── PASSE D : Ajustement CDI vers target ± tolérance ────────────────────
   const t_pD = Date.now();
   for (const e of cdiList) {
