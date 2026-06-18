@@ -655,6 +655,34 @@ async function runEngine(ctx: EngineCtx) {
     });
   };
 
+  // ─── PASSE A0 : Pin CDI unique sur shifts required_contract='CDI' ────────
+  // Si un requirement exige un CDI et qu'un seul CDI éligible existe → on lui
+  // colle d'office le shift, peu importe ses dispos (cas typique : Sophie au
+  // Barista matin 7h30-15h30). Les dispos servent à éviter les conflits inter-
+  // shifts, pas à bloquer l'unique CDI sur son shift attitré.
+  const t_pA0 = Date.now();
+  for (const req of requirements) {
+    if (req.required_contract !== "CDI") continue;
+    if (req.cells.every((c) => c.userId !== null || c.blocked)) continue;
+    const cdiCands = (reqCandidates.get(req.id) ?? []).filter((e) => e.contracts.has("CDI"));
+    if (cdiCands.length !== 1) continue;
+    const e = cdiCands[0];
+    const sMin = req.startMin;
+    const eMin = req.endMin;
+    if (hasConflict(e, req.date, sMin, eMin)) continue;
+    assign(req, e, sMin, eMin);
+    if (!availCovers(e, req.date, sMin, eMin)) {
+      alerts.push({
+        type: "cdi_pinned_no_avail",
+        severity: "info",
+        user_id: e.id,
+        user_name: `${e.first_name} ${e.last_name}`,
+        message: `${e.first_name} assignée d'office sur le shift CDI du ${req.date} ${m2t(sMin)}-${m2t(eMin)} (unique CDI éligible).`,
+      });
+    }
+  }
+  logs.phases.pA0_ms = Date.now() - t_pA0;
+
   // ─── PASSE A : CDI sur shifts longs ──────────────────────────────────────
   const t_pA = Date.now();
   const cdiList = Array.from(employees.values()).filter((e) => e.contracts.has("CDI"));
