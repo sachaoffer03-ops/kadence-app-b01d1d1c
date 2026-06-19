@@ -1178,6 +1178,54 @@ async function runEngine(ctx: EngineCtx) {
     }
   }
 
+  // ─── PASS F — Fusion des résidus dans le shift voisin ──────────────────
+  // Tout shift "open" plus court que min_shift_hours est par essence non pourvu
+  // (aucun employé ne prendra 15 min isolées). On tente d'étendre un shift
+  // assigné adjacent (même date / rôle / studio) pour absorber le résidu,
+  // si la dispo de l'employé + ses caps le permettent.
+  for (let k = finalShifts.length - 1; k >= 0; k--) {
+    const open = finalShifts[k];
+    if (open.user_id !== null || open.status !== "open") continue;
+    const oStart = t2m(open.start_time);
+    const oEnd = t2m(open.end_time);
+    const oDur = oEnd - oStart;
+    if (oDur >= minShiftMin) continue; // vrai trou actionnable, on garde
+
+    let absorbed = false;
+    for (let m = 0; m < finalShifts.length; m++) {
+      if (m === k) continue;
+      const adj = finalShifts[m];
+      if (!adj.user_id) continue;
+      if (adj.shift_date !== open.shift_date) continue;
+      if (adj.business_role !== open.business_role) continue;
+      if (adj.studio_id !== open.studio_id) continue;
+      const aStart = t2m(adj.start_time);
+      const aEnd = t2m(adj.end_time);
+      const before = aEnd === oStart;
+      const after = aStart === oEnd;
+      if (!before && !after) continue;
+
+      const newStart = before ? aStart : oStart;
+      const newEnd = before ? oEnd : aEnd;
+      const newDur = newEnd - newStart;
+      const emp = employees.get(adj.user_id);
+      if (!emp) continue;
+      if (newDur > maxShiftHFor(emp, adj.studio_id) * 60) continue;
+      if (!availCovers(emp, adj.shift_date, newStart, newEnd)) continue;
+      const addedH = (newDur - (aEnd - aStart)) / 60;
+      if (weeklyHours(emp, adj.shift_date) + addedH > maxWeeklyHFor(emp, adj.studio_id)) continue;
+
+      adj.start_time = `${m2t(newStart)}:00`;
+      adj.end_time = `${m2t(newEnd)}:00`;
+      finalShifts.splice(k, 1);
+      absorbed = true;
+      break;
+    }
+    if (!absorbed) finalShifts.splice(k, 1); // impossible à pourvoir
+  }
+
+
+
 
   // Validation : pas de shift < min, sauf si le besoin lui-même est plus court
   // (ex: Accueil PM 2h45 ou Barista 13h30-15h). Ces shifts sont voulus.
