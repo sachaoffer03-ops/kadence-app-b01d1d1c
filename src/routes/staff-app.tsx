@@ -75,7 +75,6 @@ interface ShiftRow {
   clocked_in_at?: string | null; clocked_out_at?: string | null; minutes_late?: number | null;
   role_segments?: RoleSegment[] | null;
 }
-}
 
 function fmtTime(t: string) { return t.slice(0, 5).replace(":", "h"); }
 function todayISO() { return todayBrusselsISO(); }
