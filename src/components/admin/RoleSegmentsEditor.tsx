@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Plus, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
 import { getRoleStyle } from "@/lib/staff-helpers";
+import { Dropdown } from "@/components/Dropdown";
 
 interface Props {
   shiftStart: string; // "HH:MM"
@@ -151,7 +152,6 @@ export function RoleSegmentsEditor({
         {segments.map((seg, i) => {
           const isFirst = i === 0;
           const isLast = i === segments.length - 1;
-          const st = getRoleStyle(seg.role || "");
           return (
             <div key={i} className="flex items-center gap-2">
               {/* Heure de début */}
@@ -203,28 +203,19 @@ export function RoleSegmentsEditor({
               )}
 
               {/* Rôle */}
-              <select
-                value={seg.role}
-                onChange={(e) => setRole(i, e.target.value)}
-                disabled={disabled}
-                className="rounded-md px-2 py-1.5 outline-none flex-1"
-                style={{
-                  fontSize: 12,
-                  border: "0.5px solid var(--border)",
-                  backgroundColor: "var(--background)",
-                  color: st.text || "var(--foreground)",
-                }}
-              >
-                {!seg.role && <option value="">Choisir un rôle…</option>}
-                {!seg.role || knownRoles.includes(seg.role) ? null : (
-                  <option value={seg.role}>{seg.role}</option>
-                )}
-                {knownRoles.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
+              <div className="flex-1">
+                <Dropdown
+                  value={seg.role}
+                  options={
+                    seg.role && !knownRoles.includes(seg.role)
+                      ? [seg.role, ...knownRoles]
+                      : knownRoles
+                  }
+                  onChange={(v) => setRole(i, v)}
+                  placeholder="Choisir un rôle…"
+                  fullWidth
+                />
+              </div>
 
               {/* Trash */}
               <button
