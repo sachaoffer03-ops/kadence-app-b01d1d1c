@@ -167,3 +167,68 @@ export function getSegmentLayout(
   }
   return out;
 }
+
+export type ShiftCardView = {
+  shiftId: string;        // id du shift original (partagé entre cards)
+  startTime: string;      // "HH:MM"
+  endTime: string;        // "HH:MM"
+  role: string;
+  segmentIndex: number;   // 0..N-1
+  totalSegments: number;  // 1 si mono, N si hybride
+  isHybridPart: boolean;  // true si issu d'un shift hybride
+};
+
+/** Décompose un shift en N cartes visuelles (1 si mono, N si hybride). */
+export function expandShiftToCards<T extends {
+  id: string;
+  start_time: string;
+  end_time: string;
+  business_role: string;
+  role_segments?: RoleSegment[] | null;
+}>(shift: T): ShiftCardView[] {
+  const segs = shift.role_segments;
+  const startTime = shift.start_time.slice(0, 5);
+  const endTime = shift.end_time.slice(0, 5);
+  if (!isHybridShift(segs)) {
+    return [{
+      shiftId: shift.id,
+      startTime,
+      endTime,
+      role: shift.business_role,
+      segmentIndex: 0,
+      totalSegments: 1,
+      isHybridPart: false,
+    }];
+  }
+  return segs!.map((s, i) => ({
+    shiftId: shift.id,
+    startTime: s.start_time.slice(0, 5),
+    endTime: s.end_time.slice(0, 5),
+    role: s.role,
+    segmentIndex: i,
+    totalSegments: segs!.length,
+    isHybridPart: true,
+  }));
+}
+
+/** Retourne la prochaine transition de rôle dans le shift, ou null. */
+export function getNextRoleTransition(
+  segments: RoleSegment[] | null | undefined,
+  shiftDate: string,
+  now: Date = new Date(),
+): { atISO: string; fromRole: string; toRole: string; transitionTime: string } | null {
+  if (!segments || segments.length < 2) return null;
+  for (let i = 1; i < segments.length; i++) {
+    const t = segments[i].start_time.slice(0, 5);
+    const atISO = `${shiftDate}T${t}:00`;
+    if (new Date(atISO).getTime() > now.getTime()) {
+      return {
+        atISO,
+        fromRole: segments[i - 1].role,
+        toRole: segments[i].role,
+        transitionTime: t,
+      };
+    }
+  }
+  return null;
+}
