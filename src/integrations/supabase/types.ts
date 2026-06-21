@@ -1686,6 +1686,7 @@ export type Database = {
           minutes_late: number | null
           notes: string | null
           published_at: string | null
+          role_segments: Json | null
           shift_date: string
           start_time: string
           status: Database["public"]["Enums"]["shift_status"]
@@ -1708,6 +1709,7 @@ export type Database = {
           minutes_late?: number | null
           notes?: string | null
           published_at?: string | null
+          role_segments?: Json | null
           shift_date: string
           start_time: string
           status?: Database["public"]["Enums"]["shift_status"]
@@ -1730,6 +1732,7 @@ export type Database = {
           minutes_late?: number | null
           notes?: string | null
           published_at?: string | null
+          role_segments?: Json | null
           shift_date?: string
           start_time?: string
           status?: Database["public"]["Enums"]["shift_status"]
@@ -1820,6 +1823,7 @@ export type Database = {
           is_optional: boolean
           required_contract: Database["public"]["Enums"]["contract_type"] | null
           required_count: number
+          role_segments: Json | null
           start_time: string
           studio_id: string
           updated_at: string
@@ -1837,6 +1841,7 @@ export type Database = {
             | Database["public"]["Enums"]["contract_type"]
             | null
           required_count?: number
+          role_segments?: Json | null
           start_time: string
           studio_id: string
           updated_at?: string
@@ -1854,6 +1859,7 @@ export type Database = {
             | Database["public"]["Enums"]["contract_type"]
             | null
           required_count?: number
+          role_segments?: Json | null
           start_time?: string
           studio_id?: string
           updated_at?: string
@@ -2761,6 +2767,10 @@ export type Database = {
       }
       recalculate_all_scores: { Args: never; Returns: number }
       studio_blockers: { Args: { _studio_id: string }; Returns: Json }
+      validate_role_segments_structure: {
+        Args: { segments: Json; shift_end: string; shift_start: string }
+        Returns: boolean
+      }
     }
     Enums: {
       ai_suggestion_status: "pending" | "approved" | "rejected"
