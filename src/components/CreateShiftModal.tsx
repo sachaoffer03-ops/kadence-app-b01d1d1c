@@ -93,7 +93,43 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
     setRecurrence("none"); setUntil(""); setExtraWeekdays(new Set());
     setShiftIds([]); setCreatedCount(0);
     setEligible([]); setPartial([]); setSelected(new Set()); setShowPartial(false);
+    setIsMulti(false); setSegments([]);
   };
+
+  // Quand on quitte le mode multi, on remet à plat. Quand on switche shift_start/end,
+  // on snap les bornes des segments.
+  useEffect(() => {
+    if (!isMulti) return;
+    if (segments.length < 2) {
+      const [sh, sm] = startTime.split(":").map(Number);
+      const [eh, em] = endTime.split(":").map(Number);
+      const total = (eh * 60 + em) - (sh * 60 + sm);
+      if (total < 30 || BUSINESS_ROLES.length < 1) return;
+      const midMin = Math.round(((sh * 60 + sm) + total / 2) / 15) * 15;
+      const mid = `${String(Math.floor(midMin / 60)).padStart(2, "0")}:${String(midMin % 60).padStart(2, "0")}`;
+      const r1 = role || BUSINESS_ROLES[0];
+      const r2 = BUSINESS_ROLES.find((r) => r !== r1) ?? r1;
+      setSegments([
+        { role: r1, start_time: startTime, end_time: mid },
+        { role: r2, start_time: mid, end_time: endTime },
+      ]);
+    } else {
+      // ajuste bornes
+      setSegments((prev) => {
+        if (prev.length < 2) return prev;
+        const next = [...prev];
+        next[0] = { ...next[0], start_time: startTime };
+        next[next.length - 1] = { ...next[next.length - 1], end_time: endTime };
+        return next;
+      });
+    }
+  }, [isMulti, startTime, endTime, BUSINESS_ROLES.join("|")]);
+
+  const segValidation = useMemo(
+    () => (isMulti ? validateRoleSegments(segments, startTime, endTime, BUSINESS_ROLES) : { ok: true, errors: [] }),
+    [isMulti, segments, startTime, endTime, BUSINESS_ROLES.join("|")],
+  );
+
 
 
   const handleClose = () => {
