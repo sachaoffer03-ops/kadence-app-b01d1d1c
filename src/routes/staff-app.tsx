@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ClosureFlow } from "@/components/staff-app/ClosureFlow";
 import { SignalementSheet, RequestModificationSheet, MyRequestsSheet } from "@/components/staff-app/StaffActionsSheets";
 import { ShiftDetailSheet, DocumentsSheet, NotificationsSheet } from "@/components/staff-app/ProfileSheets";
+import { CalendarExportSheet } from "@/components/staff-app/CalendarExportSheet";
 import { EditProfileSheet, type EditableProfile } from "@/components/staff-app/EditProfileSheet";
 import { DisposSheet, disposKey } from "@/components/staff-app/DisposSheet";
 import { useServerFn } from "@tanstack/react-start";
@@ -1266,6 +1267,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
   const { signOut } = useAuth();
   const [docsOpen, setDocsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1372,6 +1374,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
         {[
           { label: "Mes formations", icon: GraduationCap, action: () => onNavigate("formation") },
           { label: "Mes documents", icon: Inbox, action: () => setDocsOpen(true) },
+          { label: "Ajouter à mon calendrier", icon: Calendar, action: () => setCalendarOpen(true) },
           { label: "Conversation admin", icon: MessageCircle, action: () => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("kadence:open-assistant")); } },
         ].map((item, i, arr) => (
           <button key={i} onClick={item.action} className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
@@ -1390,6 +1393,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
       </button>
 
       <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} />
+      <CalendarExportSheet open={calendarOpen} onClose={() => setCalendarOpen(false)} userId={userId} />
       <EditProfileSheet
         open={editOpen}
         onClose={() => setEditOpen(false)}
