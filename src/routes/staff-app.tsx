@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ClosureFlow } from "@/components/staff-app/ClosureFlow";
 import { SignalementSheet, RequestModificationSheet, MyRequestsSheet } from "@/components/staff-app/StaffActionsSheets";
 import { ShiftDetailSheet, DocumentsSheet, NotificationsSheet } from "@/components/staff-app/ProfileSheets";
+import { CalendarExportSheet } from "@/components/staff-app/CalendarExportSheet";
 import { EditProfileSheet, type EditableProfile } from "@/components/staff-app/EditProfileSheet";
 import { DisposSheet, disposKey } from "@/components/staff-app/DisposSheet";
 import { useServerFn } from "@tanstack/react-start";
