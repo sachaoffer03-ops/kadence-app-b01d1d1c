@@ -254,8 +254,11 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
         end_time: shift.end_time,
         business_role: shift.business_role,
         studio_id: shift.studio_id,
+        role_segments: (shift.role_segments as RoleSegment[] | null) ?? null,
+        required_roles: requiredRoles,
       },
       eligible,
       partial,
     };
+
   });
