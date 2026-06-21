@@ -57,10 +57,16 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
 
     const { data: shift, error: e1 } = await supabaseAdmin
       .from("shifts")
-      .select("id, shift_date, start_time, end_time, business_role, studio_id, user_id")
+      .select("id, shift_date, start_time, end_time, business_role, studio_id, user_id, role_segments")
       .eq("id", data.shiftId)
       .single();
     if (e1) throw new Error(e1.message);
+
+    const requiredRoles = getRequiredRoles(
+      (shift.role_segments as RoleSegment[] | null) ?? null,
+      shift.business_role,
+    );
+
 
     const shiftStartM = timeToMin(shift.start_time);
     const shiftEndM = timeToMin(shift.end_time);
