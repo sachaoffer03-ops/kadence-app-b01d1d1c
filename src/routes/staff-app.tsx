@@ -23,6 +23,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { checkUserDispoStatus, getAvailabilityLockInfo } from "@/lib/availabilities.functions";
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
+import { expandShiftToCards, isHybridShift, type RoleSegment } from "@/lib/role-segments";
 
 import { AssistantFab } from "@/components/staff-app/AssistantFab";
 
@@ -72,6 +73,7 @@ interface ShiftRow {
   id: string; shift_date: string; start_time: string; end_time: string;
   business_role: string; studio_id: string | null; notes?: string | null;
   clocked_in_at?: string | null; clocked_out_at?: string | null; minutes_late?: number | null;
+  role_segments?: RoleSegment[] | null;
 }
 
 function fmtTime(t: string) { return t.slice(0, 5).replace(":", "h"); }
@@ -389,11 +391,11 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     const weekEnd = addDaysISO(today, 7);
     const load = async () => {
       const { data: next, error } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late,role_segments")
         .eq("user_id", userId).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
       if (next) {
-        setShifts(next);
-        saveShiftsCache(next as ShiftRow[]);
+        setShifts(next as unknown as ShiftRow[]);
+        saveShiftsCache(next as unknown as ShiftRow[]);
       } else if (error && cachedShifts) {
         setShifts(cachedShifts);
       }
@@ -426,6 +428,36 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, online]);
+
+  // Notif 5 min avant chaque transition de rôle dans un shift hybride
+  useEffect(() => {
+    const fired = new Set<string>();
+    const tick = () => {
+      const now = new Date();
+      const today = todayISO();
+      for (const s of shifts) {
+        if (s.shift_date !== today) continue;
+        if (!isHybridShift(s.role_segments)) continue;
+        if (s.clocked_out_at) continue;
+        for (let i = 1; i < (s.role_segments?.length ?? 0); i++) {
+          const seg = s.role_segments![i];
+          const at = new Date(`${s.shift_date}T${seg.start_time.slice(0,5)}:00`).getTime();
+          const diff = at - now.getTime();
+          const key = `${s.id}-${i}`;
+          if (diff <= 5 * 60_000 && diff > 4 * 60_000 && !fired.has(key)) {
+            fired.add(key);
+            toast(`Changement de rôle dans 5 min`, {
+              description: `Tu passes sur ${seg.role} à ${seg.start_time.slice(0,5)}`,
+            });
+          }
+        }
+      }
+    };
+    tick();
+    const t = setInterval(tick, 60_000);
+    return () => clearInterval(t);
+  }, [shifts]);
+
 
   const firstName = profile?.first_name || "";
   const initial = (firstName.charAt(0) || "?").toUpperCase();
@@ -809,21 +841,22 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
       {shifts.length > 1 && (
         <div style={{ fontSize: 12, fontWeight: 500, marginTop: 12, marginBottom: 8, color: "var(--muted-foreground)" }}>Shifts suivants</div>
       )}
-      {shifts.slice(1).map((s) => {
-        const role = s.business_role as Role;
+      {shifts.slice(1).flatMap((s) => expandShiftToCards(s).map((card) => {
+        const role = card.role as Role;
         const rc = roleColors[role];
         const active = s.shift_date === today && !s.clocked_out_at;
         const dateLabel = s.shift_date === today ? "Aujourd'hui" : new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric" });
         const studioName = (s.studio_id && studios[s.studio_id]) || "—";
         const done = !!s.clocked_out_at;
+        const partSuffix = card.isHybridPart ? ` · partie ${card.segmentIndex + 1}/${card.totalSegments}` : "";
         return (
-          <button key={s.id} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3.5 flex items-center gap-3 mb-2 text-left" style={{ backgroundColor: active ? "var(--coral-light)" : "#fff", borderColor: active ? "var(--coral)" : "rgba(0,0,0,0.08)", opacity: done ? 0.7 : 1 }}>
+          <button key={`${s.id}-${card.segmentIndex}`} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3.5 flex items-center gap-3 mb-2 text-left" style={{ backgroundColor: active ? "var(--coral-light)" : "#fff", borderColor: active ? "var(--coral)" : "rgba(0,0,0,0.08)", opacity: done ? 0.7 : 1 }}>
             <div className="rounded-lg flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: rc?.bg }}>
               <Clock size={16} style={{ color: rc?.text }} />
             </div>
             <div className="flex-1">
-              <div style={{ fontSize: 13, fontWeight: 500 }}>{dateLabel} · {fmtTime(s.start_time)} — {fmtTime(s.end_time)}</div>
-              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{role} · {studioName.replace("Skult ", "")}{done ? " · terminé" : ""}</div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>{dateLabel} · {fmtTime(card.startTime)} — {fmtTime(card.endTime)}</div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{role} · {studioName.replace("Skult ", "")}{done ? " · terminé" : ""}{partSuffix}</div>
             </div>
             {active && !done && (
               <span className="rounded-md px-2 py-1" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
@@ -833,7 +866,7 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
             <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />
           </button>
         );
-      })}
+      }))}
 
       {/* Propositions accessibles via leur page dédiée si présentes (badge déjà visible via ProposalsInline ci-dessus) */}
       {proposals.length > 0 && (
@@ -1038,11 +1071,11 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked,role_segments")
         .eq("user_id", userId)
         .gte("shift_date", toISO(rangeStart)).lte("shift_date", toISO(rangeEnd))
         .order("shift_date").order("start_time");
-      if (data) setShifts(data);
+      if (data) setShifts(data as unknown as ShiftRow[]);
       setLoading(false);
     };
     setLoading(true);
@@ -1063,7 +1096,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
     if (!sid) return;
     (async () => {
       const { data: s } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked,role_segments")
         .eq("id", sid).eq("user_id", userId).maybeSingle();
       if (!s) { toast.error("Shift introuvable"); }
       else {
@@ -1195,28 +1228,29 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
                 <div style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", marginBottom: 4, marginTop: 8, textTransform: "capitalize" }}>{day.label}</div>
                 {dayShifts.length === 0 ? (
                   <div className="rounded-lg px-4 py-3" style={{ backgroundColor: "var(--muted)", fontSize: 12, color: "var(--muted-foreground)" }}>Repos</div>
-                ) : dayShifts.map((s) => {
-                  const rc = roleColors[s.business_role as Role];
+                ) : dayShifts.flatMap((s) => expandShiftToCards(s).map((card) => {
+                  const rc = roleColors[card.role as Role];
                   const studioName = (s.studio_id && studios[s.studio_id]) || "";
                   const done = !!s.clocked_out_at;
                   const inService = !done && !!s.clocked_in_at;
+                  const partSuffix = card.isHybridPart ? ` · partie ${card.segmentIndex + 1}/${card.totalSegments}` : "";
                   return (
-                    <button key={s.id} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3 flex items-center gap-3 mb-1 text-left" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)", opacity: done ? 0.65 : 1 }}>
+                    <button key={`${s.id}-${card.segmentIndex}`} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3 flex items-center gap-3 mb-1 text-left" style={{ backgroundColor: "#fff", borderColor: "rgba(0,0,0,0.08)", opacity: done ? 0.65 : 1 }}>
                       <span className="rounded-full" style={{ width: 8, height: 8, backgroundColor: done ? "rgba(0,0,0,0.25)" : rc?.dot }} />
                       <div className="flex-1">
-                        <span style={{ fontSize: 13, fontWeight: 500, textDecoration: done ? "line-through" : "none" }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)}</span>
-                        <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginLeft: 8 }}>{s.business_role} · {studioName.replace("Skult ", "")}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, textDecoration: done ? "line-through" : "none" }}>{fmtTime(card.startTime)} — {fmtTime(card.endTime)}</span>
+                        <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginLeft: 8 }}>{card.role} · {studioName.replace("Skult ", "")}{partSuffix}</span>
                       </div>
-                      {done && (
+                      {done && card.segmentIndex === card.totalSegments - 1 && (
                         <span className="rounded-md px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>Effectué</span>
                       )}
-                      {inService && (
+                      {inService && card.segmentIndex === 0 && (
                         <span className="rounded-md px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>En cours</span>
                       )}
                       <ChevronRight size={14} style={{ color: "var(--muted-foreground)" }} />
                     </button>
                   );
-                })}
+                }))}
               </div>
             );
           })}
@@ -1487,11 +1521,11 @@ function PointageTab({ studios, userId }: { studios: Record<string, string>; use
     const today = todayISO();
     const [{ data: t }, { data: history }] = await Promise.all([
       supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late,role_segments")
         .eq("user_id", userId).eq("shift_date", today)
         .order("start_time").limit(1),
       supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late,role_segments")
         .eq("user_id", userId).lt("shift_date", today)
         .order("shift_date", { ascending: false }).limit(10),
     ]);
