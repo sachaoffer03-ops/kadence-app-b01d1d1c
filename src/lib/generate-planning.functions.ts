@@ -1278,17 +1278,24 @@ async function runEngine(ctx: EngineCtx) {
   // Validation : pas de shift < min, sauf si le besoin lui-même est plus court
   // (ex: Accueil PM 2h45 ou Barista 13h30-15h). Ces shifts sont voulus.
   const validation: string[] = [];
+  const knownRoleNames = (businessRolesRows ?? []).map((r: any) => r.name);
   for (const sh of finalShifts) {
     const dur = t2m(sh.end_time) - t2m(sh.start_time);
-    const matchingReq = requirements.find((r) =>
-      r.studio_id === sh.studio_id &&
-      r.date === sh.shift_date &&
-      r.role === sh.business_role &&
-      r.startMin <= t2m(sh.start_time) &&
-      r.endMin >= t2m(sh.end_time),
-    );
     if (dur < minShiftMin) {
       validation.push(`Shift < min: ${sh.user_id} ${sh.shift_date} ${sh.start_time}-${sh.end_time}`);
+    }
+    if (sh.role_segments) {
+      const v = validateRoleSegments(sh.role_segments, sh.start_time.slice(0, 5), sh.end_time.slice(0, 5), knownRoleNames);
+      if (!v.ok) {
+        validation.push(`role_segments invalides ${sh.shift_date} ${sh.start_time}: ${v.errors.join("; ")}`);
+        sh.role_segments = null; // safety net : on tombe sur mono-rôle plutôt que de crasher l'insert
+      } else if (sh.user_id) {
+        const emp = employees.get(sh.user_id);
+        const required = getRequiredRoles(sh.role_segments, sh.business_role);
+        if (emp && !required.every((rr) => emp.roles.has(rr))) {
+          validation.push(`Employé ${emp.first_name} ${emp.last_name} sans tous les rôles requis pour shift hybride ${sh.shift_date}`);
+        }
+      }
     }
   }
 
