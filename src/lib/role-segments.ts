@@ -107,3 +107,63 @@ export function isHybridShift(segments: RoleSegment[] | null | undefined): boole
   if (!segments || segments.length < 2) return false;
   return new Set(segments.map((s) => s.role)).size >= 2;
 }
+
+export type SegmentLayout = {
+  role: string;
+  start_time: string;
+  end_time: string;
+  topPercent: number;
+  heightPercent: number;
+  durationMinutes: number;
+};
+
+/** Calcule la position verticale de chaque segment en % du bloc shift. */
+export function getSegmentLayout(
+  segments: RoleSegment[] | null | undefined,
+  shiftStart: string,
+  shiftEnd: string,
+): SegmentLayout[] {
+  const toMin = (t: string) => {
+    const [h, m] = t.slice(0, 5).split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  const startMin = toMin(shiftStart);
+  const endMin = toMin(shiftEnd);
+  const total = Math.max(1, endMin - startMin);
+
+  if (!segments || segments.length === 0) {
+    return [{
+      role: "",
+      start_time: shiftStart,
+      end_time: shiftEnd,
+      topPercent: 0,
+      heightPercent: 100,
+      durationMinutes: total,
+    }];
+  }
+
+  const out: SegmentLayout[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments[i];
+    const segStart = toMin(s.start_time);
+    const segEnd = toMin(s.end_time);
+    const topPercent = ((segStart - startMin) / total) * 100;
+    const isLast = i === segments.length - 1;
+    const nextTop = isLast ? 100 : (((toMin(segments[i + 1].start_time) - startMin) / total) * 100);
+    const heightPercent = nextTop - topPercent;
+    out.push({
+      role: s.role,
+      start_time: s.start_time,
+      end_time: s.end_time,
+      topPercent,
+      heightPercent,
+      durationMinutes: segEnd - segStart,
+    });
+  }
+  // Garantir que le dernier remonte exactement à 100
+  if (out.length > 0) {
+    const last = out[out.length - 1];
+    last.heightPercent = 100 - last.topPercent;
+  }
+  return out;
+}
