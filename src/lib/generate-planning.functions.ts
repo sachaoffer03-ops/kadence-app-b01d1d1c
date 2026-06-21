@@ -450,6 +450,7 @@ async function runEngine(ctx: EngineCtx) {
   logs.phases.load_ms = Date.now() - t_load;
   logs.employee_count = employees.size;
   logs.template_count = templatesRows.length;
+  logs.hybrid_template_count = (templatesRows ?? []).filter((t: any) => isHybridShift(t.role_segments as RoleSegment[] | null)).length;
 
   // ─── PHASE 1 — Détection "CDI cuisine unique" (studios avec cuisine) ─────
   const t_p1 = Date.now();
