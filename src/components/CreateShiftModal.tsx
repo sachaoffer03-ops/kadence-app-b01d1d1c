@@ -400,7 +400,21 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {BUSINESS_ROLES.map((r: string) => (
+                  <button
+                    type="button"
+                    onClick={() => setIsMulti((v) => !v)}
+                    className="rounded-full px-2.5 py-1 transition-colors flex items-center gap-1"
+                    style={{
+                      ...chip(isMulti),
+                      backgroundColor: isMulti ? "var(--coral)" : "transparent",
+                      color: isMulti ? "#fff" : "var(--coral, var(--foreground))",
+                      border: isMulti ? "none" : "0.5px solid var(--coral, var(--border))",
+                    }}
+                    title="Créer un shift hybride avec plusieurs rôles successifs"
+                  >
+                    <Layers size={11} /> Multi-rôles
+                  </button>
+                  {!isMulti && BUSINESS_ROLES.map((r: string) => (
                     <button key={r} type="button" onClick={() => setRole(r)}
                       className="rounded-full px-2.5 py-1 transition-colors" style={chip(role === r)}>
                       {r}
@@ -408,7 +422,19 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
                   ))}
                 </div>
               )}
+              {isMulti && segments.length >= 2 && (
+                <div className="mt-3">
+                  <RoleSegmentsEditor
+                    shiftStart={startTime}
+                    shiftEnd={endTime}
+                    segments={segments}
+                    onChange={setSegments}
+                    knownRoles={BUSINESS_ROLES}
+                  />
+                </div>
+              )}
             </div>
+
 
             <div className="grid grid-cols-3 gap-3">
               <div><label style={labelStyle}>Date *</label>
