@@ -1374,6 +1374,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
         {[
           { label: "Mes formations", icon: GraduationCap, action: () => onNavigate("formation") },
           { label: "Mes documents", icon: Inbox, action: () => setDocsOpen(true) },
+          { label: "Ajouter à mon calendrier", icon: Calendar, action: () => setCalendarOpen(true) },
           { label: "Conversation admin", icon: MessageCircle, action: () => { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("kadence:open-assistant")); } },
         ].map((item, i, arr) => (
           <button key={i} onClick={item.action} className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
