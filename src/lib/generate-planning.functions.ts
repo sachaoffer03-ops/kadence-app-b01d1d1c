@@ -1465,7 +1465,12 @@ function diagnoseReason(
   cands: Employee[],
   availOn: (uid: string, date: string) => AvailRange[],
 ): string {
-  if (cands.length === 0) return "Aucun employé qualifié (rôle/contrat/studio)";
+  if (cands.length === 0) {
+    if (req.is_hybrid) {
+      return `Aucun candidat polyvalent (rôles requis : ${req.required_roles.join(" + ")})`;
+    }
+    return "Aucun employé qualifié (rôle/contrat/studio)";
+  }
   const withAvail = cands.filter((c) => availOn(c.id, req.date).length > 0);
   if (withAvail.length === 0) return "Aucun candidat n'a déclaré de disponibilité ce jour";
   const overlapping = withAvail.filter((c) =>
