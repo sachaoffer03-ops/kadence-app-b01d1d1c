@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
-import { X, Send, AlertTriangle, ChevronDown, ChevronUp, UserCheck } from "lucide-react";
+import { X, Send, AlertTriangle, ChevronDown, ChevronUp, UserCheck, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
@@ -9,6 +9,9 @@ import { getRoleStyle, fullName } from "@/lib/staff-helpers";
 import { getEligibleEmployeesForShift, type EligibleEmployee } from "@/lib/shift-eligibility.functions";
 import { sendProposalsToShifts } from "@/lib/proposals.functions";
 import { assignShiftsDirect } from "@/lib/shifts.functions";
+import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
+import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
+
 
 interface Studio { id: string; name: string }
 
