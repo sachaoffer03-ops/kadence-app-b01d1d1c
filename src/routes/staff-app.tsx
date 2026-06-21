@@ -1393,6 +1393,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
       </button>
 
       <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} />
+      <CalendarExportSheet open={calendarOpen} onClose={() => setCalendarOpen(false)} userId={userId} />
       <EditProfileSheet
         open={editOpen}
         onClose={() => setEditOpen(false)}
