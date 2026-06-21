@@ -17,6 +17,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchAll } from "@/lib/supabase-paginate";
 import { getWeeklyCapForUser } from "@/lib/weekly-cap";
+import {
+  getRequiredRoles,
+  isHybridShift,
+  validateRoleSegments,
+  type RoleSegment,
+} from "@/lib/role-segments";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const CELL_MIN = 15;             // granularité (15 min)
