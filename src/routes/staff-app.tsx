@@ -73,7 +73,10 @@ interface ShiftRow {
   id: string; shift_date: string; start_time: string; end_time: string;
   business_role: string; studio_id: string | null; notes?: string | null;
   clocked_in_at?: string | null; clocked_out_at?: string | null; minutes_late?: number | null;
-  role_segments?: RoleSegment[] | null;
+  role_segments?: RoleSegment[] | null | unknown;
+}
+function toSegs(v: unknown): RoleSegment[] | null {
+  return Array.isArray(v) ? (v as RoleSegment[]) : null;
 }
 
 function fmtTime(t: string) { return t.slice(0, 5).replace(":", "h"); }
