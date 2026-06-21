@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { updateShift, deleteShift } from "@/lib/shifts.functions";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
+import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
+import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
 
 type EmployeeOpt = {
   id: string;
@@ -23,11 +25,13 @@ interface Props {
     shiftDate: string;
     startTime: string; // HH:MM:SS
     endTime: string;
+    roleSegments?: RoleSegment[] | null;
   };
   onClose: () => void;
   onSaved: () => void;
   onDeleted?: () => void;
 }
+
 
 const toHHMM = (t: string) => String(t).slice(0, 5);
 
