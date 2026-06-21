@@ -501,6 +501,9 @@ async function runEngine(ctx: EngineCtx) {
         for (let m = startMin; m < endMin; m += CELL_MIN) {
           cells.push({ startMin: m, endMin: Math.min(m + CELL_MIN, endMin), userId: null, blocked: false });
         }
+        const segs = (t.role_segments as RoleSegment[] | null) ?? null;
+        const hybrid = isHybridShift(segs);
+        const requiredRoles = getRequiredRoles(segs, t.business_role);
         requirements.push({
           id: `r${++reqCounter}`,
           studio_id: t.studio_id,
@@ -511,6 +514,9 @@ async function runEngine(ctx: EngineCtx) {
           allowed_contracts: (t.allowed_contracts ?? []) as ContractType[],
           allowed_roles: (t.allowed_roles ?? []) as string[],
           is_optional: !!t.is_optional,
+          role_segments: segs,
+          is_hybrid: hybrid,
+          required_roles: requiredRoles,
           cells,
         });
       }
