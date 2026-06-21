@@ -394,8 +394,8 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
         .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late,role_segments")
         .eq("user_id", userId).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
       if (next) {
-        setShifts(next);
-        saveShiftsCache(next as ShiftRow[]);
+        setShifts(next as unknown as ShiftRow[]);
+        saveShiftsCache(next as unknown as ShiftRow[]);
       } else if (error && cachedShifts) {
         setShifts(cachedShifts);
       }
@@ -1045,7 +1045,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
         .eq("user_id", userId)
         .gte("shift_date", toISO(rangeStart)).lte("shift_date", toISO(rangeEnd))
         .order("shift_date").order("start_time");
-      if (data) setShifts(data);
+      if (data) setShifts(data as unknown as ShiftRow[]);
       setLoading(false);
     };
     setLoading(true);
