@@ -391,7 +391,7 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     const weekEnd = addDaysISO(today, 7);
     const load = async () => {
       const { data: next, error } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late,role_segments")
         .eq("user_id", userId).gte("shift_date", today).order("shift_date").order("start_time").limit(3);
       if (next) {
         setShifts(next);
@@ -1040,7 +1040,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked,role_segments")
         .eq("user_id", userId)
         .gte("shift_date", toISO(rangeStart)).lte("shift_date", toISO(rangeEnd))
         .order("shift_date").order("start_time");
@@ -1065,7 +1065,7 @@ function PlanningTab({ studios, userId }: { studios: Record<string, string>; use
     if (!sid) return;
     (async () => {
       const { data: s } = await supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,published_at,clocked_in_at,clocked_out_at,minutes_late,status,is_locked,role_segments")
         .eq("id", sid).eq("user_id", userId).maybeSingle();
       if (!s) { toast.error("Shift introuvable"); }
       else {
@@ -1489,11 +1489,11 @@ function PointageTab({ studios, userId }: { studios: Record<string, string>; use
     const today = todayISO();
     const [{ data: t }, { data: history }] = await Promise.all([
       supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late,role_segments")
         .eq("user_id", userId).eq("shift_date", today)
         .order("start_time").limit(1),
       supabase.from("shifts")
-        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late")
+        .select("id,shift_date,start_time,end_time,business_role,studio_id,notes,clocked_in_at,clocked_out_at,minutes_late,role_segments")
         .eq("user_id", userId).lt("shift_date", today)
         .order("shift_date", { ascending: false }).limit(10),
     ]);
