@@ -1199,7 +1199,9 @@ function PlanningCalendarPage() {
             shiftDate: editShift.shiftDate,
             startTime: editShift.startTime,
             endTime: editShift.endTime,
+            roleSegments: editShift.roleSegments ?? null,
           }}
+
           onClose={() => setEditShift(null)}
           onSaved={refresh}
         />
