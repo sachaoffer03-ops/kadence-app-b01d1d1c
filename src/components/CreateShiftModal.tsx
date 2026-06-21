@@ -190,6 +190,11 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
     e.preventDefault();
     if (endTime <= startTime) return toast.error("L'heure de fin doit être après le début");
     if (recurrence !== "none" && !until) return toast.error("Indiquez une date de fin de répétition");
+    if (isMulti && !segValidation.ok) return toast.error("Segments invalides", { description: segValidation.errors[0] });
+
+    const primaryRole = isMulti ? (segments[0]?.role || role) : role;
+    const segmentsToInsert = isMulti && segments.length >= 2 ? segments : null;
+    if (!primaryRole) return toast.error("Choisis un rôle");
 
     const dates = buildDates();
     setSubmitting(true);
@@ -200,7 +205,7 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
         dates.map((d) => ({
           user_id: null,
           studio_id: studioId || null,
-          business_role: role,
+          business_role: primaryRole,
           shift_date: d,
           start_time: startTime,
           end_time: endTime,
@@ -209,10 +214,12 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
           is_locked: false,
           status: "scheduled",
           published_at: nowIso,
+          role_segments: segmentsToInsert,
         })),
       )
       .select("id, shift_date")
       .order("shift_date", { ascending: true });
+
 
     if (error || !data || data.length === 0) {
       setSubmitting(false);
