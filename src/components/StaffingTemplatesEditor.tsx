@@ -31,20 +31,12 @@ interface Template {
 }
 
 const CONTRACTS = ["Tous", "CDI", "Étudiant", "Flexi"] as const;
+const QUARTER_TIME_REGEX = /^([01]\d|2[0-3]):(00|15|30|45)$/;
 
 const toMinutes = (time: string) => {
   const [hours, minutes] = time.slice(0, 5).split(":").map(Number);
   return (hours || 0) * 60 + (minutes || 0);
 };
-
-const toHHMM = (minutes: number) => {
-  const clamped = Math.max(0, Math.min(23 * 60 + 45, minutes));
-  const hours = Math.floor(clamped / 60);
-  const mins = clamped % 60;
-  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
-};
-
-const snapTimeToQuarter = (time: string) => toHHMM(Math.round(toMinutes(time) / 15) * 15);
 
 interface Props {
   lockedStudioName?: string;
@@ -137,8 +129,14 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   const updateRow = async (id: string, patch: Partial<Template>) => {
     const prev = templates;
     const current = prev.find((t) => t.id === id);
-    if (patch.start_time !== undefined) patch.start_time = snapTimeToQuarter(patch.start_time);
-    if (patch.end_time !== undefined) patch.end_time = snapTimeToQuarter(patch.end_time);
+    if (patch.start_time !== undefined) {
+      patch.start_time = patch.start_time.slice(0, 5);
+      if (!QUARTER_TIME_REGEX.test(patch.start_time)) return;
+    }
+    if (patch.end_time !== undefined) {
+      patch.end_time = patch.end_time.slice(0, 5);
+      if (!QUARTER_TIME_REGEX.test(patch.end_time)) return;
+    }
 
     if (current && (patch.start_time !== undefined || patch.end_time !== undefined)) {
       const newStart = (patch.start_time ?? current.start_time).slice(0, 5);
