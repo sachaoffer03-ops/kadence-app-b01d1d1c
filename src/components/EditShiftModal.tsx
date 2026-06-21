@@ -44,9 +44,13 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
   const [end, setEnd] = useState(toHHMM(shift.endTime));
   const [userId, setUserId] = useState<string>(shift.employeeId || "");
   const [role, setRole] = useState<string>(shift.role);
+  const initialSegs = shift.roleSegments ?? null;
+  const [isMulti, setIsMulti] = useState<boolean>(!!initialSegs && initialSegs.length >= 2);
+  const [segments, setSegments] = useState<RoleSegment[]>(initialSegs ?? []);
   const [employees, setEmployees] = useState<EmployeeOpt[]>([]);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+
 
   useEffect(() => {
     (async () => {
