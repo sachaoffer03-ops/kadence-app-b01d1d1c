@@ -1439,6 +1439,32 @@ export type Database = {
           },
         ]
       }
+      role_transition_notifications: {
+        Row: {
+          sent_at: string
+          shift_id: string
+          transition_index: number
+        }
+        Insert: {
+          sent_at?: string
+          shift_id: string
+          transition_index: number
+        }
+        Update: {
+          sent_at?: string
+          shift_id?: string
+          transition_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_transition_notifications_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scoring_settings: {
         Row: {
           checklist_bonus_per_photo_item: number
