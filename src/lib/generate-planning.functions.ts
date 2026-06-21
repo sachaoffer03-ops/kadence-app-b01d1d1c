@@ -17,6 +17,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchAll } from "@/lib/supabase-paginate";
 import { getWeeklyCapForUser } from "@/lib/weekly-cap";
+import {
+  getRequiredRoles,
+  isHybridShift,
+  validateRoleSegments,
+  type RoleSegment,
+} from "@/lib/role-segments";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const CELL_MIN = 15;             // granularité (15 min)
@@ -82,6 +88,10 @@ interface Requirement {
   allowed_contracts: ContractType[];
   allowed_roles: Role[];
   is_optional: boolean;
+  // Hybrid support
+  role_segments: RoleSegment[] | null;
+  is_hybrid: boolean;
+  required_roles: Role[]; // tous les rôles requis (intersection pour candidats)
   // Découpage en cellules de 15 min : assignation user (null = trou)
   cells: Cell[];
   // Source pour Pass C : compter les itérations qui ont servi
@@ -318,7 +328,7 @@ async function runEngine(ctx: EngineCtx) {
     fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
     fetchAll<any>(supabase.from("availabilities").select("user_id, avail_date, start_time, end_time").gte("avail_date", monthStart).lte("avail_date", monthEnd)),
     fetchAll<any>(supabase.from("staffing_templates").select("*").in("studio_id", studioIds)),
-    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd).in("studio_id", studioIds)),
+    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd).in("studio_id", studioIds)),
     fetchAll<any>(supabase.from("business_roles").select("name, is_kitchen").eq("is_kitchen", true)),
     fetchAll<any>(supabase.from("training_courses").select("id, business_role_id, is_required_for_all, required_for_planning").eq("required_for_planning", true)),
     fetchAll<any>(supabase.from("training_course_completions").select("user_id, course_id")),
@@ -440,6 +450,7 @@ async function runEngine(ctx: EngineCtx) {
   logs.phases.load_ms = Date.now() - t_load;
   logs.employee_count = employees.size;
   logs.template_count = templatesRows.length;
+  logs.hybrid_template_count = (templatesRows ?? []).filter((t: any) => isHybridShift(t.role_segments as RoleSegment[] | null)).length;
 
   // ─── PHASE 1 — Détection "CDI cuisine unique" (studios avec cuisine) ─────
   const t_p1 = Date.now();
@@ -491,6 +502,9 @@ async function runEngine(ctx: EngineCtx) {
         for (let m = startMin; m < endMin; m += CELL_MIN) {
           cells.push({ startMin: m, endMin: Math.min(m + CELL_MIN, endMin), userId: null, blocked: false });
         }
+        const segs = (t.role_segments as RoleSegment[] | null) ?? null;
+        const hybrid = isHybridShift(segs);
+        const requiredRoles = getRequiredRoles(segs, t.business_role);
         requirements.push({
           id: `r${++reqCounter}`,
           studio_id: t.studio_id,
@@ -501,6 +515,9 @@ async function runEngine(ctx: EngineCtx) {
           allowed_contracts: (t.allowed_contracts ?? []) as ContractType[],
           allowed_roles: (t.allowed_roles ?? []) as string[],
           is_optional: !!t.is_optional,
+          role_segments: segs,
+          is_hybrid: hybrid,
+          required_roles: requiredRoles,
           cells,
         });
       }
@@ -550,8 +567,10 @@ async function runEngine(ctx: EngineCtx) {
     for (const e of employees.values()) {
       // Studio
       if (e.studios.size > 0 && !e.studios.has(r.studio_id)) continue;
-      // Rôle
-      if (isKitchenRole(r.role)) {
+      // Rôle — pour un besoin hybride, l'employé doit avoir TOUS les rôles requis
+      if (r.is_hybrid) {
+        if (!r.required_roles.every((rr) => e.roles.has(rr))) continue;
+      } else if (isKitchenRole(r.role)) {
         if (!Array.from(e.roles).some((er) => isKitchenRole(er))) continue;
       } else if (r.allowed_roles.length > 0) {
         if (!r.allowed_roles.some((ar) => e.roles.has(ar))) continue;
@@ -564,9 +583,15 @@ async function runEngine(ctx: EngineCtx) {
       } else if (r.allowed_contracts.length > 0) {
         if (!r.allowed_contracts.some((ac) => e.contracts.has(ac as ContractType))) continue;
       }
-      // Formation : si une formation requise n'est pas validée pour ce rôle → exclu
+      // Formation : pour un hybride, vérifier le blocage sur CHAQUE rôle requis
       const blocked = blockedRolesByUser.get(e.id);
-      if (blocked && blocked.has(r.role)) continue;
+      if (blocked) {
+        if (r.is_hybrid) {
+          if (r.required_roles.some((rr) => blocked.has(rr))) continue;
+        } else {
+          if (blocked.has(r.role)) continue;
+        }
+      }
       out.push(e);
     }
     return out;
@@ -774,7 +799,10 @@ async function runEngine(ctx: EngineCtx) {
           r.date === date &&
           (reqCandidates.get(r.id) ?? []).some((c) => c.id === e.id) &&
           r.startMin < range.endMin && r.endMin > range.startMin,
-        );
+        ).sort((a, b) => {
+          if (a.is_hybrid !== b.is_hybrid) return a.is_hybrid ? -1 : 1;
+          return 0;
+        });
         if (fitReqs.length === 0) continue;
 
         for (const req of fitReqs) {
@@ -832,7 +860,14 @@ async function runEngine(ctx: EngineCtx) {
     }
     scarcityScore.set(r.id, avail);
   }
+  // Most-constrained-first : les besoins hybrides (polyvalents requis) passent
+  // en priorité absolue, sinon la rareté classique décide.
   const sortedReqs = [...requirements].sort((a, b) => {
+    if (a.is_hybrid !== b.is_hybrid) return a.is_hybrid ? -1 : 1;
+    if (a.is_hybrid && b.is_hybrid) {
+      const dr = b.required_roles.length - a.required_roles.length;
+      if (dr !== 0) return dr;
+    }
     const sa = scarcityScore.get(a.id) ?? 0;
     const sb = scarcityScore.get(b.id) ?? 0;
     if (sa !== sb) return sa - sb;
@@ -1120,6 +1155,7 @@ async function runEngine(ctx: EngineCtx) {
     shift_date: string; start_time: string; end_time: string;
     status: string; is_locked: boolean; is_manual: boolean;
     created_by_run_id: string;
+    role_segments: RoleSegment[] | null;
   }> = [];
   for (const req of requirements) {
     let i = 0;
@@ -1134,6 +1170,8 @@ async function runEngine(ctx: EngineCtx) {
                req.cells[j + 1].userId === null &&
                !req.cells[j + 1].blocked &&
                req.cells[j + 1].startMin === req.cells[j].endMin) j++;
+        // Préserver role_segments uniquement si le trou couvre l'intégralité du besoin
+        const holeFull = req.cells[i].startMin === req.startMin && req.cells[j].endMin === req.endMin;
         finalShifts.push({
           user_id: null,
           studio_id: req.studio_id,
@@ -1145,6 +1183,7 @@ async function runEngine(ctx: EngineCtx) {
           is_locked: false,
           is_manual: false,
           created_by_run_id: ctx.runId,
+          role_segments: req.is_hybrid && holeFull ? req.role_segments : null,
         });
         i = j + 1;
         continue;
@@ -1162,17 +1201,24 @@ async function runEngine(ctx: EngineCtx) {
         a.startMin <= req.cells[i].startMin &&
         a.endMin >= req.cells[j].endMin,
       );
+      const finalStart = assignedWindow?.startMin ?? req.cells[i].startMin;
+      const finalEnd = assignedWindow?.endMin ?? req.cells[j].endMin;
+      // Préserver role_segments uniquement si le shift final couvre exactement le besoin hybride
+      const segmentsForShift = req.is_hybrid && finalStart === req.startMin && finalEnd === req.endMin
+        ? req.role_segments
+        : null;
       finalShifts.push({
         user_id: uid,
         studio_id: req.studio_id,
         business_role: req.role,
         shift_date: req.date,
-        start_time: `${m2t(assignedWindow?.startMin ?? req.cells[i].startMin)}:00`,
-        end_time: `${m2t(assignedWindow?.endMin ?? req.cells[j].endMin)}:00`,
+        start_time: `${m2t(finalStart)}:00`,
+        end_time: `${m2t(finalEnd)}:00`,
         status: "scheduled",
         is_locked: false,
         is_manual: false,
         created_by_run_id: ctx.runId,
+        role_segments: segmentsForShift,
       });
       i = j + 1;
     }
@@ -1199,6 +1245,8 @@ async function runEngine(ctx: EngineCtx) {
       if (adj.shift_date !== open.shift_date) continue;
       if (adj.business_role !== open.business_role) continue;
       if (adj.studio_id !== open.studio_id) continue;
+      // Ne pas fusionner si l'un des deux est hybride (role_segments deviendrait invalide)
+      if (adj.role_segments || open.role_segments) continue;
       const aStart = t2m(adj.start_time);
       const aEnd = t2m(adj.end_time);
       const before = aEnd === oStart;
@@ -1230,17 +1278,24 @@ async function runEngine(ctx: EngineCtx) {
   // Validation : pas de shift < min, sauf si le besoin lui-même est plus court
   // (ex: Accueil PM 2h45 ou Barista 13h30-15h). Ces shifts sont voulus.
   const validation: string[] = [];
+  const knownRoleNames = (businessRolesRows ?? []).map((r: any) => r.name);
   for (const sh of finalShifts) {
     const dur = t2m(sh.end_time) - t2m(sh.start_time);
-    const matchingReq = requirements.find((r) =>
-      r.studio_id === sh.studio_id &&
-      r.date === sh.shift_date &&
-      r.role === sh.business_role &&
-      r.startMin <= t2m(sh.start_time) &&
-      r.endMin >= t2m(sh.end_time),
-    );
     if (dur < minShiftMin) {
       validation.push(`Shift < min: ${sh.user_id} ${sh.shift_date} ${sh.start_time}-${sh.end_time}`);
+    }
+    if (sh.role_segments) {
+      const v = validateRoleSegments(sh.role_segments, sh.start_time.slice(0, 5), sh.end_time.slice(0, 5), knownRoleNames);
+      if (!v.ok) {
+        validation.push(`role_segments invalides ${sh.shift_date} ${sh.start_time}: ${v.errors.join("; ")}`);
+        sh.role_segments = null; // safety net : on tombe sur mono-rôle plutôt que de crasher l'insert
+      } else if (sh.user_id) {
+        const emp = employees.get(sh.user_id);
+        const required = getRequiredRoles(sh.role_segments, sh.business_role);
+        if (emp && !required.every((rr) => emp.roles.has(rr))) {
+          validation.push(`Employé ${emp.first_name} ${emp.last_name} sans tous les rôles requis pour shift hybride ${sh.shift_date}`);
+        }
+      }
     }
   }
 
@@ -1410,7 +1465,12 @@ function diagnoseReason(
   cands: Employee[],
   availOn: (uid: string, date: string) => AvailRange[],
 ): string {
-  if (cands.length === 0) return "Aucun employé qualifié (rôle/contrat/studio)";
+  if (cands.length === 0) {
+    if (req.is_hybrid) {
+      return `Aucun candidat polyvalent (rôles requis : ${req.required_roles.join(" + ")})`;
+    }
+    return "Aucun employé qualifié (rôle/contrat/studio)";
+  }
   const withAvail = cands.filter((c) => availOn(c.id, req.date).length > 0);
   if (withAvail.length === 0) return "Aucun candidat n'a déclaré de disponibilité ce jour";
   const overlapping = withAvail.filter((c) =>

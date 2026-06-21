@@ -2,7 +2,27 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { employeeLink } from "@/lib/notif-links";
-import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
+import { validateRoleSegments, getRequiredRoles, isHybridShift, type RoleSegment } from "@/lib/role-segments";
+
+async function assertEmployeeHasRequiredRoles(
+  supabase: any,
+  userId: string,
+  shiftBusinessRole: string,
+  segments: RoleSegment[] | null,
+) {
+  if (!isHybridShift(segments)) return;
+  const required = getRequiredRoles(segments, shiftBusinessRole);
+  const { data, error } = await supabase
+    .from("user_business_roles")
+    .select("role")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  const userRoles = new Set((data ?? []).map((r: any) => r.role));
+  const missing = required.filter((r) => !userRoles.has(r));
+  if (missing.length > 0) {
+    throw new Error(`Shift hybride : l'employé n'a pas le(s) rôle(s) ${missing.join(", ")}`);
+  }
+}
 
 const TIME = /^\d{2}:\d{2}(:\d{2})?$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -285,7 +305,7 @@ export const assignShiftDirect = createServerFn({ method: "POST" })
 
     const { data: cur, error: eCur } = await supabase
       .from("shifts")
-      .select("id, user_id, shift_date, start_time, end_time, business_role, studio_id, published_at")
+      .select("id, user_id, shift_date, start_time, end_time, business_role, studio_id, published_at, role_segments")
       .eq("id", data.shiftId)
       .single();
     if (eCur) throw new Error(eCur.message);
@@ -294,6 +314,7 @@ export const assignShiftDirect = createServerFn({ method: "POST" })
     }
 
     await assertNoOverlap(supabase, data.userId, cur.shift_date, cur.start_time, cur.end_time, data.shiftId);
+    await assertEmployeeHasRequiredRoles(supabase, data.userId, cur.business_role, (cur.role_segments as RoleSegment[] | null) ?? null);
 
     // Attribution atomique : ne réussit que si encore libre
     const nowIso = new Date().toISOString();
@@ -351,7 +372,7 @@ export const assignShiftsDirect = createServerFn({ method: "POST" })
     const shiftIds = Array.from(new Set(data.shiftIds));
     const { data: shifts, error: eCur } = await supabase
       .from("shifts")
-      .select("id, user_id, shift_date, start_time, end_time, business_role, studio_id, published_at")
+      .select("id, user_id, shift_date, start_time, end_time, business_role, studio_id, published_at, role_segments")
       .in("id", shiftIds)
       .order("shift_date", { ascending: true });
     if (eCur) throw new Error(eCur.message);
@@ -362,6 +383,7 @@ export const assignShiftsDirect = createServerFn({ method: "POST" })
 
     for (const shift of shifts) {
       await assertNoOverlap(supabase, data.userId, shift.shift_date, shift.start_time, shift.end_time, shift.id);
+      await assertEmployeeHasRequiredRoles(supabase, data.userId, shift.business_role, (shift.role_segments as RoleSegment[] | null) ?? null);
     }
 
     const nowIso = new Date().toISOString();
