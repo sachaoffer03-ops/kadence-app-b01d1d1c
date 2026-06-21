@@ -372,7 +372,7 @@ export const assignShiftsDirect = createServerFn({ method: "POST" })
     const shiftIds = Array.from(new Set(data.shiftIds));
     const { data: shifts, error: eCur } = await supabase
       .from("shifts")
-      .select("id, user_id, shift_date, start_time, end_time, business_role, studio_id, published_at")
+      .select("id, user_id, shift_date, start_time, end_time, business_role, studio_id, published_at, role_segments")
       .in("id", shiftIds)
       .order("shift_date", { ascending: true });
     if (eCur) throw new Error(eCur.message);
@@ -383,6 +383,7 @@ export const assignShiftsDirect = createServerFn({ method: "POST" })
 
     for (const shift of shifts) {
       await assertNoOverlap(supabase, data.userId, shift.shift_date, shift.start_time, shift.end_time, shift.id);
+      await assertEmployeeHasRequiredRoles(supabase, data.userId, shift.business_role, (shift.role_segments as RoleSegment[] | null) ?? null);
     }
 
     const nowIso = new Date().toISOString();
