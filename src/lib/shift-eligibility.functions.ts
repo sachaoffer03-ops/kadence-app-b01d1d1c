@@ -170,9 +170,13 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       s.add(c.course_id);
       completionsByUser.set(c.user_id, s);
     }
-    const requiredCoursesForShift = ((trainingCourses ?? []) as any[]).filter((c: any) =>
-      c.is_required_for_all || (c.business_role_id && roleNameById.get(c.business_role_id) === shift.business_role)
-    );
+    const requiredRolesSet = new Set(requiredRoles);
+    const requiredCoursesForShift = ((trainingCourses ?? []) as any[]).filter((c: any) => {
+      if (c.is_required_for_all) return true;
+      if (!c.business_role_id) return false;
+      const courseRole = roleNameById.get(c.business_role_id);
+      return courseRole !== undefined && requiredRolesSet.has(courseRole);
+    });
 
     // NB: cap par employé via getWeeklyCapForUser (respecte allow_extended_hours/weekly_hours_cap)
 
@@ -181,8 +185,10 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
 
     for (const p of profiles || []) {
       const roles = rolesByUser.get(p.id) || [];
-      const has_role = roles.includes(shift.business_role);
+      // Hybride : doit avoir TOUS les rôles requis ; mono : juste le business_role.
+      const has_role = requiredRoles.every((r) => roles.includes(r));
       if (!has_role) continue;
+
 
       const studios = studiosByUser.get(p.id) || [];
       const has_studio =
