@@ -238,27 +238,73 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
             </label>
           </div>
 
-          <label className="flex flex-col gap-1">
-            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Rôle</span>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              disabled={hasNoRoles}
-              className="rounded-md px-3 py-2 outline-none"
-              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", opacity: hasNoRoles ? 0.6 : 1 }}
-            >
-              {hasNoRoles ? (
-                <option value="">Aucun rôle configuré pour ce studio. Édite d'abord la config du studio.</option>
-              ) : (
-                <>
-                  {!availableRoles.includes(role) && <option value={role}>{role}</option>}
-                  {availableRoles.map((r: string) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </>
-              )}
-            </select>
-          </label>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Rôle</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isMulti) {
+                    if (!confirm("Repasser en mono-rôle ? Tous les segments seront perdus.")) return;
+                    setIsMulti(false);
+                    setSegments([]);
+                  } else {
+                    const [sh, sm] = start.split(":").map(Number);
+                    const [eh, em] = end.split(":").map(Number);
+                    const total = (eh * 60 + em) - (sh * 60 + sm);
+                    if (total < 30) return toast.error("Créneau trop court");
+                    const midMin = Math.round(((sh * 60 + sm) + total / 2) / 15) * 15;
+                    const mid = `${String(Math.floor(midMin / 60)).padStart(2, "0")}:${String(midMin % 60).padStart(2, "0")}`;
+                    const r1 = role || availableRoles[0] || "";
+                    const r2 = availableRoles.find((r) => r !== r1) ?? r1;
+                    setSegments([
+                      { role: r1, start_time: start, end_time: mid },
+                      { role: r2, start_time: mid, end_time: end },
+                    ]);
+                    setIsMulti(true);
+                  }
+                }}
+                className="rounded-md px-2 py-1 flex items-center gap-1"
+                style={{
+                  fontSize: 10, fontWeight: 500,
+                  backgroundColor: isMulti ? "var(--coral)" : "transparent",
+                  color: isMulti ? "#fff" : "var(--coral, var(--foreground))",
+                  border: isMulti ? "none" : "0.5px solid var(--coral, var(--border))",
+                }}
+              >
+                <Layers size={10} /> {isMulti ? "Multi-rôles actif" : "Multi-rôles"}
+              </button>
+            </div>
+            {isMulti ? (
+              <RoleSegmentsEditor
+                shiftStart={start}
+                shiftEnd={end}
+                segments={segments}
+                onChange={setSegments}
+                knownRoles={availableRoles}
+              />
+            ) : (
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                disabled={hasNoRoles}
+                className="rounded-md px-3 py-2 outline-none"
+                style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", opacity: hasNoRoles ? 0.6 : 1 }}
+              >
+                {hasNoRoles ? (
+                  <option value="">Aucun rôle configuré pour ce studio. Édite d'abord la config du studio.</option>
+                ) : (
+                  <>
+                    {!availableRoles.includes(role) && <option value={role}>{role}</option>}
+                    {availableRoles.map((r: string) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </>
+                )}
+              </select>
+            )}
+          </div>
+
 
           <div className="flex flex-col gap-1">
             <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Employé assigné</span>
