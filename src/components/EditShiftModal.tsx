@@ -107,6 +107,23 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
     return eh * 60 + em - (sh * 60 + sm);
   }, [start, end]);
 
+  // ajuste les bornes des segments quand start/end changent
+  useEffect(() => {
+    if (!isMulti || segments.length < 2) return;
+    setSegments((prev) => {
+      if (prev.length < 2) return prev;
+      const next = [...prev];
+      next[0] = { ...next[0], start_time: start };
+      next[next.length - 1] = { ...next[next.length - 1], end_time: end };
+      return next;
+    });
+  }, [start, end, isMulti]);
+
+  const segValidation = useMemo(
+    () => (isMulti ? validateRoleSegments(segments, start, end, availableRoles) : { ok: true, errors: [] }),
+    [isMulti, segments, start, end, availableRoles.join("|")],
+  );
+
   const handleSave = async () => {
     if (durationMin < 60) {
       toast.error("La durée doit être d'au moins 1h");
@@ -116,8 +133,13 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
       toast.error("Heure de fin doit être après le début");
       return;
     }
+    if (isMulti && !segValidation.ok) {
+      toast.error("Segments invalides", { description: segValidation.errors[0] });
+      return;
+    }
     setSaving(true);
     try {
+      const primaryRole = isMulti ? (segments[0]?.role || role) : role;
       await updateShiftFn({
         data: {
           shiftId: shift.id,
@@ -125,7 +147,8 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
           startTime: `${start}:00`,
           endTime: `${end}:00`,
           userId: userId === "" ? null : userId,
-          businessRole: role,
+          businessRole: primaryRole,
+          roleSegments: isMulti ? segments : null,
         },
       });
       toast.success("Shift modifié");
@@ -137,6 +160,7 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
       setSaving(false);
     }
   };
+
 
   const handleDelete = async () => {
     if (!confirm("Supprimer définitivement ce shift ? L'employé sera notifié si le shift était publié.")) return;
