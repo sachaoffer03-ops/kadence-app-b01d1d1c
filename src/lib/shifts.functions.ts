@@ -79,6 +79,8 @@ export const updateShift = createServerFn({ method: "POST" })
         unlock: z.boolean().optional(),
         // Si false → ne marque pas le shift comme manuel (utile pour le drag & drop pur)
         markManual: z.boolean().optional(),
+        // null pour repasser en mono-rôle, array pour hybride, undefined = inchangé
+        roleSegments: roleSegmentsSchema,
       })
       .parse(input),
   )
@@ -88,7 +90,7 @@ export const updateShift = createServerFn({ method: "POST" })
 
     const { data: current, error: eCur } = await supabase
       .from("shifts")
-      .select("user_id, shift_date, start_time, end_time, published_at")
+      .select("user_id, shift_date, start_time, end_time, published_at, business_role, role_segments")
       .eq("id", data.shiftId)
       .single();
     if (eCur) throw new Error(eCur.message);
@@ -98,6 +100,17 @@ export const updateShift = createServerFn({ method: "POST" })
     const nextStart = data.startTime ?? current.start_time;
     const nextEnd = data.endTime ?? current.end_time;
     await assertNoOverlap(supabase, nextUserId, nextDate, nextStart, nextEnd, data.shiftId);
+
+    // Validation des segments (si fournis)
+    if (data.roleSegments !== undefined && data.roleSegments !== null) {
+      const v = validateRoleSegments(
+        data.roleSegments,
+        String(nextStart).slice(0, 5),
+        String(nextEnd).slice(0, 5),
+      );
+      if (!v.ok) throw new Error(`role_segments invalide : ${v.errors.join(" · ")}`);
+      await assertKnownRoles(supabase, data.roleSegments);
+    }
 
     const wasPublished = !!current.published_at;
     const userChanged = data.userId !== undefined && data.userId !== current.user_id;
@@ -120,6 +133,14 @@ export const updateShift = createServerFn({ method: "POST" })
     if (data.startTime) patch.start_time = data.startTime;
     if (data.endTime) patch.end_time = data.endTime;
     if (data.notes !== undefined) patch.notes = data.notes;
+    if (data.roleSegments !== undefined) {
+      patch.role_segments = data.roleSegments;
+      // En mode hybride, force business_role = rôle du 1er segment
+      if (data.roleSegments && data.roleSegments.length > 0) {
+        patch.business_role = data.roleSegments[0].role;
+      }
+    }
+
 
     const { error } = await supabase.from("shifts").update(patch).eq("id", data.shiftId);
     if (error) throw new Error(error.message);
