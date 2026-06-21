@@ -3,8 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
-  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit, UserPlus, Pencil
+  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit, UserPlus, Pencil, Layers
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { roleColors, type Role, type Studio } from "@/lib/role-colors";
 import { Dropdown } from "@/components/Dropdown";
@@ -63,7 +64,9 @@ interface PlanningShift {
   isLocked?: boolean;
   isManual?: boolean;
   conflict?: boolean; // overlap with another shift of same employee
+  roleSegments?: { role: string; start_time: string; end_time: string }[] | null;
 }
+
 
 const monthNames = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -612,7 +615,7 @@ function PlanningCalendarPage() {
     (async () => {
       const { data, error } = await supabase
         .from("shifts")
-        .select("id, user_id, studio_id, business_role, shift_date, start_time, end_time, status, clocked_in_at, is_locked, is_manual, published_at, profiles:user_id(first_name, last_name, phone)")
+        .select("id, user_id, studio_id, business_role, shift_date, start_time, end_time, status, clocked_in_at, is_locked, is_manual, published_at, role_segments, profiles:user_id(first_name, last_name, phone)")
         .gte("shift_date", startISO)
         .lte("shift_date", endISO)
         .order("shift_date")
@@ -669,7 +672,9 @@ function PlanningCalendarPage() {
           isLocked: !!row.is_locked,
           isManual: !!row.is_manual,
           conflict: conflictIds.has(row.id),
+          roleSegments: (row.role_segments as any[] | null) ?? null,
         };
+
       });
       setShifts(mapped);
     })();
@@ -1195,7 +1200,9 @@ function PlanningCalendarPage() {
             shiftDate: editShift.shiftDate,
             startTime: editShift.startTime,
             endTime: editShift.endTime,
+            roleSegments: editShift.roleSegments ?? null,
           }}
+
           onClose={() => setEditShift(null)}
           onSaved={refresh}
         />
@@ -1776,10 +1783,20 @@ function ShiftBlock({
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                flex: 1,
               }}
             >
               {isHole ? "Trou" : shift.name || initials}
             </span>
+            {shift.roleSegments && shift.roleSegments.length >= 2 && (
+              <span
+                title={shift.roleSegments.map((s) => `${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)} ${s.role}`).join("\n")}
+                className="rounded-full inline-flex items-center gap-0.5 px-1"
+                style={{ fontSize: 8, fontWeight: 600, backgroundColor: "rgba(0,0,0,0.12)", flexShrink: 0 }}
+              >
+                <Layers size={8} /> Multi
+              </span>
+            )}
           </div>
           {!compact && (
             <>
@@ -1789,6 +1806,7 @@ function ShiftBlock({
               </div>
             </>
           )}
+
         </button>
       </PopoverTrigger>
       <PopoverContent

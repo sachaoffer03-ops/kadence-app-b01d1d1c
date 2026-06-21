@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getWeeklyCapForUser } from "@/lib/weekly-cap";
+import { getRequiredRoles, type RoleSegment } from "@/lib/role-segments";
+
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -55,10 +57,16 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
 
     const { data: shift, error: e1 } = await supabaseAdmin
       .from("shifts")
-      .select("id, shift_date, start_time, end_time, business_role, studio_id, user_id")
+      .select("id, shift_date, start_time, end_time, business_role, studio_id, user_id, role_segments")
       .eq("id", data.shiftId)
       .single();
     if (e1) throw new Error(e1.message);
+
+    const requiredRoles = getRequiredRoles(
+      (shift.role_segments as RoleSegment[] | null) ?? null,
+      shift.business_role,
+    );
+
 
     const shiftStartM = timeToMin(shift.start_time);
     const shiftEndM = timeToMin(shift.end_time);
@@ -162,9 +170,13 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       s.add(c.course_id);
       completionsByUser.set(c.user_id, s);
     }
-    const requiredCoursesForShift = ((trainingCourses ?? []) as any[]).filter((c: any) =>
-      c.is_required_for_all || (c.business_role_id && roleNameById.get(c.business_role_id) === shift.business_role)
-    );
+    const requiredRolesSet = new Set(requiredRoles);
+    const requiredCoursesForShift = ((trainingCourses ?? []) as any[]).filter((c: any) => {
+      if (c.is_required_for_all) return true;
+      if (!c.business_role_id) return false;
+      const courseRole = roleNameById.get(c.business_role_id);
+      return courseRole !== undefined && requiredRolesSet.has(courseRole);
+    });
 
     // NB: cap par employé via getWeeklyCapForUser (respecte allow_extended_hours/weekly_hours_cap)
 
@@ -173,8 +185,10 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
 
     for (const p of profiles || []) {
       const roles = rolesByUser.get(p.id) || [];
-      const has_role = roles.includes(shift.business_role);
+      // Hybride : doit avoir TOUS les rôles requis ; mono : juste le business_role.
+      const has_role = requiredRoles.every((r) => roles.includes(r));
       if (!has_role) continue;
+
 
       const studios = studiosByUser.get(p.id) || [];
       const has_studio =
@@ -240,8 +254,11 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
         end_time: shift.end_time,
         business_role: shift.business_role,
         studio_id: shift.studio_id,
+        role_segments: (shift.role_segments as RoleSegment[] | null) ?? null,
+        required_roles: requiredRoles,
       },
       eligible,
       partial,
     };
+
   });

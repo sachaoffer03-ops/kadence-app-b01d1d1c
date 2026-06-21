@@ -1,9 +1,15 @@
 import { Fragment, useEffect, useState } from "react";
-import { Plus, Trash2, Info, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Info, ChevronDown, ChevronRight, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dropdown } from "@/components/Dropdown";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
+import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
+import {
+  isHybridShift,
+  validateRoleSegments,
+  type RoleSegment,
+} from "@/lib/role-segments";
 
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -22,7 +28,9 @@ interface Template {
   required_contract: "Étudiant" | "Flexi" | "CDI" | null;
   allowed_contracts: string[] | null;
   allowed_roles: string[] | null;
+  role_segments: RoleSegment[] | null;
 }
+
 const CONTRACTS = ["Tous", "CDI", "Étudiant", "Flexi"] as const;
 
 interface Props {
@@ -252,8 +260,17 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                             style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
                         </td>
                         <td className="px-2 py-1">
-                          <Dropdown value={t.business_role} options={[...ROLES]} onChange={(v) => updateRow(t.id, { business_role: v })} minWidth={120} />
+                          {t.role_segments ? (
+                            <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5"
+                              style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--coral)", backgroundColor: "var(--coral-light, var(--background))", color: "var(--coral-dark, var(--foreground))" }}>
+                              <Layers size={11} />
+                              Multi · {t.role_segments.length} segments
+                            </div>
+                          ) : (
+                            <Dropdown value={t.business_role} options={[...ROLES]} onChange={(v) => updateRow(t.id, { business_role: v })} minWidth={120} />
+                          )}
                         </td>
+
                         <td className="px-2 py-1">
                           <Dropdown
                             value={t.required_contract ?? "Tous"}
@@ -287,6 +304,65 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                           <td></td>
                           <td colSpan={8} className="px-2 py-2">
                             <div className="rounded-lg p-3" style={{ backgroundColor: "var(--muted)" }}>
+                              {/* Section Multi-rôles */}
+                              <div className="rounded-md p-2.5 mb-3" style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Layers size={13} style={{ color: "var(--coral)" }} />
+                                    <div style={{ fontSize: 12, fontWeight: 500 }}>Besoin multi-rôles</div>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      if (t.role_segments) {
+                                        if (!confirm("Repasser ce besoin en mono-rôle ? Les segments seront perdus.")) return;
+                                        updateRow(t.id, { role_segments: null } as any);
+                                      } else {
+                                        const start = t.start_time.slice(0, 5);
+                                        const end = t.end_time.slice(0, 5);
+                                        const [sh, sm] = start.split(":").map(Number);
+                                        const [eh, em] = end.split(":").map(Number);
+                                        const totalMin = (eh * 60 + em) - (sh * 60 + sm);
+                                        if (totalMin < 30) return toast.error("Créneau trop court pour 2 segments");
+                                        const midMin = Math.round(((sh * 60 + sm) + totalMin / 2) / 15) * 15;
+                                        const midH = Math.floor(midMin / 60);
+                                        const midM = midMin % 60;
+                                        const mid = `${String(midH).padStart(2, "0")}:${String(midM).padStart(2, "0")}`;
+                                        const r1 = t.business_role || ROLES[0];
+                                        const r2 = ROLES.find((r) => r !== r1) ?? r1;
+                                        const segs: RoleSegment[] = [
+                                          { role: r1, start_time: start, end_time: mid },
+                                          { role: r2, start_time: mid, end_time: end },
+                                        ];
+                                        updateRow(t.id, { role_segments: segs, business_role: r1 } as any);
+                                      }
+                                    }}
+                                    className="rounded-md px-2 py-1"
+                                    style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}
+                                  >
+                                    {t.role_segments ? "Désactiver" : "Activer"}
+                                  </button>
+                                </div>
+                                {t.role_segments && (
+                                  <RoleSegmentsEditor
+                                    shiftStart={t.start_time.slice(0, 5)}
+                                    shiftEnd={t.end_time.slice(0, 5)}
+                                    segments={t.role_segments}
+                                    onChange={(segs) => {
+                                      const v = validateRoleSegments(segs, t.start_time.slice(0, 5), t.end_time.slice(0, 5), ROLES);
+                                      // Toujours stocker le 1er segment comme rôle principal
+                                      const primary = segs[0]?.role || t.business_role;
+                                      if (v.ok) {
+                                        updateRow(t.id, { role_segments: segs, business_role: primary } as any);
+                                      } else {
+                                        // mise à jour locale optimiste sans persister (le bouton sauvegarde indirectement via debounce ou next valid edit)
+                                        setTemplates((prev) => prev.map((x) => x.id === t.id ? { ...x, role_segments: segs, business_role: primary } : x));
+                                      }
+                                    }}
+                                    knownRoles={ROLES}
+                                  />
+                                )}
+                              </div>
+
                               <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 8, lineHeight: 1.5 }}>
                                 Polyvalence — laisse vide pour utiliser le rôle et le contrat ci-dessus. Coche plusieurs options pour autoriser n'importe lequel.
                               </div>
@@ -296,6 +372,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                                   <div className="flex flex-wrap gap-1.5">
                                     {ROLES.map((r) => {
                                       const on = allowedRoles.includes(r);
+
                                       return (
                                         <button key={r} onClick={() => toggleInArray(t, "allowed_roles", r)}
                                           className="rounded-full px-2.5 py-1 transition-colors"

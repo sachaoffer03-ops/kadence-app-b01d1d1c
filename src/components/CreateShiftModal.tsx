@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
-import { X, Send, AlertTriangle, ChevronDown, ChevronUp, UserCheck } from "lucide-react";
+import { X, Send, AlertTriangle, ChevronDown, ChevronUp, UserCheck, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
@@ -9,6 +9,9 @@ import { getRoleStyle, fullName } from "@/lib/staff-helpers";
 import { getEligibleEmployeesForShift, type EligibleEmployee } from "@/lib/shift-eligibility.functions";
 import { sendProposalsToShifts } from "@/lib/proposals.functions";
 import { assignShiftsDirect } from "@/lib/shifts.functions";
+import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
+import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
+
 
 interface Studio { id: string; name: string }
 
@@ -47,6 +50,8 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const [studioId, setStudioId] = useState("");
   const { names: BUSINESS_ROLES } = useStudioBusinessRoles(studioId || null);
   const [role, setRole] = useState<string>("");
+  const [isMulti, setIsMulti] = useState(false);
+  const [segments, setSegments] = useState<RoleSegment[]>([]);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState("10:00");
   const [endTime, setEndTime] = useState("15:00");
@@ -54,6 +59,7 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly" | "monthly">("none");
   const [until, setUntil] = useState("");
   const [extraWeekdays, setExtraWeekdays] = useState<Set<number>>(new Set());
+
 
 
   // step 2 state
@@ -87,7 +93,43 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
     setRecurrence("none"); setUntil(""); setExtraWeekdays(new Set());
     setShiftIds([]); setCreatedCount(0);
     setEligible([]); setPartial([]); setSelected(new Set()); setShowPartial(false);
+    setIsMulti(false); setSegments([]);
   };
+
+  // Quand on quitte le mode multi, on remet à plat. Quand on switche shift_start/end,
+  // on snap les bornes des segments.
+  useEffect(() => {
+    if (!isMulti) return;
+    if (segments.length < 2) {
+      const [sh, sm] = startTime.split(":").map(Number);
+      const [eh, em] = endTime.split(":").map(Number);
+      const total = (eh * 60 + em) - (sh * 60 + sm);
+      if (total < 30 || BUSINESS_ROLES.length < 1) return;
+      const midMin = Math.round(((sh * 60 + sm) + total / 2) / 15) * 15;
+      const mid = `${String(Math.floor(midMin / 60)).padStart(2, "0")}:${String(midMin % 60).padStart(2, "0")}`;
+      const r1 = role || BUSINESS_ROLES[0];
+      const r2 = BUSINESS_ROLES.find((r) => r !== r1) ?? r1;
+      setSegments([
+        { role: r1, start_time: startTime, end_time: mid },
+        { role: r2, start_time: mid, end_time: endTime },
+      ]);
+    } else {
+      // ajuste bornes
+      setSegments((prev) => {
+        if (prev.length < 2) return prev;
+        const next = [...prev];
+        next[0] = { ...next[0], start_time: startTime };
+        next[next.length - 1] = { ...next[next.length - 1], end_time: endTime };
+        return next;
+      });
+    }
+  }, [isMulti, startTime, endTime, BUSINESS_ROLES.join("|")]);
+
+  const segValidation = useMemo(
+    () => (isMulti ? validateRoleSegments(segments, startTime, endTime, BUSINESS_ROLES) : { ok: true, errors: [] }),
+    [isMulti, segments, startTime, endTime, BUSINESS_ROLES.join("|")],
+  );
+
 
 
   const handleClose = () => {
@@ -148,6 +190,11 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
     e.preventDefault();
     if (endTime <= startTime) return toast.error("L'heure de fin doit être après le début");
     if (recurrence !== "none" && !until) return toast.error("Indiquez une date de fin de répétition");
+    if (isMulti && !segValidation.ok) return toast.error("Segments invalides", { description: segValidation.errors[0] });
+
+    const primaryRole = isMulti ? (segments[0]?.role || role) : role;
+    const segmentsToInsert = isMulti && segments.length >= 2 ? segments : null;
+    if (!primaryRole) return toast.error("Choisis un rôle");
 
     const dates = buildDates();
     setSubmitting(true);
@@ -158,7 +205,7 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
         dates.map((d) => ({
           user_id: null,
           studio_id: studioId || null,
-          business_role: role,
+          business_role: primaryRole,
           shift_date: d,
           start_time: startTime,
           end_time: endTime,
@@ -167,10 +214,12 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
           is_locked: false,
           status: "scheduled",
           published_at: nowIso,
+          role_segments: segmentsToInsert,
         })),
       )
       .select("id, shift_date")
       .order("shift_date", { ascending: true });
+
 
     if (error || !data || data.length === 0) {
       setSubmitting(false);
@@ -351,7 +400,21 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {BUSINESS_ROLES.map((r: string) => (
+                  <button
+                    type="button"
+                    onClick={() => setIsMulti((v) => !v)}
+                    className="rounded-full px-2.5 py-1 transition-colors flex items-center gap-1"
+                    style={{
+                      ...chip(isMulti),
+                      backgroundColor: isMulti ? "var(--coral)" : "transparent",
+                      color: isMulti ? "#fff" : "var(--coral, var(--foreground))",
+                      border: isMulti ? "none" : "0.5px solid var(--coral, var(--border))",
+                    }}
+                    title="Créer un shift hybride avec plusieurs rôles successifs"
+                  >
+                    <Layers size={11} /> Multi-rôles
+                  </button>
+                  {!isMulti && BUSINESS_ROLES.map((r: string) => (
                     <button key={r} type="button" onClick={() => setRole(r)}
                       className="rounded-full px-2.5 py-1 transition-colors" style={chip(role === r)}>
                       {r}
@@ -359,7 +422,19 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
                   ))}
                 </div>
               )}
+              {isMulti && segments.length >= 2 && (
+                <div className="mt-3">
+                  <RoleSegmentsEditor
+                    shiftStart={startTime}
+                    shiftEnd={endTime}
+                    segments={segments}
+                    onChange={setSegments}
+                    knownRoles={BUSINESS_ROLES}
+                  />
+                </div>
+              )}
             </div>
+
 
             <div className="grid grid-cols-3 gap-3">
               <div><label style={labelStyle}>Date *</label>
@@ -449,10 +524,11 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={handleClose} className="rounded-md border px-4 py-2"
                 style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)" }}>Annuler</button>
-              <button type="submit" disabled={submitting} className="rounded-md px-4 py-2 disabled:opacity-50"
+              <button type="submit" disabled={submitting || (isMulti && !segValidation.ok)} className="rounded-md px-4 py-2 disabled:opacity-50"
                 style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
                 {submitting ? "Création..." : "Suivant : choisir les destinataires"}
               </button>
+
             </div>
           </form>
         )}

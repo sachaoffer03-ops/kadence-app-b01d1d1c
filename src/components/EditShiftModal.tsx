@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { updateShift, deleteShift } from "@/lib/shifts.functions";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
+import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
+import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
 
 type EmployeeOpt = {
   id: string;
@@ -23,11 +25,13 @@ interface Props {
     shiftDate: string;
     startTime: string; // HH:MM:SS
     endTime: string;
+    roleSegments?: RoleSegment[] | null;
   };
   onClose: () => void;
   onSaved: () => void;
   onDeleted?: () => void;
 }
+
 
 const toHHMM = (t: string) => String(t).slice(0, 5);
 
@@ -40,9 +44,13 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
   const [end, setEnd] = useState(toHHMM(shift.endTime));
   const [userId, setUserId] = useState<string>(shift.employeeId || "");
   const [role, setRole] = useState<string>(shift.role);
+  const initialSegs = shift.roleSegments ?? null;
+  const [isMulti, setIsMulti] = useState<boolean>(!!initialSegs && initialSegs.length >= 2);
+  const [segments, setSegments] = useState<RoleSegment[]>(initialSegs ?? []);
   const [employees, setEmployees] = useState<EmployeeOpt[]>([]);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+
 
   useEffect(() => {
     (async () => {
@@ -99,6 +107,23 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
     return eh * 60 + em - (sh * 60 + sm);
   }, [start, end]);
 
+  // ajuste les bornes des segments quand start/end changent
+  useEffect(() => {
+    if (!isMulti || segments.length < 2) return;
+    setSegments((prev) => {
+      if (prev.length < 2) return prev;
+      const next = [...prev];
+      next[0] = { ...next[0], start_time: start };
+      next[next.length - 1] = { ...next[next.length - 1], end_time: end };
+      return next;
+    });
+  }, [start, end, isMulti]);
+
+  const segValidation = useMemo(
+    () => (isMulti ? validateRoleSegments(segments, start, end, availableRoles) : { ok: true, errors: [] }),
+    [isMulti, segments, start, end, availableRoles.join("|")],
+  );
+
   const handleSave = async () => {
     if (durationMin < 60) {
       toast.error("La durée doit être d'au moins 1h");
@@ -108,8 +133,13 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
       toast.error("Heure de fin doit être après le début");
       return;
     }
+    if (isMulti && !segValidation.ok) {
+      toast.error("Segments invalides", { description: segValidation.errors[0] });
+      return;
+    }
     setSaving(true);
     try {
+      const primaryRole = isMulti ? (segments[0]?.role || role) : role;
       await updateShiftFn({
         data: {
           shiftId: shift.id,
@@ -117,7 +147,8 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
           startTime: `${start}:00`,
           endTime: `${end}:00`,
           userId: userId === "" ? null : userId,
-          businessRole: role,
+          businessRole: primaryRole,
+          roleSegments: isMulti ? segments : null,
         },
       });
       toast.success("Shift modifié");
@@ -129,6 +160,7 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
       setSaving(false);
     }
   };
+
 
   const handleDelete = async () => {
     if (!confirm("Supprimer définitivement ce shift ? L'employé sera notifié si le shift était publié.")) return;
@@ -206,27 +238,73 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
             </label>
           </div>
 
-          <label className="flex flex-col gap-1">
-            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Rôle</span>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              disabled={hasNoRoles}
-              className="rounded-md px-3 py-2 outline-none"
-              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", opacity: hasNoRoles ? 0.6 : 1 }}
-            >
-              {hasNoRoles ? (
-                <option value="">Aucun rôle configuré pour ce studio. Édite d'abord la config du studio.</option>
-              ) : (
-                <>
-                  {!availableRoles.includes(role) && <option value={role}>{role}</option>}
-                  {availableRoles.map((r: string) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </>
-              )}
-            </select>
-          </label>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Rôle</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isMulti) {
+                    if (!confirm("Repasser en mono-rôle ? Tous les segments seront perdus.")) return;
+                    setIsMulti(false);
+                    setSegments([]);
+                  } else {
+                    const [sh, sm] = start.split(":").map(Number);
+                    const [eh, em] = end.split(":").map(Number);
+                    const total = (eh * 60 + em) - (sh * 60 + sm);
+                    if (total < 30) return toast.error("Créneau trop court");
+                    const midMin = Math.round(((sh * 60 + sm) + total / 2) / 15) * 15;
+                    const mid = `${String(Math.floor(midMin / 60)).padStart(2, "0")}:${String(midMin % 60).padStart(2, "0")}`;
+                    const r1 = role || availableRoles[0] || "";
+                    const r2 = availableRoles.find((r) => r !== r1) ?? r1;
+                    setSegments([
+                      { role: r1, start_time: start, end_time: mid },
+                      { role: r2, start_time: mid, end_time: end },
+                    ]);
+                    setIsMulti(true);
+                  }
+                }}
+                className="rounded-md px-2 py-1 flex items-center gap-1"
+                style={{
+                  fontSize: 10, fontWeight: 500,
+                  backgroundColor: isMulti ? "var(--coral)" : "transparent",
+                  color: isMulti ? "#fff" : "var(--coral, var(--foreground))",
+                  border: isMulti ? "none" : "0.5px solid var(--coral, var(--border))",
+                }}
+              >
+                <Layers size={10} /> {isMulti ? "Multi-rôles actif" : "Multi-rôles"}
+              </button>
+            </div>
+            {isMulti ? (
+              <RoleSegmentsEditor
+                shiftStart={start}
+                shiftEnd={end}
+                segments={segments}
+                onChange={setSegments}
+                knownRoles={availableRoles}
+              />
+            ) : (
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                disabled={hasNoRoles}
+                className="rounded-md px-3 py-2 outline-none"
+                style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", opacity: hasNoRoles ? 0.6 : 1 }}
+              >
+                {hasNoRoles ? (
+                  <option value="">Aucun rôle configuré pour ce studio. Édite d'abord la config du studio.</option>
+                ) : (
+                  <>
+                    {!availableRoles.includes(role) && <option value={role}>{role}</option>}
+                    {availableRoles.map((r: string) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </>
+                )}
+              </select>
+            )}
+          </div>
+
 
           <div className="flex flex-col gap-1">
             <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Employé assigné</span>
@@ -300,12 +378,13 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="flex-1 rounded-md px-3 py-2"
+            disabled={saving || (isMulti && !segValidation.ok)}
+            className="flex-1 rounded-md px-3 py-2 disabled:opacity-50"
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff", opacity: saving ? 0.6 : 1 }}
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>
+
         </div>
       </div>
     </div>

@@ -2,11 +2,29 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { employeeLink } from "@/lib/notif-links";
+import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
 
 const TIME = /^\d{2}:\d{2}(:\d{2})?$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 // Rôles métier : valeur libre (la table business_roles est la source de vérité, validée côté UI).
 const businessRoleSchema = z.string().min(1).max(64);
+
+const roleSegmentSchema = z.object({
+  role: z.string().min(1).max(64),
+  start_time: z.string().regex(/^\d{2}:\d{2}$/),
+  end_time: z.string().regex(/^\d{2}:\d{2}$/),
+});
+const roleSegmentsSchema = z.array(roleSegmentSchema).min(2).max(20).nullable().optional();
+
+async function assertKnownRoles(supabase: any, segments: RoleSegment[]) {
+  const names = Array.from(new Set(segments.map((s) => s.role)));
+  const { data, error } = await supabase.from("business_roles").select("name").in("name", names);
+  if (error) throw new Error(error.message);
+  const known = new Set((data ?? []).map((r: any) => r.name));
+  const missing = names.filter((n) => !known.has(n));
+  if (missing.length) throw new Error(`Rôles inconnus : ${missing.join(", ")}`);
+}
+
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -61,6 +79,8 @@ export const updateShift = createServerFn({ method: "POST" })
         unlock: z.boolean().optional(),
         // Si false → ne marque pas le shift comme manuel (utile pour le drag & drop pur)
         markManual: z.boolean().optional(),
+        // null pour repasser en mono-rôle, array pour hybride, undefined = inchangé
+        roleSegments: roleSegmentsSchema,
       })
       .parse(input),
   )
@@ -70,7 +90,7 @@ export const updateShift = createServerFn({ method: "POST" })
 
     const { data: current, error: eCur } = await supabase
       .from("shifts")
-      .select("user_id, shift_date, start_time, end_time, published_at")
+      .select("user_id, shift_date, start_time, end_time, published_at, business_role, role_segments")
       .eq("id", data.shiftId)
       .single();
     if (eCur) throw new Error(eCur.message);
@@ -80,6 +100,17 @@ export const updateShift = createServerFn({ method: "POST" })
     const nextStart = data.startTime ?? current.start_time;
     const nextEnd = data.endTime ?? current.end_time;
     await assertNoOverlap(supabase, nextUserId, nextDate, nextStart, nextEnd, data.shiftId);
+
+    // Validation des segments (si fournis)
+    if (data.roleSegments !== undefined && data.roleSegments !== null) {
+      const v = validateRoleSegments(
+        data.roleSegments,
+        String(nextStart).slice(0, 5),
+        String(nextEnd).slice(0, 5),
+      );
+      if (!v.ok) throw new Error(`role_segments invalide : ${v.errors.join(" · ")}`);
+      await assertKnownRoles(supabase, data.roleSegments);
+    }
 
     const wasPublished = !!current.published_at;
     const userChanged = data.userId !== undefined && data.userId !== current.user_id;
@@ -102,6 +133,14 @@ export const updateShift = createServerFn({ method: "POST" })
     if (data.startTime) patch.start_time = data.startTime;
     if (data.endTime) patch.end_time = data.endTime;
     if (data.notes !== undefined) patch.notes = data.notes;
+    if (data.roleSegments !== undefined) {
+      patch.role_segments = data.roleSegments;
+      // En mode hybride, force business_role = rôle du 1er segment
+      if (data.roleSegments && data.roleSegments.length > 0) {
+        patch.business_role = data.roleSegments[0].role;
+      }
+    }
+
 
     const { error } = await supabase.from("shifts").update(patch).eq("id", data.shiftId);
     if (error) throw new Error(error.message);
@@ -164,6 +203,7 @@ export const createShift = createServerFn({ method: "POST" })
         endTime: z.string().regex(TIME),
         notes: z.string().max(500).optional(),
         publishImmediately: z.boolean().default(false),
+        roleSegments: roleSegmentsSchema,
       })
       .parse(input),
   )
@@ -171,6 +211,21 @@ export const createShift = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
     await assertNoOverlap(supabase, data.userId, data.shiftDate, data.startTime, data.endTime);
+
+    // Validation segments
+    let segments: RoleSegment[] | null = null;
+    let primaryRole = data.businessRole;
+    if (data.roleSegments && data.roleSegments.length > 0) {
+      const v = validateRoleSegments(
+        data.roleSegments,
+        data.startTime.slice(0, 5),
+        data.endTime.slice(0, 5),
+      );
+      if (!v.ok) throw new Error(`role_segments invalide : ${v.errors.join(" · ")}`);
+      await assertKnownRoles(supabase, data.roleSegments);
+      segments = data.roleSegments;
+      primaryRole = data.roleSegments[0].role;
+    }
 
     const status = data.publishImmediately ? "scheduled" : "draft";
     const published_at = data.publishImmediately ? new Date().toISOString() : null;
@@ -180,7 +235,7 @@ export const createShift = createServerFn({ method: "POST" })
       .insert({
         user_id: data.userId,
         studio_id: data.studioId,
-        business_role: data.businessRole,
+        business_role: primaryRole,
         shift_date: data.shiftDate,
         start_time: data.startTime,
         end_time: data.endTime,
@@ -189,6 +244,8 @@ export const createShift = createServerFn({ method: "POST" })
         published_at,
         is_manual: true,
         is_locked: true,
+        role_segments: segments,
+
       })
       .select("id")
       .single();
