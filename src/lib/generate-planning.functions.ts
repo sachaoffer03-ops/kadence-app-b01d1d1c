@@ -857,7 +857,14 @@ async function runEngine(ctx: EngineCtx) {
     }
     scarcityScore.set(r.id, avail);
   }
+  // Most-constrained-first : les besoins hybrides (polyvalents requis) passent
+  // en priorité absolue, sinon la rareté classique décide.
   const sortedReqs = [...requirements].sort((a, b) => {
+    if (a.is_hybrid !== b.is_hybrid) return a.is_hybrid ? -1 : 1;
+    if (a.is_hybrid && b.is_hybrid) {
+      const dr = b.required_roles.length - a.required_roles.length;
+      if (dr !== 0) return dr;
+    }
     const sa = scarcityScore.get(a.id) ?? 0;
     const sb = scarcityScore.get(b.id) ?? 0;
     if (sa !== sb) return sa - sb;
