@@ -88,6 +88,10 @@ interface Requirement {
   allowed_contracts: ContractType[];
   allowed_roles: Role[];
   is_optional: boolean;
+  // Hybrid support
+  role_segments: RoleSegment[] | null;
+  is_hybrid: boolean;
+  required_roles: Role[]; // tous les rôles requis (intersection pour candidats)
   // Découpage en cellules de 15 min : assignation user (null = trou)
   cells: Cell[];
   // Source pour Pass C : compter les itérations qui ont servi
