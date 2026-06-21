@@ -1245,6 +1245,8 @@ async function runEngine(ctx: EngineCtx) {
       if (adj.shift_date !== open.shift_date) continue;
       if (adj.business_role !== open.business_role) continue;
       if (adj.studio_id !== open.studio_id) continue;
+      // Ne pas fusionner si l'un des deux est hybride (role_segments deviendrait invalide)
+      if (adj.role_segments || open.role_segments) continue;
       const aStart = t2m(adj.start_time);
       const aEnd = t2m(adj.end_time);
       const before = aEnd === oStart;
