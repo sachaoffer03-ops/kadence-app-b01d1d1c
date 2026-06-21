@@ -63,7 +63,9 @@ interface PlanningShift {
   isLocked?: boolean;
   isManual?: boolean;
   conflict?: boolean; // overlap with another shift of same employee
+  roleSegments?: { role: string; start_time: string; end_time: string }[] | null;
 }
+
 
 const monthNames = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
