@@ -1783,10 +1783,20 @@ function ShiftBlock({
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                flex: 1,
               }}
             >
               {isHole ? "Trou" : shift.name || initials}
             </span>
+            {shift.roleSegments && shift.roleSegments.length >= 2 && (
+              <span
+                title={shift.roleSegments.map((s) => `${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)} ${s.role}`).join("\n")}
+                className="rounded-full inline-flex items-center gap-0.5 px-1"
+                style={{ fontSize: 8, fontWeight: 600, backgroundColor: "rgba(0,0,0,0.12)", flexShrink: 0 }}
+              >
+                <Layers size={8} /> Multi
+              </span>
+            )}
           </div>
           {!compact && (
             <>
@@ -1796,6 +1806,7 @@ function ShiftBlock({
               </div>
             </>
           )}
+
         </button>
       </PopoverTrigger>
       <PopoverContent
