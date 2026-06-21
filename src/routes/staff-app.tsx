@@ -23,7 +23,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { checkUserDispoStatus, getAvailabilityLockInfo } from "@/lib/availabilities.functions";
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
-import { expandShiftToCards, getNextRoleTransition, isHybridShift, type RoleSegment } from "@/lib/role-segments";
+import { expandShiftToCards, isHybridShift, type RoleSegment } from "@/lib/role-segments";
 
 import { AssistantFab } from "@/components/staff-app/AssistantFab";
 
