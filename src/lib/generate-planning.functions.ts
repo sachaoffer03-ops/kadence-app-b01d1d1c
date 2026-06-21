@@ -1220,7 +1220,6 @@ async function runEngine(ctx: EngineCtx) {
         created_by_run_id: ctx.runId,
         role_segments: segmentsForShift,
       });
-      });
       i = j + 1;
     }
   }
