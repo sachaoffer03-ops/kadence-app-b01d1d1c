@@ -3,8 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, AlertTriangle, X, Clock, Check, CheckCheck,
-  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit, UserPlus, Pencil
+  Star, Sparkles, MapPin, Phone, Trash2, Sparkle, Lock, FileEdit, UserPlus, Pencil, Layers
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { roleColors, type Role, type Studio } from "@/lib/role-colors";
 import { Dropdown } from "@/components/Dropdown";
