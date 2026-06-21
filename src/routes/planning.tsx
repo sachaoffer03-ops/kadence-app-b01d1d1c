@@ -671,7 +671,9 @@ function PlanningCalendarPage() {
           isLocked: !!row.is_locked,
           isManual: !!row.is_manual,
           conflict: conflictIds.has(row.id),
+          roleSegments: (row.role_segments as any[] | null) ?? null,
         };
+
       });
       setShifts(mapped);
     })();
