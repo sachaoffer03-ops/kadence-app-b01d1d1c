@@ -1333,6 +1333,7 @@ export type Database = {
           allow_extended_hours: boolean
           avatar_url: string | null
           birth_date: string | null
+          calendar_token: string | null
           city: string | null
           contract: Database["public"]["Enums"]["contract_type"] | null
           created_at: string
@@ -1366,6 +1367,7 @@ export type Database = {
           allow_extended_hours?: boolean
           avatar_url?: string | null
           birth_date?: string | null
+          calendar_token?: string | null
           city?: string | null
           contract?: Database["public"]["Enums"]["contract_type"] | null
           created_at?: string
@@ -1399,6 +1401,7 @@ export type Database = {
           allow_extended_hours?: boolean
           avatar_url?: string | null
           birth_date?: string | null
+          calendar_token?: string | null
           city?: string | null
           contract?: Database["public"]["Enums"]["contract_type"] | null
           created_at?: string
