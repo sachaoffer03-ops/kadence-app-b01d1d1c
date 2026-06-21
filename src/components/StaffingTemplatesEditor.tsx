@@ -6,7 +6,6 @@ import { Dropdown } from "@/components/Dropdown";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
 import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
 import {
-  isHybridShift,
   validateRoleSegments,
   type RoleSegment,
 } from "@/lib/role-segments";
@@ -32,6 +31,12 @@ interface Template {
 }
 
 const CONTRACTS = ["Tous", "CDI", "Étudiant", "Flexi"] as const;
+const QUARTER_TIME_REGEX = /^([01]\d|2[0-3]):(00|15|30|45)$/;
+
+const toMinutes = (time: string) => {
+  const [hours, minutes] = time.slice(0, 5).split(":").map(Number);
+  return (hours || 0) * 60 + (minutes || 0);
+};
 
 interface Props {
   lockedStudioName?: string;
@@ -124,6 +129,24 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   const updateRow = async (id: string, patch: Partial<Template>) => {
     const prev = templates;
     const current = prev.find((t) => t.id === id);
+    if (patch.start_time !== undefined) {
+      patch.start_time = patch.start_time.slice(0, 5);
+      if (!QUARTER_TIME_REGEX.test(patch.start_time)) return;
+    }
+    if (patch.end_time !== undefined) {
+      patch.end_time = patch.end_time.slice(0, 5);
+      if (!QUARTER_TIME_REGEX.test(patch.end_time)) return;
+    }
+
+    if (current && (patch.start_time !== undefined || patch.end_time !== undefined)) {
+      const newStart = (patch.start_time ?? current.start_time).slice(0, 5);
+      const newEnd = (patch.end_time ?? current.end_time).slice(0, 5);
+      if (toMinutes(newStart) >= toMinutes(newEnd)) {
+        toast.error("Horaire invalide", { description: "L'heure de fin doit être après l'heure de début." });
+        return;
+      }
+    }
+
     // If start/end time changes and segments exist, adjust segments to keep DB constraint valid
     if (current?.role_segments && (patch.start_time !== undefined || patch.end_time !== undefined)) {
       const newStart = (patch.start_time ?? current.start_time).slice(0, 5);
@@ -131,7 +154,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
       const segs = current.role_segments.map((s) => ({ ...s, start_time: s.start_time.slice(0, 5), end_time: s.end_time.slice(0, 5) }));
       segs[0] = { ...segs[0], start_time: newStart };
       segs[segs.length - 1] = { ...segs[segs.length - 1], end_time: newEnd };
-      const stillValid = segs.every((s, i) => s.start_time < s.end_time && (i === 0 || segs[i - 1].end_time === s.start_time));
+      const stillValid = validateRoleSegments(segs, newStart, newEnd, ROLES).ok;
       (patch as any).role_segments = stillValid ? segs : null;
       if (!stillValid) {
         toast.message("Multi-rôles désactivé (les segments ne tenaient plus dans le nouvel horaire)");
@@ -264,12 +287,12 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                           <Dropdown value={DAYS[t.day_of_week]} options={DAYS} onChange={(v) => updateRow(t.id, { day_of_week: DAYS.indexOf(v) })} minWidth={120} />
                         </td>
                         <td className="px-2 py-1">
-                          <input type="time" value={t.start_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { start_time: e.target.value })}
+                          <input type="time" step={900} value={t.start_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { start_time: e.target.value })}
                             className="rounded-md px-2 py-1.5 outline-none"
                             style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
                         </td>
                         <td className="px-2 py-1">
-                          <input type="time" value={t.end_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { end_time: e.target.value })}
+                          <input type="time" step={900} value={t.end_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { end_time: e.target.value })}
                             className="rounded-md px-2 py-1.5 outline-none"
                             style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
                         </td>
