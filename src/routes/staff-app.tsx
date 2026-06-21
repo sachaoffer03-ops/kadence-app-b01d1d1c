@@ -811,21 +811,22 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
       {shifts.length > 1 && (
         <div style={{ fontSize: 12, fontWeight: 500, marginTop: 12, marginBottom: 8, color: "var(--muted-foreground)" }}>Shifts suivants</div>
       )}
-      {shifts.slice(1).map((s) => {
-        const role = s.business_role as Role;
+      {shifts.slice(1).flatMap((s) => expandShiftToCards(s).map((card) => {
+        const role = card.role as Role;
         const rc = roleColors[role];
         const active = s.shift_date === today && !s.clocked_out_at;
         const dateLabel = s.shift_date === today ? "Aujourd'hui" : new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric" });
         const studioName = (s.studio_id && studios[s.studio_id]) || "—";
         const done = !!s.clocked_out_at;
+        const partSuffix = card.isHybridPart ? ` · partie ${card.segmentIndex + 1}/${card.totalSegments}` : "";
         return (
-          <button key={s.id} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3.5 flex items-center gap-3 mb-2 text-left" style={{ backgroundColor: active ? "var(--coral-light)" : "#fff", borderColor: active ? "var(--coral)" : "rgba(0,0,0,0.08)", opacity: done ? 0.7 : 1 }}>
+          <button key={`${s.id}-${card.segmentIndex}`} onClick={() => setShiftDetail(s)} className="w-full rounded-xl border px-4 py-3.5 flex items-center gap-3 mb-2 text-left" style={{ backgroundColor: active ? "var(--coral-light)" : "#fff", borderColor: active ? "var(--coral)" : "rgba(0,0,0,0.08)", opacity: done ? 0.7 : 1 }}>
             <div className="rounded-lg flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: rc?.bg }}>
               <Clock size={16} style={{ color: rc?.text }} />
             </div>
             <div className="flex-1">
-              <div style={{ fontSize: 13, fontWeight: 500 }}>{dateLabel} · {fmtTime(s.start_time)} — {fmtTime(s.end_time)}</div>
-              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{role} · {studioName.replace("Skult ", "")}{done ? " · terminé" : ""}</div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>{dateLabel} · {fmtTime(card.startTime)} — {fmtTime(card.endTime)}</div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{role} · {studioName.replace("Skult ", "")}{done ? " · terminé" : ""}{partSuffix}</div>
             </div>
             {active && !done && (
               <span className="rounded-md px-2 py-1" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
@@ -835,7 +836,7 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
             <ChevronRight size={16} style={{ color: "var(--muted-foreground)" }} />
           </button>
         );
-      })}
+      }))}
 
       {/* Propositions accessibles via leur page dédiée si présentes (badge déjà visible via ProposalsInline ci-dessus) */}
       {proposals.length > 0 && (
