@@ -378,12 +378,13 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="flex-1 rounded-md px-3 py-2"
+            disabled={saving || (isMulti && !segValidation.ok)}
+            className="flex-1 rounded-md px-3 py-2 disabled:opacity-50"
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff", opacity: saving ? 0.6 : 1 }}
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>
+
         </div>
       </div>
     </div>
