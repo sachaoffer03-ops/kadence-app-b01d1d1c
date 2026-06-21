@@ -152,7 +152,6 @@ export function RoleSegmentsEditor({
         {segments.map((seg, i) => {
           const isFirst = i === 0;
           const isLast = i === segments.length - 1;
-          const st = getRoleStyle(seg.role || "");
           return (
             <div key={i} className="flex items-center gap-2">
               {/* Heure de début */}
