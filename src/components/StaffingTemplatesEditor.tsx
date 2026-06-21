@@ -6,7 +6,6 @@ import { Dropdown } from "@/components/Dropdown";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
 import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
 import {
-  isHybridShift,
   validateRoleSegments,
   type RoleSegment,
 } from "@/lib/role-segments";
