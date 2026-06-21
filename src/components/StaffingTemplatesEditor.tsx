@@ -1,9 +1,15 @@
 import { Fragment, useEffect, useState } from "react";
-import { Plus, Trash2, Info, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Info, ChevronDown, ChevronRight, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dropdown } from "@/components/Dropdown";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
+import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
+import {
+  isHybridShift,
+  validateRoleSegments,
+  type RoleSegment,
+} from "@/lib/role-segments";
 
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -22,7 +28,9 @@ interface Template {
   required_contract: "Étudiant" | "Flexi" | "CDI" | null;
   allowed_contracts: string[] | null;
   allowed_roles: string[] | null;
+  role_segments: RoleSegment[] | null;
 }
+
 const CONTRACTS = ["Tous", "CDI", "Étudiant", "Flexi"] as const;
 
 interface Props {
