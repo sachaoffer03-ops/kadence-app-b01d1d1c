@@ -2,7 +2,27 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { employeeLink } from "@/lib/notif-links";
-import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
+import { validateRoleSegments, getRequiredRoles, isHybridShift, type RoleSegment } from "@/lib/role-segments";
+
+async function assertEmployeeHasRequiredRoles(
+  supabase: any,
+  userId: string,
+  shiftBusinessRole: string,
+  segments: RoleSegment[] | null,
+) {
+  if (!isHybridShift(segments)) return;
+  const required = getRequiredRoles(segments, shiftBusinessRole);
+  const { data, error } = await supabase
+    .from("user_business_roles")
+    .select("role")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  const userRoles = new Set((data ?? []).map((r: any) => r.role));
+  const missing = required.filter((r) => !userRoles.has(r));
+  if (missing.length > 0) {
+    throw new Error(`Shift hybride : l'employé n'a pas le(s) rôle(s) ${missing.join(", ")}`);
+  }
+}
 
 const TIME = /^\d{2}:\d{2}(:\d{2})?$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
