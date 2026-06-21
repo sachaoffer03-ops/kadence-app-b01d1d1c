@@ -28,9 +28,11 @@ export function CalendarExportSheet({ open, onClose, userId }: { open: boolean; 
 
   if (!open) return null;
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const httpsUrl = token ? `${origin}/api/public/calendar/${token}.ics` : "";
-  const webcalUrl = token && origin ? httpsUrl.replace(/^https?:/, "webcal:") : "";
+  // Toujours utiliser l'URL publiée stable : Apple/Google ne peuvent pas
+  // s'abonner à l'URL de preview (protégée par auth Lovable).
+  const PUBLIC_BASE = "https://kadence-app.lovable.app";
+  const httpsUrl = token ? `${PUBLIC_BASE}/api/public/calendar/${token}.ics` : "";
+  const webcalUrl = token ? httpsUrl.replace(/^https?:/, "webcal:") : "";
 
   const copy = async (text: string, which: "https" | "webcal") => {
     try {
