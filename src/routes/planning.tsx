@@ -17,6 +17,7 @@ import { EditShiftModal } from "@/components/EditShiftModal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { getRoleStyle } from "@/lib/staff-helpers";
+import { isHybridShift, getSegmentLayout } from "@/lib/role-segments";
 import { RatingInput } from "@/components/RatingInput";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -1740,28 +1741,33 @@ function ShiftBlock({
   const compact = height < 44;
   const [open, setOpen] = useState(false);
 
+  const hybrid = !isHole && isHybridShift(shift.roleSegments);
+  const segLayout = hybrid
+    ? getSegmentLayout(shift.roleSegments, shift.startTime, shift.endTime)
+    : [];
+  const segTooltip = hybrid
+    ? shift.roleSegments!.map((s) => `${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)} ${s.role}`).join("\n")
+    : undefined;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          title={segTooltip}
           style={{
             position: "absolute",
             top,
             left,
             width,
             height,
-            backgroundColor: bg,
+            backgroundColor: hybrid ? "transparent" : bg,
             color: fg,
             borderLeft: `3px solid ${accent}`,
             borderRadius: 6,
-            padding: compact ? "3px 6px" : "4px 6px 4px 8px",
+            padding: 0,
             textAlign: "left",
             overflow: "hidden",
             cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "stretch",
-            justifyContent: "flex-start",
             boxShadow: shift.conflict
               ? "0 0 0 1px var(--danger-text)"
               : shift.isDraft
@@ -1770,43 +1776,101 @@ function ShiftBlock({
             opacity: shift.isDraft ? 0.82 : 1,
           }}
         >
+          {hybrid && (
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+              {segLayout.map((seg, i) => {
+                const segStyle = getRoleStyle(seg.role);
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      top: `${seg.topPercent}%`,
+                      height: `${seg.heightPercent}%`,
+                      backgroundColor: segStyle.bg,
+                      color: segStyle.text,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {seg.durationMinutes >= 60 && (
+                      <div style={{ position: "absolute", top: 3, left: 6, fontSize: 9, fontWeight: 600, opacity: 0.85, whiteSpace: "nowrap" }}>
+                        {seg.role} · {seg.start_time.slice(0,5)}
+                      </div>
+                    )}
+                    {seg.durationMinutes >= 45 && seg.durationMinutes < 60 && (
+                      <div style={{ position: "absolute", top: 3, left: 6, fontSize: 9, fontWeight: 600, opacity: 0.85, whiteSpace: "nowrap" }}>
+                        {seg.role}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {segLayout.slice(0, -1).map((seg, i) => (
+                <div
+                  key={`sep-${i}`}
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    top: `calc(${seg.topPercent + seg.heightPercent}% - 0.5px)`,
+                    height: 1,
+                    background: "rgba(0,0,0,0.18)",
+                  }}
+                />
+              ))}
+            </div>
+          )}
           <div
-            className="flex items-center gap-1"
-            style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }}
+            style={{
+              position: "relative",
+              zIndex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "stretch",
+              justifyContent: "flex-start",
+              padding: compact ? "3px 6px" : "4px 6px 4px 8px",
+              height: "100%",
+              background: "transparent",
+            }}
           >
-            {shift.isLocked && <Lock size={9} style={{ flexShrink: 0 }} />}
-            {shift.conflict && (
-              <AlertTriangle size={9} style={{ color: "var(--danger-text)", flexShrink: 0 }} />
-            )}
-            <span
-              style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                flex: 1,
-              }}
+            <div
+              className="flex items-center gap-1"
+              style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }}
             >
-              {isHole ? "Trou" : shift.name || initials}
-            </span>
-            {shift.roleSegments && shift.roleSegments.length >= 2 && (
+              {shift.isLocked && <Lock size={9} style={{ flexShrink: 0 }} />}
+              {shift.conflict && (
+                <AlertTriangle size={9} style={{ color: "var(--danger-text)", flexShrink: 0 }} />
+              )}
               <span
-                title={shift.roleSegments.map((s) => `${s.start_time.slice(0,5)}–${s.end_time.slice(0,5)} ${s.role}`).join("\n")}
-                className="rounded-full inline-flex items-center gap-0.5 px-1"
-                style={{ fontSize: 8, fontWeight: 600, backgroundColor: "rgba(0,0,0,0.12)", flexShrink: 0 }}
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                }}
               >
-                <Layers size={8} /> Multi
+                {isHole ? "Trou" : shift.name || initials}
               </span>
+              {hybrid && (
+                <Layers size={9} style={{ flexShrink: 0, opacity: 0.8 }} />
+              )}
+            </div>
+            {!compact && !hybrid && (
+              <>
+                <div style={{ fontSize: 9, fontWeight: 600, opacity: 0.85, marginTop: 1 }}>{shift.role}</div>
+                <div style={{ fontSize: 9, opacity: 0.7, marginTop: 1 }}>
+                  {fmtHHMM(shift.startTime)} — {fmtHHMM(shift.endTime)}
+                </div>
+              </>
             )}
-          </div>
-          {!compact && (
-            <>
-              <div style={{ fontSize: 9, fontWeight: 600, opacity: 0.85, marginTop: 1 }}>{shift.role}</div>
+            {!compact && hybrid && (
               <div style={{ fontSize: 9, opacity: 0.7, marginTop: 1 }}>
                 {fmtHHMM(shift.startTime)} — {fmtHHMM(shift.endTime)}
               </div>
-            </>
-          )}
-
+            )}
+          </div>
         </button>
       </PopoverTrigger>
       <PopoverContent
