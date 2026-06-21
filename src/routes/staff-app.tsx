@@ -429,34 +429,11 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, online]);
 
-  // Notif 5 min avant chaque transition de rôle dans un shift hybride
-  useEffect(() => {
-    const fired = new Set<string>();
-    const tick = () => {
-      const now = new Date();
-      const today = todayISO();
-      for (const s of shifts) {
-        if (s.shift_date !== today) continue;
-        if (!isHybridShift(s.role_segments)) continue;
-        if (s.clocked_out_at) continue;
-        for (let i = 1; i < (s.role_segments?.length ?? 0); i++) {
-          const seg = s.role_segments![i];
-          const at = new Date(`${s.shift_date}T${seg.start_time.slice(0,5)}:00`).getTime();
-          const diff = at - now.getTime();
-          const key = `${s.id}-${i}`;
-          if (diff <= 5 * 60_000 && diff > 4 * 60_000 && !fired.has(key)) {
-            fired.add(key);
-            toast(`Changement de rôle dans 5 min`, {
-              description: `Tu passes sur ${seg.role} à ${seg.start_time.slice(0,5)}`,
-            });
-          }
-        }
-      }
-    };
-    tick();
-    const t = setInterval(tick, 60_000);
-    return () => clearInterval(t);
-  }, [shifts]);
+  // Note : la notification "changement de rôle dans 5 min" est envoyée
+  // côté serveur par le cron `role-transitions-tick` → arrive dans la cloche
+  // via realtime sur la table notifications.
+
+
 
 
   const firstName = profile?.first_name || "";
