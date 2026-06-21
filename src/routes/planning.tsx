@@ -614,7 +614,7 @@ function PlanningCalendarPage() {
     (async () => {
       const { data, error } = await supabase
         .from("shifts")
-        .select("id, user_id, studio_id, business_role, shift_date, start_time, end_time, status, clocked_in_at, is_locked, is_manual, published_at, profiles:user_id(first_name, last_name, phone)")
+        .select("id, user_id, studio_id, business_role, shift_date, start_time, end_time, status, clocked_in_at, is_locked, is_manual, published_at, role_segments, profiles:user_id(first_name, last_name, phone)")
         .gte("shift_date", startISO)
         .lte("shift_date", endISO)
         .order("shift_date")
