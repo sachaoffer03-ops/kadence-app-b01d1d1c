@@ -1155,6 +1155,7 @@ async function runEngine(ctx: EngineCtx) {
     shift_date: string; start_time: string; end_time: string;
     status: string; is_locked: boolean; is_manual: boolean;
     created_by_run_id: string;
+    role_segments: RoleSegment[] | null;
   }> = [];
   for (const req of requirements) {
     let i = 0;
@@ -1169,6 +1170,8 @@ async function runEngine(ctx: EngineCtx) {
                req.cells[j + 1].userId === null &&
                !req.cells[j + 1].blocked &&
                req.cells[j + 1].startMin === req.cells[j].endMin) j++;
+        // Préserver role_segments uniquement si le trou couvre l'intégralité du besoin
+        const holeFull = req.cells[i].startMin === req.startMin && req.cells[j].endMin === req.endMin;
         finalShifts.push({
           user_id: null,
           studio_id: req.studio_id,
@@ -1180,6 +1183,7 @@ async function runEngine(ctx: EngineCtx) {
           is_locked: false,
           is_manual: false,
           created_by_run_id: ctx.runId,
+          role_segments: req.is_hybrid && holeFull ? req.role_segments : null,
         });
         i = j + 1;
         continue;
@@ -1197,17 +1201,25 @@ async function runEngine(ctx: EngineCtx) {
         a.startMin <= req.cells[i].startMin &&
         a.endMin >= req.cells[j].endMin,
       );
+      const finalStart = assignedWindow?.startMin ?? req.cells[i].startMin;
+      const finalEnd = assignedWindow?.endMin ?? req.cells[j].endMin;
+      // Préserver role_segments uniquement si le shift final couvre exactement le besoin hybride
+      const segmentsForShift = req.is_hybrid && finalStart === req.startMin && finalEnd === req.endMin
+        ? req.role_segments
+        : null;
       finalShifts.push({
         user_id: uid,
         studio_id: req.studio_id,
         business_role: req.role,
         shift_date: req.date,
-        start_time: `${m2t(assignedWindow?.startMin ?? req.cells[i].startMin)}:00`,
-        end_time: `${m2t(assignedWindow?.endMin ?? req.cells[j].endMin)}:00`,
+        start_time: `${m2t(finalStart)}:00`,
+        end_time: `${m2t(finalEnd)}:00`,
         status: "scheduled",
         is_locked: false,
         is_manual: false,
         created_by_run_id: ctx.runId,
+        role_segments: segmentsForShift,
+      });
       });
       i = j + 1;
     }
