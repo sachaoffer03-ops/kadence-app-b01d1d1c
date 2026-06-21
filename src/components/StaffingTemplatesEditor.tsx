@@ -260,8 +260,17 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                             style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
                         </td>
                         <td className="px-2 py-1">
-                          <Dropdown value={t.business_role} options={[...ROLES]} onChange={(v) => updateRow(t.id, { business_role: v })} minWidth={120} />
+                          {t.role_segments ? (
+                            <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5"
+                              style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--coral)", backgroundColor: "var(--coral-light, var(--background))", color: "var(--coral-dark, var(--foreground))" }}>
+                              <Layers size={11} />
+                              Multi · {t.role_segments.length} segments
+                            </div>
+                          ) : (
+                            <Dropdown value={t.business_role} options={[...ROLES]} onChange={(v) => updateRow(t.id, { business_role: v })} minWidth={120} />
+                          )}
                         </td>
+
                         <td className="px-2 py-1">
                           <Dropdown
                             value={t.required_contract ?? "Tous"}
