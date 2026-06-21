@@ -799,7 +799,10 @@ async function runEngine(ctx: EngineCtx) {
           r.date === date &&
           (reqCandidates.get(r.id) ?? []).some((c) => c.id === e.id) &&
           r.startMin < range.endMin && r.endMin > range.startMin,
-        );
+        ).sort((a, b) => {
+          if (a.is_hybrid !== b.is_hybrid) return a.is_hybrid ? -1 : 1;
+          return 0;
+        });
         if (fitReqs.length === 0) continue;
 
         for (const req of fitReqs) {
