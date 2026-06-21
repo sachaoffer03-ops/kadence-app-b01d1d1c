@@ -2,11 +2,29 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { employeeLink } from "@/lib/notif-links";
+import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
 
 const TIME = /^\d{2}:\d{2}(:\d{2})?$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 // Rôles métier : valeur libre (la table business_roles est la source de vérité, validée côté UI).
 const businessRoleSchema = z.string().min(1).max(64);
+
+const roleSegmentSchema = z.object({
+  role: z.string().min(1).max(64),
+  start_time: z.string().regex(/^\d{2}:\d{2}$/),
+  end_time: z.string().regex(/^\d{2}:\d{2}$/),
+});
+const roleSegmentsSchema = z.array(roleSegmentSchema).min(2).max(20).nullable().optional();
+
+async function assertKnownRoles(supabase: any, segments: RoleSegment[]) {
+  const names = Array.from(new Set(segments.map((s) => s.role)));
+  const { data, error } = await supabase.from("business_roles").select("name").in("name", names);
+  if (error) throw new Error(error.message);
+  const known = new Set((data ?? []).map((r: any) => r.name));
+  const missing = names.filter((n) => !known.has(n));
+  if (missing.length) throw new Error(`Rôles inconnus : ${missing.join(", ")}`);
+}
+
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
