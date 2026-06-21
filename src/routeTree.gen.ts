@@ -55,6 +55,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicStudioQrStudioIdRouteImport } from './routes/api/public/studio-qr.$studioId'
+import { Route as ApiPublicCalendarTokenRouteImport } from './routes/api/public/calendar.$token'
 
 const TrousRoute = TrousRouteImport.update({
   id: '/trous',
@@ -291,6 +292,11 @@ const ApiPublicStudioQrStudioIdRoute =
     path: '/api/public/studio-qr/$studioId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCalendarTokenRoute = ApiPublicCalendarTokenRouteImport.update({
+  id: '/api/public/calendar/$token',
+  path: '/api/public/calendar/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -333,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
+  '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByTo {
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
+  '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
+  '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -479,6 +488,7 @@ export interface FileRouteTypes {
     | '/api/public/avail-reminders-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
+    | '/api/public/calendar/$token'
     | '/api/public/studio-qr/$studioId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -526,6 +536,7 @@ export interface FileRouteTypes {
     | '/api/public/avail-reminders-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
+    | '/api/public/calendar/$token'
     | '/api/public/studio-qr/$studioId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -574,6 +585,7 @@ export interface FileRouteTypes {
     | '/api/public/avail-reminders-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
+    | '/api/public/calendar/$token'
     | '/api/public/studio-qr/$studioId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -618,6 +630,7 @@ export interface RootRouteChildren {
   StaffAppPropositionsRoute: typeof StaffAppPropositionsRoute
   ApiPublicAvailRemindersTickRoute: typeof ApiPublicAvailRemindersTickRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicCalendarTokenRoute: typeof ApiPublicCalendarTokenRoute
   ApiPublicStudioQrStudioIdRoute: typeof ApiPublicStudioQrStudioIdRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -950,6 +963,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStudioQrStudioIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/calendar/$token': {
+      id: '/api/public/calendar/$token'
+      path: '/api/public/calendar/$token'
+      fullPath: '/api/public/calendar/$token'
+      preLoaderRoute: typeof ApiPublicCalendarTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1027,6 +1047,7 @@ const rootRouteChildren: RootRouteChildren = {
   StaffAppPropositionsRoute: StaffAppPropositionsRoute,
   ApiPublicAvailRemindersTickRoute: ApiPublicAvailRemindersTickRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicCalendarTokenRoute: ApiPublicCalendarTokenRoute,
   ApiPublicStudioQrStudioIdRoute: ApiPublicStudioQrStudioIdRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
