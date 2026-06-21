@@ -123,6 +123,20 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
 
   const updateRow = async (id: string, patch: Partial<Template>) => {
     const prev = templates;
+    const current = prev.find((t) => t.id === id);
+    // If start/end time changes and segments exist, adjust segments to keep DB constraint valid
+    if (current?.role_segments && (patch.start_time !== undefined || patch.end_time !== undefined)) {
+      const newStart = (patch.start_time ?? current.start_time).slice(0, 5);
+      const newEnd = (patch.end_time ?? current.end_time).slice(0, 5);
+      const segs = current.role_segments.map((s) => ({ ...s, start_time: s.start_time.slice(0, 5), end_time: s.end_time.slice(0, 5) }));
+      segs[0] = { ...segs[0], start_time: newStart };
+      segs[segs.length - 1] = { ...segs[segs.length - 1], end_time: newEnd };
+      const stillValid = segs.every((s, i) => s.start_time < s.end_time && (i === 0 || segs[i - 1].end_time === s.start_time));
+      (patch as any).role_segments = stillValid ? segs : null;
+      if (!stillValid) {
+        toast.message("Multi-rôles désactivé (les segments ne tenaient plus dans le nouvel horaire)");
+      }
+    }
     setTemplates((p) => p.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     const { error } = await supabase.from("staffing_templates").update(patch as any).eq("id", id);
     if (error) {
