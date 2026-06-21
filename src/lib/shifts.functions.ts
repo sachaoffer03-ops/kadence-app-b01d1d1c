@@ -305,7 +305,7 @@ export const assignShiftDirect = createServerFn({ method: "POST" })
 
     const { data: cur, error: eCur } = await supabase
       .from("shifts")
-      .select("id, user_id, shift_date, start_time, end_time, business_role, studio_id, published_at")
+      .select("id, user_id, shift_date, start_time, end_time, business_role, studio_id, published_at, role_segments")
       .eq("id", data.shiftId)
       .single();
     if (eCur) throw new Error(eCur.message);
@@ -314,6 +314,7 @@ export const assignShiftDirect = createServerFn({ method: "POST" })
     }
 
     await assertNoOverlap(supabase, data.userId, cur.shift_date, cur.start_time, cur.end_time, data.shiftId);
+    await assertEmployeeHasRequiredRoles(supabase, data.userId, cur.business_role, (cur.role_segments as RoleSegment[] | null) ?? null);
 
     // Attribution atomique : ne réussit que si encore libre
     const nowIso = new Date().toISOString();
