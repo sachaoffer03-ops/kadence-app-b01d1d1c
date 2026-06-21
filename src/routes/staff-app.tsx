@@ -1267,6 +1267,7 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
   const { signOut } = useAuth();
   const [docsOpen, setDocsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
