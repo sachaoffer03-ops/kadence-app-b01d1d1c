@@ -388,26 +388,6 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                                     })}
                                   </div>
                                 </div>
-                                <div>
-                                  <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 4 }}>Contrats autorisés</div>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {ALL_CONTRACTS.map((c) => {
-                                      const on = allowedContracts.includes(c);
-                                      return (
-                                        <button key={c} onClick={() => toggleInArray(t, "allowed_contracts", c)}
-                                          className="rounded-full px-2.5 py-1 transition-colors"
-                                          style={{
-                                            fontSize: 11,
-                                            border: "0.5px solid var(--border)",
-                                            backgroundColor: on ? "var(--foreground)" : "var(--background)",
-                                            color: on ? "var(--card)" : "var(--foreground)",
-                                          }}>
-                                          {c}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
                               </div>
                             </div>
                           </td>
