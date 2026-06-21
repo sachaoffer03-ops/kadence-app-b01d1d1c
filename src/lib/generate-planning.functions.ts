@@ -566,8 +566,10 @@ async function runEngine(ctx: EngineCtx) {
     for (const e of employees.values()) {
       // Studio
       if (e.studios.size > 0 && !e.studios.has(r.studio_id)) continue;
-      // Rôle
-      if (isKitchenRole(r.role)) {
+      // Rôle — pour un besoin hybride, l'employé doit avoir TOUS les rôles requis
+      if (r.is_hybrid) {
+        if (!r.required_roles.every((rr) => e.roles.has(rr))) continue;
+      } else if (isKitchenRole(r.role)) {
         if (!Array.from(e.roles).some((er) => isKitchenRole(er))) continue;
       } else if (r.allowed_roles.length > 0) {
         if (!r.allowed_roles.some((ar) => e.roles.has(ar))) continue;
@@ -580,9 +582,15 @@ async function runEngine(ctx: EngineCtx) {
       } else if (r.allowed_contracts.length > 0) {
         if (!r.allowed_contracts.some((ac) => e.contracts.has(ac as ContractType))) continue;
       }
-      // Formation : si une formation requise n'est pas validée pour ce rôle → exclu
+      // Formation : pour un hybride, vérifier le blocage sur CHAQUE rôle requis
       const blocked = blockedRolesByUser.get(e.id);
-      if (blocked && blocked.has(r.role)) continue;
+      if (blocked) {
+        if (r.is_hybrid) {
+          if (r.required_roles.some((rr) => blocked.has(rr))) continue;
+        } else {
+          if (blocked.has(r.role)) continue;
+        }
+      }
       out.push(e);
     }
     return out;
