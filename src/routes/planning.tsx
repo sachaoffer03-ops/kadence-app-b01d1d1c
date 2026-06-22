@@ -417,8 +417,34 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onConfirm, onUnl
 // ── Fill Hole Modal ────────────────────────────────────────
 function FillHoleModal({ shift, employees, onClose, onFill }: { shift: PlanningShift; employees: EmployeeLite[]; onClose: () => void; onFill: (empId: string) => void }) {
   const [search, setSearch] = useState("");
+  const [availableSet, setAvailableSet] = useState<Set<string>>(new Set());
 
-  // Find eligible employees for this role
+  // Charge les dispos/indispos pour la date du shift et calcule qui couvre le créneau
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [{ data: av }, { data: un }] = await Promise.all([
+        supabase.from("availabilities")
+          .select("user_id,start_time,end_time")
+          .eq("avail_date", shift.shiftDate),
+        supabase.from("unavailability_periods")
+          .select("user_id")
+          .lte("start_date", shift.shiftDate)
+          .gte("end_date", shift.shiftDate),
+      ]);
+      if (cancelled) return;
+      const unavailable = new Set((un || []).map((u: any) => u.user_id));
+      const ok = new Set<string>();
+      (av || []).forEach((a: any) => {
+        if (unavailable.has(a.user_id)) return;
+        if (a.start_time <= shift.startTime && a.end_time >= shift.endTime) ok.add(a.user_id);
+      });
+      setAvailableSet(ok);
+    })();
+    return () => { cancelled = true; };
+  }, [shift.shiftDate, shift.startTime, shift.endTime]);
+
+  // Employés ayant le rôle requis, triés : (1) dispo + meilleur score IA, puis (2) reste par score IA
   const eligible = useMemo(() => {
     return employees
       .filter((e) => e.roles.includes(shift.role))
@@ -426,11 +452,15 @@ function FillHoleModal({ shift, employees, onClose, onFill }: { shift: PlanningS
         const roleScore = e.roleScores?.[shift.role] || e.score;
         const hoursLeft = e.quotaMax ? e.quotaMax - (e.quotaUsed || 0) : null;
         const aiScore = roleScore * 10 + (e.punctuality || 0) * 5 + (hoursLeft !== null ? Math.min(hoursLeft / 50, 5) : 5);
-        return { ...e, roleScore, hoursLeft, aiScore, aiRecommended: false };
+        const available = availableSet.has(e.id);
+        return { ...e, roleScore, hoursLeft, aiScore, available, aiRecommended: false };
       })
-      .sort((a, b) => b.aiScore - a.aiScore)
+      .sort((a, b) => {
+        if (a.available !== b.available) return a.available ? -1 : 1;
+        return b.aiScore - a.aiScore;
+      })
       .map((e, i) => ({ ...e, aiRecommended: i < 3 }));
-  }, [shift.role]);
+  }, [shift.role, employees, availableSet]);
 
   const filtered = eligible.filter((e) =>
     search === "" || `${e.firstName} ${e.lastName}`.toLowerCase().includes(search.toLowerCase())
