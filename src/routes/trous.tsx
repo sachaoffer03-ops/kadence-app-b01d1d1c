@@ -69,6 +69,7 @@ function TrousPage() {
   const [availabilities, setAvailabilities] = useState<Availability[]>([]);
   const [unavail, setUnavail] = useState<UnavailPeriod[]>([]);
   const [assignedShifts, setAssignedShifts] = useState<Array<{ user_id: string; shift_date: string; start_time: string; end_time: string }>>([]);
+  const [scoringWeights, setScoringWeights] = useState<{ perf: number; eq: number; gen: number }>({ perf: 0.5, eq: 0.2, gen: 0.3 });
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
