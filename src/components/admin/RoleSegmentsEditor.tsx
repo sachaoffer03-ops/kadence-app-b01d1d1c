@@ -284,3 +284,42 @@ export function RoleSegmentsEditor({
     </div>
   );
 }
+
+function TimeInput({
+  value,
+  onCommit,
+  disabled,
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const [local, setLocal] = useState(value);
+  useEffect(() => {
+    setLocal(value);
+  }, [value]);
+  return (
+    <input
+      type="time"
+      step={900}
+      value={local}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        if (local && local !== value) onCommit(local);
+        else setLocal(value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      disabled={disabled}
+      className="rounded-md px-2 py-1.5 outline-none tabular-nums"
+      style={{
+        fontSize: 12,
+        fontWeight: 500,
+        width: 100,
+        border: "0.5px solid var(--border)",
+        backgroundColor: "var(--background)",
+      }}
+    />
+  );
+}
