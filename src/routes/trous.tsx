@@ -68,6 +68,8 @@ function TrousPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [availabilities, setAvailabilities] = useState<Availability[]>([]);
   const [unavail, setUnavail] = useState<UnavailPeriod[]>([]);
+  const [assignedShifts, setAssignedShifts] = useState<Array<{ user_id: string; shift_date: string; start_time: string; end_time: string }>>([]);
+
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
   const [filterRole, setFilterRole] = useState<string>("tous");
@@ -84,7 +86,7 @@ function TrousPage() {
 
   const load = async () => {
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }] = await Promise.all([
+    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }, { data: sh }] = await Promise.all([
       supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id").is("user_id", null).gte("shift_date", today).order("shift_date").order("start_time"),
       supabase.from("studios").select("id,name"),
       supabase.from("profiles").select("id,first_name,last_name,score,studio_id").eq("status", "active"),
@@ -93,6 +95,7 @@ function TrousPage() {
       supabase.from("availabilities").select("user_id,avail_date,start_time,end_time").gte("avail_date", today),
       supabase.from("unavailability_periods").select("user_id,start_date,end_date").gte("end_date", today),
       supabase.from("user_studios").select("user_id,studio_id"),
+      supabase.from("shifts").select("user_id,shift_date,start_time,end_time").not("user_id", "is", null).neq("status", "cancelled").gte("shift_date", today.slice(0, 8) + "01"),
     ]);
     setHoles((h || []) as Hole[]);
     setStudios(new Map((st || []).map((s) => [s.id, s.name])));
@@ -103,6 +106,7 @@ function TrousPage() {
     setProposals((pr || []) as Proposal[]);
     setAvailabilities((av || []) as Availability[]);
     setUnavail((un || []) as UnavailPeriod[]);
+    setAssignedShifts((sh || []) as any);
     const usMap = new Map<string, Set<string>>();
     (us || []).forEach((r: any) => {
       const s = usMap.get(r.user_id) || new Set<string>();
@@ -118,6 +122,7 @@ function TrousPage() {
     });
     setUserStudios(usMap);
   };
+
 
   useEffect(() => {
     load();
@@ -364,13 +369,56 @@ function TrousPage() {
             const rc = getRoleStyle(hole.business_role);
             const studioName = hole.studio_id ? studios.get(hole.studio_id) || "—" : "—";
             const inStudio = (uid: string) => !hole.studio_id || (userStudios.get(uid)?.has(hole.studio_id) ?? false);
-            const eligibleAll = profiles.filter((p) => inStudio(p.id) && (profileRoles.get(p.id) || []).includes(hole.business_role));
-            const eligibleAvailable = eligibleAll.filter((p) => isAvailableFor(p.id, hole.shift_date, hole.start_time, hole.end_time));
+            const eligibleAllUnsorted = profiles.filter((p) => inStudio(p.id) && (profileRoles.get(p.id) || []).includes(hole.business_role));
+
+            // Système au mérite : 50% score + 30% générosité (dispos du mois) + 20% équité (déjà reçu)
+            // Référence : mois du trou (YYYY-MM).
+            const holeMonth = hole.shift_date.slice(0, 7);
+            const monthStart = `${holeMonth}-01`;
+            const monthEnd = `${holeMonth}-31`;
+            const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+            const availMinOf = (uid: string) => {
+              let total = 0;
+              for (const a of availabilities) {
+                if (a.user_id !== uid) continue;
+                if (a.avail_date < monthStart || a.avail_date > monthEnd) continue;
+                total += Math.max(0, toMin(a.end_time) - toMin(a.start_time));
+              }
+              return total;
+            };
+            const assignedMinOf = (uid: string) => {
+              let total = 0;
+              for (const s of assignedShifts) {
+                if (s.user_id !== uid) continue;
+                if (s.shift_date < monthStart || s.shift_date > monthEnd) continue;
+                total += Math.max(0, toMin(s.end_time) - toMin(s.start_time));
+              }
+              return total;
+            };
+            const rankByMerit = (list: ProfileRow[]): ProfileRow[] => {
+              if (list.length === 0) return list;
+              const stats = new Map(list.map((p) => [p.id, { av: availMinOf(p.id), as: assignedMinOf(p.id) }]));
+              const maxAv = Math.max(1, ...Array.from(stats.values()).map((s) => s.av));
+              const maxAs = Math.max(1, ...Array.from(stats.values()).map((s) => s.as));
+              const prio = (p: ProfileRow) => {
+                const st = stats.get(p.id)!;
+                const perf = Math.max(0, Math.min(1, (p.score ?? 7) / 10));
+                const gen = st.av / maxAv;
+                const eq = 1 - (st.as / maxAs);
+                return 0.5 * perf + 0.3 * gen + 0.2 * eq;
+              };
+              return [...list].sort((a, b) => prio(b) - prio(a));
+            };
+
+            const eligibleAll = rankByMerit(eligibleAllUnsorted);
+            const eligibleAvailable = rankByMerit(eligibleAll.filter((p) => isAvailableFor(p.id, hole.shift_date, hole.start_time, hole.end_time)));
             const eligibleAvailableIds = new Set(eligibleAvailable.map((p) => p.id));
             const eligible = eligibleAll.filter((p) => !eligibleAvailableIds.has(p.id));
             const allProps = proposalsByShift.get(hole.id) || [];
             const pendingProps = allProps.filter((p) => p.status === "pending");
             const sel = selected[hole.id] || new Set<string>();
+
+
 
             return (
               <div key={hole.id} className="rounded-xl border overflow-hidden" style={{ backgroundColor: "var(--card)", borderColor: isOpen ? "var(--coral)" : "var(--border)", borderWidth: isOpen ? 1.5 : 1 }}>

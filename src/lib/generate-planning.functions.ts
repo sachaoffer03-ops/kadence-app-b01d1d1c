@@ -73,7 +73,10 @@ interface Employee {
   totalAssignedMin: number;
   allow_extended_hours: boolean;
   weekly_hours_cap: number | null;
+  // Total des minutes de dispos déclarées sur le mois (générosité)
+  availMonthMin: number;
 }
+
 
 interface AvailRange { startMin: number; endMin: number; }
 
@@ -419,6 +422,8 @@ async function runEngine(ctx: EngineCtx) {
       weeklyMin: new Map(),
       assigned: [],
       totalAssignedMin: 0,
+      availMonthMin: 0,
+
       allow_extended_hours: !!p.allow_extended_hours,
       weekly_hours_cap: p.weekly_hours_cap ?? null,
     });
@@ -446,6 +451,19 @@ async function runEngine(ctx: EngineCtx) {
     if (isUnavailable(uid, date)) return [];
     return availMap.get(uid)?.get(date) ?? [];
   };
+
+  // Total dispos déclarées sur le mois par employé (générosité)
+  for (const e of employees.values()) {
+    let total = 0;
+    const byDate = availMap.get(e.id);
+    if (byDate) {
+      for (const ranges of byDate.values()) {
+        for (const r of ranges) total += Math.max(0, r.endMin - r.startMin);
+      }
+    }
+    e.availMonthMin = total;
+  }
+
 
   logs.phases.load_ms = Date.now() - t_load;
   logs.employee_count = employees.size;
@@ -726,19 +744,23 @@ async function runEngine(ctx: EngineCtx) {
     e.totalAssignedMin = Math.max(0, e.totalAssignedMin - (eMin - sMin));
   };
 
-  // Score d'un candidat pour un slot (perf + équité tie-breaker + préférence)
-  const ranking = (cands: Employee[], date: string): Employee[] => {
-    return [...cands].sort((a, b) => {
-      const dScore = b.score - a.score;
-      // Tie-breaker équité si différence de score < 0.5
-      if (Math.abs(dScore) < 0.5) {
-        const aWk = (a.weeklyMin.get(isoWeekStart(date)) ?? 0);
-        const bWk = (b.weeklyMin.get(isoWeekStart(date)) ?? 0);
-        return aWk - bWk;
-      }
-      return dScore;
-    });
+  // Score d'un candidat pour un slot (système mérite : 50% perf + 30% générosité + 20% équité)
+  // - perf       : score / 10               (mérite)
+  // - générosité : availMonthMin / max      (récompense ceux qui se rendent dispos)
+  // - équité     : 1 - assignedSoFar / max  (ceux qui ont déjà beaucoup reçu redescendent)
+  const ranking = (cands: Employee[], _date: string): Employee[] => {
+    if (cands.length === 0) return cands;
+    const maxAvail = Math.max(1, ...cands.map((c) => c.availMonthMin));
+    const maxAssigned = Math.max(1, ...cands.map((c) => c.totalAssignedMin));
+    const priority = (e: Employee) => {
+      const perf = Math.max(0, Math.min(1, e.score / 10));
+      const gen = e.availMonthMin / maxAvail;
+      const eq = 1 - (e.totalAssignedMin / maxAssigned);
+      return 0.5 * perf + 0.3 * gen + 0.2 * eq;
+    };
+    return [...cands].sort((a, b) => priority(b) - priority(a));
   };
+
 
   // ─── PASSE A0 : Pin CDI unique sur shifts required_contract='CDI' ────────
   // Si un requirement exige un CDI et qu'un seul CDI éligible existe → on lui
