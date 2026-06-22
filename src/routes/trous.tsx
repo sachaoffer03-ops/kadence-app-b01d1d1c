@@ -363,11 +363,12 @@ function TrousPage() {
             const isOpen = expanded === hole.id;
             const rc = getRoleStyle(hole.business_role);
             const studioName = hole.studio_id ? studios.get(hole.studio_id) || "—" : "—";
-            const eligibleAll = profiles.filter((p) => (profileRoles.get(p.id) || []).includes(hole.business_role));
+            const inStudio = (uid: string) => !hole.studio_id || (userStudios.get(uid)?.has(hole.studio_id) ?? false);
+            const eligibleAll = profiles.filter((p) => inStudio(p.id) && (profileRoles.get(p.id) || []).includes(hole.business_role));
             const eligibleAvailable = eligibleAll.filter((p) => isAvailableFor(p.id, hole.shift_date, hole.start_time, hole.end_time));
             const eligibleAvailableIds = new Set(eligibleAvailable.map((p) => p.id));
             const eligible = eligibleAll.filter((p) => !eligibleAvailableIds.has(p.id));
-            const others = profiles.filter((p) => !(profileRoles.get(p.id) || []).includes(hole.business_role));
+            const others = profiles.filter((p) => inStudio(p.id) && !(profileRoles.get(p.id) || []).includes(hole.business_role));
             const allProps = proposalsByShift.get(hole.id) || [];
             const pendingProps = allProps.filter((p) => p.status === "pending");
             const sel = selected[hole.id] || new Set<string>();
