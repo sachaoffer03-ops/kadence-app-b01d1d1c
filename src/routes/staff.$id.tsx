@@ -20,6 +20,7 @@ import { AdminEditEmployeeSheet } from "@/components/staff/AdminEditEmployeeShee
 import { countUnviewedDocuments } from "@/lib/documents.functions";
 import { RatingInput, RatingBadge } from "@/components/RatingInput";
 import { ExtendedHoursCard } from "@/components/staff/ExtendedHoursCard";
+import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHistoryTab";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
