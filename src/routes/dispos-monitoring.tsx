@@ -337,6 +337,19 @@ function StatusBadge({ status, count }: { status: "complete" | "partial" | "empt
         Aucune dispo
       </span>
     );
+  }
+  if (status === "partial") {
+    return (
+      <span className="inline-flex items-center rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "#fcebd6", color: "#c97a2b" }}>
+        {count} dispo{count > 1 ? "s" : ""}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "#dff0e2", color: "#2f7a4d" }}>
+      {count} dispos ✓
+    </span>
+  );
 }
 
 function FulfilmentCell({
@@ -371,16 +384,3 @@ function FulfilmentCell({
   );
 }
 
-  if (status === "partial") {
-    return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "#fcebd6", color: "#c97a2b" }}>
-        {count} dispo{count > 1 ? "s" : ""}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "#dff0e2", color: "#2f7a4d" }}>
-      {count} dispos ✓
-    </span>
-  );
-}
