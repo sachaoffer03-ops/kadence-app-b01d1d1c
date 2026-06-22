@@ -164,10 +164,10 @@ export function ShiftDetailSheet({ shiftId, onClose }: { shiftId: string | null;
               <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
                 <div className="text-xs uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Auto-évaluation de l'employé</div>
                 <div className="flex items-center gap-1 mb-1">
-                  {[1,2,3,4,5,6,7,8,9,10].map((n) => (
-                    <Star key={n} size={12} fill={n <= (d.selfFeedback!.rating ?? 0) ? "var(--coral)" : "none"} stroke="var(--coral)" />
+                  {[1,2,3,4,5].map((n) => (
+                    <Star key={n} size={14} fill={n <= (d.selfFeedback!.rating ?? 0) ? "var(--coral)" : "none"} stroke="var(--coral)" />
                   ))}
-                  <span className="ml-2 text-xs text-[var(--muted-foreground)]">{d.selfFeedback.rating}/10</span>
+                  <span className="ml-2 text-xs text-[var(--muted-foreground)]">{d.selfFeedback.rating}/5</span>
                 </div>
                 {d.selfFeedback.message && <div className="text-sm mt-1">{d.selfFeedback.message}</div>}
               </div>
