@@ -337,7 +337,40 @@ function StatusBadge({ status, count }: { status: "complete" | "partial" | "empt
         Aucune dispo
       </span>
     );
+}
+
+function FulfilmentCell({
+  availHours,
+  assignedHours,
+  assignedShifts,
+  pct,
+}: {
+  availHours: number;
+  assignedHours: number;
+  assignedShifts: number;
+  pct: number | null;
+}) {
+  if (availHours === 0 && assignedHours === 0) {
+    return <span style={{ color: "var(--muted-foreground)" }}>—</span>;
   }
+  const safePct = pct ?? 0;
+  const color =
+    pct === null ? "var(--muted-foreground)" :
+    safePct >= 80 ? "#2f7a4d" :
+    safePct >= 40 ? "#c97a2b" :
+    "#b3261e";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
+      <span style={{ fontWeight: 500, color }}>
+        {pct === null ? "—" : `${safePct}%`}
+      </span>
+      <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+        {assignedHours}h / {availHours}h · {assignedShifts} shift{assignedShifts > 1 ? "s" : ""}
+      </span>
+    </div>
+  );
+}
+
   if (status === "partial") {
     return (
       <span className="inline-flex items-center rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "#fcebd6", color: "#c97a2b" }}>
