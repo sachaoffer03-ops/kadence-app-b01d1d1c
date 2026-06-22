@@ -369,10 +369,55 @@ function TrousPage() {
             const rc = getRoleStyle(hole.business_role);
             const studioName = hole.studio_id ? studios.get(hole.studio_id) || "—" : "—";
             const inStudio = (uid: string) => !hole.studio_id || (userStudios.get(uid)?.has(hole.studio_id) ?? false);
-            const eligibleAll = profiles.filter((p) => inStudio(p.id) && (profileRoles.get(p.id) || []).includes(hole.business_role));
-            const eligibleAvailable = eligibleAll.filter((p) => isAvailableFor(p.id, hole.shift_date, hole.start_time, hole.end_time));
+            const eligibleAllUnsorted = profiles.filter((p) => inStudio(p.id) && (profileRoles.get(p.id) || []).includes(hole.business_role));
+
+            // Système au mérite : 50% score + 30% générosité (dispos du mois) + 20% équité (déjà reçu)
+            // Référence : mois du trou (YYYY-MM).
+            const holeMonth = hole.shift_date.slice(0, 7);
+            const monthStart = `${holeMonth}-01`;
+            const monthEnd = `${holeMonth}-31`;
+            const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+            const availMinOf = (uid: string) => {
+              let total = 0;
+              for (const a of availabilities) {
+                if (a.user_id !== uid) continue;
+                if (a.avail_date < monthStart || a.avail_date > monthEnd) continue;
+                total += Math.max(0, toMin(a.end_time) - toMin(a.start_time));
+              }
+              return total;
+            };
+            const assignedMinOf = (uid: string) => {
+              let total = 0;
+              for (const s of assignedShifts) {
+                if (s.user_id !== uid) continue;
+                if (s.shift_date < monthStart || s.shift_date > monthEnd) continue;
+                total += Math.max(0, toMin(s.end_time) - toMin(s.start_time));
+              }
+              return total;
+            };
+            const rankByMerit = (list: ProfileRow[]): ProfileRow[] => {
+              if (list.length === 0) return list;
+              const stats = new Map(list.map((p) => [p.id, { av: availMinOf(p.id), as: assignedMinOf(p.id) }]));
+              const maxAv = Math.max(1, ...Array.from(stats.values()).map((s) => s.av));
+              const maxAs = Math.max(1, ...Array.from(stats.values()).map((s) => s.as));
+              const prio = (p: ProfileRow) => {
+                const st = stats.get(p.id)!;
+                const perf = Math.max(0, Math.min(1, (p.score ?? 7) / 10));
+                const gen = st.av / maxAv;
+                const eq = 1 - (st.as / maxAs);
+                return 0.5 * perf + 0.3 * gen + 0.2 * eq;
+              };
+              return [...list].sort((a, b) => prio(b) - prio(a));
+            };
+
+            const eligibleAll = rankByMerit(eligibleAllUnsorted);
+            const eligibleAvailable = rankByMerit(eligibleAll.filter((p) => isAvailableFor(p.id, hole.shift_date, hole.start_time, hole.end_time)));
             const eligibleAvailableIds = new Set(eligibleAvailable.map((p) => p.id));
             const eligible = eligibleAll.filter((p) => !eligibleAvailableIds.has(p.id));
+            const allProps = proposalsByShift.get(hole.id) || [];
+            const pendingProps = allProps.filter((p) => p.status === "pending");
+            const sel = selected[hole.id] || new Set<string>();
+
             const allProps = proposalsByShift.get(hole.id) || [];
             const pendingProps = allProps.filter((p) => p.status === "pending");
             const sel = selected[hole.id] || new Set<string>();
