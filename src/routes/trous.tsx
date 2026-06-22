@@ -166,6 +166,34 @@ function TrousPage() {
     return m;
   }, [proposals]);
 
+  // Index dispo / indispo par user
+  const availByUserDate = useMemo(() => {
+    const m = new Map<string, Availability[]>();
+    availabilities.forEach((a) => {
+      const k = `${a.user_id}|${a.avail_date}`;
+      const arr = m.get(k) || []; arr.push(a); m.set(k, arr);
+    });
+    return m;
+  }, [availabilities]);
+  const unavailByUser = useMemo(() => {
+    const m = new Map<string, UnavailPeriod[]>();
+    unavail.forEach((u) => {
+      const arr = m.get(u.user_id) || []; arr.push(u); m.set(u.user_id, arr);
+    });
+    return m;
+  }, [unavail]);
+
+  const isAvailableFor = (userId: string, date: string, start: string, end: string): boolean => {
+    // Indisponible si dans une période d'indispo
+    const ups = unavailByUser.get(userId) || [];
+    for (const u of ups) {
+      if (date >= u.start_date && date <= u.end_date) return false;
+    }
+    // Doit avoir une dispo couvrant [start,end]
+    const avs = availByUserDate.get(`${userId}|${date}`) || [];
+    return avs.some((a) => a.start_time <= start && a.end_time >= end);
+  };
+
   const toggleSelect = (shiftId: string, userId: string) => {
     setSelected((prev) => {
       const set = new Set(prev[shiftId] || []);
