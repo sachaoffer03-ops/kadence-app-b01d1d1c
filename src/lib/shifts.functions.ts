@@ -138,6 +138,16 @@ export const updateShift = createServerFn({ method: "POST" })
       (data.shiftDate && data.shiftDate !== current.shift_date) ||
       (data.startTime && data.startTime !== String(current.start_time).slice(0, 8)) ||
       (data.endTime && data.endTime !== String(current.end_time).slice(0, 8));
+    const prevSegs = (current.role_segments as RoleSegment[] | null) ?? null;
+    const segmentsChanged =
+      data.roleSegments !== undefined &&
+      JSON.stringify(data.roleSegments ?? null) !== JSON.stringify(prevSegs);
+    const roleChanged =
+      data.businessRole !== undefined && data.businessRole !== current.business_role;
+    const wasHybrid = !!prevSegs && prevSegs.length >= 2;
+    const willBeHybrid = data.roleSegments === undefined
+      ? wasHybrid
+      : !!data.roleSegments && data.roleSegments.length >= 2;
 
     const patch: any = { updated_at: new Date().toISOString() };
     if (data.markManual !== false) patch.is_manual = true;
@@ -165,6 +175,13 @@ export const updateShift = createServerFn({ method: "POST" })
     const { error } = await supabase.from("shifts").update(patch).eq("id", data.shiftId);
     if (error) throw new Error(error.message);
 
+    // Si on assigne un employé à un shift hybride, vérifier qu'il a tous les rôles requis
+    if (nextUserId && willBeHybrid) {
+      const finalSegs = data.roleSegments !== undefined ? data.roleSegments : prevSegs;
+      const finalRole = patch.business_role ?? current.business_role;
+      await assertEmployeeHasRequiredRoles(supabase, nextUserId, finalRole, finalSegs as RoleSegment[] | null);
+    }
+
     // Notifications quand on modifie un shift déjà publié
     if (wasPublished) {
       const fmtRange = `${nextDate} ${String(nextStart).slice(0,5)}–${String(nextEnd).slice(0,5)}`;
@@ -186,18 +203,29 @@ export const updateShift = createServerFn({ method: "POST" })
             user_id: nextUserId,
             type: "shift_added",
             title: "Nouveau shift",
-            body: fmtRange,
+            body: fmtRange + (willBeHybrid ? " · multi-rôles" : ""),
             link: employeeLink({ kind: "shift", shiftId: data.shiftId }),
             priority: "normal",
             category: "shift",
           });
         }
-      } else if (timeChanged && nextUserId) {
+      } else if (nextUserId && (timeChanged || roleChanged || segmentsChanged)) {
+        let body = fmtRange;
+        const changes: string[] = [];
+        if (timeChanged) changes.push("horaires");
+        if (segmentsChanged && wasHybrid !== willBeHybrid) {
+          changes.push(willBeHybrid ? "passage en multi-rôles" : "retour en mono-rôle");
+        } else if (segmentsChanged) {
+          changes.push("segments de rôles");
+        } else if (roleChanged) {
+          changes.push(`rôle → ${patch.business_role}`);
+        }
+        if (changes.length) body = `${fmtRange} · ${changes.join(", ")}`;
         notifs.push({
           user_id: nextUserId,
           type: "shift_updated",
           title: "Shift modifié",
-          body: fmtRange,
+          body,
           link: employeeLink({ kind: "shift", shiftId: data.shiftId }),
           priority: "info",
           category: "shift",
