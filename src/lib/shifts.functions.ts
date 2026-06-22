@@ -168,6 +168,7 @@ export const updateShift = createServerFn({ method: "POST" })
     const willBeHybrid = data.roleSegments === undefined
       ? wasHybrid
       : !!data.roleSegments && data.roleSegments.length >= 2;
+    const becamePublishedOnSave = !wasPublished && !!nextUserId;
 
     const patch: any = { updated_at: new Date().toISOString() };
     if (data.markManual !== false) patch.is_manual = true;
@@ -183,6 +184,10 @@ export const updateShift = createServerFn({ method: "POST" })
     if (data.startTime) patch.start_time = data.startTime;
     if (data.endTime) patch.end_time = data.endTime;
     if (data.notes !== undefined) patch.notes = data.notes;
+    if (becamePublishedOnSave) {
+      patch.status = "scheduled";
+      patch.published_at = new Date().toISOString();
+    }
     if (data.roleSegments !== undefined) {
       patch.role_segments = data.roleSegments;
       // En mode hybride, force business_role = rôle du 1er segment
@@ -202,11 +207,21 @@ export const updateShift = createServerFn({ method: "POST" })
       await assertEmployeeHasRequiredRoles(supabase, nextUserId, finalRole, finalSegs as RoleSegment[] | null);
     }
 
-    // Notifications quand on modifie un shift déjà publié
-    if (wasPublished) {
+    // Notifications quand l'employé voit déjà le shift, ou quand l'édition le publie/assigne directement.
+    if (wasPublished || becamePublishedOnSave) {
       const fmtRange = `${nextDate} ${String(nextStart).slice(0,5)}–${String(nextEnd).slice(0,5)}`;
       const notifs: any[] = [];
-      if (userChanged) {
+      if (becamePublishedOnSave && nextUserId) {
+        notifs.push({
+          user_id: nextUserId,
+          type: "shift_added",
+          title: "Nouveau shift",
+          body: fmtRange + (willBeHybrid ? " · multi-rôles" : ""),
+          link: employeeLink({ kind: "shift", shiftId: data.shiftId }),
+          priority: "normal",
+          category: "shift",
+        });
+      } else if (userChanged) {
         if (current.user_id) {
           notifs.push({
             user_id: current.user_id,
@@ -251,7 +266,10 @@ export const updateShift = createServerFn({ method: "POST" })
           category: "shift",
         });
       }
-      if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
+      if (notifs.length > 0) {
+        const { error: notifError } = await supabase.from("notifications").insert(notifs);
+        if (notifError) throw new Error(`Shift enregistré, mais notification non envoyée : ${notifError.message}`);
+      }
     }
 
     return { ok: true };
