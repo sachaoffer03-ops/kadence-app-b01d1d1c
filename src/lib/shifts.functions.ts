@@ -122,11 +122,12 @@ export const updateShift = createServerFn({ method: "POST" })
 
     const { data: current, error: eCur } = await supabase
       .from("shifts")
-      .select("user_id, shift_date, start_time, end_time, published_at, business_role, role_segments")
+      .select("user_id, studio_id, shift_date, start_time, end_time, published_at, business_role, role_segments")
       .eq("id", data.shiftId)
       .single();
     if (eCur) throw new Error(eCur.message);
 
+    const prevSegs = (current.role_segments as RoleSegment[] | null) ?? null;
     const nextUserId = data.userId !== undefined ? data.userId : current.user_id;
     const nextDate = data.shiftDate ?? current.shift_date;
     const nextStart = data.startTime ?? current.start_time;
@@ -158,7 +159,6 @@ export const updateShift = createServerFn({ method: "POST" })
       (data.shiftDate && data.shiftDate !== current.shift_date) ||
       (data.startTime && data.startTime !== String(current.start_time).slice(0, 8)) ||
       (data.endTime && data.endTime !== String(current.end_time).slice(0, 8));
-    const prevSegs = (current.role_segments as RoleSegment[] | null) ?? null;
     const segmentsChanged =
       data.roleSegments !== undefined &&
       JSON.stringify(data.roleSegments ?? null) !== JSON.stringify(prevSegs);
