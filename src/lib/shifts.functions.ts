@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { employeeLink } from "@/lib/notif-links";
-import { validateRoleSegments, getRequiredRoles, isHybridShift, type RoleSegment } from "@/lib/role-segments";
+import { validateRoleSegments, getRequiredRoles, type RoleSegment } from "@/lib/role-segments";
 
 async function assertEmployeeHasRequiredRoles(
   supabase: any,
