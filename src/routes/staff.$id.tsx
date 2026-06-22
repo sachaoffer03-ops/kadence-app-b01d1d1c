@@ -20,6 +20,7 @@ import { AdminEditEmployeeSheet } from "@/components/staff/AdminEditEmployeeShee
 import { countUnviewedDocuments } from "@/lib/documents.functions";
 import { RatingInput, RatingBadge } from "@/components/RatingInput";
 import { ExtendedHoursCard } from "@/components/staff/ExtendedHoursCard";
+import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHistoryTab";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -237,6 +238,7 @@ function EmployeeDetailPage() {
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="historique">Historique shifts</TabsTrigger>
           <TabsTrigger value="formation">Formation</TabsTrigger>
         </TabsList>
         <TabsContent value="profil">
@@ -535,6 +537,9 @@ function EmployeeDetailPage() {
         </TabsContent>
         <TabsContent value="documents">
           <EmployeeDocumentsTab userId={emp.id} firstName={emp.first_name} />
+        </TabsContent>
+        <TabsContent value="historique">
+          <EmployeeShiftsHistoryTab userId={emp.id} />
         </TabsContent>
         <TabsContent value="formation">
           <EmployeeFormationTab userId={emp.id} />
