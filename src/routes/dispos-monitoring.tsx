@@ -69,6 +69,10 @@ function DisposMonitoringPage() {
       }
       if (studioFilter.length > 0 && !r.studioIds.some((s) => studioFilter.includes(s))) return false;
       return true;
+    }).slice().sort((a, b) => {
+      const an = `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim().toLowerCase();
+      const bn = `${b.firstName ?? ""} ${b.lastName ?? ""}`.trim().toLowerCase();
+      return an.localeCompare(bn, "fr", { sensitivity: "base" });
     });
   }, [rows, contractFilter, studioFilter]);
 
