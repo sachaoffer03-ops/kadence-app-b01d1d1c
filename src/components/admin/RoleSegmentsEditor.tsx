@@ -58,13 +58,19 @@ export function RoleSegmentsEditor({
   const setEnd = (idx: number, value: string) => {
     if (disabled) return;
     if (idx === segments.length - 1) return; // dernier verrouillé sur shift end
-    const snapped = minToHHMM(snap15(toMin(value)));
+    if (!value || !/^\d{2}:\d{2}$/.test(value)) return;
     const prevSeg = segments[idx];
     const nextSeg = segments[idx + 1];
     const prevStartM = toMin(prevSeg.start_time);
     const nextEndM = toMin(nextSeg.end_time);
-    const newM = toMin(snapped);
-    if (newM <= prevStartM || newM >= nextEndM) return;
+    // Clamp dans la plage autorisée (prevStart+15 .. nextEnd-15), puis snap 15
+    const minAllowed = prevStartM + 15;
+    const maxAllowed = nextEndM - 15;
+    if (minAllowed > maxAllowed) return;
+    let newM = snap15(toMin(value));
+    if (newM < minAllowed) newM = snap15(minAllowed);
+    if (newM > maxAllowed) newM = snap15(maxAllowed);
+    const snapped = minToHHMM(newM);
     const next = segments.map((s, i) => {
       if (i === idx) return { ...s, end_time: snapped };
       if (i === idx + 1) return { ...s, start_time: snapped };
