@@ -160,6 +160,40 @@ export function ShiftDetailSheet({ shiftId, onClose }: { shiftId: string | null;
               </div>
             )}
 
+            {d.selfFeedback && (
+              <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+                <div className="text-xs uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Auto-évaluation de l'employé</div>
+                <div className="flex items-center gap-1 mb-1">
+                  {[1,2,3,4,5,6,7,8,9,10].map((n) => (
+                    <Star key={n} size={12} fill={n <= (d.selfFeedback!.rating ?? 0) ? "var(--coral)" : "none"} stroke="var(--coral)" />
+                  ))}
+                  <span className="ml-2 text-xs text-[var(--muted-foreground)]">{d.selfFeedback.rating}/10</span>
+                </div>
+                {d.selfFeedback.message && <div className="text-sm mt-1">{d.selfFeedback.message}</div>}
+              </div>
+            )}
+
+            {d.adminReport && (
+              <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+                <div className="text-xs uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Message à l'admin</div>
+                <div className="text-sm whitespace-pre-wrap">{d.adminReport.message}</div>
+              </div>
+            )}
+
+            {d.handoff && (
+              <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+                <div className="text-xs uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Passation au prochain shift</div>
+                <div className="text-sm whitespace-pre-wrap">{d.handoff.message}</div>
+              </div>
+            )}
+
+            {d.employeeNote && (
+              <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+                <div className="text-xs uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Note de l'employé sur la checklist</div>
+                <div className="text-sm whitespace-pre-wrap">{d.employeeNote}</div>
+              </div>
+            )}
+
             <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--border)" }}>
               <div className="text-xs uppercase text-[var(--muted-foreground)] mb-1">Score gagné</div>
               <div className="text-xl font-medium">+{d.score.total}</div>

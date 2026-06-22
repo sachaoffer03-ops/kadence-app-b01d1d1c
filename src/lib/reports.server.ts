@@ -505,6 +505,16 @@ export async function getShiftDetail(args: { shiftId: string }) {
     questions = qs ?? [];
   }
 
+  // Feedback "Avant de partir" laissé par l'employé (auto-évaluation + message admin + passation)
+  const [{ data: selfFb }, { data: adminReport }, { data: handoff }] = await Promise.all([
+    shift.user_id
+      ? supabaseAdmin.from("feedbacks").select("rating,message,created_at").eq("shift_id", shiftId).eq("author_id", shift.user_id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabaseAdmin.from("shift_reports").select("message,resolved,created_at").eq("shift_id", shiftId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabaseAdmin.from("shift_handoffs").select("message,created_at").eq("shift_id", shiftId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+
+
   const itemMap = new Map(itemRows.map((r: any) => [r.template_item_id, r]));
   const photoMap = new Map(photoRows.map((r: any) => [r.template_photo_id, r]));
   const respMap = new Map(responses.map((r: any) => [r.question_id, r]));
@@ -578,5 +588,9 @@ export async function getShiftDetail(args: { shiftId: string }) {
     score: { ponctualite, checklist: checklistPts, photos: photosPts, total: ponctualite + checklistPts + photosPts },
     earnings,
     workedHours: +workedH.toFixed(2),
+    employeeNote: sub?.employee_note ?? null,
+    selfFeedback: selfFb ? { rating: selfFb.rating, message: selfFb.message ?? null, createdAt: selfFb.created_at } : null,
+    adminReport: adminReport ? { message: adminReport.message, resolved: adminReport.resolved, createdAt: adminReport.created_at } : null,
+    handoff: handoff ? { message: handoff.message, createdAt: handoff.created_at } : null,
   };
 }
