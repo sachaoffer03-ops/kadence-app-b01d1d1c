@@ -191,20 +191,10 @@ export function RoleSegmentsEditor({
                   {seg.end_time}
                 </div>
               ) : (
-                <input
-                  type="time"
-                  step={900}
+                <TimeInput
                   value={seg.end_time}
-                  onChange={(e) => setEnd(i, e.target.value)}
+                  onCommit={(v) => setEnd(i, v)}
                   disabled={disabled}
-                  className="rounded-md px-2 py-1.5 outline-none tabular-nums"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    width: 100,
-                    border: "0.5px solid var(--border)",
-                    backgroundColor: "var(--background)",
-                  }}
                 />
               )}
 
