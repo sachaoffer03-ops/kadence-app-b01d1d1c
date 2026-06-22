@@ -588,5 +588,9 @@ export async function getShiftDetail(args: { shiftId: string }) {
     score: { ponctualite, checklist: checklistPts, photos: photosPts, total: ponctualite + checklistPts + photosPts },
     earnings,
     workedHours: +workedH.toFixed(2),
+    employeeNote: sub?.employee_note ?? null,
+    selfFeedback: selfFb ? { rating: selfFb.rating, message: selfFb.message ?? null, createdAt: selfFb.created_at } : null,
+    adminReport: adminReport ? { message: adminReport.message, resolved: adminReport.resolved, createdAt: adminReport.created_at } : null,
+    handoff: handoff ? { message: handoff.message, createdAt: handoff.created_at } : null,
   };
 }
