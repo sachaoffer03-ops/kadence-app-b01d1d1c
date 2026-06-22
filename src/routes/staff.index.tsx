@@ -104,6 +104,14 @@ function StaffPage() {
         const sa = a.score ?? -1; const sb = b.score ?? -1;
         return sortScore === "desc" ? sb - sa : sa - sb;
       });
+    } else {
+      list.sort((a, b) =>
+        `${a.first_name} ${a.last_name}`.localeCompare(
+          `${b.first_name} ${b.last_name}`,
+          "fr",
+          { sensitivity: "base" },
+        ),
+      );
     }
     return list;
   }, [profiles, tab, search, contractFilters, studioFilters, roleFilters, sortScore, rolesByUser]);
