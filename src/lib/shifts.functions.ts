@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { employeeLink } from "@/lib/notif-links";
-import { validateRoleSegments, getRequiredRoles, isHybridShift, type RoleSegment } from "@/lib/role-segments";
+import { validateRoleSegments, getRequiredRoles, type RoleSegment } from "@/lib/role-segments";
 
 async function assertEmployeeHasRequiredRoles(
   supabase: any,
@@ -10,7 +10,6 @@ async function assertEmployeeHasRequiredRoles(
   shiftBusinessRole: string,
   segments: RoleSegment[] | null,
 ) {
-  if (!isHybridShift(segments)) return;
   const required = getRequiredRoles(segments, shiftBusinessRole);
   const { data, error } = await supabase
     .from("user_business_roles")
@@ -20,7 +19,20 @@ async function assertEmployeeHasRequiredRoles(
   const userRoles = new Set((data ?? []).map((r: any) => r.role));
   const missing = required.filter((r) => !userRoles.has(r));
   if (missing.length > 0) {
-    throw new Error(`Shift hybride : l'employé n'a pas le(s) rôle(s) ${missing.join(", ")}`);
+    throw new Error(`L'employé n'a pas le(s) rôle(s) ${missing.join(", ")}`);
+  }
+}
+
+async function assertEmployeeHasStudio(supabase: any, userId: string, studioId: string | null | undefined) {
+  if (!studioId) return;
+  const { data, error } = await supabase
+    .from("user_studios")
+    .select("studio_id")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  const studios = (data ?? []).map((r: any) => r.studio_id);
+  if (studios.length > 0 && !studios.includes(studioId)) {
+    throw new Error("L'employé n'est pas rattaché à ce studio");
   }
 }
 
@@ -110,16 +122,25 @@ export const updateShift = createServerFn({ method: "POST" })
 
     const { data: current, error: eCur } = await supabase
       .from("shifts")
-      .select("user_id, shift_date, start_time, end_time, published_at, business_role, role_segments")
+      .select("user_id, studio_id, shift_date, start_time, end_time, published_at, business_role, role_segments")
       .eq("id", data.shiftId)
       .single();
     if (eCur) throw new Error(eCur.message);
 
+    const prevSegs = (current.role_segments as RoleSegment[] | null) ?? null;
     const nextUserId = data.userId !== undefined ? data.userId : current.user_id;
     const nextDate = data.shiftDate ?? current.shift_date;
     const nextStart = data.startTime ?? current.start_time;
     const nextEnd = data.endTime ?? current.end_time;
+    const nextRoleSegments = data.roleSegments !== undefined ? data.roleSegments : prevSegs;
+    const nextBusinessRole = data.roleSegments && data.roleSegments.length > 0
+      ? data.roleSegments[0].role
+      : (data.businessRole ?? current.business_role);
     await assertNoOverlap(supabase, nextUserId, nextDate, nextStart, nextEnd, data.shiftId);
+    if (nextUserId) {
+      await assertEmployeeHasRequiredRoles(supabase, nextUserId, nextBusinessRole, nextRoleSegments as RoleSegment[] | null);
+      await assertEmployeeHasStudio(supabase, nextUserId, current.studio_id);
+    }
 
     // Validation des segments (si fournis)
     if (data.roleSegments !== undefined && data.roleSegments !== null) {
@@ -138,7 +159,6 @@ export const updateShift = createServerFn({ method: "POST" })
       (data.shiftDate && data.shiftDate !== current.shift_date) ||
       (data.startTime && data.startTime !== String(current.start_time).slice(0, 8)) ||
       (data.endTime && data.endTime !== String(current.end_time).slice(0, 8));
-    const prevSegs = (current.role_segments as RoleSegment[] | null) ?? null;
     const segmentsChanged =
       data.roleSegments !== undefined &&
       JSON.stringify(data.roleSegments ?? null) !== JSON.stringify(prevSegs);
@@ -148,6 +168,7 @@ export const updateShift = createServerFn({ method: "POST" })
     const willBeHybrid = data.roleSegments === undefined
       ? wasHybrid
       : !!data.roleSegments && data.roleSegments.length >= 2;
+    const becamePublishedOnSave = !wasPublished && !!nextUserId;
 
     const patch: any = { updated_at: new Date().toISOString() };
     if (data.markManual !== false) patch.is_manual = true;
@@ -163,6 +184,10 @@ export const updateShift = createServerFn({ method: "POST" })
     if (data.startTime) patch.start_time = data.startTime;
     if (data.endTime) patch.end_time = data.endTime;
     if (data.notes !== undefined) patch.notes = data.notes;
+    if (becamePublishedOnSave) {
+      patch.status = "scheduled";
+      patch.published_at = new Date().toISOString();
+    }
     if (data.roleSegments !== undefined) {
       patch.role_segments = data.roleSegments;
       // En mode hybride, force business_role = rôle du 1er segment
@@ -182,11 +207,21 @@ export const updateShift = createServerFn({ method: "POST" })
       await assertEmployeeHasRequiredRoles(supabase, nextUserId, finalRole, finalSegs as RoleSegment[] | null);
     }
 
-    // Notifications quand on modifie un shift déjà publié
-    if (wasPublished) {
+    // Notifications quand l'employé voit déjà le shift, ou quand l'édition le publie/assigne directement.
+    if (wasPublished || becamePublishedOnSave) {
       const fmtRange = `${nextDate} ${String(nextStart).slice(0,5)}–${String(nextEnd).slice(0,5)}`;
       const notifs: any[] = [];
-      if (userChanged) {
+      if (becamePublishedOnSave && nextUserId) {
+        notifs.push({
+          user_id: nextUserId,
+          type: "shift_added",
+          title: "Nouveau shift",
+          body: fmtRange + (willBeHybrid ? " · multi-rôles" : ""),
+          link: employeeLink({ kind: "shift", shiftId: data.shiftId }),
+          priority: "normal",
+          category: "shift",
+        });
+      } else if (userChanged) {
         if (current.user_id) {
           notifs.push({
             user_id: current.user_id,
@@ -231,7 +266,10 @@ export const updateShift = createServerFn({ method: "POST" })
           category: "shift",
         });
       }
-      if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
+      if (notifs.length > 0) {
+        const { error: notifError } = await supabase.from("notifications").insert(notifs);
+        if (notifError) throw new Error(`Shift enregistré, mais notification non envoyée : ${notifError.message}`);
+      }
     }
 
     return { ok: true };
