@@ -744,19 +744,27 @@ async function runEngine(ctx: EngineCtx) {
     e.totalAssignedMin = Math.max(0, e.totalAssignedMin - (eMin - sMin));
   };
 
-  // Score d'un candidat pour un slot (système mérite : 50% perf + 30% générosité + 20% équité)
+  // Score d'un candidat pour un slot (système mérite, pondéré par ai_planning_settings)
   // - perf       : score / 10               (mérite)
-  // - générosité : availMonthMin / max      (récompense ceux qui se rendent dispos)
+  // - générosité : availMonthMin / max      (weight_preference : récompense ceux qui se rendent dispos)
   // - équité     : 1 - assignedSoFar / max  (ceux qui ont déjà beaucoup reçu redescendent)
+  // Si la somme des poids = 0 (admin a tout mis à zéro) → fallback 50/20/30.
+  const wRawPerf = s.weight_performance ?? 0;
+  const wRawEq = s.weight_equity ?? 0;
+  const wRawGen = s.weight_preference ?? 0;
+  const wSum = wRawPerf + wRawEq + wRawGen;
+  const wPerf = wSum > 0 ? wRawPerf / wSum : 0.5;
+  const wEq = wSum > 0 ? wRawEq / wSum : 0.2;
+  const wGen = wSum > 0 ? wRawGen / wSum : 0.3;
   const ranking = (cands: Employee[], _date: string): Employee[] => {
     if (cands.length === 0) return cands;
-    const maxAvail = Math.max(1, ...cands.map((c) => c.availMonthMin));
-    const maxAssigned = Math.max(1, ...cands.map((c) => c.totalAssignedMin));
+    const maxAvail = Math.max(0, ...cands.map((c) => c.availMonthMin));
+    const maxAssigned = Math.max(0, ...cands.map((c) => c.totalAssignedMin));
     const priority = (e: Employee) => {
       const perf = Math.max(0, Math.min(1, e.score / 10));
-      const gen = e.availMonthMin / maxAvail;
-      const eq = 1 - (e.totalAssignedMin / maxAssigned);
-      return 0.5 * perf + 0.3 * gen + 0.2 * eq;
+      const gen = maxAvail > 0 ? e.availMonthMin / maxAvail : 0;
+      const eq = maxAssigned > 0 ? 1 - (e.totalAssignedMin / maxAssigned) : 1;
+      return wPerf * perf + wGen * gen + wEq * eq;
     };
     return [...cands].sort((a, b) => priority(b) - priority(a));
   };
