@@ -257,15 +257,16 @@ function DisposMonitoringPage() {
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Studios</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Status</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Dispos</th>
+              <th className="text-left px-3 py-2" style={{ fontWeight: 500 }} title="Heures assignées / heures de dispo">Fulfilment</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Dernière saisie</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center" style={{ color: "var(--muted-foreground)" }}>Chargement…</td></tr>
+              <tr><td colSpan={8} className="px-3 py-6 text-center" style={{ color: "var(--muted-foreground)" }}>Chargement…</td></tr>
             )}
             {!isLoading && filteredRows.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center" style={{ color: "var(--muted-foreground)" }}>Aucun employé</td></tr>
+              <tr><td colSpan={8} className="px-3 py-6 text-center" style={{ color: "var(--muted-foreground)" }}>Aucun employé</td></tr>
             )}
             {filteredRows.map((r) => (
               <tr
@@ -294,11 +295,20 @@ function DisposMonitoringPage() {
                   <StatusBadge status={r.status} count={r.availsCount} />
                 </td>
                 <td className="px-3 py-2">{r.availsCount}</td>
+                <td className="px-3 py-2">
+                  <FulfilmentCell
+                    availHours={r.availHours}
+                    assignedHours={r.assignedHours}
+                    assignedShifts={r.assignedShifts}
+                    pct={r.fulfillmentPct}
+                  />
+                </td>
                 <td className="px-3 py-2" style={{ color: "var(--muted-foreground)" }}>
                   {formatDateTime(r.lastSubmittedAt)}
                 </td>
               </tr>
             ))}
+
           </tbody>
         </table>
       </div>
