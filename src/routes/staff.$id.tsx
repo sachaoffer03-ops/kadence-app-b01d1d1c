@@ -238,6 +238,7 @@ function EmployeeDetailPage() {
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="historique">Historique shifts</TabsTrigger>
           <TabsTrigger value="formation">Formation</TabsTrigger>
         </TabsList>
         <TabsContent value="profil">
