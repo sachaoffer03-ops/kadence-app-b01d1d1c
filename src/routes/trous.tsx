@@ -368,7 +368,6 @@ function TrousPage() {
             const eligibleAvailable = eligibleAll.filter((p) => isAvailableFor(p.id, hole.shift_date, hole.start_time, hole.end_time));
             const eligibleAvailableIds = new Set(eligibleAvailable.map((p) => p.id));
             const eligible = eligibleAll.filter((p) => !eligibleAvailableIds.has(p.id));
-            const others = profiles.filter((p) => inStudio(p.id) && !(profileRoles.get(p.id) || []).includes(hole.business_role));
             const allProps = proposalsByShift.get(hole.id) || [];
             const pendingProps = allProps.filter((p) => p.status === "pending");
             const sel = selected[hole.id] || new Set<string>();
@@ -530,22 +529,6 @@ function TrousPage() {
                       </div>
                     </div>
 
-                    {others.length > 0 && (
-                      <div className="mt-4">
-                        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 6 }}>
-                          Autres employés ({others.length})
-                        </div>
-                        <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-                          {others.map((p, i) => (
-                            <EmpRow key={p.id} profile={p} roles={profileRoles.get(p.id) || []}
-                              isLast={i === others.length - 1}
-                              checked={sel.has(p.id)}
-                              existingProposal={allProps.find((x) => x.user_id === p.id)}
-                              onToggle={() => toggleSelect(hole.id, p.id)} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
