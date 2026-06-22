@@ -1086,7 +1086,7 @@ function PhotosEditor({ studioId, roleId, roleName, phase = "closing" }: { studi
       template_id: template.id,
       label: "Nouvelle zone",
       description: "",
-      is_required: false,
+      is_required: true,
       order_index: next,
       reference_photo_url: null,
     });
