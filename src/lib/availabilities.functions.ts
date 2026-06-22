@@ -383,8 +383,22 @@ export interface MonthlyDispoStatus {
   contracts: string[];
   studioIds: string[];
   availsCount: number;
+  availHours: number;
+  assignedHours: number;
+  assignedShifts: number;
+  fulfillmentPct: number | null;
   lastSubmittedAt: string | null;
   status: "complete" | "partial" | "empty";
+}
+
+function diffHours(start: string, end: string): number {
+  // "HH:MM:SS" -> minutes
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  const d = toMin(end) - toMin(start);
+  return d > 0 ? d / 60 : 0;
 }
 
 export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
@@ -423,16 +437,34 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
 
     const { data: avails } = await supabaseAdmin
       .from("availabilities")
-      .select("user_id, avail_date, created_at")
+      .select("user_id, avail_date, start_time, end_time, created_at")
       .gte("avail_date", start)
       .lte("avail_date", end);
 
-    const byUser = new Map<string, { count: number; lastAt: string | null }>();
+    const byUser = new Map<string, { count: number; hours: number; lastAt: string | null }>();
     for (const a of avails ?? []) {
-      const existing = byUser.get(a.user_id) ?? { count: 0, lastAt: null };
+      const existing = byUser.get(a.user_id) ?? { count: 0, hours: 0, lastAt: null };
       existing.count++;
+      existing.hours += diffHours(a.start_time, a.end_time);
       if (!existing.lastAt || a.created_at > existing.lastAt) existing.lastAt = a.created_at;
       byUser.set(a.user_id, existing);
+    }
+
+    const { data: shiftsRows } = await supabaseAdmin
+      .from("shifts")
+      .select("user_id, start_time, end_time, status")
+      .gte("shift_date", start)
+      .lte("shift_date", end)
+      .not("user_id", "is", null)
+      .neq("status", "cancelled");
+
+    const shiftsByUser = new Map<string, { count: number; hours: number }>();
+    for (const s of shiftsRows ?? []) {
+      if (!s.user_id) continue;
+      const existing = shiftsByUser.get(s.user_id) ?? { count: 0, hours: 0 };
+      existing.count++;
+      existing.hours += diffHours(s.start_time, s.end_time);
+      shiftsByUser.set(s.user_id, existing);
     }
 
     const { data: studios } = await supabaseAdmin
@@ -456,7 +488,8 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
     }
 
     const rows: MonthlyDispoStatus[] = employees.map((p: any) => {
-      const info = byUser.get(p.id) ?? { count: 0, lastAt: null };
+      const info = byUser.get(p.id) ?? { count: 0, hours: 0, lastAt: null };
+      const sh = shiftsByUser.get(p.id) ?? { count: 0, hours: 0 };
       let status: "complete" | "partial" | "empty";
       if (info.count === 0) status = "empty";
       else if (info.count < 5) status = "partial";
@@ -468,6 +501,10 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
       const contractSet = contractsByUser.get(p.id) ?? new Set<string>();
       if (p.contract) contractSet.add(p.contract);
 
+      const availHours = Math.round(info.hours * 10) / 10;
+      const assignedHours = Math.round(sh.hours * 10) / 10;
+      const fulfillmentPct = info.hours > 0 ? Math.round((sh.hours / info.hours) * 100) : null;
+
       return {
         userId: p.id,
         firstName: p.first_name ?? "",
@@ -476,6 +513,10 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
         contracts: Array.from(contractSet),
         studioIds: Array.from(studioSet),
         availsCount: info.count,
+        availHours,
+        assignedHours,
+        assignedShifts: sh.count,
+        fulfillmentPct,
         lastSubmittedAt: info.lastAt,
         status,
       };
@@ -494,6 +535,7 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
       rows,
     };
   });
+
 
 export const remindLateEmployees = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
