@@ -32,6 +32,8 @@ interface Proposal {
   id: string; shift_id: string; user_id: string; status: string;
   sent_at: string; responded_at: string | null;
 }
+interface Availability { user_id: string; avail_date: string; start_time: string; end_time: string }
+interface UnavailPeriod { user_id: string; start_date: string; end_date: string }
 
 function elapsed(sentAt: string): string {
   const ms = Date.now() - new Date(sentAt).getTime();
