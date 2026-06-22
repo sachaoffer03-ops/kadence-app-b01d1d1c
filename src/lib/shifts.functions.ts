@@ -10,7 +10,6 @@ async function assertEmployeeHasRequiredRoles(
   shiftBusinessRole: string,
   segments: RoleSegment[] | null,
 ) {
-  if (!isHybridShift(segments)) return;
   const required = getRequiredRoles(segments, shiftBusinessRole);
   const { data, error } = await supabase
     .from("user_business_roles")
@@ -20,7 +19,20 @@ async function assertEmployeeHasRequiredRoles(
   const userRoles = new Set((data ?? []).map((r: any) => r.role));
   const missing = required.filter((r) => !userRoles.has(r));
   if (missing.length > 0) {
-    throw new Error(`Shift hybride : l'employé n'a pas le(s) rôle(s) ${missing.join(", ")}`);
+    throw new Error(`L'employé n'a pas le(s) rôle(s) ${missing.join(", ")}`);
+  }
+}
+
+async function assertEmployeeHasStudio(supabase: any, userId: string, studioId: string | null | undefined) {
+  if (!studioId) return;
+  const { data, error } = await supabase
+    .from("user_studios")
+    .select("studio_id")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  const studios = (data ?? []).map((r: any) => r.studio_id);
+  if (studios.length > 0 && !studios.includes(studioId)) {
+    throw new Error("L'employé n'est pas rattaché à ce studio");
   }
 }
 
@@ -119,7 +131,15 @@ export const updateShift = createServerFn({ method: "POST" })
     const nextDate = data.shiftDate ?? current.shift_date;
     const nextStart = data.startTime ?? current.start_time;
     const nextEnd = data.endTime ?? current.end_time;
+    const nextRoleSegments = data.roleSegments !== undefined ? data.roleSegments : prevSegs;
+    const nextBusinessRole = data.roleSegments && data.roleSegments.length > 0
+      ? data.roleSegments[0].role
+      : (data.businessRole ?? current.business_role);
     await assertNoOverlap(supabase, nextUserId, nextDate, nextStart, nextEnd, data.shiftId);
+    if (nextUserId) {
+      await assertEmployeeHasRequiredRoles(supabase, nextUserId, nextBusinessRole, nextRoleSegments as RoleSegment[] | null);
+      await assertEmployeeHasStudio(supabase, nextUserId, current.studio_id);
+    }
 
     // Validation des segments (si fournis)
     if (data.roleSegments !== undefined && data.roleSegments !== null) {
