@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
 import { getRoleStyle } from "@/lib/staff-helpers";
