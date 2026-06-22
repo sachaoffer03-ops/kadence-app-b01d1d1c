@@ -32,6 +32,8 @@ interface Proposal {
   id: string; shift_id: string; user_id: string; status: string;
   sent_at: string; responded_at: string | null;
 }
+interface Availability { user_id: string; avail_date: string; start_time: string; end_time: string }
+interface UnavailPeriod { user_id: string; start_date: string; end_date: string }
 
 function elapsed(sentAt: string): string {
   const ms = Date.now() - new Date(sentAt).getTime();
@@ -64,6 +66,8 @@ function TrousPage() {
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [profileRoles, setProfileRoles] = useState<Map<string, string[]>>(new Map());
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [availabilities, setAvailabilities] = useState<Availability[]>([]);
+  const [unavail, setUnavail] = useState<UnavailPeriod[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
   const [filterRole, setFilterRole] = useState<string>("tous");
@@ -78,12 +82,14 @@ function TrousPage() {
 
   const load = async () => {
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }] = await Promise.all([
+    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }] = await Promise.all([
       supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id").is("user_id", null).gte("shift_date", today).order("shift_date").order("start_time"),
       supabase.from("studios").select("id,name"),
       supabase.from("profiles").select("id,first_name,last_name,score").eq("status", "active"),
       supabase.from("user_business_roles").select("user_id,role"),
       supabase.from("shift_proposals").select("id,shift_id,user_id,status,sent_at,responded_at").order("sent_at", { ascending: false }),
+      supabase.from("availabilities").select("user_id,avail_date,start_time,end_time").gte("avail_date", today),
+      supabase.from("unavailability_periods").select("user_id,start_date,end_date").gte("end_date", today),
     ]);
     setHoles((h || []) as Hole[]);
     setStudios(new Map((st || []).map((s) => [s.id, s.name])));
@@ -92,6 +98,8 @@ function TrousPage() {
     (ubr || []).forEach((r) => { const arr = m.get(r.user_id) || []; arr.push(r.role); m.set(r.user_id, arr); });
     setProfileRoles(m);
     setProposals((pr || []) as Proposal[]);
+    setAvailabilities((av || []) as Availability[]);
+    setUnavail((un || []) as UnavailPeriod[]);
   };
 
   useEffect(() => {
@@ -157,6 +165,34 @@ function TrousPage() {
     proposals.forEach((p) => { const a = m.get(p.shift_id) || []; a.push(p); m.set(p.shift_id, a); });
     return m;
   }, [proposals]);
+
+  // Index dispo / indispo par user
+  const availByUserDate = useMemo(() => {
+    const m = new Map<string, Availability[]>();
+    availabilities.forEach((a) => {
+      const k = `${a.user_id}|${a.avail_date}`;
+      const arr = m.get(k) || []; arr.push(a); m.set(k, arr);
+    });
+    return m;
+  }, [availabilities]);
+  const unavailByUser = useMemo(() => {
+    const m = new Map<string, UnavailPeriod[]>();
+    unavail.forEach((u) => {
+      const arr = m.get(u.user_id) || []; arr.push(u); m.set(u.user_id, arr);
+    });
+    return m;
+  }, [unavail]);
+
+  const isAvailableFor = (userId: string, date: string, start: string, end: string): boolean => {
+    // Indisponible si dans une période d'indispo
+    const ups = unavailByUser.get(userId) || [];
+    for (const u of ups) {
+      if (date >= u.start_date && date <= u.end_date) return false;
+    }
+    // Doit avoir une dispo couvrant [start,end]
+    const avs = availByUserDate.get(`${userId}|${date}`) || [];
+    return avs.some((a) => a.start_time <= start && a.end_time >= end);
+  };
 
   const toggleSelect = (shiftId: string, userId: string) => {
     setSelected((prev) => {
@@ -310,7 +346,10 @@ function TrousPage() {
             const isOpen = expanded === hole.id;
             const rc = getRoleStyle(hole.business_role);
             const studioName = hole.studio_id ? studios.get(hole.studio_id) || "—" : "—";
-            const eligible = profiles.filter((p) => (profileRoles.get(p.id) || []).includes(hole.business_role));
+            const eligibleAll = profiles.filter((p) => (profileRoles.get(p.id) || []).includes(hole.business_role));
+            const eligibleAvailable = eligibleAll.filter((p) => isAvailableFor(p.id, hole.shift_date, hole.start_time, hole.end_time));
+            const eligibleAvailableIds = new Set(eligibleAvailable.map((p) => p.id));
+            const eligible = eligibleAll.filter((p) => !eligibleAvailableIds.has(p.id));
             const others = profiles.filter((p) => !(profileRoles.get(p.id) || []).includes(hole.business_role));
             const allProps = proposalsByShift.get(hole.id) || [];
             const pendingProps = allProps.filter((p) => p.status === "pending");
@@ -436,13 +475,33 @@ function TrousPage() {
                     </div>
 
 
-                    <div className="mt-2">
+                    {eligibleAvailable.length > 0 && (
+                      <div className="mt-2">
+                        <div className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--coral-dark)", fontWeight: 500, marginBottom: 6 }}>
+                          <Check size={11} /> Disponibles à ce créneau ({eligibleAvailable.length})
+                        </div>
+                        <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--coral)" }}>
+                          {eligibleAvailable.map((p, i) => (
+                            <EmpRow key={p.id} profile={p} roles={profileRoles.get(p.id) || []} primary={hole.business_role}
+                              isLast={i === eligibleAvailable.length - 1}
+                              checked={sel.has(p.id)}
+                              available
+                              existingProposal={allProps.find((x) => x.user_id === p.id)}
+                              onToggle={() => toggleSelect(hole.id, p.id)} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-4">
                       <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 6 }}>
-                        Employés éligibles ({eligible.length})
+                        Autres éligibles ({eligible.length})
                       </div>
                       <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
                         {eligible.length === 0 ? (
-                          <div className="px-4 py-6 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun employé n'a ce rôle.</div>
+                          <div className="px-4 py-6 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                            {eligibleAvailable.length > 0 ? "Tous les autres éligibles ont indiqué être dispo." : "Aucun employé n'a ce rôle."}
+                          </div>
                         ) : eligible.map((p, i) => (
                           <EmpRow key={p.id} profile={p} roles={profileRoles.get(p.id) || []} primary={hole.business_role}
                             isLast={i === eligible.length - 1}
@@ -480,12 +539,12 @@ function TrousPage() {
   );
 }
 
-function EmpRow({ profile, roles, primary, isLast, checked, existingProposal, onToggle }: {
+function EmpRow({ profile, roles, primary, isLast, checked, available, existingProposal, onToggle }: {
   profile: ProfileRow; roles: string[]; primary?: string; isLast: boolean;
-  checked: boolean; existingProposal?: Proposal; onToggle: () => void;
+  checked: boolean; available?: boolean; existingProposal?: Proposal; onToggle: () => void;
 }) {
   const isPending = existingProposal?.status === "pending";
-  const disabled = isPending; // ne pas re-proposer si déjà en attente
+  const disabled = isPending;
   return (
     <label className="flex items-center gap-3 px-4 py-2.5 cursor-pointer" style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)", opacity: disabled ? 0.55 : 1 }}>
       <input
@@ -497,6 +556,11 @@ function EmpRow({ profile, roles, primary, isLast, checked, existingProposal, on
           <Link to="/staff/$id" params={{ id: profile.id }} onClick={(e) => e.stopPropagation()} className="hover:underline" style={{ fontSize: 13, fontWeight: 500 }}>
             {fullName(profile)}
           </Link>
+          {available && (
+            <span className="rounded-full inline-flex items-center gap-0.5 px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
+              <Check size={8} /> Dispo
+            </span>
+          )}
           {roles.map((r) => {
             const c = getRoleStyle(r);
             const m = primary === r;
