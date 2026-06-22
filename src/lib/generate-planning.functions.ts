@@ -73,7 +73,10 @@ interface Employee {
   totalAssignedMin: number;
   allow_extended_hours: boolean;
   weekly_hours_cap: number | null;
+  // Total des minutes de dispos déclarées sur le mois (générosité)
+  availMonthMin: number;
 }
+
 
 interface AvailRange { startMin: number; endMin: number; }
 
