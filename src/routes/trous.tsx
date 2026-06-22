@@ -475,13 +475,33 @@ function TrousPage() {
                     </div>
 
 
-                    <div className="mt-2">
+                    {eligibleAvailable.length > 0 && (
+                      <div className="mt-2">
+                        <div className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--coral-dark)", fontWeight: 500, marginBottom: 6 }}>
+                          <Check size={11} /> Disponibles à ce créneau ({eligibleAvailable.length})
+                        </div>
+                        <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--coral)" }}>
+                          {eligibleAvailable.map((p, i) => (
+                            <EmpRow key={p.id} profile={p} roles={profileRoles.get(p.id) || []} primary={hole.business_role}
+                              isLast={i === eligibleAvailable.length - 1}
+                              checked={sel.has(p.id)}
+                              available
+                              existingProposal={allProps.find((x) => x.user_id === p.id)}
+                              onToggle={() => toggleSelect(hole.id, p.id)} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-4">
                       <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 6 }}>
-                        Employés éligibles ({eligible.length})
+                        Autres éligibles ({eligible.length})
                       </div>
                       <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
                         {eligible.length === 0 ? (
-                          <div className="px-4 py-6 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun employé n'a ce rôle.</div>
+                          <div className="px-4 py-6 text-center" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                            {eligibleAvailable.length > 0 ? "Tous les autres éligibles ont indiqué être dispo." : "Aucun employé n'a ce rôle."}
+                          </div>
                         ) : eligible.map((p, i) => (
                           <EmpRow key={p.id} profile={p} roles={profileRoles.get(p.id) || []} primary={hole.business_role}
                             isLast={i === eligible.length - 1}
