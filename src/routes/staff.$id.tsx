@@ -538,6 +538,9 @@ function EmployeeDetailPage() {
         <TabsContent value="documents">
           <EmployeeDocumentsTab userId={emp.id} firstName={emp.first_name} />
         </TabsContent>
+        <TabsContent value="historique">
+          <EmployeeShiftsHistoryTab userId={emp.id} />
+        </TabsContent>
         <TabsContent value="formation">
           <EmployeeFormationTab userId={emp.id} />
         </TabsContent>
