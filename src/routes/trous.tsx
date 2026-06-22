@@ -381,7 +381,7 @@ function TrousPage() {
             const inStudio = (uid: string) => !hole.studio_id || (userStudios.get(uid)?.has(hole.studio_id) ?? false);
             const eligibleAllUnsorted = profiles.filter((p) => inStudio(p.id) && (profileRoles.get(p.id) || []).includes(hole.business_role));
 
-            // Système au mérite : 50% score + 30% générosité (dispos du mois) + 20% équité (déjà reçu)
+            // Système au mérite : poids issus de ai_planning_settings (perf/équité/générosité)
             // Référence : mois du trou (YYYY-MM).
             const holeMonth = hole.shift_date.slice(0, 7);
             const monthStart = `${holeMonth}-01`;
@@ -408,14 +408,14 @@ function TrousPage() {
             const rankByMerit = (list: ProfileRow[]): ProfileRow[] => {
               if (list.length === 0) return list;
               const stats = new Map(list.map((p) => [p.id, { av: availMinOf(p.id), as: assignedMinOf(p.id) }]));
-              const maxAv = Math.max(1, ...Array.from(stats.values()).map((s) => s.av));
-              const maxAs = Math.max(1, ...Array.from(stats.values()).map((s) => s.as));
+              const maxAv = Math.max(0, ...Array.from(stats.values()).map((s) => s.av));
+              const maxAs = Math.max(0, ...Array.from(stats.values()).map((s) => s.as));
               const prio = (p: ProfileRow) => {
                 const st = stats.get(p.id)!;
                 const perf = Math.max(0, Math.min(1, (p.score ?? 7) / 10));
-                const gen = st.av / maxAv;
-                const eq = 1 - (st.as / maxAs);
-                return 0.5 * perf + 0.3 * gen + 0.2 * eq;
+                const gen = maxAv > 0 ? st.av / maxAv : 0;
+                const eq = maxAs > 0 ? 1 - (st.as / maxAs) : 1;
+                return scoringWeights.perf * perf + scoringWeights.gen * gen + scoringWeights.eq * eq;
               };
               return [...list].sort((a, b) => prio(b) - prio(a));
             };
