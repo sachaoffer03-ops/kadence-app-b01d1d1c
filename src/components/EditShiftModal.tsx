@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { updateShift, deleteShift } from "@/lib/shifts.functions";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
 import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
-import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
+import { getRequiredRoles, validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
 
 type EmployeeOpt = {
   id: string;
@@ -88,18 +88,22 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
   // Rôles autorisés = STRICTEMENT ceux du studio (pas de fallback global).
   const availableRoles = studioRoles;
   const hasNoRoles = availableRoles.length === 0;
+  const requiredRoles = useMemo(
+    () => (isMulti ? getRequiredRoles(segments, role) : (role ? [role] : [])),
+    [isMulti, segments, role],
+  );
 
   const eligible = useMemo(() => {
     return employees
       .filter((e) =>
-        (e.roles.length === 0 || e.roles.includes(role)) &&
+        requiredRoles.every((requiredRole) => e.roles.includes(requiredRole)) &&
         (e.studio_ids.length === 0 || e.studio_ids.includes(shift.studioId)),
       )
       .filter((e) =>
         search === "" ||
         `${e.first_name} ${e.last_name}`.toLowerCase().includes(search.toLowerCase()),
       );
-  }, [employees, search, role, shift.studioId]);
+  }, [employees, search, requiredRoles, shift.studioId]);
 
   const durationMin = useMemo(() => {
     const [sh, sm] = start.split(":").map(Number);
@@ -136,6 +140,18 @@ export function EditShiftModal({ shift, onClose, onSaved, onDeleted }: Props) {
     if (isMulti && !segValidation.ok) {
       toast.error("Segments invalides", { description: segValidation.errors[0] });
       return;
+    }
+    const selectedEmployee = userId ? employees.find((e) => e.id === userId) : null;
+    if (selectedEmployee) {
+      const missingRoles = requiredRoles.filter((requiredRole) => !selectedEmployee.roles.includes(requiredRole));
+      if (missingRoles.length > 0) {
+        toast.error("Employé non éligible", { description: `Rôle manquant : ${missingRoles.join(", ")}` });
+        return;
+      }
+      if (selectedEmployee.studio_ids.length > 0 && !selectedEmployee.studio_ids.includes(shift.studioId)) {
+        toast.error("Employé non éligible", { description: "Il n'est pas rattaché à ce studio" });
+        return;
+      }
     }
     setSaving(true);
     try {
