@@ -557,8 +557,13 @@ function FillHoleModal({ shift, employees, onClose, onFill }: { shift: PlanningS
                     {emp.firstName.charAt(0)}{emp.lastName.charAt(0)}
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span style={{ fontSize: 12, fontWeight: 500 }}>{emp.firstName} {emp.lastName}</span>
+                      {emp.available && (
+                        <span className="rounded-full px-1.5 py-0.5 flex items-center gap-0.5" style={{ fontSize: 8, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
+                          <Check size={7} /> Dispo
+                        </span>
+                      )}
                       {emp.aiRecommended && (
                         <span className="rounded-full px-1.5 py-0.5 flex items-center gap-0.5" style={{ fontSize: 8, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
                           <Sparkles size={7} /> Top
