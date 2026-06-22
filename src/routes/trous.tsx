@@ -539,12 +539,12 @@ function TrousPage() {
   );
 }
 
-function EmpRow({ profile, roles, primary, isLast, checked, existingProposal, onToggle }: {
+function EmpRow({ profile, roles, primary, isLast, checked, available, existingProposal, onToggle }: {
   profile: ProfileRow; roles: string[]; primary?: string; isLast: boolean;
-  checked: boolean; existingProposal?: Proposal; onToggle: () => void;
+  checked: boolean; available?: boolean; existingProposal?: Proposal; onToggle: () => void;
 }) {
   const isPending = existingProposal?.status === "pending";
-  const disabled = isPending; // ne pas re-proposer si déjà en attente
+  const disabled = isPending;
   return (
     <label className="flex items-center gap-3 px-4 py-2.5 cursor-pointer" style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)", opacity: disabled ? 0.55 : 1 }}>
       <input
@@ -556,6 +556,11 @@ function EmpRow({ profile, roles, primary, isLast, checked, existingProposal, on
           <Link to="/staff/$id" params={{ id: profile.id }} onClick={(e) => e.stopPropagation()} className="hover:underline" style={{ fontSize: 13, fontWeight: 500 }}>
             {fullName(profile)}
           </Link>
+          {available && (
+            <span className="rounded-full inline-flex items-center gap-0.5 px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
+              <Check size={8} /> Dispo
+            </span>
+          )}
           {roles.map((r) => {
             const c = getRoleStyle(r);
             const m = primary === r;
