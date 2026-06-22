@@ -530,22 +530,6 @@ function TrousPage() {
                       </div>
                     </div>
 
-                    {others.length > 0 && (
-                      <div className="mt-4">
-                        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 6 }}>
-                          Autres employés ({others.length})
-                        </div>
-                        <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-                          {others.map((p, i) => (
-                            <EmpRow key={p.id} profile={p} roles={profileRoles.get(p.id) || []}
-                              isLast={i === others.length - 1}
-                              checked={sel.has(p.id)}
-                              existingProposal={allProps.find((x) => x.user_id === p.id)}
-                              onToggle={() => toggleSelect(hole.id, p.id)} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
