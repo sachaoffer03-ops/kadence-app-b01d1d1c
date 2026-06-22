@@ -503,7 +503,18 @@ function FillHoleModal({ shift, employees, onClose, onFill }: { shift: PlanningS
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1.02)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
               >
-                <div style={{ fontSize: 12, fontWeight: 500 }}>{emp.firstName} {emp.lastName.charAt(0)}.</div>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span style={{ fontSize: 12, fontWeight: 500 }}>{emp.firstName} {emp.lastName.charAt(0)}.</span>
+                  {emp.available ? (
+                    <span className="rounded-full inline-flex items-center gap-0.5 px-1.5 py-0.5" style={{ fontSize: 8, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
+                      <Check size={7} /> Dispo
+                    </span>
+                  ) : (
+                    <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 8, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }} title="Pas de dispo déclarée sur ce créneau">
+                      Fit rôle
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1 mt-0.5" style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
                   <Star size={8} style={{ color: "var(--coral)" }} />
                   {emp.roleScore.toFixed(1)}
