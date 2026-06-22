@@ -257,15 +257,16 @@ function DisposMonitoringPage() {
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Studios</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Status</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Dispos</th>
+              <th className="text-left px-3 py-2" style={{ fontWeight: 500 }} title="Heures assignées / heures de dispo">Fulfilment</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Dernière saisie</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center" style={{ color: "var(--muted-foreground)" }}>Chargement…</td></tr>
+              <tr><td colSpan={8} className="px-3 py-6 text-center" style={{ color: "var(--muted-foreground)" }}>Chargement…</td></tr>
             )}
             {!isLoading && filteredRows.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center" style={{ color: "var(--muted-foreground)" }}>Aucun employé</td></tr>
+              <tr><td colSpan={8} className="px-3 py-6 text-center" style={{ color: "var(--muted-foreground)" }}>Aucun employé</td></tr>
             )}
             {filteredRows.map((r) => (
               <tr
@@ -294,11 +295,20 @@ function DisposMonitoringPage() {
                   <StatusBadge status={r.status} count={r.availsCount} />
                 </td>
                 <td className="px-3 py-2">{r.availsCount}</td>
+                <td className="px-3 py-2">
+                  <FulfilmentCell
+                    availHours={r.availHours}
+                    assignedHours={r.assignedHours}
+                    assignedShifts={r.assignedShifts}
+                    pct={r.fulfillmentPct}
+                  />
+                </td>
                 <td className="px-3 py-2" style={{ color: "var(--muted-foreground)" }}>
                   {formatDateTime(r.lastSubmittedAt)}
                 </td>
               </tr>
             ))}
+
           </tbody>
         </table>
       </div>
@@ -341,3 +351,36 @@ function StatusBadge({ status, count }: { status: "complete" | "partial" | "empt
     </span>
   );
 }
+
+function FulfilmentCell({
+  availHours,
+  assignedHours,
+  assignedShifts,
+  pct,
+}: {
+  availHours: number;
+  assignedHours: number;
+  assignedShifts: number;
+  pct: number | null;
+}) {
+  if (availHours === 0 && assignedHours === 0) {
+    return <span style={{ color: "var(--muted-foreground)" }}>—</span>;
+  }
+  const safePct = pct ?? 0;
+  const color =
+    pct === null ? "var(--muted-foreground)" :
+    safePct >= 80 ? "#2f7a4d" :
+    safePct >= 40 ? "#c97a2b" :
+    "#b3261e";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
+      <span style={{ fontWeight: 500, color }}>
+        {pct === null ? "—" : `${safePct}%`}
+      </span>
+      <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+        {assignedHours}h / {availHours}h · {assignedShifts} shift{assignedShifts > 1 ? "s" : ""}
+      </span>
+    </div>
+  );
+}
+
