@@ -66,6 +66,8 @@ function TrousPage() {
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [profileRoles, setProfileRoles] = useState<Map<string, string[]>>(new Map());
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [availabilities, setAvailabilities] = useState<Availability[]>([]);
+  const [unavail, setUnavail] = useState<UnavailPeriod[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
   const [filterRole, setFilterRole] = useState<string>("tous");
