@@ -63,8 +63,7 @@ export function EmployeeShiftsHistoryTab({ userId }: Props) {
 
   useEffect(() => {
     let active = true;
-    (async () => {
-      setLoading(true);
+    const load = async () => {
       const [{ data: sh }, { data: sts }] = await Promise.all([
         supabase
           .from("shifts")
@@ -78,8 +77,24 @@ export function EmployeeShiftsHistoryTab({ userId }: Props) {
       setShifts((sh || []) as ShiftRow[]);
       setStudios(Object.fromEntries((sts || []).map((s) => [s.id, s.name])));
       setLoading(false);
-    })();
-    return () => { active = false; };
+    };
+    setLoading(true);
+    load();
+
+    // Temps réel : tout changement sur un shift de cet employé déclenche un reload
+    const channel = supabase
+      .channel(`shifts-history-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "shifts", filter: `user_id=eq.${userId}` },
+        () => { load(); },
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
   }, [userId]);
 
   const today = todayStr();
