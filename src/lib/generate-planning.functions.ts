@@ -452,6 +452,19 @@ async function runEngine(ctx: EngineCtx) {
     return availMap.get(uid)?.get(date) ?? [];
   };
 
+  // Total dispos déclarées sur le mois par employé (générosité)
+  for (const e of employees.values()) {
+    let total = 0;
+    const byDate = availMap.get(e.id);
+    if (byDate) {
+      for (const ranges of byDate.values()) {
+        for (const r of ranges) total += Math.max(0, r.endMin - r.startMin);
+      }
+    }
+    e.availMonthMin = total;
+  }
+
+
   logs.phases.load_ms = Date.now() - t_load;
   logs.employee_count = employees.size;
   logs.template_count = templatesRows.length;
