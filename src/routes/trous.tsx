@@ -69,6 +69,7 @@ function TrousPage() {
   const [availabilities, setAvailabilities] = useState<Availability[]>([]);
   const [unavail, setUnavail] = useState<UnavailPeriod[]>([]);
   const [assignedShifts, setAssignedShifts] = useState<Array<{ user_id: string; shift_date: string; start_time: string; end_time: string }>>([]);
+  const [scoringWeights, setScoringWeights] = useState<{ perf: number; eq: number; gen: number }>({ perf: 0.5, eq: 0.2, gen: 0.3 });
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
@@ -86,7 +87,7 @@ function TrousPage() {
 
   const load = async () => {
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }, { data: sh }] = await Promise.all([
+    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }, { data: sh }, { data: settings }] = await Promise.all([
       supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id").is("user_id", null).gte("shift_date", today).order("shift_date").order("start_time"),
       supabase.from("studios").select("id,name"),
       supabase.from("profiles").select("id,first_name,last_name,score,studio_id").eq("status", "active"),
@@ -96,6 +97,7 @@ function TrousPage() {
       supabase.from("unavailability_periods").select("user_id,start_date,end_date").gte("end_date", today),
       supabase.from("user_studios").select("user_id,studio_id"),
       supabase.from("shifts").select("user_id,shift_date,start_time,end_time").not("user_id", "is", null).neq("status", "cancelled").gte("shift_date", today.slice(0, 8) + "01"),
+      supabase.from("ai_planning_settings").select("weight_performance,weight_equity,weight_preference").order("updated_at", { ascending: false }).limit(1),
     ]);
     setHoles((h || []) as Hole[]);
     setStudios(new Map((st || []).map((s) => [s.id, s.name])));
@@ -107,6 +109,14 @@ function TrousPage() {
     setAvailabilities((av || []) as Availability[]);
     setUnavail((un || []) as UnavailPeriod[]);
     setAssignedShifts((sh || []) as any);
+    const row: any = (settings as any[] | null)?.[0];
+    const wp = Number(row?.weight_performance ?? 0);
+    const we = Number(row?.weight_equity ?? 0);
+    const wg = Number(row?.weight_preference ?? 0);
+    const sum = wp + we + wg;
+    setScoringWeights(sum > 0
+      ? { perf: wp / sum, eq: we / sum, gen: wg / sum }
+      : { perf: 0.5, eq: 0.2, gen: 0.3 });
     const usMap = new Map<string, Set<string>>();
     (us || []).forEach((r: any) => {
       const s = usMap.get(r.user_id) || new Set<string>();
@@ -371,7 +381,7 @@ function TrousPage() {
             const inStudio = (uid: string) => !hole.studio_id || (userStudios.get(uid)?.has(hole.studio_id) ?? false);
             const eligibleAllUnsorted = profiles.filter((p) => inStudio(p.id) && (profileRoles.get(p.id) || []).includes(hole.business_role));
 
-            // Système au mérite : 50% score + 30% générosité (dispos du mois) + 20% équité (déjà reçu)
+            // Système au mérite : poids issus de ai_planning_settings (perf/équité/générosité)
             // Référence : mois du trou (YYYY-MM).
             const holeMonth = hole.shift_date.slice(0, 7);
             const monthStart = `${holeMonth}-01`;
@@ -398,14 +408,14 @@ function TrousPage() {
             const rankByMerit = (list: ProfileRow[]): ProfileRow[] => {
               if (list.length === 0) return list;
               const stats = new Map(list.map((p) => [p.id, { av: availMinOf(p.id), as: assignedMinOf(p.id) }]));
-              const maxAv = Math.max(1, ...Array.from(stats.values()).map((s) => s.av));
-              const maxAs = Math.max(1, ...Array.from(stats.values()).map((s) => s.as));
+              const maxAv = Math.max(0, ...Array.from(stats.values()).map((s) => s.av));
+              const maxAs = Math.max(0, ...Array.from(stats.values()).map((s) => s.as));
               const prio = (p: ProfileRow) => {
                 const st = stats.get(p.id)!;
                 const perf = Math.max(0, Math.min(1, (p.score ?? 7) / 10));
-                const gen = st.av / maxAv;
-                const eq = 1 - (st.as / maxAs);
-                return 0.5 * perf + 0.3 * gen + 0.2 * eq;
+                const gen = maxAv > 0 ? st.av / maxAv : 0;
+                const eq = maxAs > 0 ? 1 - (st.as / maxAs) : 1;
+                return scoringWeights.perf * perf + scoringWeights.gen * gen + scoringWeights.eq * eq;
               };
               return [...list].sort((a, b) => prio(b) - prio(a));
             };
