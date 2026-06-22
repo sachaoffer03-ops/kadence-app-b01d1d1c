@@ -418,9 +418,7 @@ function TrousPage() {
             const pendingProps = allProps.filter((p) => p.status === "pending");
             const sel = selected[hole.id] || new Set<string>();
 
-            const allProps = proposalsByShift.get(hole.id) || [];
-            const pendingProps = allProps.filter((p) => p.status === "pending");
-            const sel = selected[hole.id] || new Set<string>();
+
 
             return (
               <div key={hole.id} className="rounded-xl border overflow-hidden" style={{ backgroundColor: "var(--card)", borderColor: isOpen ? "var(--coral)" : "var(--border)", borderWidth: isOpen ? 1.5 : 1 }}>
