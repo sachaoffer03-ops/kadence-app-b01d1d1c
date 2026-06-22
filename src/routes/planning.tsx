@@ -418,12 +418,13 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onConfirm, onUnl
 function FillHoleModal({ shift, employees, onClose, onFill }: { shift: PlanningShift; employees: EmployeeLite[]; onClose: () => void; onFill: (empId: string) => void }) {
   const [search, setSearch] = useState("");
   const [availableSet, setAvailableSet] = useState<Set<string>>(new Set());
+  const [studioMembers, setStudioMembers] = useState<Set<string>>(new Set());
 
-  // Charge les dispos/indispos pour la date du shift et calcule qui couvre le créneau
+  // Charge les dispos/indispos pour la date du shift et les membres du studio
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [{ data: av }, { data: un }] = await Promise.all([
+      const [{ data: av }, { data: un }, { data: us }] = await Promise.all([
         supabase.from("availabilities")
           .select("user_id,start_time,end_time")
           .eq("avail_date", shift.shiftDate),
@@ -431,6 +432,9 @@ function FillHoleModal({ shift, employees, onClose, onFill }: { shift: PlanningS
           .select("user_id")
           .lte("start_date", shift.shiftDate)
           .gte("end_date", shift.shiftDate),
+        supabase.from("user_studios")
+          .select("user_id")
+          .eq("studio_id", shift.studioId),
       ]);
       if (cancelled) return;
       const unavailable = new Set((un || []).map((u: any) => u.user_id));
@@ -440,14 +444,16 @@ function FillHoleModal({ shift, employees, onClose, onFill }: { shift: PlanningS
         if (a.start_time <= shift.startTime && a.end_time >= shift.endTime) ok.add(a.user_id);
       });
       setAvailableSet(ok);
+      setStudioMembers(new Set((us || []).map((r: any) => r.user_id)));
     })();
     return () => { cancelled = true; };
-  }, [shift.shiftDate, shift.startTime, shift.endTime]);
+  }, [shift.shiftDate, shift.startTime, shift.endTime, shift.studioId]);
 
-  // Employés ayant le rôle requis, triés : (1) dispo + meilleur score IA, puis (2) reste par score IA
+  // Employés du studio ayant le rôle requis, triés : (1) dispo + meilleur score IA, puis (2) reste par score IA
   const eligible = useMemo(() => {
     return employees
       .filter((e) => e.roles.includes(shift.role))
+      .filter((e) => studioMembers.has(e.id) || e.studioId === shift.studioId)
       .map((e) => {
         const roleScore = e.roleScores?.[shift.role] || e.score;
         const hoursLeft = e.quotaMax ? e.quotaMax - (e.quotaUsed || 0) : null;
@@ -460,7 +466,7 @@ function FillHoleModal({ shift, employees, onClose, onFill }: { shift: PlanningS
         return b.aiScore - a.aiScore;
       })
       .map((e, i) => ({ ...e, aiRecommended: i < 3 }));
-  }, [shift.role, employees, availableSet]);
+  }, [shift.role, shift.studioId, employees, availableSet, studioMembers]);
 
   const filtered = eligible.filter((e) =>
     search === "" || `${e.firstName} ${e.lastName}`.toLowerCase().includes(search.toLowerCase())

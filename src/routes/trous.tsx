@@ -80,16 +80,19 @@ function TrousPage() {
     return () => clearInterval(i);
   }, []);
 
+  const [userStudios, setUserStudios] = useState<Map<string, Set<string>>>(new Map());
+
   const load = async () => {
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }] = await Promise.all([
+    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }] = await Promise.all([
       supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id").is("user_id", null).gte("shift_date", today).order("shift_date").order("start_time"),
       supabase.from("studios").select("id,name"),
-      supabase.from("profiles").select("id,first_name,last_name,score").eq("status", "active"),
+      supabase.from("profiles").select("id,first_name,last_name,score,studio_id").eq("status", "active"),
       supabase.from("user_business_roles").select("user_id,role"),
       supabase.from("shift_proposals").select("id,shift_id,user_id,status,sent_at,responded_at").order("sent_at", { ascending: false }),
       supabase.from("availabilities").select("user_id,avail_date,start_time,end_time").gte("avail_date", today),
       supabase.from("unavailability_periods").select("user_id,start_date,end_date").gte("end_date", today),
+      supabase.from("user_studios").select("user_id,studio_id"),
     ]);
     setHoles((h || []) as Hole[]);
     setStudios(new Map((st || []).map((s) => [s.id, s.name])));
@@ -100,6 +103,20 @@ function TrousPage() {
     setProposals((pr || []) as Proposal[]);
     setAvailabilities((av || []) as Availability[]);
     setUnavail((un || []) as UnavailPeriod[]);
+    const usMap = new Map<string, Set<string>>();
+    (us || []).forEach((r: any) => {
+      const s = usMap.get(r.user_id) || new Set<string>();
+      s.add(r.studio_id);
+      usMap.set(r.user_id, s);
+    });
+    (p || []).forEach((pr: any) => {
+      if (pr.studio_id) {
+        const s = usMap.get(pr.id) || new Set<string>();
+        s.add(pr.studio_id);
+        usMap.set(pr.id, s);
+      }
+    });
+    setUserStudios(usMap);
   };
 
   useEffect(() => {
@@ -346,11 +363,12 @@ function TrousPage() {
             const isOpen = expanded === hole.id;
             const rc = getRoleStyle(hole.business_role);
             const studioName = hole.studio_id ? studios.get(hole.studio_id) || "—" : "—";
-            const eligibleAll = profiles.filter((p) => (profileRoles.get(p.id) || []).includes(hole.business_role));
+            const inStudio = (uid: string) => !hole.studio_id || (userStudios.get(uid)?.has(hole.studio_id) ?? false);
+            const eligibleAll = profiles.filter((p) => inStudio(p.id) && (profileRoles.get(p.id) || []).includes(hole.business_role));
             const eligibleAvailable = eligibleAll.filter((p) => isAvailableFor(p.id, hole.shift_date, hole.start_time, hole.end_time));
             const eligibleAvailableIds = new Set(eligibleAvailable.map((p) => p.id));
             const eligible = eligibleAll.filter((p) => !eligibleAvailableIds.has(p.id));
-            const others = profiles.filter((p) => !(profileRoles.get(p.id) || []).includes(hole.business_role));
+            const others = profiles.filter((p) => inStudio(p.id) && !(profileRoles.get(p.id) || []).includes(hole.business_role));
             const allProps = proposalsByShift.get(hole.id) || [];
             const pendingProps = allProps.filter((p) => p.status === "pending");
             const sel = selected[hole.id] || new Set<string>();
