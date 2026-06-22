@@ -109,6 +109,14 @@ function TrousPage() {
     setAvailabilities((av || []) as Availability[]);
     setUnavail((un || []) as UnavailPeriod[]);
     setAssignedShifts((sh || []) as any);
+    const row: any = (settings as any[] | null)?.[0];
+    const wp = Number(row?.weight_performance ?? 0);
+    const we = Number(row?.weight_equity ?? 0);
+    const wg = Number(row?.weight_preference ?? 0);
+    const sum = wp + we + wg;
+    setScoringWeights(sum > 0
+      ? { perf: wp / sum, eq: we / sum, gen: wg / sum }
+      : { perf: 0.5, eq: 0.2, gen: 0.3 });
     const usMap = new Map<string, Set<string>>();
     (us || []).forEach((r: any) => {
       const s = usMap.get(r.user_id) || new Set<string>();
