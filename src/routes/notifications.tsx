@@ -77,32 +77,38 @@ function NotificationsPage() {
 
   return (
     <div className="p-4 md:p-6" style={{ maxWidth: 880 }}>
-      <div className="flex items-end justify-between mb-5 gap-3 flex-wrap">
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 500, letterSpacing: "-0.02em" }}>Notifications</h1>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 mb-5">
+        <div className="min-w-0">
+          <h1 className="truncate" style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em" }}>Notifications</h1>
           <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>
             {total} notification{total > 1 ? "s" : ""}
           </p>
         </div>
         <button
           onClick={handleMarkAll}
-          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5"
-          style={{ fontSize: 12, fontWeight: 500, borderColor: "var(--border)", backgroundColor: "var(--card)" }}
+          className="inline-flex items-center gap-1.5 rounded-md border px-3 shrink-0"
+          style={{ fontSize: 12, fontWeight: 500, borderColor: "var(--border)", backgroundColor: "var(--card)", minHeight: 40 }}
         >
           <CheckCheck size={13} />
-          Tout marquer lu
+          <span className="hidden sm:inline">Tout marquer lu</span>
+          <span className="sm:hidden">Tout lu</span>
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      {/* Filtres : scroll horizontal mobile, wrap desktop */}
+      <div
+        className="flex md:flex-wrap gap-2 mb-4 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
+      >
         {(["all", "unread", "urgent"] as Filter[]).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className="rounded-full px-3 py-1"
+            className="rounded-full px-3 shrink-0"
             style={{
               fontSize: 12,
               fontWeight: 500,
+              minHeight: 32,
               backgroundColor: filter === f ? "var(--foreground)" : "var(--muted)",
               color: filter === f ? "var(--card)" : "var(--foreground)",
             }}
@@ -110,13 +116,14 @@ function NotificationsPage() {
             {f === "all" ? "Toutes" : f === "unread" ? "Non lues" : "Urgentes"}
           </button>
         ))}
-        <div style={{ width: 1, backgroundColor: "var(--border)", margin: "0 4px" }} />
+        <div className="shrink-0" style={{ width: 1, backgroundColor: "var(--border)", margin: "0 4px" }} />
         <button
           onClick={() => setCategory(undefined)}
-          className="rounded-full px-3 py-1"
+          className="rounded-full px-3 shrink-0"
           style={{
             fontSize: 12,
             fontWeight: 500,
+            minHeight: 32,
             backgroundColor: !category ? "var(--foreground)" : "var(--muted)",
             color: !category ? "var(--card)" : "var(--foreground)",
           }}
@@ -127,10 +134,11 @@ function NotificationsPage() {
           <button
             key={c}
             onClick={() => setCategory(c)}
-            className="rounded-full px-3 py-1"
+            className="rounded-full px-3 shrink-0"
             style={{
               fontSize: 12,
               fontWeight: 500,
+              minHeight: 32,
               backgroundColor: category === c ? NOTIF_CATEGORY_META[c].color : "var(--muted)",
               color: category === c ? "#fff" : "var(--foreground)",
             }}

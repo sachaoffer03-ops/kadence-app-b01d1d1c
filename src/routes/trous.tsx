@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { UserPlus, UserCheck, ChevronDown, ChevronUp, Check, AlertTriangle, Send, Clock, X, Trash2 } from "lucide-react";
+import { UserPlus, UserCheck, ChevronDown, Check, AlertTriangle, Send, Clock, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getRoleStyle, hhmm, fullName } from "@/lib/staff-helpers";
@@ -296,16 +296,14 @@ function TrousPage() {
 
   return (
     <div className="p-4 md:p-6">
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle size={18} style={{ color: filtered.length > 0 ? "var(--danger-text)" : "var(--success-text)" }} />
-            <h1 style={{ fontSize: 18, fontWeight: 500 }}>
-              {filtered.length} trou{filtered.length > 1 ? "s" : ""} à combler
-            </h1>
-          </div>
-          <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Sélectionnez un trou et envoyez une proposition à un ou plusieurs employés. Le premier qui accepte décroche le shift.</p>
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-1">
+          <AlertTriangle size={18} className="shrink-0" style={{ color: filtered.length > 0 ? "var(--danger-text)" : "var(--success-text)" }} />
+          <h1 className="truncate" style={{ fontSize: 18, fontWeight: 500 }}>
+            {filtered.length} trou{filtered.length > 1 ? "s" : ""} à combler
+          </h1>
         </div>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Sélectionnez un trou et envoyez une proposition à un ou plusieurs employés. Le premier qui accepte décroche le shift.</p>
       </div>
 
       {(studioFilter || weekRange) && (
@@ -324,15 +322,19 @@ function TrousPage() {
         </div>
       )}
 
-      <div className="flex items-center gap-2 flex-wrap mb-3">
-        <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500, marginRight: 4 }}>Rôle</span>
+      {/* Filtres rôle : scroll horizontal mobile */}
+      <div
+        className="flex md:flex-wrap items-center gap-2 mb-3 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
+      >
+        <span className="shrink-0" style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500, marginRight: 4 }}>Rôle</span>
         {[{ value: "tous", label: "Tous" }, ...allRoles.map((r) => ({ value: r, label: r }))].map((opt) => {
           const a = filterRole === opt.value;
           const count = opt.value === "tous" ? scoped.length : scoped.filter((h) => h.business_role === opt.value).length;
           const rc = opt.value !== "tous" ? getRoleStyle(opt.value) : null;
           return (
-            <button key={opt.value} onClick={() => setFilterRole(opt.value)} className="rounded-full px-2.5 py-1 flex items-center gap-1.5"
-              style={{ fontSize: 11, fontWeight: a ? 500 : 400, backgroundColor: a ? "var(--foreground)" : "transparent", color: a ? "var(--card)" : "var(--muted-foreground)", border: a ? "none" : "0.5px solid var(--border)" }}>
+            <button key={opt.value} onClick={() => setFilterRole(opt.value)} className="rounded-full px-2.5 py-1 flex items-center gap-1.5 shrink-0"
+              style={{ fontSize: 11, fontWeight: a ? 500 : 400, backgroundColor: a ? "var(--foreground)" : "transparent", color: a ? "var(--card)" : "var(--muted-foreground)", border: a ? "none" : "0.5px solid var(--border)", minHeight: 32 }}>
               {opt.label}
               {count > 0 && (
                 <span className="rounded-full inline-flex items-center justify-center"
@@ -348,14 +350,17 @@ function TrousPage() {
       </div>
 
       {studioOptions.length > 1 && (
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500, marginRight: 4 }}>Studio</span>
+        <div
+          className="flex md:flex-wrap items-center gap-2 mb-4 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
+        >
+          <span className="shrink-0" style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500, marginRight: 4 }}>Studio</span>
           {[{ id: "tous", name: "Tous" }, ...studioOptions].map((opt) => {
             const a = filterStudio === opt.id;
             const count = opt.id === "tous" ? scoped.length : scoped.filter((h) => h.studio_id === opt.id).length;
             return (
-              <button key={opt.id} onClick={() => setFilterStudio(opt.id)} className="rounded-full px-2.5 py-1 flex items-center gap-1.5"
-                style={{ fontSize: 11, fontWeight: a ? 500 : 400, backgroundColor: a ? "var(--foreground)" : "transparent", color: a ? "var(--card)" : "var(--muted-foreground)", border: a ? "none" : "0.5px solid var(--border)" }}>
+              <button key={opt.id} onClick={() => setFilterStudio(opt.id)} className="rounded-full px-2.5 py-1 flex items-center gap-1.5 shrink-0"
+                style={{ fontSize: 11, fontWeight: a ? 500 : 400, backgroundColor: a ? "var(--foreground)" : "transparent", color: a ? "var(--card)" : "var(--muted-foreground)", border: a ? "none" : "0.5px solid var(--border)", minHeight: 32 }}>
                 {opt.name}
                 {count > 0 && (
                   <span className="rounded-full inline-flex items-center justify-center"
@@ -432,17 +437,17 @@ function TrousPage() {
 
             return (
               <div key={hole.id} className="rounded-xl border overflow-hidden" style={{ backgroundColor: "var(--card)", borderColor: isOpen ? "var(--coral)" : "var(--border)", borderWidth: isOpen ? 1.5 : 1 }}>
-                <button onClick={() => setExpanded(isOpen ? null : hole.id)} className="w-full flex items-center gap-4 px-5 py-4 text-left">
+                <button onClick={() => setExpanded(isOpen ? null : hole.id)} className="w-full flex items-center gap-3 px-4 py-4 md:px-5 text-left">
                   <span className="rounded-full shrink-0" style={{ width: 10, height: 10, backgroundColor: rc.dot }} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                       <span style={{ fontSize: 14, fontWeight: 500 }}>{hole.business_role}</span>
-                      <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
+                      <span className="hidden sm:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
                       <span style={{ fontSize: 13 }}>{new Date(hole.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}</span>
                       <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
-                      <span style={{ fontSize: 13 }}>{hhmm(hole.start_time)} — {hhmm(hole.end_time)}</span>
-                      <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
-                      <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{studioName}</span>
+                      <span style={{ fontSize: 13 }}>{hhmm(hole.start_time)}—{hhmm(hole.end_time)}</span>
+                      <span className="hidden sm:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
+                      <span className="truncate" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{studioName}</span>
                     </div>
                     {pendingProps.length > 0 && (() => {
                       const oldest = pendingProps[pendingProps.length - 1];
@@ -466,11 +471,11 @@ function TrousPage() {
                       );
                     })()}
                   </div>
-                  {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  <ChevronDown size={16} className="shrink-0 transition-transform" style={{ transform: isOpen ? "rotate(180deg)" : "none" }} />
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-5" style={{ borderTop: "0.5px solid var(--border)" }}>
+                  <div className="px-4 pb-5 md:px-5" style={{ borderTop: "0.5px solid var(--border)" }}>
                     {/* Propositions en cours */}
                     {allProps.length > 0 && (
                       <div className="mt-4">

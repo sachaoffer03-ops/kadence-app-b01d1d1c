@@ -118,36 +118,36 @@ function SignalementsPage() {
   return (
     <div className="p-4 md:p-6 max-w-5xl">
       {/* Hero header */}
-      <div className="rounded-xl p-6 md:p-7 mb-5" style={{ backgroundColor: "var(--coral-light)", borderRadius: 14 }}>
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <div>
+      <div className="rounded-xl p-5 md:p-7 mb-5" style={{ backgroundColor: "var(--coral-light)", borderRadius: 14 }}>
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 md:gap-6">
+          <div className="min-w-0">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />
-              <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <span className="rounded-full shrink-0" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />
+              <span className="truncate" style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 Remontées de l'équipe
               </span>
             </div>
-            <h1 style={{ fontSize: 28, fontWeight: 500, lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+            <h1 className="text-[22px] md:text-[28px]" style={{ fontWeight: 500, lineHeight: 1.15, letterSpacing: "-0.02em" }}>
               Signalements
             </h1>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 6 }}>
               {activeCount} à traiter{todayCount > 0 ? ` · ${todayCount} aujourd'hui` : ""}
             </p>
           </div>
-          <div className="flex flex-wrap items-end gap-6 md:gap-8">
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--coral)" }}>
+          <div className="grid grid-cols-3 gap-3 md:flex md:flex-wrap md:items-end md:gap-8">
+            <div className="min-w-0">
+              <div className="text-[20px] md:text-[28px]" style={{ fontWeight: 500, letterSpacing: "-0.02em", color: "var(--coral)" }}>
                 {activeCount}
               </div>
-              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>À traiter</div>
+              <div className="truncate" style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>À traiter</div>
             </div>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em" }}>{stockCount}</div>
-              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>Stock</div>
+            <div className="min-w-0">
+              <div className="text-[18px] md:text-[22px]" style={{ fontWeight: 500, letterSpacing: "-0.02em" }}>{stockCount}</div>
+              <div className="truncate" style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>Stock</div>
             </div>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em" }}>{resolvedCount}</div>
-              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>Résolus</div>
+            <div className="min-w-0">
+              <div className="text-[18px] md:text-[22px]" style={{ fontWeight: 500, letterSpacing: "-0.02em" }}>{resolvedCount}</div>
+              <div className="truncate" style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>Résolus</div>
             </div>
           </div>
         </div>
