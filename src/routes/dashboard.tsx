@@ -99,34 +99,35 @@ function DashboardPage() {
 
   return (
     <div className="p-4 md:p-6">
-      <div className="rounded-xl border p-6 md:p-8" style={{ backgroundColor: "var(--coral-light)", borderColor: "transparent", borderRadius: 14 }}>
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="animate-pulse-dot rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />
-              <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+      <div className="rounded-xl border p-5 md:p-8" style={{ backgroundColor: "var(--coral-light)", borderColor: "transparent", borderRadius: 14 }}>
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 md:gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-3 md:mb-4">
+              <span className="animate-pulse-dot rounded-full shrink-0" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />
+              <span className="truncate" style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 Aujourd'hui · {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
               </span>
             </div>
-            <h1 style={{ fontSize: 28, fontWeight: 500, lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+            <h1 className="text-[22px] md:text-[28px]" style={{ fontWeight: 500, lineHeight: 1.15, letterSpacing: "-0.02em" }}>
               {data.todayShifts.length} shift{data.todayShifts.length > 1 ? "s" : ""} aujourd'hui
             </h1>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 6 }}>
               {data.studios.size} studio{data.studios.size > 1 ? "s" : ""} · {new Set(data.todayShifts.map((s) => s.user_id).filter(Boolean)).size} employé{data.todayShifts.length > 1 ? "s" : ""}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-5 md:gap-8">
+          {/* Stats : grille compacte mobile, flex desktop */}
+          <div className="grid grid-cols-4 gap-2 md:flex md:flex-wrap md:items-center md:gap-8">
             <HeroStat value={inProgress.toString()} label="En cours" accent />
             <HeroStat value={done.toString()} label="Terminés" />
             <HeroStat value={upcoming.toString()} label="À venir" />
             <div className="hidden md:block" style={{ width: 1, height: 36, backgroundColor: "var(--border)" }} />
-            <div>
+            <div className="min-w-0">
               <div className="flex items-baseline gap-1">
-                <span style={{ fontSize: 28, fontWeight: 500, letterSpacing: "-0.02em" }}>{coverage}</span>
-                <span style={{ fontSize: 14, color: "var(--muted-foreground)" }}>%</span>
+                <span className="text-[18px] md:text-[28px]" style={{ fontWeight: 500, letterSpacing: "-0.02em" }}>{coverage}</span>
+                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>%</span>
               </div>
-              <div style={{ fontSize: 11, color: coverage === 100 ? "var(--success-text)" : "var(--warning-text)", marginTop: 2 }}>
-                {coverage === 100 ? "Couverture complète" : "Trous à combler"}
+              <div className="truncate" style={{ fontSize: 10, color: coverage === 100 ? "var(--success-text)" : "var(--warning-text)", marginTop: 2 }}>
+                {coverage === 100 ? "Complet" : "Trous"}
               </div>
             </div>
           </div>
@@ -190,9 +191,9 @@ function DashboardPage() {
 
 function HeroStat({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
   return (
-    <div>
-      <div style={{ fontSize: 22, fontWeight: 500, color: accent ? "var(--coral)" : "var(--foreground)", letterSpacing: "-0.02em" }}>{value}</div>
-      <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{label}</div>
+    <div className="min-w-0">
+      <div className="text-[18px] md:text-[22px]" style={{ fontWeight: 500, color: accent ? "var(--coral)" : "var(--foreground)", letterSpacing: "-0.02em" }}>{value}</div>
+      <div className="truncate" style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 2 }}>{label}</div>
     </div>
   );
 }
