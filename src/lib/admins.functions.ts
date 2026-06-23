@@ -64,3 +64,29 @@ export const createAdminAccount = createServerFn({ method: "POST" })
 
     return { ok: true, user_id: newId };
   });
+
+export const setUserPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({
+      email: z.string().email(),
+      password: z.string().min(6).max(128),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: list, error: listErr } = await supabaseAdmin
+      .from("profiles").select("id").ilike("email", data.email).maybeSingle();
+    if (listErr) throw new Error(listErr.message);
+    if (!list) throw new Error("Utilisateur introuvable");
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(list.id, {
+      password: data.password,
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
