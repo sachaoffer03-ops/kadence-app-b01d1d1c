@@ -136,7 +136,7 @@ function RapportsPage() {
 
   return (
     <main className="p-4 md:p-6 max-w-[1400px] w-full mx-auto">
-      <h1 className="text-2xl font-medium mb-1">Rapports</h1>
+      <h1 className="text-[22px] md:text-2xl font-medium mb-1" style={{ letterSpacing: "-0.02em" }}>Rapports</h1>
       <p className="text-sm text-[var(--muted-foreground)] mb-4">Vue d'ensemble de l'activité de l'équipe sur la période sélectionnée.</p>
 
           <FiltersBar
@@ -146,7 +146,7 @@ function RapportsPage() {
           />
 
           <Tabs value={search.view} onValueChange={(v) => setView(v as any)}>
-            <TabsList>
+            <TabsList className="w-full md:w-auto overflow-x-auto">
               <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
               <TabsTrigger value="employees">Par employé</TabsTrigger>
               <TabsTrigger value="shifts">Par shift</TabsTrigger>
@@ -175,10 +175,10 @@ function RapportsPage() {
                   <div className="space-y-2">
                     {(performers.data?.top ?? []).map((p) => (
                       <button key={p.userId} onClick={() => setOpenEmployee(p.userId)} className="w-full flex items-center gap-2 text-sm py-1.5 hover:bg-[var(--muted)] rounded px-2 text-left">
-                        <div className="w-7 h-7 rounded-full bg-[var(--muted)] flex items-center justify-center text-xs">{p.firstName?.[0]}{p.lastName?.[0]}</div>
-                        <span className="flex-1">{p.firstName} {p.lastName}</span>
-                        <span className="font-medium">{p.score.toFixed(1)}</span>
-                        <span className="text-xs" style={{ color: p.delta > 0 ? "var(--success-text)" : p.delta < 0 ? "var(--danger-text)" : "var(--muted-foreground)" }}>
+                        <div className="w-7 h-7 shrink-0 rounded-full bg-[var(--muted)] flex items-center justify-center text-xs">{p.firstName?.[0]}{p.lastName?.[0]}</div>
+                        <span className="flex-1 min-w-0 truncate">{p.firstName} {p.lastName}</span>
+                        <span className="font-medium shrink-0 tabular-nums">{p.score.toFixed(1)}</span>
+                        <span className="text-xs shrink-0 tabular-nums" style={{ color: p.delta > 0 ? "var(--success-text)" : p.delta < 0 ? "var(--danger-text)" : "var(--muted-foreground)" }}>
                           {p.delta > 0 ? "↑" : p.delta < 0 ? "↓" : "="} {Math.abs(p.delta).toFixed(1)}
                         </span>
                       </button>
@@ -191,12 +191,12 @@ function RapportsPage() {
                   <div className="space-y-2">
                     {(performers.data?.bottom ?? []).map((p) => (
                       <button key={p.userId} onClick={() => setOpenEmployee(p.userId)} className="w-full flex items-center gap-2 text-sm py-1.5 hover:bg-[var(--muted)] rounded px-2 text-left">
-                        <div className="w-7 h-7 rounded-full bg-[var(--muted)] flex items-center justify-center text-xs">{p.firstName?.[0]}{p.lastName?.[0]}</div>
-                        <div className="flex-1">
-                          <div>{p.firstName} {p.lastName}</div>
-                          {p.reason && <div className="text-xs text-[var(--muted-foreground)]">{p.reason}</div>}
+                        <div className="w-7 h-7 shrink-0 rounded-full bg-[var(--muted)] flex items-center justify-center text-xs">{p.firstName?.[0]}{p.lastName?.[0]}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate">{p.firstName} {p.lastName}</div>
+                          {p.reason && <div className="truncate text-xs text-[var(--muted-foreground)]">{p.reason}</div>}
                         </div>
-                        <span className="font-medium">{p.score.toFixed(1)}</span>
+                        <span className="font-medium shrink-0 tabular-nums">{p.score.toFixed(1)}</span>
                       </button>
                     ))}
                     {!performers.data?.bottom.length && <div className="text-xs text-[var(--muted-foreground)]">Aucun</div>}
@@ -209,10 +209,13 @@ function RapportsPage() {
                 <div className="divide-y" style={{ borderColor: "var(--border)" }}>
                   {(recent.data ?? []).map((r) => (
                     <button key={r.shiftId} onClick={() => setOpenShift(r.shiftId)} className="w-full flex items-center gap-2 text-sm py-2 hover:bg-[var(--muted)] rounded px-2 text-left">
-                      <div className="w-7 h-7 rounded-full bg-[var(--muted)] flex items-center justify-center text-xs">{r.firstName?.[0]}{r.lastName?.[0]}</div>
-                      <span className="flex-1">{r.firstName} {r.lastName}</span>
-                      <span className="text-xs text-[var(--muted-foreground)]">{r.businessRole} · {r.studioName}</span>
-                      <span className="text-xs text-[var(--muted-foreground)]">{r.shiftDate}</span>
+                      <div className="w-7 h-7 shrink-0 rounded-full bg-[var(--muted)] flex items-center justify-center text-xs">{r.firstName?.[0]}{r.lastName?.[0]}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate">{r.firstName} {r.lastName}</div>
+                        <div className="truncate text-xs text-[var(--muted-foreground)] md:hidden">{r.businessRole} · {r.studioName} · {r.shiftDate}</div>
+                      </div>
+                      <span className="hidden md:inline text-xs text-[var(--muted-foreground)] shrink-0">{r.businessRole} · {r.studioName}</span>
+                      <span className="hidden md:inline text-xs text-[var(--muted-foreground)] shrink-0">{r.shiftDate}</span>
                     </button>
                   ))}
                   {!recent.data?.length && <div className="text-xs text-[var(--muted-foreground)] py-2">Aucune activité</div>}
