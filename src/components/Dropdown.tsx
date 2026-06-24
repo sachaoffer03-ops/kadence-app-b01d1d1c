@@ -101,10 +101,12 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
             border: "0.5px solid var(--border)",
             boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
             padding: 4,
-            maxHeight: Math.max(160, window.innerHeight - pos.top - 16),
+            maxHeight: pos.maxHeight,
             overflowY: "auto",
             overscrollBehavior: "contain",
+            WebkitOverflowScrolling: "touch",
           }}
+
 
         >
           {options.map(o => {
