@@ -353,17 +353,15 @@ function StatusBadge({ status, count }: { status: "complete" | "partial" | "empt
 }
 
 function FulfilmentCell({
-  availHours,
-  assignedHours,
+  availDays,
   assignedShifts,
   pct,
 }: {
-  availHours: number;
-  assignedHours: number;
+  availDays: number;
   assignedShifts: number;
   pct: number | null;
 }) {
-  if (availHours === 0 && assignedHours === 0) {
+  if (availDays === 0 && assignedShifts === 0) {
     return <span style={{ color: "var(--muted-foreground)" }}>—</span>;
   }
   const safePct = pct ?? 0;
@@ -378,9 +376,10 @@ function FulfilmentCell({
         {pct === null ? "—" : `${safePct}%`}
       </span>
       <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-        {assignedHours}h / {availHours}h · {assignedShifts} shift{assignedShifts > 1 ? "s" : ""}
+        {assignedShifts} shift{assignedShifts > 1 ? "s" : ""} / {availDays} jour{availDays > 1 ? "s" : ""} dispo
       </span>
     </div>
   );
 }
+
 
