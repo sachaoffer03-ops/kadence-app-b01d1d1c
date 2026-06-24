@@ -152,7 +152,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   const addRow = async () => {
     if (!studioId) return toast.error("Aucun studio");
     if (ROLES.length === 0) return toast.error("Configure d'abord un rôle métier pour ce studio");
-    const { error } = await supabase.from("staffing_templates").insert({
+    const { data, error } = await supabase.from("staffing_templates").insert({
       studio_id: studioId,
       day_of_week: 0,
       start_time: "10:00",
@@ -163,10 +163,12 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
       required_contract: null,
       allowed_contracts: [],
       allowed_roles: [],
-    });
-    if (error) return toast.error("Ajout impossible", { description: error.message });
-    reload();
+    }).select().single();
+    if (error || !data) return toast.error("Ajout impossible", { description: error?.message });
+    // Append localement, sans reload, pour ne pas redécaler les lignes existantes
+    setTemplates((p) => [...p, data as Template]);
   };
+
 
   const updateRow = async (id: string, patch: Partial<Template>) => {
     const prev = templates;
