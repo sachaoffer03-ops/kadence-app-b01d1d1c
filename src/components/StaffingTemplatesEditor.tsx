@@ -32,11 +32,53 @@ interface Template {
 
 const CONTRACTS = ["Tous", "CDI", "Étudiant", "Flexi"] as const;
 const QUARTER_TIME_REGEX = /^([01]\d|2[0-3]):(00|15|30|45)$/;
+const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const toMinutes = (time: string) => {
   const [hours, minutes] = time.slice(0, 5).split(":").map(Number);
   return (hours || 0) * 60 + (minutes || 0);
 };
+
+const roundToQuarter = (time: string): string | null => {
+  const v = time.slice(0, 5);
+  if (!HHMM_REGEX.test(v)) return null;
+  const [h, m] = v.split(":").map(Number);
+  let total = h * 60 + Math.round(m / 15) * 15;
+  if (total >= 24 * 60) total = 24 * 60 - 15;
+  if (total < 0) total = 0;
+  const hh = Math.floor(total / 60);
+  const mm = total % 60;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+};
+
+// Input dédié pour heures : buffer local, commit sur blur (avec arrondi 15 min)
+function TimeInput({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+  const [local, setLocal] = useState(value.slice(0, 5));
+  useEffect(() => { setLocal(value.slice(0, 5)); }, [value]);
+  return (
+    <input
+      type="time"
+      step={900}
+      value={local}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        const rounded = roundToQuarter(local);
+        if (!rounded) {
+          setLocal(value.slice(0, 5));
+          toast.error("Heure invalide", { description: "Format attendu HH:MM" });
+          return;
+        }
+        if (rounded !== value.slice(0, 5)) {
+          setLocal(rounded);
+          onCommit(rounded);
+        }
+      }}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      className="rounded-md px-2 py-1.5 outline-none"
+      style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }}
+    />
+  );
+}
 
 interface Props {
   lockedStudioName?: string;
@@ -110,7 +152,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   const addRow = async () => {
     if (!studioId) return toast.error("Aucun studio");
     if (ROLES.length === 0) return toast.error("Configure d'abord un rôle métier pour ce studio");
-    const { error } = await supabase.from("staffing_templates").insert({
+    const { data, error } = await supabase.from("staffing_templates").insert({
       studio_id: studioId,
       day_of_week: 0,
       start_time: "10:00",
@@ -121,10 +163,12 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
       required_contract: null,
       allowed_contracts: [],
       allowed_roles: [],
-    });
-    if (error) return toast.error("Ajout impossible", { description: error.message });
-    reload();
+    }).select().single();
+    if (error || !data) return toast.error("Ajout impossible", { description: error?.message });
+    // Append localement, sans reload, pour ne pas redécaler les lignes existantes
+    setTemplates((p) => [...p, data as Template]);
   };
+
 
   const updateRow = async (id: string, patch: Partial<Template>) => {
     const prev = templates;
@@ -287,15 +331,12 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                           <Dropdown value={DAYS[t.day_of_week]} options={DAYS} onChange={(v) => updateRow(t.id, { day_of_week: DAYS.indexOf(v) })} minWidth={120} />
                         </td>
                         <td className="px-2 py-1">
-                          <input type="time" step={900} value={t.start_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { start_time: e.target.value })}
-                            className="rounded-md px-2 py-1.5 outline-none"
-                            style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
+                          <TimeInput value={t.start_time} onCommit={(v) => updateRow(t.id, { start_time: v })} />
                         </td>
                         <td className="px-2 py-1">
-                          <input type="time" step={900} value={t.end_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { end_time: e.target.value })}
-                            className="rounded-md px-2 py-1.5 outline-none"
-                            style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
+                          <TimeInput value={t.end_time} onCommit={(v) => updateRow(t.id, { end_time: v })} />
                         </td>
+
                         <td className="px-2 py-1">
                           {t.role_segments ? (
                             <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5"
