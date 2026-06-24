@@ -32,11 +32,53 @@ interface Template {
 
 const CONTRACTS = ["Tous", "CDI", "Étudiant", "Flexi"] as const;
 const QUARTER_TIME_REGEX = /^([01]\d|2[0-3]):(00|15|30|45)$/;
+const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const toMinutes = (time: string) => {
   const [hours, minutes] = time.slice(0, 5).split(":").map(Number);
   return (hours || 0) * 60 + (minutes || 0);
 };
+
+const roundToQuarter = (time: string): string | null => {
+  const v = time.slice(0, 5);
+  if (!HHMM_REGEX.test(v)) return null;
+  const [h, m] = v.split(":").map(Number);
+  let total = h * 60 + Math.round(m / 15) * 15;
+  if (total >= 24 * 60) total = 24 * 60 - 15;
+  if (total < 0) total = 0;
+  const hh = Math.floor(total / 60);
+  const mm = total % 60;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+};
+
+// Input dédié pour heures : buffer local, commit sur blur (avec arrondi 15 min)
+function TimeInput({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+  const [local, setLocal] = useState(value.slice(0, 5));
+  useEffect(() => { setLocal(value.slice(0, 5)); }, [value]);
+  return (
+    <input
+      type="time"
+      step={900}
+      value={local}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        const rounded = roundToQuarter(local);
+        if (!rounded) {
+          setLocal(value.slice(0, 5));
+          toast.error("Heure invalide", { description: "Format attendu HH:MM" });
+          return;
+        }
+        if (rounded !== value.slice(0, 5)) {
+          setLocal(rounded);
+          onCommit(rounded);
+        }
+      }}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      className="rounded-md px-2 py-1.5 outline-none"
+      style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }}
+    />
+  );
+}
 
 interface Props {
   lockedStudioName?: string;
