@@ -441,29 +441,31 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
       .gte("avail_date", start)
       .lte("avail_date", end);
 
-    const byUser = new Map<string, { count: number; hours: number; lastAt: string | null }>();
+    const byUser = new Map<string, { count: number; hours: number; days: Set<string>; lastAt: string | null }>();
     for (const a of avails ?? []) {
-      const existing = byUser.get(a.user_id) ?? { count: 0, hours: 0, lastAt: null };
+      const existing = byUser.get(a.user_id) ?? { count: 0, hours: 0, days: new Set<string>(), lastAt: null };
       existing.count++;
       existing.hours += diffHours(a.start_time, a.end_time);
+      existing.days.add(a.avail_date);
       if (!existing.lastAt || a.created_at > existing.lastAt) existing.lastAt = a.created_at;
       byUser.set(a.user_id, existing);
     }
 
     const { data: shiftsRows } = await supabaseAdmin
       .from("shifts")
-      .select("user_id, start_time, end_time, status")
+      .select("user_id, shift_date, start_time, end_time, status")
       .gte("shift_date", start)
       .lte("shift_date", end)
       .not("user_id", "is", null)
       .neq("status", "cancelled");
 
-    const shiftsByUser = new Map<string, { count: number; hours: number }>();
+    const shiftsByUser = new Map<string, { count: number; hours: number; days: Set<string> }>();
     for (const s of shiftsRows ?? []) {
       if (!s.user_id) continue;
-      const existing = shiftsByUser.get(s.user_id) ?? { count: 0, hours: 0 };
+      const existing = shiftsByUser.get(s.user_id) ?? { count: 0, hours: 0, days: new Set<string>() };
       existing.count++;
       existing.hours += diffHours(s.start_time, s.end_time);
+      existing.days.add(s.shift_date);
       shiftsByUser.set(s.user_id, existing);
     }
 
@@ -488,8 +490,8 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
     }
 
     const rows: MonthlyDispoStatus[] = employees.map((p: any) => {
-      const info = byUser.get(p.id) ?? { count: 0, hours: 0, lastAt: null };
-      const sh = shiftsByUser.get(p.id) ?? { count: 0, hours: 0 };
+      const info = byUser.get(p.id) ?? { count: 0, hours: 0, days: new Set<string>(), lastAt: null };
+      const sh = shiftsByUser.get(p.id) ?? { count: 0, hours: 0, days: new Set<string>() };
       let status: "complete" | "partial" | "empty";
       if (info.count === 0) status = "empty";
       else if (info.count < 5) status = "partial";
@@ -503,7 +505,11 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
 
       const availHours = Math.round(info.hours * 10) / 10;
       const assignedHours = Math.round(sh.hours * 10) / 10;
-      const fulfillmentPct = info.hours > 0 ? Math.round((sh.hours / info.hours) * 100) : null;
+      // Nouveau calcul : jours travaillés / jours de dispo (peu importe les heures).
+      // Un employé qui a coché 10 jours dispo et bossé 5 jours = 50%.
+      const availDays = info.days.size;
+      const assignedDays = Array.from(sh.days).filter((d) => info.days.has(d)).length;
+      const fulfillmentPct = availDays > 0 ? Math.min(100, Math.round((assignedDays / availDays) * 100)) : null;
 
       return {
         userId: p.id,
@@ -521,6 +527,7 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
         status,
       };
     });
+
 
     const order: Record<string, number> = { empty: 0, partial: 1, complete: 2 };
     rows.sort((a, b) => order[a.status] - order[b.status] || a.lastName.localeCompare(b.lastName));

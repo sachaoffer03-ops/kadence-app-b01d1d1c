@@ -257,7 +257,7 @@ function DisposMonitoringPage() {
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Studios</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Status</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Dispos</th>
-              <th className="text-left px-3 py-2" style={{ fontWeight: 500 }} title="Heures assignées / heures de dispo">Fulfilment</th>
+              <th className="text-left px-3 py-2" style={{ fontWeight: 500 }} title="Jours travaillés / jours de dispo">Fulfilment</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Dernière saisie</th>
             </tr>
           </thead>
@@ -297,12 +297,12 @@ function DisposMonitoringPage() {
                 <td className="px-3 py-2">{r.availsCount}</td>
                 <td className="px-3 py-2">
                   <FulfilmentCell
-                    availHours={r.availHours}
-                    assignedHours={r.assignedHours}
+                    availDays={r.availsCount}
                     assignedShifts={r.assignedShifts}
                     pct={r.fulfillmentPct}
                   />
                 </td>
+
                 <td className="px-3 py-2" style={{ color: "var(--muted-foreground)" }}>
                   {formatDateTime(r.lastSubmittedAt)}
                 </td>
@@ -353,17 +353,15 @@ function StatusBadge({ status, count }: { status: "complete" | "partial" | "empt
 }
 
 function FulfilmentCell({
-  availHours,
-  assignedHours,
+  availDays,
   assignedShifts,
   pct,
 }: {
-  availHours: number;
-  assignedHours: number;
+  availDays: number;
   assignedShifts: number;
   pct: number | null;
 }) {
-  if (availHours === 0 && assignedHours === 0) {
+  if (availDays === 0 && assignedShifts === 0) {
     return <span style={{ color: "var(--muted-foreground)" }}>—</span>;
   }
   const safePct = pct ?? 0;
@@ -378,9 +376,10 @@ function FulfilmentCell({
         {pct === null ? "—" : `${safePct}%`}
       </span>
       <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-        {assignedHours}h / {availHours}h · {assignedShifts} shift{assignedShifts > 1 ? "s" : ""}
+        {assignedShifts} shift{assignedShifts > 1 ? "s" : ""} / {availDays} jour{availDays > 1 ? "s" : ""} dispo
       </span>
     </div>
   );
 }
+
 
