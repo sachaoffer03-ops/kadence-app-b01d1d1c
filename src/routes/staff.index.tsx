@@ -273,7 +273,7 @@ function StaffPage() {
                     { h: "Contrat", cls: "hidden sm:table-cell" },
                     { h: "Postes", cls: "" },
                     { h: "Score", cls: "hidden md:table-cell" },
-                    { h: "Contingent", cls: "hidden md:table-cell" },
+                    
                     { h: "Shifts 30j", cls: "hidden md:table-cell" },
                     { h: "", cls: "" },
                   ].map(({ h, cls }, i) => (
@@ -327,11 +327,6 @@ function StaffPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell" style={{ fontWeight: 500, color: scoreColor }}>{score || "—"}</td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        {used !== null && max !== null && max > 0 ? (
-                          <span style={{ fontSize: 12, fontWeight: 500 }}>{used}/{max}h</span>
-                        ) : <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>—</span>}
-                      </td>
                       <td className="px-4 py-3 hidden md:table-cell" style={{ fontWeight: 500 }}>{shiftCountByUser[p.id] || 0}</td>
                       <td className="px-2 py-3" onClick={(e) => e.stopPropagation()} style={{ width: 40 }}>
                         <DropdownMenu>
