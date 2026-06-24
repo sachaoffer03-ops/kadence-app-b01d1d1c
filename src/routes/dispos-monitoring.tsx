@@ -257,7 +257,7 @@ function DisposMonitoringPage() {
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Studios</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Status</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Dispos</th>
-              <th className="text-left px-3 py-2" style={{ fontWeight: 500 }} title="Heures assignées / heures de dispo">Fulfilment</th>
+              <th className="text-left px-3 py-2" style={{ fontWeight: 500 }} title="Jours travaillés / jours de dispo">Fulfilment</th>
               <th className="text-left px-3 py-2" style={{ fontWeight: 500 }}>Dernière saisie</th>
             </tr>
           </thead>
