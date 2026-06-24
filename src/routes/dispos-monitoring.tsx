@@ -297,12 +297,12 @@ function DisposMonitoringPage() {
                 <td className="px-3 py-2">{r.availsCount}</td>
                 <td className="px-3 py-2">
                   <FulfilmentCell
-                    availHours={r.availHours}
-                    assignedHours={r.assignedHours}
+                    availDays={r.availsCount}
                     assignedShifts={r.assignedShifts}
                     pct={r.fulfillmentPct}
                   />
                 </td>
+
                 <td className="px-3 py-2" style={{ color: "var(--muted-foreground)" }}>
                   {formatDateTime(r.lastSubmittedAt)}
                 </td>
