@@ -18,7 +18,7 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
   const wrapRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number } | null>(null);
 
   const computePos = () => {
     const el = btnRef.current;
@@ -27,22 +27,32 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
     const width = Math.max(minWidth, 160, r.width);
     const left = align === "right" ? r.right - width : r.left;
     const margin = 12;
+    const gap = 4;
     const spaceBelow = window.innerHeight - r.bottom - margin;
     const spaceAbove = r.top - margin;
-    // Flip vers le haut si pas assez de place en bas mais plus de place en haut
     const preferAbove = spaceBelow < 200 && spaceAbove > spaceBelow;
     if (preferAbove) {
-      const maxHeight = Math.max(160, spaceAbove);
-      setPos({ top: Math.max(margin, r.top - 4 - Math.min(maxHeight, 320)), left, width, maxHeight });
+      // Ancrage par le bas : le menu colle juste au-dessus du bouton
+      setPos({
+        bottom: window.innerHeight - r.top + gap,
+        left,
+        width,
+        maxHeight: Math.max(160, spaceAbove),
+      });
     } else {
-      const maxHeight = Math.max(160, spaceBelow);
-      setPos({ top: r.bottom + 4, left, width, maxHeight });
+      setPos({
+        top: r.bottom + gap,
+        left,
+        width,
+        maxHeight: Math.max(160, spaceBelow),
+      });
     }
   };
 
   useLayoutEffect(() => {
     if (open) computePos();
   }, [open]);
+
 
 
   useEffect(() => {
