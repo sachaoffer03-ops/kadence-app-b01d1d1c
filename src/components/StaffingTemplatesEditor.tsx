@@ -331,15 +331,12 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                           <Dropdown value={DAYS[t.day_of_week]} options={DAYS} onChange={(v) => updateRow(t.id, { day_of_week: DAYS.indexOf(v) })} minWidth={120} />
                         </td>
                         <td className="px-2 py-1">
-                          <input type="time" step={900} value={t.start_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { start_time: e.target.value })}
-                            className="rounded-md px-2 py-1.5 outline-none"
-                            style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
+                          <TimeInput value={t.start_time} onCommit={(v) => updateRow(t.id, { start_time: v })} />
                         </td>
                         <td className="px-2 py-1">
-                          <input type="time" step={900} value={t.end_time.slice(0, 5)} onChange={(e) => updateRow(t.id, { end_time: e.target.value })}
-                            className="rounded-md px-2 py-1.5 outline-none"
-                            style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }} />
+                          <TimeInput value={t.end_time} onCommit={(v) => updateRow(t.id, { end_time: v })} />
                         </td>
+
                         <td className="px-2 py-1">
                           {t.role_segments ? (
                             <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5"
