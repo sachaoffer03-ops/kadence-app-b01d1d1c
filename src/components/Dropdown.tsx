@@ -24,27 +24,33 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
     const el = btnRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const width = Math.max(minWidth, 160, r.width);
-    const left = align === "right" ? r.right - width : r.left;
-    const margin = 12;
+    const margin = 10;
     const gap = 4;
-    const spaceBelow = window.innerHeight - r.bottom - margin;
-    const spaceAbove = r.top - margin;
-    const preferAbove = spaceBelow < 200 && spaceAbove > spaceBelow;
-    if (preferAbove) {
-      // Ancrage par le bas : le menu colle juste au-dessus du bouton
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const width = Math.min(Math.max(minWidth, 160, r.width), viewportWidth - margin * 2);
+    const rawLeft = align === "right" ? r.right - width : r.left;
+    const left = Math.min(Math.max(margin, rawLeft), Math.max(margin, viewportWidth - width - margin));
+    const idealHeight = Math.min(320, options.length * 30 + 8);
+    const spaceBelow = Math.max(0, viewportHeight - (r.bottom + gap) - margin);
+    const spaceAbove = Math.max(0, r.top - gap - margin);
+    const openAbove = spaceBelow < idealHeight && spaceAbove > spaceBelow;
+    const availableHeight = openAbove ? spaceAbove : spaceBelow;
+    const maxHeight = Math.max(72, Math.min(idealHeight, availableHeight));
+
+    if (openAbove) {
       setPos({
         bottom: window.innerHeight - r.top + gap,
         left,
         width,
-        maxHeight: Math.max(160, spaceAbove),
+        maxHeight,
       });
     } else {
       setPos({
         top: r.bottom + gap,
         left,
         width,
-        maxHeight: Math.max(160, spaceBelow),
+        maxHeight,
       });
     }
   };
@@ -64,7 +70,10 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
       setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    const onScroll = () => computePos();
+    const onScroll = (e: Event) => {
+      if (menuRef.current?.contains(e.target as Node)) return;
+      computePos();
+    };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
     window.addEventListener("scroll", onScroll, true);
@@ -106,8 +115,7 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
             top: pos.top,
             bottom: pos.bottom,
             left: pos.left,
-
-            minWidth: pos.width,
+            width: pos.width,
             zIndex: 1000,
             backgroundColor: "var(--card)",
             border: "0.5px solid var(--border)",
