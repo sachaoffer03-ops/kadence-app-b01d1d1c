@@ -104,7 +104,9 @@ export function Dropdown({ label, value, options, onChange, minWidth = 140, alig
           style={{
             position: "fixed",
             top: pos.top,
+            bottom: pos.bottom,
             left: pos.left,
+
             minWidth: pos.width,
             zIndex: 1000,
             backgroundColor: "var(--card)",
