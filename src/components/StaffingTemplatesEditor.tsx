@@ -103,6 +103,10 @@ function TimeRangeCells({
     setStatus("saving");
     const ok = await onCommit(nextStart, nextEnd);
     commitRef.current = false;
+    if (!ok) {
+      setDraftStart(startTime.slice(0, 5));
+      setDraftEnd(endTime.slice(0, 5));
+    }
     setStatus(ok ? "saved" : "error");
     return ok;
   };
