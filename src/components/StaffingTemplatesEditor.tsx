@@ -180,16 +180,16 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   };
 
 
-  const updateRow = async (id: string, patch: Partial<Template>) => {
+  const updateRow = async (id: string, patch: Partial<Template>): Promise<boolean> => {
     const prev = templates;
     const current = prev.find((t) => t.id === id);
     if (patch.start_time !== undefined) {
       patch.start_time = patch.start_time.slice(0, 5);
-      if (!QUARTER_TIME_REGEX.test(patch.start_time)) return;
+      if (!QUARTER_TIME_REGEX.test(patch.start_time)) return false;
     }
     if (patch.end_time !== undefined) {
       patch.end_time = patch.end_time.slice(0, 5);
-      if (!QUARTER_TIME_REGEX.test(patch.end_time)) return;
+      if (!QUARTER_TIME_REGEX.test(patch.end_time)) return false;
     }
 
     if (current && (patch.start_time !== undefined || patch.end_time !== undefined)) {
@@ -197,7 +197,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
       const newEnd = (patch.end_time ?? current.end_time).slice(0, 5);
       if (toMinutes(newStart) >= toMinutes(newEnd)) {
         toast.error("Horaire invalide", { description: "L'heure de fin doit être après l'heure de début." });
-        return;
+        return false;
       }
     }
 
@@ -219,8 +219,11 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
     if (error) {
       toast.error("Modification non enregistrée", { description: error.message });
       setTemplates(prev); // rollback optimistic update
+      return false;
     }
+    return true;
   };
+
 
   const deleteRow = async (id: string) => {
     const prev = templates;
