@@ -83,7 +83,7 @@ export function InviteEmployeeModal({ open, onClose, onCreated }: Props) {
 
   const reset = () => {
     setFirstName(""); setLastName(""); setEmail(""); setPhone("");
-    setContracts(new Set(["Étudiant"])); setRoles(new Set());
+    setContracts(new Set()); setRoles(new Set());
     setStudioIds(new Set()); setAppRole("employee"); setHireDate("");
     setActivationUrl(null); setEmailSent(false); setCopied(false);
   };
