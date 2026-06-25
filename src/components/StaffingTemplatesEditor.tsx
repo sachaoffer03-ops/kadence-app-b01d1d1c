@@ -71,19 +71,35 @@ function TimeRangeCells({
   const [draftEnd, setDraftEnd] = useState(endTime.slice(0, 5));
   const [status, setStatus] = useState<"saved" | "editing" | "saving" | "invalid" | "error">("saved");
   const commitRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestRef = useRef({ start: draftStart, end: draftEnd });
+  const savedRef = useRef({ start: startTime.slice(0, 5), end: endTime.slice(0, 5) });
+  const onCommitRef = useRef(onCommit);
+  onCommitRef.current = onCommit;
 
   useEffect(() => {
     const active = typeof document !== "undefined" && (document.activeElement as HTMLElement | null)?.dataset.timeRangeId === templateId;
+    savedRef.current = { start: startTime.slice(0, 5), end: endTime.slice(0, 5) };
     if (!active && !commitRef.current) {
       setDraftStart(startTime.slice(0, 5));
       setDraftEnd(endTime.slice(0, 5));
+      latestRef.current = { start: startTime.slice(0, 5), end: endTime.slice(0, 5) };
       setStatus("saved");
     }
   }, [startTime, endTime, templateId]);
 
-  const commit = async () => {
-    const nextStart = normalizeTimeInput(draftStart);
-    const nextEnd = normalizeTimeInput(draftEnd);
+  const dirtyKey = `staffing-time-${templateId}`;
+  useEffect(() => {
+    const dirty = draftStart !== savedRef.current.start || draftEnd !== savedRef.current.end;
+    setDirty(dirtyKey, dirty);
+    return () => setDirty(dirtyKey, false);
+  }, [draftStart, draftEnd, dirtyKey]);
+
+  const commit = async (rawStart?: string, rawEnd?: string) => {
+    const useStart = rawStart ?? latestRef.current.start;
+    const useEnd = rawEnd ?? latestRef.current.end;
+    const nextStart = normalizeTimeInput(useStart);
+    const nextEnd = normalizeTimeInput(useEnd);
     if (!nextStart || !nextEnd) {
       setStatus("invalid");
       return false;
@@ -92,25 +108,46 @@ function TimeRangeCells({
       setStatus("invalid");
       return false;
     }
-
     setDraftStart(nextStart);
     setDraftEnd(nextEnd);
-    if (nextStart === startTime.slice(0, 5) && nextEnd === endTime.slice(0, 5)) {
+    latestRef.current = { start: nextStart, end: nextEnd };
+    if (nextStart === savedRef.current.start && nextEnd === savedRef.current.end) {
       setStatus("saved");
       return true;
     }
-
     commitRef.current = true;
     setStatus("saving");
-    const ok = await onCommit(nextStart, nextEnd);
+    const ok = await onCommitRef.current(nextStart, nextEnd);
     commitRef.current = false;
     if (!ok) {
-      setDraftStart(startTime.slice(0, 5));
-      setDraftEnd(endTime.slice(0, 5));
+      setDraftStart(savedRef.current.start);
+      setDraftEnd(savedRef.current.end);
+      latestRef.current = { start: savedRef.current.start, end: savedRef.current.end };
     }
     setStatus(ok ? "saved" : "error");
     return ok;
   };
+
+  // Debounced autosave: enregistre 600 ms après la dernière frappe, sans avoir à blur.
+  const scheduleDebouncedCommit = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { void commit(); }, 600);
+  };
+
+  // Flush sur unmount (changement de sous-onglet, navigation) — best-effort.
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      const { start, end } = latestRef.current;
+      if (start === savedRef.current.start && end === savedRef.current.end) return;
+      const nextStart = normalizeTimeInput(start);
+      const nextEnd = normalizeTimeInput(end);
+      if (!nextStart || !nextEnd || toMinutes(nextStart) >= toMinutes(nextEnd)) return;
+      // fire-and-forget — l'appel HTTP part avant le démontage du composant
+      void onCommitRef.current(nextStart, nextEnd);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const scheduleCommit = () => {
     window.setTimeout(() => {
@@ -123,7 +160,8 @@ function TimeRangeCells({
   const statusText =
     status === "saving" ? "Enregistrement…" :
     status === "invalid" ? "Vérifie début/fin" :
-    status === "error" ? "Non enregistré" : "";
+    status === "error" ? "Non enregistré" :
+    status === "editing" ? "Modifié — enregistrement auto…" : "";
   const borderColor = status === "invalid" || status === "error" ? "var(--danger-text)" : "var(--border)";
   const inputStyle = {
     fontSize: 12,
@@ -142,7 +180,12 @@ function TimeRangeCells({
           data-time-range-id={templateId}
           value={draftStart}
           onFocus={() => setStatus("editing")}
-          onChange={(e) => { setDraftStart(e.target.value); setStatus("editing"); }}
+          onChange={(e) => {
+            setDraftStart(e.target.value);
+            latestRef.current = { ...latestRef.current, start: e.target.value };
+            setStatus("editing");
+            scheduleDebouncedCommit();
+          }}
           onBlur={scheduleCommit}
           onKeyDown={(e) => { if (e.key === "Enter") void commit(); }}
           className="rounded-md px-2 py-1.5 outline-none"
@@ -157,14 +200,24 @@ function TimeRangeCells({
           data-time-range-id={templateId}
           value={draftEnd}
           onFocus={() => setStatus("editing")}
-          onChange={(e) => { setDraftEnd(e.target.value); setStatus("editing"); }}
+          onChange={(e) => {
+            setDraftEnd(e.target.value);
+            latestRef.current = { ...latestRef.current, end: e.target.value };
+            setStatus("editing");
+            scheduleDebouncedCommit();
+          }}
           onBlur={scheduleCommit}
           onKeyDown={(e) => { if (e.key === "Enter") void commit(); }}
           className="rounded-md px-2 py-1.5 outline-none"
           style={inputStyle}
         />
         {statusText && (
-          <div style={{ fontSize: 10, color: status === "saving" ? "var(--muted-foreground)" : "var(--danger-text)", marginTop: 3, whiteSpace: "nowrap" }}>
+          <div style={{
+            fontSize: 10,
+            color: status === "saving" || status === "editing" ? "var(--muted-foreground)" : "var(--danger-text)",
+            marginTop: 3,
+            whiteSpace: "nowrap",
+          }}>
             {statusText}
           </div>
         )}
