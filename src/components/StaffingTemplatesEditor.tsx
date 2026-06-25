@@ -51,27 +51,36 @@ const roundToQuarter = (time: string): string | null => {
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 };
 
-// Input dédié pour heures : buffer local, commit sur blur (avec arrondi 15 min)
-function TimeInput({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+// Input dédié pour heures : buffer local, commit sur blur (avec arrondi 15 min).
+// onCommit retourne true si la valeur a été acceptée et persistée, false si refusée
+// (dans ce cas on revient à la valeur d'origine pour ne pas mentir à l'utilisateur).
+function TimeInput({ value, onCommit }: { value: string; onCommit: (v: string) => Promise<boolean> | boolean }) {
   const [local, setLocal] = useState(value.slice(0, 5));
-  useEffect(() => { setLocal(value.slice(0, 5)); }, [value]);
+  const focusedRef = useRef(false);
+  useEffect(() => {
+    if (!focusedRef.current) setLocal(value.slice(0, 5));
+  }, [value]);
   return (
     <input
       type="time"
-      step={900}
       value={local}
+      onFocus={() => { focusedRef.current = true; }}
       onChange={(e) => setLocal(e.target.value)}
-      onBlur={() => {
+      onBlur={async () => {
+        focusedRef.current = false;
         const rounded = roundToQuarter(local);
         if (!rounded) {
           setLocal(value.slice(0, 5));
           toast.error("Heure invalide", { description: "Format attendu HH:MM" });
           return;
         }
-        if (rounded !== value.slice(0, 5)) {
+        if (rounded === value.slice(0, 5)) {
           setLocal(rounded);
-          onCommit(rounded);
+          return;
         }
+        setLocal(rounded);
+        const ok = await onCommit(rounded);
+        if (!ok) setLocal(value.slice(0, 5)); // refusé par la validation → on revient à la valeur DB
       }}
       onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
       className="rounded-md px-2 py-1.5 outline-none"
@@ -79,6 +88,7 @@ function TimeInput({ value, onCommit }: { value: string; onCommit: (v: string) =
     />
   );
 }
+
 
 interface Props {
   lockedStudioName?: string;
