@@ -29,7 +29,7 @@ export function InviteEmployeeModal({ open, onClose, onCreated }: Props) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [studioIds, setStudioIds] = useState<Set<string>>(new Set());
-  const [contracts, setContracts] = useState<Set<string>>(new Set(["Étudiant"]));
+  const [contracts, setContracts] = useState<Set<string>>(new Set());
   const [roles, setRoles] = useState<Set<string>>(new Set());
   const [appRole, setAppRole] = useState<"employee" | "manager">("employee");
   const [hireDate, setHireDate] = useState("");
@@ -83,7 +83,7 @@ export function InviteEmployeeModal({ open, onClose, onCreated }: Props) {
 
   const reset = () => {
     setFirstName(""); setLastName(""); setEmail(""); setPhone("");
-    setContracts(new Set(["Étudiant"])); setRoles(new Set());
+    setContracts(new Set()); setRoles(new Set());
     setStudioIds(new Set()); setAppRole("employee"); setHireDate("");
     setActivationUrl(null); setEmailSent(false); setCopied(false);
   };
