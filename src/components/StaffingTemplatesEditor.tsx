@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Info, ChevronDown, ChevronRight, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
