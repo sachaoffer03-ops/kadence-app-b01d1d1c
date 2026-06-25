@@ -32,17 +32,21 @@ interface Template {
 
 const CONTRACTS = ["Tous", "CDI", "Étudiant", "Flexi"] as const;
 const QUARTER_TIME_REGEX = /^([01]\d|2[0-3]):(00|15|30|45)$/;
-const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const toMinutes = (time: string) => {
   const [hours, minutes] = time.slice(0, 5).split(":").map(Number);
   return (hours || 0) * 60 + (minutes || 0);
 };
 
-const roundToQuarter = (time: string): string | null => {
-  const v = time.slice(0, 5);
-  if (!HHMM_REGEX.test(v)) return null;
-  const [h, m] = v.split(":").map(Number);
+const normalizeTimeInput = (raw: string): string | null => {
+  let v = raw.trim().toLowerCase().replace(/[h.]/g, ":").replace(/\s+/g, "");
+  if (/^\d{1,2}$/.test(v)) v = `${v}:00`;
+  if (/^\d{3,4}$/.test(v)) v = `${v.slice(0, -2)}:${v.slice(-2)}`;
+  const match = v.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
   let total = h * 60 + Math.round(m / 15) * 15;
   if (total >= 24 * 60) total = 24 * 60 - 15;
   if (total < 0) total = 0;
@@ -51,41 +55,116 @@ const roundToQuarter = (time: string): string | null => {
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 };
 
-// Input dédié pour heures : buffer local, commit sur blur (avec arrondi 15 min).
-// onCommit retourne true si la valeur a été acceptée et persistée, false si refusée
-// (dans ce cas on revient à la valeur d'origine pour ne pas mentir à l'utilisateur).
-function TimeInput({ value, onCommit }: { value: string; onCommit: (v: string) => Promise<boolean> | boolean }) {
-  const [local, setLocal] = useState(value.slice(0, 5));
-  const focusedRef = useRef(false);
+function TimeRangeCells({
+  templateId,
+  startTime,
+  endTime,
+  onCommit,
+}: {
+  templateId: string;
+  startTime: string;
+  endTime: string;
+  onCommit: (start: string, end: string) => Promise<boolean> | boolean;
+}) {
+  const [draftStart, setDraftStart] = useState(startTime.slice(0, 5));
+  const [draftEnd, setDraftEnd] = useState(endTime.slice(0, 5));
+  const [status, setStatus] = useState<"saved" | "editing" | "saving" | "invalid" | "error">("saved");
+  const commitRef = useRef(false);
+
   useEffect(() => {
-    if (!focusedRef.current) setLocal(value.slice(0, 5));
-  }, [value]);
+    const active = typeof document !== "undefined" && (document.activeElement as HTMLElement | null)?.dataset.timeRangeId === templateId;
+    if (!active && !commitRef.current) {
+      setDraftStart(startTime.slice(0, 5));
+      setDraftEnd(endTime.slice(0, 5));
+      setStatus("saved");
+    }
+  }, [startTime, endTime, templateId]);
+
+  const commit = async () => {
+    const nextStart = normalizeTimeInput(draftStart);
+    const nextEnd = normalizeTimeInput(draftEnd);
+    if (!nextStart || !nextEnd) {
+      setStatus("invalid");
+      return false;
+    }
+    if (toMinutes(nextStart) >= toMinutes(nextEnd)) {
+      setStatus("invalid");
+      return false;
+    }
+
+    setDraftStart(nextStart);
+    setDraftEnd(nextEnd);
+    if (nextStart === startTime.slice(0, 5) && nextEnd === endTime.slice(0, 5)) {
+      setStatus("saved");
+      return true;
+    }
+
+    commitRef.current = true;
+    setStatus("saving");
+    const ok = await onCommit(nextStart, nextEnd);
+    commitRef.current = false;
+    setStatus(ok ? "saved" : "error");
+    return ok;
+  };
+
+  const scheduleCommit = () => {
+    window.setTimeout(() => {
+      const active = document.activeElement as HTMLElement | null;
+      if (active?.dataset.timeRangeId === templateId) return;
+      void commit();
+    }, 0);
+  };
+
+  const statusText =
+    status === "saving" ? "Enregistrement…" :
+    status === "invalid" ? "Vérifie début/fin" :
+    status === "error" ? "Non enregistré" : "";
+  const borderColor = status === "invalid" || status === "error" ? "var(--danger-text)" : "var(--border)";
+  const inputStyle = {
+    fontSize: 12,
+    border: `0.5px solid ${borderColor}`,
+    backgroundColor: "var(--background)",
+    width: 88,
+  };
+
   return (
-    <input
-      type="time"
-      value={local}
-      onFocus={() => { focusedRef.current = true; }}
-      onChange={(e) => setLocal(e.target.value)}
-      onBlur={async () => {
-        focusedRef.current = false;
-        const rounded = roundToQuarter(local);
-        if (!rounded) {
-          setLocal(value.slice(0, 5));
-          toast.error("Heure invalide", { description: "Format attendu HH:MM" });
-          return;
-        }
-        if (rounded === value.slice(0, 5)) {
-          setLocal(rounded);
-          return;
-        }
-        setLocal(rounded);
-        const ok = await onCommit(rounded);
-        if (!ok) setLocal(value.slice(0, 5)); // refusé par la validation → on revient à la valeur DB
-      }}
-      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-      className="rounded-md px-2 py-1.5 outline-none"
-      style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", width: 110 }}
-    />
+    <>
+      <td className="px-2 py-1">
+        <input
+          type="text"
+          inputMode="numeric"
+          aria-label="Heure de début"
+          data-time-range-id={templateId}
+          value={draftStart}
+          onFocus={() => setStatus("editing")}
+          onChange={(e) => { setDraftStart(e.target.value); setStatus("editing"); }}
+          onBlur={scheduleCommit}
+          onKeyDown={(e) => { if (e.key === "Enter") void commit(); }}
+          className="rounded-md px-2 py-1.5 outline-none"
+          style={inputStyle}
+        />
+      </td>
+      <td className="px-2 py-1">
+        <input
+          type="text"
+          inputMode="numeric"
+          aria-label="Heure de fin"
+          data-time-range-id={templateId}
+          value={draftEnd}
+          onFocus={() => setStatus("editing")}
+          onChange={(e) => { setDraftEnd(e.target.value); setStatus("editing"); }}
+          onBlur={scheduleCommit}
+          onKeyDown={(e) => { if (e.key === "Enter") void commit(); }}
+          className="rounded-md px-2 py-1.5 outline-none"
+          style={inputStyle}
+        />
+        {statusText && (
+          <div style={{ fontSize: 10, color: status === "saving" ? "var(--muted-foreground)" : "var(--danger-text)", marginTop: 3, whiteSpace: "nowrap" }}>
+            {statusText}
+          </div>
+        )}
+      </td>
+    </>
   );
 }
 
