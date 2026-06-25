@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Info, ChevronDown, ChevronRight, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -51,27 +51,36 @@ const roundToQuarter = (time: string): string | null => {
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 };
 
-// Input dédié pour heures : buffer local, commit sur blur (avec arrondi 15 min)
-function TimeInput({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+// Input dédié pour heures : buffer local, commit sur blur (avec arrondi 15 min).
+// onCommit retourne true si la valeur a été acceptée et persistée, false si refusée
+// (dans ce cas on revient à la valeur d'origine pour ne pas mentir à l'utilisateur).
+function TimeInput({ value, onCommit }: { value: string; onCommit: (v: string) => Promise<boolean> | boolean }) {
   const [local, setLocal] = useState(value.slice(0, 5));
-  useEffect(() => { setLocal(value.slice(0, 5)); }, [value]);
+  const focusedRef = useRef(false);
+  useEffect(() => {
+    if (!focusedRef.current) setLocal(value.slice(0, 5));
+  }, [value]);
   return (
     <input
       type="time"
-      step={900}
       value={local}
+      onFocus={() => { focusedRef.current = true; }}
       onChange={(e) => setLocal(e.target.value)}
-      onBlur={() => {
+      onBlur={async () => {
+        focusedRef.current = false;
         const rounded = roundToQuarter(local);
         if (!rounded) {
           setLocal(value.slice(0, 5));
           toast.error("Heure invalide", { description: "Format attendu HH:MM" });
           return;
         }
-        if (rounded !== value.slice(0, 5)) {
+        if (rounded === value.slice(0, 5)) {
           setLocal(rounded);
-          onCommit(rounded);
+          return;
         }
+        setLocal(rounded);
+        const ok = await onCommit(rounded);
+        if (!ok) setLocal(value.slice(0, 5)); // refusé par la validation → on revient à la valeur DB
       }}
       onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
       className="rounded-md px-2 py-1.5 outline-none"
@@ -79,6 +88,7 @@ function TimeInput({ value, onCommit }: { value: string; onCommit: (v: string) =
     />
   );
 }
+
 
 interface Props {
   lockedStudioName?: string;
@@ -170,16 +180,16 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   };
 
 
-  const updateRow = async (id: string, patch: Partial<Template>) => {
+  const updateRow = async (id: string, patch: Partial<Template>): Promise<boolean> => {
     const prev = templates;
     const current = prev.find((t) => t.id === id);
     if (patch.start_time !== undefined) {
       patch.start_time = patch.start_time.slice(0, 5);
-      if (!QUARTER_TIME_REGEX.test(patch.start_time)) return;
+      if (!QUARTER_TIME_REGEX.test(patch.start_time)) return false;
     }
     if (patch.end_time !== undefined) {
       patch.end_time = patch.end_time.slice(0, 5);
-      if (!QUARTER_TIME_REGEX.test(patch.end_time)) return;
+      if (!QUARTER_TIME_REGEX.test(patch.end_time)) return false;
     }
 
     if (current && (patch.start_time !== undefined || patch.end_time !== undefined)) {
@@ -187,7 +197,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
       const newEnd = (patch.end_time ?? current.end_time).slice(0, 5);
       if (toMinutes(newStart) >= toMinutes(newEnd)) {
         toast.error("Horaire invalide", { description: "L'heure de fin doit être après l'heure de début." });
-        return;
+        return false;
       }
     }
 
@@ -209,8 +219,11 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
     if (error) {
       toast.error("Modification non enregistrée", { description: error.message });
       setTemplates(prev); // rollback optimistic update
+      return false;
     }
+    return true;
   };
+
 
   const deleteRow = async (id: string) => {
     const prev = templates;
