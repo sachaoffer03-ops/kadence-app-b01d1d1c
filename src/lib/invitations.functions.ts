@@ -20,14 +20,14 @@ export const sendInvitation = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Vérifier que l'appelant est admin
-    const { data: roleData } = await supabase
+    // Vérifier que l'appelant est admin ou manager
+    const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    if (!roleData) throw new Error("Réservé aux administrateurs");
+      .eq("user_id", userId);
+    const ok = roles?.some((r: any) => r.role === "admin" || r.role === "manager");
+    if (!ok) throw new Error("Réservé aux administrateurs ou managers");
+
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
