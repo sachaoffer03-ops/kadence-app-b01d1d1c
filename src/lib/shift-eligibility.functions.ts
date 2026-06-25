@@ -213,7 +213,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
 
       const reasons: string[] = [];
       if (!has_studio) reasons.push("pas rattaché au studio");
-      if (!has_availability) reasons.push("aucune dispo sur le créneau");
+      if (!has_availability) reasons.push("aucune dispo déclarée sur le créneau");
       if (is_saturated) reasons.push(`saturé ${weekly.toFixed(1)}h/${cap}h cette semaine`);
       if (not_trained) reasons.push(`pas formé : ${untrained_courses.map((c) => c.title).join(", ")}`);
 
@@ -237,14 +237,20 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
         reasons,
       };
 
-      if (has_studio && has_availability && !is_saturated && !not_trained) eligible.push(row);
+      // Éligibles = rattachés au studio + rôle ok + pas saturés + formés.
+      // La dispo déclarée n'est PLUS un critère bloquant : elle devient un
+      // badge de priorité (« Dispo ») et un critère de tri.
+      if (has_studio && !is_saturated && !not_trained) eligible.push(row);
       else partial.push(row);
     }
 
-    const byScore = (a: EligibleEmployee, b: EligibleEmployee) =>
-      (b.score ?? -1) - (a.score ?? -1);
-    eligible.sort(byScore);
-    partial.sort(byScore);
+    const byPriority = (a: EligibleEmployee, b: EligibleEmployee) => {
+      if (a.has_availability !== b.has_availability) return a.has_availability ? -1 : 1;
+      return (b.score ?? -1) - (a.score ?? -1);
+    };
+    eligible.sort(byPriority);
+    partial.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+
 
     return {
       shift: {

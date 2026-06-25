@@ -684,11 +684,21 @@ function EmployeeRow({ emp, checked, onToggle, shiftRole, showReasons }: {
               {emp.score.toFixed(1)}/10
             </span>
           )}
+          {emp.has_availability ? (
+            <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 999, backgroundColor: "var(--coral-light, var(--coral))", color: "var(--coral-dark, #fff)" }}>
+              Dispo
+            </span>
+          ) : (
+            <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 999, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>
+              Fit rôle
+            </span>
+          )}
           {disabled && (
             <span style={{ fontSize: 10, color: "var(--muted-foreground)", fontStyle: "italic" }}>
               proposition déjà en attente
             </span>
           )}
+
         </div>
         <div className="flex items-center gap-1 flex-wrap mt-1">
           {emp.business_roles.map((r) => {
