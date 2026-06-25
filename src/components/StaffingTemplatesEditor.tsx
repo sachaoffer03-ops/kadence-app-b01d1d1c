@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Dropdown } from "@/components/Dropdown";
 import { useStudioBusinessRoles } from "@/hooks/use-studio-business-roles";
 import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
+import { setDirty } from "@/hooks/use-draft-state";
 import {
   validateRoleSegments,
   type RoleSegment,
