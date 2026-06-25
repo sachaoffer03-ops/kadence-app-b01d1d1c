@@ -422,12 +422,12 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
                         <td className="px-2 py-1">
                           <Dropdown value={DAYS[t.day_of_week]} options={DAYS} onChange={(v) => updateRow(t.id, { day_of_week: DAYS.indexOf(v) })} minWidth={120} />
                         </td>
-                        <td className="px-2 py-1">
-                          <TimeInput value={t.start_time} onCommit={(v) => updateRow(t.id, { start_time: v })} />
-                        </td>
-                        <td className="px-2 py-1">
-                          <TimeInput value={t.end_time} onCommit={(v) => updateRow(t.id, { end_time: v })} />
-                        </td>
+                        <TimeRangeCells
+                          templateId={t.id}
+                          startTime={t.start_time}
+                          endTime={t.end_time}
+                          onCommit={(start, end) => updateRow(t.id, { start_time: start, end_time: end })}
+                        />
 
                         <td className="px-2 py-1">
                           {t.role_segments ? (
