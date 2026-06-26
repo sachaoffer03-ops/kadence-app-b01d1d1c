@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import Anthropic from "@anthropic-ai/sdk";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function assertAdmin(supabase: any, userId: string) {
@@ -143,10 +142,29 @@ function isPlainTextKnowledgeFile(fileName: string, mimeType: string) {
   return mimeType.startsWith("text/") || /\.(txt|md|csv|tsv|json|log|html|xml|yaml|yml)$/.test(fileName.toLowerCase());
 }
 
+async function extractPdfTextLocally(arrayBuffer: ArrayBuffer) {
+  try {
+    const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer), disableWorker: true }).promise;
+    let out = "";
+    for (let i = 1; i <= doc.numPages; i += 1) {
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent();
+      out += tc.items.map((it: any) => it.str).join(" ") + "\n\n";
+      if (out.length > 90000) break;
+    }
+    return out.replace(/\n{3,}/g, "\n\n").trim().slice(0, 90000);
+  } catch (error) {
+    console.error("Server PDF text extraction failed", error);
+    return "";
+  }
+}
+
 async function extractKnowledgeTextWithAI(args: { fileName: string; mimeType: string; base64: string }) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Extraction IA indisponible : clé IA manquante");
 
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const client = new Anthropic({ apiKey });
   const source = { type: "base64", media_type: args.mimeType, data: args.base64 };
   const fileBlock = args.mimeType.startsWith("image/")
@@ -207,6 +225,11 @@ export const extractKnowledgeStoredFileText = createServerFn({ method: "POST" })
     if (isPlainTextKnowledgeFile(data.fileName, mimeType)) {
       const text = new TextDecoder("utf-8").decode(arrayBuffer).trim().slice(0, 90000);
       return { text, source: "text" as const };
+    }
+
+    if (mimeType === "application/pdf") {
+      const localPdfText = await extractPdfTextLocally(arrayBuffer);
+      if (localPdfText) return { text: localPdfText, source: "pdf" as const };
     }
 
     if (mimeType !== "application/pdf" && !mimeType.startsWith("image/")) {

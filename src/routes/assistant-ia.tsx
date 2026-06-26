@@ -702,6 +702,25 @@ function EditSheet({ initial, onClose, onSave }:
     } finally { setUploading(false); }
   };
 
+  const reextractCurrentFile = async () => {
+    if (!filePath || !fileName) return;
+    setUploading(true);
+    const loadingToast = toast.loading("Extraction du contenu du fichier pour le bot…");
+    try {
+      const result = await extractStoredFile({ data: { path: filePath, fileName, mimeType: undefined } });
+      const extracted = (result.text || "").trim();
+      setFileText(extracted);
+      toast.dismiss(loadingToast);
+      if (extracted) toast.success(`${extracted.length} caractères extraits pour l'IA`);
+      else toast.info("Aucun texte lisible détecté automatiquement. Ajoute une courte description si besoin.");
+    } catch (e: any) {
+      toast.dismiss(loadingToast);
+      toast.error(e?.message || "Extraction impossible");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const submit = async () => {
     if (!title.trim()) { toast.error("Titre requis"); return; }
     if (!content.trim()) { toast.error("Contenu vide"); return; }
@@ -806,6 +825,27 @@ function EditSheet({ initial, onClose, onSave }:
                   </label>
                   {fileName && <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{fileName}</span>}
                 </div>
+                {fileName && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                    {fileText ? (
+                      <span className="inline-flex items-center gap-1" style={{ color: "#2d8a5f" }}>
+                        <CheckCircle2 size={13} /> {fileText.length} caractères lisibles par le bot
+                      </span>
+                    ) : (
+                      <span>Aucun texte extrait pour le moment.</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={reextractCurrentFile}
+                      disabled={uploading || !filePath}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 disabled:opacity-50"
+                      style={{ border: "0.5px solid var(--border)", background: "#fff", color: "var(--foreground)" }}
+                    >
+                      {uploading ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
+                      Extraire pour le bot
+                    </button>
+                  </div>
+                )}
               </Field>
               <Field label="Description / résumé du fichier" hint="Pour que le bot sache de quoi il s'agit">
                 <Textarea value={fileDesc} onChange={setFileDesc} rows={5} />

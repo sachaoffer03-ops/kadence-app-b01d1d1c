@@ -160,7 +160,8 @@ export const askKadenceAI = createServerFn({ method: "POST" })
         (knowledgeRes.data ?? []).map((k: any) => {
           const extracted = typeof k.data?.extracted_text === "string" ? k.data.extracted_text.trim() : "";
           const fileMeta = k.entry_type === "file" && k.data?.file_name ? `\n_Fichier : ${k.data.file_name}_` : "";
-          const body = extracted ? `${k.content}\n\n${extracted}` : k.content;
+          const alreadyInContent = extracted && k.content?.includes(extracted.slice(0, Math.min(200, extracted.length)));
+          const body = extracted && !alreadyInContent ? `${k.content}\n\n${extracted}` : k.content;
           return `## ${k.title}\n_Catégorie : ${k.category}_${fileMeta}\n\n${body}`;
         }).join("\n\n---\n\n");
 
