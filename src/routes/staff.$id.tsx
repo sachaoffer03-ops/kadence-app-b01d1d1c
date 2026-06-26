@@ -21,7 +21,7 @@ import { countUnviewedDocuments } from "@/lib/documents.functions";
 import { RatingInput, RatingBadge } from "@/components/RatingInput";
 import { ExtendedHoursCard } from "@/components/staff/ExtendedHoursCard";
 import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHistoryTab";
-import { setUserAppRole } from "@/lib/admins.functions";
+import { setUserAppRole, setUserAppRoles } from "@/lib/admins.functions";
 import { ManagerPermissionsModal } from "@/components/ManagerPermissionsModal";
 
 export const Route = createFileRoute("/staff/$id")({
@@ -836,33 +836,42 @@ function EditClockInline({
 }
 
 function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: string; userName?: string }) {
-  const [role, setRole] = useState<"employee" | "manager" | "admin" | null>(null);
+  type R = "employee" | "manager" | "admin";
+  const [roles, setRoles] = useState<R[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [permsOpen, setPermsOpen] = useState(false);
-  const setRoleFn = useServerFn(setUserAppRole);
+  const setRolesFn = useServerFn(setUserAppRoles);
+  void setUserAppRole;
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
-      setRole((data?.role as any) ?? "employee");
-    })();
-  }, [userId]);
+  const refresh = async () => {
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const rs = ((data ?? []).map((r: any) => r.role as R));
+    setRoles(rs.length ? rs : ["employee"]);
+    setLoaded(true);
+  };
 
-  const change = async (next: "employee" | "manager" | "admin") => {
-    if (next === role) return;
-    const label = next === "admin" ? "Administrateur" : next === "manager" ? "Manager" : "Employé";
-    const warn = next === "admin"
-      ? "Cette personne aura un accès total : utilisateurs, finances, paramètres. Continuer ?"
-      : next === "manager"
-      ? "Cette personne va devenir Manager. Tu vas pouvoir configurer ses accès juste après. Continuer ?"
-      : "Cette personne perdra son accès à la console admin. Continuer ?";
-    if (!confirm(warn)) return;
+  useEffect(() => { refresh(); }, [userId]);
+
+  const isSelf = selfId === userId;
+  const has = (r: R) => roles.includes(r);
+
+  const save = async (next: R[]) => {
+    if (next.length === 0) {
+      toast.error("Sélectionne au moins un rôle");
+      return;
+    }
+    if (isSelf && !next.includes("admin")) {
+      toast.error("Tu ne peux pas retirer ton propre statut admin");
+      return;
+    }
+    const becameManager = next.includes("manager") && !roles.includes("manager");
     setSaving(true);
     try {
-      await setRoleFn({ data: { user_id: userId, role: next } });
-      setRole(next);
-      toast.success(`Rôle changé : ${label}`);
-      if (next === "manager") setPermsOpen(true);
+      await setRolesFn({ data: { user_id: userId, roles: next } });
+      setRoles(next);
+      toast.success("Accès mis à jour");
+      if (becameManager) setPermsOpen(true);
     } catch (e: any) {
       toast.error(e?.message || "Échec");
     } finally {
@@ -870,28 +879,39 @@ function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: st
     }
   };
 
-  const isSelf = selfId === userId;
-  const opts: Array<{ v: "employee" | "manager" | "admin"; label: string; desc: string }> = [
-    { v: "employee", label: "Employé", desc: "Accès staff-app uniquement" },
-    { v: "manager", label: "Manager", desc: "Accès console admin (configurable)" },
-    { v: "admin", label: "Administrateur", desc: "Accès total + gestion des admins" },
+  const toggle = (r: R) => {
+    if (saving || !loaded) return;
+    const next = has(r) ? roles.filter((x) => x !== r) : [...roles, r];
+    save(next);
+  };
+
+  const opts: Array<{ v: R; label: string; desc: string }> = [
+    { v: "employee", label: "Employé", desc: "Accès à l'app staff (planning, pointage, formations)" },
+    { v: "manager", label: "Manager", desc: "Accès à la console admin (sections configurables)" },
+    { v: "admin", label: "Administrateur", desc: "Accès total : gestion des comptes admin, finances, paramètres" },
   ];
+
+  const multi = roles.length > 1;
 
   return (
     <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-        Rôle dans l'app
+      <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+        Accès & titres
       </div>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12, lineHeight: 1.4 }}>
+        Coche un ou plusieurs titres. Si plusieurs sont cochés, l'espace affiché dépend du lien de connexion (app employé vs console admin) — mêmes identifiants.
+      </div>
+
       <div className="flex flex-col gap-1.5">
         {opts.map((o) => {
-          const active = role === o.v;
-          const disabled = saving || (isSelf && o.v !== "admin");
+          const active = has(o.v);
+          const disabled = saving || !loaded || (isSelf && o.v === "admin" && active);
           return (
             <button
               key={o.v}
-              onClick={() => change(o.v)}
+              onClick={() => toggle(o.v)}
               disabled={disabled}
-              className="text-left rounded-md px-3 py-2 transition"
+              className="text-left rounded-md px-3 py-2.5 transition flex items-start gap-2.5"
               style={{
                 backgroundColor: active ? "var(--coral)" : "var(--background)",
                 color: active ? "var(--coral-text)" : "var(--foreground)",
@@ -900,14 +920,35 @@ function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: st
                 cursor: disabled ? "not-allowed" : "pointer",
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 500 }}>{o.label}</div>
-              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>{o.desc}</div>
+              <div
+                aria-hidden
+                style={{
+                  width: 16, height: 16, marginTop: 1, borderRadius: 4, flexShrink: 0,
+                  border: active ? "none" : "1.5px solid var(--border)",
+                  backgroundColor: active ? "var(--coral-text)" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                {active && <span style={{ color: "var(--coral)", fontSize: 11, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{o.label}</div>
+                <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>{o.desc}</div>
+              </div>
             </button>
           );
         })}
       </div>
 
-      {role === "manager" && (
+      {multi && (
+        <div className="mt-3 rounded-md px-3 py-2" style={{ backgroundColor: "var(--background)", border: "0.5px solid var(--border)", fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.4 }}>
+          <strong style={{ color: "var(--foreground)", fontWeight: 500 }}>Comptes multiples :</strong>{" "}
+          {roles.map((r) => r === "admin" ? "Administrateur" : r === "manager" ? "Manager" : "Employé").join(" + ")}.
+          La personne se connecte avec les mêmes identifiants sur l'app employé ou la console admin selon ce qu'elle veut faire.
+        </div>
+      )}
+
+      {has("manager") && (
         <button
           onClick={() => setPermsOpen(true)}
           className="mt-3 w-full rounded-md px-3 py-2 transition"
@@ -932,3 +973,4 @@ function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: st
     </div>
   );
 }
+
