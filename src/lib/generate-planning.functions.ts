@@ -15,6 +15,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 import { fetchAll } from "@/lib/supabase-paginate";
 import { getWeeklyCapForUser } from "@/lib/weekly-cap";
 import {
@@ -170,7 +171,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const t0 = Date.now();
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:generate");
 
     // ── Période : du jour choisi jusqu'à la fin du mois calendaire (28/30/31 jours selon le mois)
     const monthStart = data.month_start_date;
@@ -261,7 +262,7 @@ export const cancelPlanningRun = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ run_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:generate");
 
     const { data: run } = await supabase
       .from("planning_runs")
@@ -290,7 +291,7 @@ export const listPlanningRuns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:generate");
     const { data, error } = await supabase
       .from("planning_runs")
       .select("id, month_start_date, month_end_date, studios_included, status, workflow_status, coverage_rate, shifts_generated, shifts_with_holes, started_at, completed_at, duration_ms, dry_run, solver_logs, alerts, error_message, published_at")
