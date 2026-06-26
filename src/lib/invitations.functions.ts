@@ -106,3 +106,78 @@ export const sendInvitation = createServerFn({ method: "POST" })
 
     return { ok: true, invitation_id: inv.id, activation_url: activationUrl, email_sent: emailSent };
   });
+
+// Renvoyer l'email d'une invitation existante (sans créer de doublon)
+const ResendInput = z.object({ invitation_id: z.string().uuid() });
+
+export const resendInvitation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => ResendInput.parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    const ok = roles?.some((r: any) => r.role === "admin" || r.role === "manager");
+    if (!ok) throw new Error("Réservé aux administrateurs ou managers");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: inv, error: invErr } = await supabaseAdmin
+      .from("invitations")
+      .select("id, email, first_name, token, app_role, status, studio_id, studio_ids")
+      .eq("id", data.invitation_id)
+      .maybeSingle();
+    if (invErr || !inv) throw new Error("Invitation introuvable");
+    if (inv.status === "accepted") throw new Error("Cette invitation a déjà été acceptée");
+
+    // Réactiver si révoquée/expirée et prolonger
+    await supabaseAdmin
+      .from("invitations")
+      .update({ status: "pending", expires_at: "9999-12-31T23:59:59Z" })
+      .eq("id", inv.id);
+
+    const activationOrigin =
+      inv.app_role === "employee"
+        ? "https://app.shyft.flashsite.fr"
+        : "https://admin.shyft.flashsite.fr";
+    const activationUrl = `${activationOrigin}/activation?token=${inv.token}`;
+
+    const studioId = inv.studio_ids?.[0] ?? inv.studio_id ?? null;
+    const { data: studio } = studioId
+      ? await supabaseAdmin.from("studios").select("name").eq("id", studioId).maybeSingle()
+      : { data: null as any };
+
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
+    const host = getRequestHeader("host");
+    const proto = getRequestHeader("x-forwarded-proto") ?? "https";
+    const authHeader = getRequestHeader("authorization");
+
+    const r = await fetch(`${proto}://${host}/lovable/email/transactional/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+      body: JSON.stringify({
+        templateName: "invitation-employe",
+        recipientEmail: inv.email,
+        // suffix timestamp to bypass idempotency cache after a previous DLQ
+        idempotencyKey: `invitation-employe-${inv.id}-${Date.now()}`,
+        templateData: {
+          firstName: inv.first_name,
+          studioName: studio?.name ?? "Skult Studios",
+          inviteUrl: activationUrl,
+        },
+      }),
+    });
+    if (!r.ok) {
+      const txt = await r.text();
+      console.error("Resend invitation email failed:", r.status, txt);
+      throw new Error("L'envoi de l'email a échoué");
+    }
+    return { ok: true, email: inv.email };
+  });
+
