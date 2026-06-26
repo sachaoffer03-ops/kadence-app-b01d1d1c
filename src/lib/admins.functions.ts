@@ -165,7 +165,7 @@ export const setManagerPermissions = createServerFn({ method: "POST" })
   .inputValidator((i) =>
     z.object({
       user_id: z.string().uuid(),
-      permissions: z.array(z.string()).max(64),
+      permissions: z.array(z.string()).max(128),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
