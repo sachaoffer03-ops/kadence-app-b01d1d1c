@@ -16,9 +16,15 @@ interface Props {
   userName?: string;
   onClose: () => void;
   onSaved?: (permissions: string[]) => void;
+  /** If true, user isn't manager yet — pre-fill preset and call beforeSave to promote first */
+  pendingPromotion?: boolean;
+  /** Called before persisting permissions — use to promote user to manager */
+  beforeSave?: () => Promise<void>;
+  /** Called when modal closes via Cancel/backdrop (NOT after a successful save) */
+  onCancel?: () => void;
 }
 
-export function ManagerPermissionsModal({ open, userId, userName, onClose, onSaved }: Props) {
+export function ManagerPermissionsModal({ open, userId, userName, onClose, onSaved, pendingPromotion, beforeSave, onCancel }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -29,11 +35,16 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
   useEffect(() => {
     if (!open) return;
     setLoading(true);
+    if (pendingPromotion) {
+      setSelected(new Set(PRESET_MANAGER_SKULT));
+      setLoading(false);
+      return;
+    }
     getFn({ data: { user_id: userId } })
       .then((res) => setSelected(new Set(res.permissions)))
       .catch(() => setSelected(new Set()))
       .finally(() => setLoading(false));
-  }, [open, userId, getFn]);
+  }, [open, userId, getFn, pendingPromotion]);
 
   const togglePage = (pageKey: string, actionKeys: string[]) => {
     setSelected((prev) => {
@@ -104,8 +115,9 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
     setSaving(true);
     try {
       const arr = Array.from(selected);
+      if (beforeSave) await beforeSave();
       await setFn({ data: { user_id: userId, permissions: arr } });
-      toast.success("Accès enregistrés");
+      toast.success(pendingPromotion ? "Manager activé avec ces accès" : "Accès enregistrés");
       onSaved?.(arr);
       onClose();
     } catch (e: any) {
@@ -115,13 +127,18 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
     }
   };
 
+  const handleCancel = () => {
+    onCancel?.();
+    onClose();
+  };
+
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(20,20,20,0.45)" }}
-      onClick={onClose}
+      onClick={handleCancel}
     >
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col"
@@ -144,7 +161,7 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-md p-1 hover:bg-[var(--muted)]" style={{ color: "var(--muted-foreground)" }}>
+          <button onClick={handleCancel} className="rounded-md p-1 hover:bg-[var(--muted)]" style={{ color: "var(--muted-foreground)" }}>
             <X size={18} />
           </button>
         </div>
@@ -291,7 +308,7 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
             Ce manager pourra accéder à {counts.pages} page{counts.pages > 1 ? "s" : ""} et effectuer {counts.actions} action{counts.actions > 1 ? "s" : ""}.
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} disabled={saving} className="rounded-md px-3 py-1.5" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}>
+            <button onClick={handleCancel} disabled={saving} className="rounded-md px-3 py-1.5" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}>
               Annuler
             </button>
             <button

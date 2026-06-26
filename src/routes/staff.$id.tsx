@@ -841,6 +841,8 @@ function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: st
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [permsOpen, setPermsOpen] = useState(false);
+  const [pendingPromotion, setPendingPromotion] = useState(false);
+  const [pendingRoles, setPendingRoles] = useState<R[] | null>(null);
   const setRolesFn = useServerFn(setUserAppRoles);
   void setUserAppRole;
 
@@ -856,24 +858,23 @@ function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: st
   const isSelf = selfId === userId;
   const has = (r: R) => roles.includes(r);
 
-  const save = async (next: R[]) => {
+  const persistRoles = async (next: R[]) => {
     if (next.length === 0) {
       toast.error("Sélectionne au moins un rôle");
-      return;
+      return false;
     }
     if (isSelf && !next.includes("admin")) {
       toast.error("Tu ne peux pas retirer ton propre statut admin");
-      return;
+      return false;
     }
-    const becameManager = next.includes("manager") && !roles.includes("manager");
     setSaving(true);
     try {
       await setRolesFn({ data: { user_id: userId, roles: next } });
       setRoles(next);
-      toast.success("Accès mis à jour");
-      if (becameManager) setPermsOpen(true);
+      return true;
     } catch (e: any) {
       toast.error(e?.message || "Échec");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -881,8 +882,18 @@ function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: st
 
   const toggle = (r: R) => {
     if (saving || !loaded) return;
+    const becameManager = r === "manager" && !has("manager");
     const next = has(r) ? roles.filter((x) => x !== r) : [...roles, r];
-    save(next);
+
+    if (becameManager) {
+      // D'abord configurer les permissions, puis seulement promouvoir si l'admin confirme
+      setPendingRoles(next);
+      setPendingPromotion(true);
+      setPermsOpen(true);
+      return;
+    }
+
+    persistRoles(next).then((ok) => { if (ok) toast.success("Accès mis à jour"); });
   };
 
   const opts: Array<{ v: R; label: string; desc: string }> = [
@@ -950,7 +961,7 @@ function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: st
 
       {has("manager") && (
         <button
-          onClick={() => setPermsOpen(true)}
+          onClick={() => { setPendingPromotion(false); setPendingRoles(null); setPermsOpen(true); }}
           className="mt-3 w-full rounded-md px-3 py-2 transition"
           style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
         >
@@ -968,9 +979,26 @@ function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: st
         open={permsOpen}
         userId={userId}
         userName={userName}
-        onClose={() => setPermsOpen(false)}
+        pendingPromotion={pendingPromotion}
+        beforeSave={pendingPromotion && pendingRoles ? async () => {
+          const ok = await persistRoles(pendingRoles);
+          if (!ok) throw new Error("Promotion annulée");
+        } : undefined}
+        onCancel={() => {
+          if (pendingPromotion) {
+            toast.message("Promotion annulée");
+          }
+          setPendingPromotion(false);
+          setPendingRoles(null);
+        }}
+        onClose={() => {
+          setPermsOpen(false);
+          setPendingPromotion(false);
+          setPendingRoles(null);
+        }}
       />
     </div>
   );
 }
+
 
