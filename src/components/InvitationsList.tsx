@@ -117,15 +117,22 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
   }, [invitations]);
 
   const filtered = useMemo(() => {
-    return invitations.filter((i) => {
-      if (tab !== "all" && i.status !== tab) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        const hay = `${i.first_name} ${i.last_name} ${i.email}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
+    const statusOrder: Record<Status, number> = { pending: 0, expired: 1, revoked: 2, accepted: 3 };
+    return invitations
+      .filter((i) => {
+        if (tab !== "all" && i.status !== tab) return false;
+        if (search) {
+          const q = search.toLowerCase();
+          const hay = `${i.first_name} ${i.last_name} ${i.email}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const so = statusOrder[a.status] - statusOrder[b.status];
+        if (so !== 0) return so;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
   }, [invitations, tab, search]);
 
   const copyLink = async (token: string) => {
