@@ -140,80 +140,41 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
     }
   };
 
+  const resendFn = useServerFn(resendInvitation);
+
   const resendEmail = async (inv: Invitation) => {
     const t = toast.loading("Renvoi de l'email...");
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) {
+    try {
+      await resendFn({ data: { invitation_id: inv.id } });
       toast.dismiss(t);
-      toast.error("Session expirée, reconnectez-vous");
-      return;
+      toast.success(`Email renvoyé à ${inv.email}`);
+      load();
+    } catch (e: any) {
+      toast.dismiss(t);
+      toast.error(e?.message ?? "Erreur lors du renvoi");
     }
-    const { error } = await supabase.functions.invoke("send-invitation", {
-      body: {
-        email: inv.email,
-        first_name: inv.first_name,
-        last_name: inv.last_name,
-        phone: inv.phone,
-        studio_ids: inv.studio_ids ?? (inv.studio_id ? [inv.studio_id] : []),
-        contracts: inv.contracts ?? (inv.contract ? [inv.contract] : []),
-        business_roles: inv.business_roles ?? [],
-        app_role: inv.app_role,
-      },
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    toast.dismiss(t);
-    if (error) {
-      toast.error("Erreur lors du renvoi");
-      return;
-    }
-    // Revoke the old one (the new one replaces it)
-    await supabase.from("invitations").update({ status: "revoked" }).eq("id", inv.id);
-    toast.success(`Email renvoyé à ${inv.email}`);
-    load();
   };
 
   const [bulkResending, setBulkResending] = useState(false);
   const resendAllPending = async () => {
-    const pendings = invitations.filter((i) => i.status === "pending");
+    const pendings = invitations.filter((i) => i.status === "pending" || i.status === "expired");
     if (pendings.length === 0) {
-      toast.info("Aucune invitation en attente");
+      toast.info("Aucune invitation à renvoyer");
       return;
     }
-    if (!confirm(`Renvoyer l'email d'activation à ${pendings.length} employé(s) en attente ?`)) return;
+    if (!confirm(`Renvoyer l'email d'activation à ${pendings.length} employé(s) ?`)) return;
     setBulkResending(true);
     const t = toast.loading(`Envoi en cours (0/${pendings.length})...`);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) {
-      toast.dismiss(t);
-      setBulkResending(false);
-      toast.error("Session expirée, reconnectez-vous");
-      return;
-    }
     let ok = 0;
     let fail = 0;
     for (let idx = 0; idx < pendings.length; idx++) {
       const inv = pendings[idx];
       toast.loading(`Envoi en cours (${idx + 1}/${pendings.length})...`, { id: t });
-      const { error } = await supabase.functions.invoke("send-invitation", {
-        body: {
-          email: inv.email,
-          first_name: inv.first_name,
-          last_name: inv.last_name,
-          phone: inv.phone,
-          studio_ids: inv.studio_ids ?? (inv.studio_id ? [inv.studio_id] : []),
-          contracts: inv.contracts ?? (inv.contract ? [inv.contract] : []),
-          business_roles: inv.business_roles ?? [],
-          app_role: inv.app_role,
-        },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (error) {
-        fail++;
-      } else {
+      try {
+        await resendFn({ data: { invitation_id: inv.id } });
         ok++;
-        await supabase.from("invitations").update({ status: "revoked" }).eq("id", inv.id);
+      } catch {
+        fail++;
       }
     }
     toast.dismiss(t);
@@ -222,6 +183,8 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
     setBulkResending(false);
     load();
   };
+
+
 
   const revoke = async (inv: Invitation) => {
     if (!confirm(`Révoquer l'invitation de ${inv.first_name} ${inv.last_name} ?`)) return;
