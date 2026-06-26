@@ -601,6 +601,7 @@ function EditSheet({ initial, onClose, onSave }:
   const [filePath, setFilePath] = useState(initial.data?.file_path || "");
   const [fileName, setFileName] = useState(initial.data?.file_name || "");
   const [fileDesc, setFileDesc] = useState(initial.data?.description || "");
+  const [fileText, setFileText] = useState<string>(initial.data?.extracted_text || "");
   const [uploading, setUploading] = useState(false);
   const [tableText, setTableText] = useState(initial.data?.raw || "");
 
@@ -612,14 +613,48 @@ function EditSheet({ initial, onClose, onSave }:
     } else if (entryType === "link") {
       setContent([title ? title : "", linkUrl, linkDesc].filter(Boolean).join(" — "));
     } else if (entryType === "file") {
-      setContent(`Fichier joint : ${fileName || "(aucun)"}${fileDesc ? `\n\n${fileDesc}` : ""}`);
+      const parts = [
+        `Fichier joint : ${fileName || "(aucun)"}`,
+        fileDesc ? `\nDescription : ${fileDesc}` : "",
+        fileText ? `\n\n--- Contenu extrait du fichier ---\n${fileText}` : "",
+      ];
+      setContent(parts.join(""));
       if (!title.trim() && fileName) setTitle(fileName);
     } else if (entryType === "table") {
       setContent(tableText);
     }
-    // text mode: user types content directly
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryType, faqQ, faqA, linkUrl, linkDesc, fileName, fileDesc, tableText]);
+  }, [entryType, faqQ, faqA, linkUrl, linkDesc, fileName, fileDesc, fileText, tableText]);
+
+  const extractText = async (file: File): Promise<string> => {
+    const name = file.name.toLowerCase();
+    const isText = /\.(txt|md|csv|json|tsv|log|html|xml|yaml|yml)$/.test(name) || file.type.startsWith("text/");
+    if (isText) {
+      const t = await file.text();
+      return t.slice(0, 200000);
+    }
+    if (name.endsWith(".pdf") || file.type === "application/pdf") {
+      try {
+        const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
+        const worker = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+        const buf = await file.arrayBuffer();
+        const doc = await pdfjs.getDocument({ data: buf }).promise;
+        let out = "";
+        for (let i = 1; i <= doc.numPages; i++) {
+          const page = await doc.getPage(i);
+          const tc = await page.getTextContent();
+          out += tc.items.map((it: any) => it.str).join(" ") + "\n\n";
+          if (out.length > 200000) break;
+        }
+        return out.trim().slice(0, 200000);
+      } catch (e) {
+        console.error("PDF extract failed", e);
+        return "";
+      }
+    }
+    return "";
+  };
 
   const onPickFile = async (file: File) => {
     setUploading(true);
@@ -629,7 +664,13 @@ function EditSheet({ initial, onClose, onSave }:
       const { error } = await supabase.storage.from("ai-knowledge").upload(path, file, { upsert: false });
       if (error) throw error;
       setFilePath(path); setFileName(file.name);
-      toast.success("Fichier importé");
+      const extracted = await extractText(file);
+      setFileText(extracted);
+      if (extracted) {
+        toast.success(`Fichier importé — ${extracted.length} caractères extraits pour l'IA`);
+      } else {
+        toast.success("Fichier importé (texte non extractible — ajoute une description pour l'IA)");
+      }
     } catch (e: any) {
       toast.error(e?.message || "Upload échoué");
     } finally { setUploading(false); }
