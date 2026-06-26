@@ -1,3 +1,4 @@
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 // =============================================================================
 // PLANNING WORKFLOW — draft → review → published → unpublished
 // =============================================================================
@@ -41,7 +42,7 @@ export const markPlanningForReview = createServerFn({ method: "POST" })
   .inputValidator((i) => RunIdInput.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:publish");
     const run = await loadRun(supabase, data.planning_run_id);
     assertTransition(run.workflow_status as WfStatus, ["draft", "unpublished"]);
 
@@ -65,7 +66,7 @@ export const publishPlanning = createServerFn({ method: "POST" })
   .inputValidator((i) => RunIdInput.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:publish");
     const run = await loadRun(supabase, data.planning_run_id);
     assertTransition(run.workflow_status as WfStatus, ["review"]);
 
@@ -138,7 +139,7 @@ export const unpublishPlanning = createServerFn({ method: "POST" })
   .inputValidator((i) => RunIdInput.extend({ reason: z.string().min(3).max(500) }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:publish");
     const run = await loadRun(supabase, data.planning_run_id);
     assertTransition(run.workflow_status as WfStatus, ["published"]);
 
@@ -176,7 +177,7 @@ export const revertPlanningToDraft = createServerFn({ method: "POST" })
   .inputValidator((i) => RunIdInput.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:publish");
     const run = await loadRun(supabase, data.planning_run_id);
     assertTransition(run.workflow_status as WfStatus, ["review", "unpublished"]);
 
@@ -201,7 +202,7 @@ export const getPlanningRun = createServerFn({ method: "GET" })
   .inputValidator((i) => RunIdInput.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:publish");
     const { data: run, error } = await supabase
       .from("planning_runs")
       .select(

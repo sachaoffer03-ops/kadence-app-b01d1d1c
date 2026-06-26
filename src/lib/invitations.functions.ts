@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 
 const InviteInput = z.object({
   email: z.string().email(),
@@ -21,12 +22,7 @@ export const sendInvitation = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
     // Vérifier que l'appelant est admin ou manager
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    const ok = roles?.some((r: any) => r.role === "admin" || r.role === "manager");
-    if (!ok) throw new Error("Réservé aux administrateurs ou managers");
+    await assertManagerPermission(supabase, userId, "/staff:invite");
 
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -116,12 +112,7 @@ export const resendInvitation = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    const ok = roles?.some((r: any) => r.role === "admin" || r.role === "manager");
-    if (!ok) throw new Error("Réservé aux administrateurs ou managers");
+    await assertManagerPermission(supabase, userId, "/staff:invite");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

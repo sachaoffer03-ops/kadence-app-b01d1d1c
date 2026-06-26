@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 async function assertCanConfigureClosure(userId: string) {

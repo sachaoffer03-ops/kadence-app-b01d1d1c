@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { employeeLink, adminLink } from "@/lib/notif-links";
 
@@ -65,7 +66,7 @@ export const sendProposals = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/trous:send_proposals");
 
     // Vérifier que le shift existe et est encore libre
     const { data: shift, error: e1 } = await supabase
@@ -118,7 +119,7 @@ export const sendProposalsToShifts = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/trous:send_proposals");
 
     const shiftIds = Array.from(new Set(data.shiftIds));
     const userIds = Array.from(new Set(data.userIds));
@@ -264,7 +265,7 @@ export const sendReplacementProposals = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/trous:send_proposals");
 
     const { data: req, error: e0 } = await supabaseAdmin
       .from("modification_requests")
@@ -460,7 +461,7 @@ export const cancelProposals = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:write");
     const { error } = await supabaseAdmin
       .from("shift_proposals")
       .update({ status: "cancelled", responded_at: new Date().toISOString() })

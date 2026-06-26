@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 import { employeeLink } from "@/lib/notif-links";
 import { validateRoleSegments, getRequiredRoles, type RoleSegment } from "@/lib/role-segments";
 
@@ -118,7 +119,7 @@ export const updateShift = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:write");
 
     const { data: current, error: eCur } = await supabase
       .from("shifts")
@@ -295,7 +296,7 @@ export const createShift = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:write");
     await assertNoOverlap(supabase, data.userId, data.shiftDate, data.startTime, data.endTime);
 
     // Validation segments
@@ -367,7 +368,7 @@ export const assignShiftDirect = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/trous:assign");
 
     const { data: cur, error: eCur } = await supabase
       .from("shifts")
@@ -433,7 +434,7 @@ export const assignShiftsDirect = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:write");
 
     const shiftIds = Array.from(new Set(data.shiftIds));
     const { data: shifts, error: eCur } = await supabase
@@ -499,7 +500,7 @@ export const deleteShift = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ shiftId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:write");
     const { data: cur } = await supabase
       .from("shifts")
       .select("user_id, shift_date, start_time, published_at, business_role")
@@ -564,7 +565,7 @@ export const publishPlanning = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/planning:publish");
 
     const studioIds = (data.studioIds && data.studioIds.length > 0)
       ? data.studioIds

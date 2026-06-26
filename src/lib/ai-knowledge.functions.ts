@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data } = await supabase
@@ -16,7 +17,7 @@ export const listKnowledgeEntries = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/assistant-ia");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("ai_knowledge_entries")
@@ -45,7 +46,7 @@ export const upsertKnowledgeEntry = createServerFn({ method: "POST" })
   .inputValidator((i) => UpsertSchema.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, data.id ? "/assistant-ia:edit_knowledge" : "/assistant-ia:add_knowledge");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const payload = {
@@ -84,7 +85,7 @@ export const toggleKnowledgeEntry = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ id: z.string().uuid(), is_active: z.boolean() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/assistant-ia:edit_knowledge");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("ai_knowledge_entries")
@@ -99,7 +100,7 @@ export const deleteKnowledgeEntry = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/assistant-ia:edit_knowledge");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("ai_knowledge_entries").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -112,7 +113,7 @@ export const getKnowledgeFileUrl = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ path: z.string().min(1) }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/assistant-ia");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: signed, error } = await supabaseAdmin.storage
       .from("ai-knowledge")
@@ -209,7 +210,7 @@ export const extractKnowledgeStoredFileText = createServerFn({ method: "POST" })
   .inputValidator((i) => StoredFileExtractSchema.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/assistant-ia:edit_knowledge");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: blob, error } = await supabaseAdmin.storage.from("ai-knowledge").download(data.path);

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -25,7 +26,7 @@ export const setScoringProfile = createServerFn({ method: "POST" })
   }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/cloture:edit_scoring");
     const { PROFILES } = await import("./scoring-shared");
     const { invalidateScoringCache } = await import("./scoring-rules.server");
     const p = PROFILES[data.profile];
@@ -48,7 +49,7 @@ export const updateScoringRule = createServerFn({ method: "POST" })
   .inputValidator((i) => FIELD_SCHEMA.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/cloture:edit_scoring");
     const { PUNCT_PRESETS, CHECKLIST_PRESETS, PHOTOS_PRESETS } = await import("./scoring-shared");
     const { invalidateScoringCache } = await import("./scoring-rules.server");
 
@@ -99,7 +100,7 @@ export const updateScoringWeights = createServerFn({ method: "POST" })
   }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/cloture:edit_scoring");
     const { invalidateScoringCache } = await import("./scoring-rules.server");
     const sum = data.weight_punctuality + data.weight_checklist + data.weight_photos;
     if (sum !== 100) throw new Error("La somme des pondérations doit faire 100%.");
@@ -143,7 +144,7 @@ export const recalcAllScoresWithNewRules = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/cloture:edit_scoring");
     const { data, error } = await supabase.rpc("recalculate_all_scores");
     if (error) throw new Error(error.message);
     return { ok: true, count: data ?? 0 };

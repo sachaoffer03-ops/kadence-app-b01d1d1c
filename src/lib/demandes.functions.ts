@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 async function assertAdmin(supabase: any, userId: string) {
@@ -119,7 +120,7 @@ export const acceptCancelRequest = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/demandes:accept_refuse");
 
     const { data: req, error } = await supabaseAdmin
       .from("modification_requests")
@@ -157,7 +158,7 @@ export const acceptTimeChangeRequest = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/demandes:accept_refuse");
 
     const { data: req, error } = await supabaseAdmin
       .from("modification_requests")
@@ -189,7 +190,7 @@ export const acceptUnavailabilityRequest = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ requestId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/demandes:accept_refuse");
 
     const { data: req, error } = await supabaseAdmin
       .from("modification_requests")
@@ -240,7 +241,7 @@ export const refuseRequest = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/demandes:accept_refuse");
 
     const { data: req, error } = await supabaseAdmin
       .from("modification_requests")
@@ -270,7 +271,7 @@ export const getDemandesData = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({}).parse(input ?? {}))
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/demandes:accept_refuse");
 
     const [{ data: requests }, { data: profiles }, { data: shifts }, { data: proposals }] = await Promise.all([
       supabaseAdmin.from("modification_requests")
