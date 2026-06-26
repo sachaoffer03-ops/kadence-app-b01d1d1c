@@ -181,6 +181,16 @@ function AdminLogin(p: AdminFormProps) {
           </form>
         </div>
 
+        <div className="mt-5 text-center">
+          <a
+            href="https://app.shyft.flashsite.fr/login"
+            style={{ fontSize: 12, color: "var(--muted-foreground)" }}
+            className="hover:underline"
+          >
+            Vous êtes employé ? Espace employé →
+          </a>
+        </div>
+
       </div>
     </div>
   );
