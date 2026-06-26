@@ -12,7 +12,7 @@ import { TestBotSheet } from "@/components/ai-test/TestBotSheet";
 import ReactMarkdown from "react-markdown";
 import {
   listKnowledgeEntries, upsertKnowledgeEntry, toggleKnowledgeEntry, deleteKnowledgeEntry,
-  getKnowledgeFileUrl, KNOWLEDGE_CATEGORIES, KNOWLEDGE_TYPES,
+  getKnowledgeFileUrl, extractKnowledgeStoredFileText, KNOWLEDGE_CATEGORIES, KNOWLEDGE_TYPES,
 } from "@/lib/ai-knowledge.functions";
 import {
   listChatConversations, getConversation, rateMessage, deleteMessageFeedback, getBotStats,
@@ -584,6 +584,7 @@ function IconBtn({ children, onClick, title }: any) {
 
 function EditSheet({ initial, onClose, onSave }:
   { initial: Partial<Entry>; onClose: () => void; onSave: (e: Partial<Entry>) => Promise<void> }) {
+  const extractStoredFile = useServerFn(extractKnowledgeStoredFileText);
   const [entryType, setEntryType] = useState<EntryType>((initial.entry_type as EntryType) || "text");
   const [title, setTitle] = useState(initial.title || "");
   const [content, setContent] = useState(initial.content || "");
@@ -631,7 +632,7 @@ function EditSheet({ initial, onClose, onSave }:
     const isText = /\.(txt|md|csv|json|tsv|log|html|xml|yaml|yml)$/.test(name) || file.type.startsWith("text/");
     if (isText) {
       const t = await file.text();
-      return t.slice(0, 200000);
+      return t.slice(0, 90000);
     }
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
       try {
@@ -648,9 +649,9 @@ function EditSheet({ initial, onClose, onSave }:
           const page = await doc.getPage(i);
           const tc = await page.getTextContent();
           out += tc.items.map((it: any) => it.str).join(" ") + "\n\n";
-          if (out.length > 200000) break;
+          if (out.length > 90000) break;
         }
-        const text = out.trim().slice(0, 200000);
+        const text = out.trim().slice(0, 90000);
         if (!text) console.warn("PDF parsé mais aucun texte trouvé (peut-être scanné/image)");
         return text;
       } catch (e) {
@@ -661,6 +662,18 @@ function EditSheet({ initial, onClose, onSave }:
     return "";
   };
 
+  const extractUploadedFileText = async (file: File, path: string): Promise<string> => {
+    const localText = await extractText(file);
+    if (localText.trim()) return localText.trim();
+
+    const name = file.name.toLowerCase();
+    const canExtractOnServer = name.endsWith(".pdf") || file.type === "application/pdf" || file.type.startsWith("image/");
+    if (!canExtractOnServer) return "";
+
+    const result = await extractStoredFile({ data: { path, fileName: file.name, mimeType: file.type || undefined } });
+    return (result.text || "").trim();
+  };
+
   const onPickFile = async (file: File) => {
     setUploading(true);
     try {
@@ -669,12 +682,20 @@ function EditSheet({ initial, onClose, onSave }:
       const { error } = await supabase.storage.from("ai-knowledge").upload(path, file, { upsert: false });
       if (error) throw error;
       setFilePath(path); setFileName(file.name);
-      const extracted = await extractText(file);
+      const loadingToast = toast.loading("Fichier importé — extraction du contenu pour le bot…");
+      let extracted = "";
+      try {
+        extracted = await extractUploadedFileText(file, path);
+      } catch (extractErr) {
+        console.error("Knowledge file extraction failed", extractErr);
+      } finally {
+        toast.dismiss(loadingToast);
+      }
       setFileText(extracted);
       if (extracted) {
         toast.success(`Fichier importé — ${extracted.length} caractères extraits pour l'IA`);
       } else {
-        toast.success("Fichier importé (texte non extractible — ajoute une description pour l'IA)");
+        toast.info("Fichier importé — aucun texte lisible détecté automatiquement. Ajoute une courte description si besoin.");
       }
     } catch (e: any) {
       toast.error(e?.message || "Upload échoué");
