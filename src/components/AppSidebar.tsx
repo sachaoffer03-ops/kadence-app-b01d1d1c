@@ -84,7 +84,19 @@ function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSecti
 function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { onNavigate?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const counts = useSidebarCounts();
-  const navSections = buildNavSections(counts);
+  const { appRole, managerPermissions } = useAuth();
+  const rawSections = buildNavSections(counts);
+  const navSections = rawSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        if (appRole === "admin") return true;
+        if (appRole !== "manager") return true;
+        if (!managerPermissions) return false;
+        return managerPermissions.includes(item.to);
+      }),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <>
