@@ -89,7 +89,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       supabaseAdmin
         .from("profiles")
         .select("id, first_name, last_name, score, contract, allow_extended_hours, weekly_hours_cap")
-        .eq("status", "active"),
+        .in("status", ["active", "invited"]),
       supabaseAdmin.from("user_business_roles").select("user_id, role"),
       supabaseAdmin.from("user_studios").select("user_id, studio_id"),
       supabaseAdmin.from("user_contracts").select("user_id, contract"),
