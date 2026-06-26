@@ -837,10 +837,7 @@ function EditClockInline({
 function AppRoleCard({ userId, selfId }: { userId: string; selfId?: string }) {
   const [role, setRole] = useState<"employee" | "manager" | "admin" | null>(null);
   const [saving, setSaving] = useState(false);
-  const setRoleFn = useServerFn(
-    // lazy import to avoid TDZ
-    (require("@/lib/admins.functions") as typeof import("@/lib/admins.functions")).setUserAppRole,
-  );
+  const setRoleFn = useServerFn(setUserAppRole);
 
   useEffect(() => {
     (async () => {
