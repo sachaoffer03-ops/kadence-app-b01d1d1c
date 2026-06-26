@@ -115,8 +115,9 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
     setSaving(true);
     try {
       const arr = Array.from(selected);
+      if (beforeSave) await beforeSave();
       await setFn({ data: { user_id: userId, permissions: arr } });
-      toast.success("Accès enregistrés");
+      toast.success(pendingPromotion ? "Manager activé avec ces accès" : "Accès enregistrés");
       onSaved?.(arr);
       onClose();
     } catch (e: any) {
@@ -126,13 +127,18 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
     }
   };
 
+  const handleCancel = () => {
+    onCancel?.();
+    onClose();
+  };
+
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(20,20,20,0.45)" }}
-      onClick={onClose}
+      onClick={handleCancel}
     >
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col"
