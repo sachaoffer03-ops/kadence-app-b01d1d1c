@@ -21,6 +21,7 @@ import { countUnviewedDocuments } from "@/lib/documents.functions";
 import { RatingInput, RatingBadge } from "@/components/RatingInput";
 import { ExtendedHoursCard } from "@/components/staff/ExtendedHoursCard";
 import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHistoryTab";
+import { setUserAppRole } from "@/lib/admins.functions";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -386,6 +387,8 @@ function EmployeeDetailPage() {
             <Row label="IBAN" value={emp.iban || "—"} />
             {emp.contract === "etudiant" && <Row label="Carte étudiant" value={emp.student_card_valid ? "Valide" : "Manquante"} />}
           </div>
+
+          {appRole === "admin" && <AppRoleCard userId={emp.id} selfId={user?.id} />}
 
           <div className="flex gap-2">
             <button onClick={handleExport} className="flex-1 rounded-md px-3 py-2 flex items-center justify-center gap-1.5"
@@ -827,6 +830,84 @@ function EditClockInline({
           {busy ? "..." : "Enregistrer"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function AppRoleCard({ userId, selfId }: { userId: string; selfId?: string }) {
+  const [role, setRole] = useState<"employee" | "manager" | "admin" | null>(null);
+  const [saving, setSaving] = useState(false);
+  const setRoleFn = useServerFn(setUserAppRole);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
+      setRole((data?.role as any) ?? "employee");
+    })();
+  }, [userId]);
+
+  const change = async (next: "employee" | "manager" | "admin") => {
+    if (next === role) return;
+    const label = next === "admin" ? "Administrateur" : next === "manager" ? "Manager" : "Employé";
+    const warn = next === "admin"
+      ? "Cette personne aura un accès total : utilisateurs, finances, paramètres. Continuer ?"
+      : next === "manager"
+      ? "Cette personne aura accès à la console admin (planning, employés, rapports). Continuer ?"
+      : "Cette personne perdra son accès à la console admin. Continuer ?";
+    if (!confirm(warn)) return;
+    setSaving(true);
+    try {
+      await setRoleFn({ data: { user_id: userId, role: next } });
+      setRole(next);
+      toast.success(`Rôle changé : ${label}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Échec");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isSelf = selfId === userId;
+  const opts: Array<{ v: "employee" | "manager" | "admin"; label: string; desc: string }> = [
+    { v: "employee", label: "Employé", desc: "Accès staff-app uniquement" },
+    { v: "manager", label: "Manager", desc: "Accès console admin (planning, équipe, rapports)" },
+    { v: "admin", label: "Administrateur", desc: "Accès total + gestion des admins" },
+  ];
+
+  return (
+    <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+        Rôle dans l'app
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {opts.map((o) => {
+          const active = role === o.v;
+          const disabled = saving || (isSelf && o.v !== "admin");
+          return (
+            <button
+              key={o.v}
+              onClick={() => change(o.v)}
+              disabled={disabled}
+              className="text-left rounded-md px-3 py-2 transition"
+              style={{
+                backgroundColor: active ? "var(--coral)" : "var(--background)",
+                color: active ? "var(--coral-text)" : "var(--foreground)",
+                border: active ? "none" : "0.5px solid var(--border)",
+                opacity: disabled && !active ? 0.5 : 1,
+                cursor: disabled ? "not-allowed" : "pointer",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 500 }}>{o.label}</div>
+              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>{o.desc}</div>
+            </button>
+          );
+        })}
+      </div>
+      {isSelf && (
+        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 10 }}>
+          Tu ne peux pas retirer ton propre statut admin.
+        </div>
+      )}
     </div>
   );
 }

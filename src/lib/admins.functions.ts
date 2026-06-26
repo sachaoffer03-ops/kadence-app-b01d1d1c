@@ -89,4 +89,40 @@ export const setUserPassword = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { ok: true };
+});
+
+export const setUserAppRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({
+      user_id: z.string().uuid(),
+      role: z.enum(["employee", "manager", "admin"]),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    if (data.user_id === userId && data.role !== "admin") {
+      throw new Error("Tu ne peux pas retirer ton propre statut admin");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Remplace TOUS les rôles existants par le nouveau (un seul role app par user)
+    const { error: delErr } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
+    if (delErr) throw new Error(delErr.message);
+    const { error: insErr } = await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: data.role });
+    if (insErr) throw new Error(insErr.message);
+
+    // Notification à l'employé
+    const label = data.role === "admin" ? "Administrateur" : data.role === "manager" ? "Manager" : "Employé";
+    await supabaseAdmin.from("notifications").insert({
+      user_id: data.user_id,
+      type: "role_changed",
+      title: `Ton rôle a été mis à jour`,
+      body: `Tu es désormais ${label}. ${data.role !== "employee" ? "Tu as maintenant accès à la console admin." : ""}`,
+      priority: "normal",
+      category: "account",
+    });
+
+    return { ok: true };
   });
