@@ -47,9 +47,10 @@ function LoginPage() {
         await supabase.auth.signOut();
         return;
       }
-      if (isEmployeeSpace && !hasEmployee) {
-        toast.error("Ce compte est administrateur. Utilisez un compte employé pour app.shyft.flashsite.fr");
-        await supabase.auth.signOut();
+      // Manager/admin pur sur l'espace employé → on bascule vers admin au lieu de bloquer
+      if (isEmployeeSpace && !hasEmployee && hasAdminOrManager) {
+        toast.info("Compte manager — redirection vers la console admin…");
+        window.location.replace("https://admin.shyft.flashsite.fr/login");
         return;
       }
       if (!isEmployeeSpace && !hasAdminOrManager) {
@@ -57,6 +58,18 @@ function LoginPage() {
         await supabase.auth.signOut();
         window.location.replace("https://app.shyft.flashsite.fr/login");
         return;
+      }
+      // Multi-rôles : on signale clairement que l'autre espace est dispo
+      if (hasEmployee && hasAdminOrManager) {
+        const otherUrl = isEmployeeSpace
+          ? "https://admin.shyft.flashsite.fr"
+          : "https://app.shyft.flashsite.fr";
+        const otherLabel = isEmployeeSpace ? "Console admin" : "Espace employé";
+        toast(`${otherLabel} disponible aussi`, {
+          description: "Tu as plusieurs accès — tu peux basculer à tout moment.",
+          action: { label: "Ouvrir", onClick: () => window.open(otherUrl, "_blank") },
+          duration: 7000,
+        });
       }
       // Navigation SPA : en navigation privée / stockage bloqué, la session peut
       // être gardée uniquement en mémoire. Un reload plein écran la perdrait.
@@ -166,6 +179,16 @@ function AdminLogin(p: AdminFormProps) {
               </button>
             </div>
           </form>
+        </div>
+
+        <div className="mt-5 text-center">
+          <a
+            href="https://app.shyft.flashsite.fr/login"
+            style={{ fontSize: 12, color: "var(--muted-foreground)" }}
+            className="hover:underline"
+          >
+            Vous êtes employé ? Espace employé →
+          </a>
         </div>
 
       </div>
@@ -280,6 +303,16 @@ function EmployeeLogin(p: FormProps) {
               </button>
             </div>
           </form>
+
+          <div className="mt-5 text-center">
+            <a
+              href="https://admin.shyft.flashsite.fr/login"
+              style={{ fontSize: 12, color: "var(--muted-foreground)" }}
+              className="hover:underline"
+            >
+              Vous êtes manager ? Console admin →
+            </a>
+          </div>
         </div>
       </div>
 
