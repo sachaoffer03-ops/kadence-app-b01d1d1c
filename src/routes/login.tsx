@@ -304,15 +304,6 @@ function EmployeeLogin(p: FormProps) {
             </div>
           </form>
 
-          <div className="mt-5 text-center">
-            <a
-              href="https://admin.shyft.flashsite.fr/login"
-              style={{ fontSize: 12, color: "var(--muted-foreground)" }}
-              className="hover:underline"
-            >
-              Vous êtes manager ? Console admin →
-            </a>
-          </div>
         </div>
       </div>
 
