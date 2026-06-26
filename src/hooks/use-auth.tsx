@@ -8,6 +8,8 @@ interface AuthContextValue {
   session: Session | null;
   user: User | null;
   appRole: AppRole | null;
+  /** Manager-only permissions (route prefixes). null = admin (all). [] = no access yet. */
+  managerPermissions: string[] | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -17,6 +19,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
+  const [managerPermissions, setManagerPermissions] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,10 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
-        // Defer role fetch to avoid deadlocks
         setTimeout(() => fetchRole(newSession.user.id), 0);
       } else {
         setAppRole(null);
+        setManagerPermissions(null);
       }
     });
 
@@ -45,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       setSession(null);
       setAppRole(null);
+      setManagerPermissions(null);
       setLoading(false);
       window.clearTimeout(loadingTimeout);
     });
@@ -58,25 +62,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchRole = async (userId: string) => {
     const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    let role: AppRole = "employee";
     if (data && data.length > 0) {
-      // Priority: admin > manager > employee
       const roles = data.map((r) => r.role as AppRole);
-      if (roles.includes("admin")) setAppRole("admin");
-      else if (roles.includes("manager")) setAppRole("manager");
-      else setAppRole("employee");
+      if (roles.includes("admin")) role = "admin";
+      else if (roles.includes("manager")) role = "manager";
+    }
+    setAppRole(role);
+
+    if (role === "admin") setManagerPermissions(null);
+    else if (role === "manager") {
+      const { data: perm } = await supabase
+        .from("manager_permissions")
+        .select("permissions")
+        .eq("user_id", userId)
+        .maybeSingle();
+      setManagerPermissions((perm?.permissions as string[] | null) ?? []);
     } else {
-      setAppRole("employee");
+      setManagerPermissions([]);
     }
   };
+
+  // Live updates of manager permissions
+  useEffect(() => {
+    if (!session?.user || appRole !== "manager") return;
+    const channel = supabase
+      .channel(`my_manager_perms_${session.user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "manager_permissions", filter: `user_id=eq.${session.user.id}` },
+        async () => {
+          const { data: perm } = await supabase
+            .from("manager_permissions")
+            .select("permissions")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          setManagerPermissions((perm?.permissions as string[] | null) ?? []);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id, appRole]);
+
+  // Live updates of role
+  useEffect(() => {
+    if (!session?.user) return;
+    const channel = supabase
+      .channel(`my_role_${session.user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_roles", filter: `user_id=eq.${session.user.id}` },
+        () => fetchRole(session.user.id),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setSession(null);
     setAppRole(null);
+    setManagerPermissions(null);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, appRole, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, appRole, managerPermissions, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
@@ -87,3 +141,4 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }
+

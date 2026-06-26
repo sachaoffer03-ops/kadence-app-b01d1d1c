@@ -22,6 +22,7 @@ import { RatingInput, RatingBadge } from "@/components/RatingInput";
 import { ExtendedHoursCard } from "@/components/staff/ExtendedHoursCard";
 import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHistoryTab";
 import { setUserAppRole } from "@/lib/admins.functions";
+import { ManagerPermissionsModal } from "@/components/ManagerPermissionsModal";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -388,7 +389,7 @@ function EmployeeDetailPage() {
             {emp.contract === "etudiant" && <Row label="Carte étudiant" value={emp.student_card_valid ? "Valide" : "Manquante"} />}
           </div>
 
-          {appRole === "admin" && <AppRoleCard userId={emp.id} selfId={user?.id} />}
+          {appRole === "admin" && <AppRoleCard userId={emp.id} selfId={user?.id} userName={`${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim()} />}
 
           <div className="flex gap-2">
             <button onClick={handleExport} className="flex-1 rounded-md px-3 py-2 flex items-center justify-center gap-1.5"
@@ -834,9 +835,10 @@ function EditClockInline({
   );
 }
 
-function AppRoleCard({ userId, selfId }: { userId: string; selfId?: string }) {
+function AppRoleCard({ userId, selfId, userName }: { userId: string; selfId?: string; userName?: string }) {
   const [role, setRole] = useState<"employee" | "manager" | "admin" | null>(null);
   const [saving, setSaving] = useState(false);
+  const [permsOpen, setPermsOpen] = useState(false);
   const setRoleFn = useServerFn(setUserAppRole);
 
   useEffect(() => {
@@ -852,7 +854,7 @@ function AppRoleCard({ userId, selfId }: { userId: string; selfId?: string }) {
     const warn = next === "admin"
       ? "Cette personne aura un accès total : utilisateurs, finances, paramètres. Continuer ?"
       : next === "manager"
-      ? "Cette personne aura accès à la console admin (planning, employés, rapports). Continuer ?"
+      ? "Cette personne va devenir Manager. Tu vas pouvoir configurer ses accès juste après. Continuer ?"
       : "Cette personne perdra son accès à la console admin. Continuer ?";
     if (!confirm(warn)) return;
     setSaving(true);
@@ -860,6 +862,7 @@ function AppRoleCard({ userId, selfId }: { userId: string; selfId?: string }) {
       await setRoleFn({ data: { user_id: userId, role: next } });
       setRole(next);
       toast.success(`Rôle changé : ${label}`);
+      if (next === "manager") setPermsOpen(true);
     } catch (e: any) {
       toast.error(e?.message || "Échec");
     } finally {
@@ -870,7 +873,7 @@ function AppRoleCard({ userId, selfId }: { userId: string; selfId?: string }) {
   const isSelf = selfId === userId;
   const opts: Array<{ v: "employee" | "manager" | "admin"; label: string; desc: string }> = [
     { v: "employee", label: "Employé", desc: "Accès staff-app uniquement" },
-    { v: "manager", label: "Manager", desc: "Accès console admin (planning, équipe, rapports)" },
+    { v: "manager", label: "Manager", desc: "Accès console admin (configurable)" },
     { v: "admin", label: "Administrateur", desc: "Accès total + gestion des admins" },
   ];
 
@@ -903,11 +906,29 @@ function AppRoleCard({ userId, selfId }: { userId: string; selfId?: string }) {
           );
         })}
       </div>
+
+      {role === "manager" && (
+        <button
+          onClick={() => setPermsOpen(true)}
+          className="mt-3 w-full rounded-md px-3 py-2 transition"
+          style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
+        >
+          Configurer les accès du Manager…
+        </button>
+      )}
+
       {isSelf && (
         <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 10 }}>
           Tu ne peux pas retirer ton propre statut admin.
         </div>
       )}
+
+      <ManagerPermissionsModal
+        open={permsOpen}
+        userId={userId}
+        userName={userName}
+        onClose={() => setPermsOpen(false)}
+      />
     </div>
   );
 }
