@@ -261,9 +261,27 @@ function AppShell() {
       // (skip sur preview pour permettre la prévisualisation)
       if (!isPreviewHost && !userIsEmployee && isStaffApp) {
         navigate({ to: "/dashboard" });
+        return;
+      }
+
+      // Manager : route admin non autorisée par ses permissions → redirige vers la 1re autorisée
+      if (appRole === "manager" && !isStaffApp && !isPublic && managerPermissions) {
+        const allowedPrefixes = managerPermissions;
+        const alwaysOk = ["/staff/", "/profile"];
+        const isAllowed =
+          allowedPrefixes.some((k) => currentPath === k || currentPath.startsWith(k + "/")) ||
+          alwaysOk.some((p) => currentPath.startsWith(p));
+        if (!isAllowed) {
+          if (allowedPrefixes.length > 0) {
+            navigate({ to: allowedPrefixes[0] as any });
+          } else {
+            toast.error("Aucun accès configuré. Contacte un administrateur.");
+            supabase.auth.signOut();
+          }
+        }
       }
     }
-  }, [loading, session, appRole, currentPath, isPublic, isStaffApp, isActivationPreview, navigate]);
+  }, [loading, session, appRole, managerPermissions, currentPath, isPublic, isStaffApp, isActivationPreview, navigate]);
 
 
   if (loading && !isPublic) {
