@@ -63,18 +63,19 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [studios, setStudios] = useState<Studio[]>([]);
 
-  const load = async () => {
-    setLoading(true);
-    const [{ data: invs }, { data: studs }] = await Promise.all([
-      supabase
-        .from("invitations")
-        .select(
-          "id, email, first_name, last_name, phone, studio_id, studio_ids, contract, contracts, business_roles, app_role, status, token, created_at, expires_at, accepted_at",
-        )
-        .order("created_at", { ascending: false }),
-      supabase.from("studios").select("id, name"),
-    ]);
-    // Auto-mark expired
+  const load = async (opts?: { background?: boolean }) => {
+    if (!opts?.background) setLoading(true);
+    const invsPromise = supabase
+      .from("invitations")
+      .select(
+        "id, email, first_name, last_name, phone, studio_id, studio_ids, contract, contracts, business_roles, app_role, status, token, created_at, expires_at, accepted_at",
+      )
+      .order("created_at", { ascending: false });
+    const needStudios = studios.length === 0;
+    const studsPromise = needStudios
+      ? supabase.from("studios").select("id, name")
+      : Promise.resolve({ data: null as Studio[] | null });
+    const [{ data: invs }, { data: studs }] = await Promise.all([invsPromise, studsPromise]);
     const now = new Date();
     const cleaned = (invs ?? []).map((i) => {
       const inv = i as Invitation;
@@ -84,23 +85,29 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
       return inv;
     });
     setInvitations(cleaned);
-    setStudios(studs ?? []);
+    if (needStudios && studs) setStudios(studs as Studio[]);
     setLoading(false);
   };
 
   useEffect(() => {
     load();
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
       .channel("invitations-list")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "invitations" },
-        () => load(),
+        () => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => load({ background: true }), 400);
+        },
       )
       .subscribe();
     return () => {
+      if (timer) clearTimeout(timer);
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const studioName = (id: string | null) =>
