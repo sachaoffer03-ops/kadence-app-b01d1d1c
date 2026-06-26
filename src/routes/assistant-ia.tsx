@@ -688,7 +688,7 @@ function EditSheet({ initial, onClose, onSave }:
     let data: any = {};
     if (entryType === "faq") data = { question: faqQ, answer: faqA };
     else if (entryType === "link") data = { url: linkUrl, description: linkDesc };
-    else if (entryType === "file") data = { file_path: filePath, file_name: fileName, description: fileDesc };
+    else if (entryType === "file") data = { file_path: filePath, file_name: fileName, description: fileDesc, extracted_text: fileText };
     else if (entryType === "table") data = { raw: tableText };
     try {
       await onSave({
