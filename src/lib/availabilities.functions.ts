@@ -505,10 +505,11 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
 
       const availHours = Math.round(info.hours * 10) / 10;
       const assignedHours = Math.round(sh.hours * 10) / 10;
-      // Nouveau calcul : jours travaillés / jours de dispo (peu importe les heures).
-      // Un employé qui a coché 10 jours dispo et bossé 5 jours = 50%.
+      // Fulfilment = jours travaillés / jours de dispo (peu importe les heures, sans
+      // filtrer par intersection — si l'employé a bossé un jour non déclaré dispo,
+      // ça compte quand même comme un jour rempli). Capé à 100 %.
       const availDays = info.days.size;
-      const assignedDays = Array.from(sh.days).filter((d) => info.days.has(d)).length;
+      const assignedDays = sh.days.size;
       const fulfillmentPct = availDays > 0 ? Math.min(100, Math.round((assignedDays / availDays) * 100)) : null;
 
       return {
