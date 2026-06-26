@@ -100,50 +100,90 @@ export const setUserAppRole = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
-    if (data.user_id === userId && data.role !== "admin") {
-      throw new Error("Tu ne peux pas retirer ton propre statut admin");
-    }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // Remplace TOUS les rôles existants par le nouveau (un seul role app par user)
-    const { error: delErr } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
-    if (delErr) throw new Error(delErr.message);
-    const { error: insErr } = await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: data.role });
-    if (insErr) throw new Error(insErr.message);
-
-    // Notification à l'employé
-    const label = data.role === "admin" ? "Administrateur" : data.role === "manager" ? "Manager" : "Employé";
-    await supabaseAdmin.from("notifications").insert({
-      user_id: data.user_id,
-      type: "role_changed",
-      title: `Ton rôle a été mis à jour`,
-      body: `Tu es désormais ${label}. ${data.role !== "employee" ? "Tu as maintenant accès à la console admin." : ""}`,
-      priority: "normal",
-      category: "account",
-    });
-
-    if (data.role === "manager") {
-      const { ALL_PERMISSION_KEYS } = await import("@/lib/permissions");
-      const { data: existing } = await supabaseAdmin
-        .from("manager_permissions")
-        .select("user_id")
-        .eq("user_id", data.user_id)
-        .maybeSingle();
-      if (!existing) {
-        await supabaseAdmin.from("manager_permissions").insert({
-          user_id: data.user_id,
-          permissions: ALL_PERMISSION_KEYS,
-          updated_by: userId,
-        });
-      }
-    } else {
-      await supabaseAdmin.from("manager_permissions").delete().eq("user_id", data.user_id);
-    }
-
-    return { ok: true };
+    // Backward-compat single-role wrapper → délègue à setUserAppRoles
+    return applyUserAppRoles({ userId: context.userId, targetUserId: data.user_id, roles: [data.role] });
   });
+
+export const setUserAppRoles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({
+      user_id: z.string().uuid(),
+      roles: z.array(z.enum(["employee", "manager", "admin"])).min(1).max(3),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    return applyUserAppRoles({ userId: context.userId, targetUserId: data.user_id, roles: data.roles });
+  });
+
+async function applyUserAppRoles(args: { userId: string; targetUserId: string; roles: Array<"employee" | "manager" | "admin"> }) {
+  const { userId, targetUserId } = args;
+  const roles = Array.from(new Set(args.roles));
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  // Assert caller is admin
+  const { data: callerRoles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
+  const callerIsAdmin = (callerRoles ?? []).some((r: any) => r.role === "admin");
+  if (!callerIsAdmin) throw new Error("Réservé aux administrateurs");
+
+  // Empêche un admin de retirer son propre statut admin
+  if (targetUserId === userId && !roles.includes("admin")) {
+    throw new Error("Tu ne peux pas retirer ton propre statut admin");
+  }
+
+  // Rôles précédents
+  const { data: prevRows } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", targetUserId);
+  const prevRoles = (prevRows ?? []).map((r: any) => r.role as string);
+
+  // Remplace l'ensemble
+  const { error: delErr } = await supabaseAdmin.from("user_roles").delete().eq("user_id", targetUserId);
+  if (delErr) throw new Error(delErr.message);
+  const insRows = roles.map((role) => ({ user_id: targetUserId, role }));
+  const { error: insErr } = await supabaseAdmin.from("user_roles").insert(insRows);
+  if (insErr) throw new Error(insErr.message);
+
+  // Permissions manager : grant par défaut si nouveau manager, retire si plus manager
+  const becameManager = roles.includes("manager") && !prevRoles.includes("manager");
+  const lostManager = !roles.includes("manager") && prevRoles.includes("manager");
+
+  if (becameManager) {
+    const { ALL_PERMISSION_KEYS } = await import("@/lib/permissions");
+    const { data: existing } = await supabaseAdmin
+      .from("manager_permissions")
+      .select("user_id")
+      .eq("user_id", targetUserId)
+      .maybeSingle();
+    if (!existing) {
+      await supabaseAdmin.from("manager_permissions").insert({
+        user_id: targetUserId,
+        permissions: ALL_PERMISSION_KEYS,
+        updated_by: userId,
+      });
+    }
+  }
+  if (lostManager && !roles.includes("admin")) {
+    await supabaseAdmin.from("manager_permissions").delete().eq("user_id", targetUserId);
+  }
+
+  // Notification à l'utilisateur
+  const labels = roles
+    .map((r) => (r === "admin" ? "Administrateur" : r === "manager" ? "Manager" : "Employé"))
+    .join(" + ");
+  const hasMulti = roles.length > 1;
+  await supabaseAdmin.from("notifications").insert({
+    user_id: targetUserId,
+    type: "role_changed",
+    title: `Ton accès a été mis à jour`,
+    body: hasMulti
+      ? `Tu as désormais plusieurs accès : ${labels}. L'espace affiché dépend du lien sur lequel tu te connectes (employé ou admin).`
+      : `Tu es désormais ${labels}.${roles.includes("employee") ? "" : " Tu as maintenant accès à la console admin."}`,
+    priority: "normal",
+    category: "account",
+  });
+
+  return { ok: true, roles };
+}
+
 
 export const getManagerPermissions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
