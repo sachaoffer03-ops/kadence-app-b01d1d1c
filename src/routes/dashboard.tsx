@@ -56,7 +56,12 @@ function DashboardPage() {
         { count: sigCount },
       ] = await Promise.all([
         supabase.from("shifts").select("*").eq("shift_date", today).order("start_time"),
-        supabase.from("shifts").select("start_time,end_time").gte("shift_date", weekAgo),
+        // Plage glissante stricte : 7 derniers jours JUSQU'À aujourd'hui (pas le futur)
+        supabase
+          .from("shifts")
+          .select("start_time,end_time,clocked_in_at,clocked_out_at,status,shift_date")
+          .gte("shift_date", weekAgo)
+          .lte("shift_date", today),
         supabase.from("shifts").select("user_id,shift_date").gte("shift_date", monthStart).lte("shift_date", monthEnd),
         supabase.from("studios").select("id,name"),
         supabase.from("profiles").select("id,first_name,last_name"),
@@ -64,15 +69,32 @@ function DashboardPage() {
         supabase.from("signalements").select("id", { count: "exact", head: true }).eq("resolved", false),
       ]);
 
-      const totalHours = (weekS || []).reduce((sum, s) => {
-        const [h1, m1] = s.start_time.split(":").map(Number);
-        const [h2, m2] = s.end_time.split(":").map(Number);
-        return sum + (h2 + m2 / 60 - h1 - m1 / 60);
+      // Heures réellement prestées : on privilégie le pointage (clocked_in → clocked_out).
+      // À défaut, on compte les heures planifiées des shifts terminés (status = 'completed')
+      // et on ignore les shifts encore "scheduled" / annulés / no_show pour ne pas gonfler.
+      const totalHours = (weekS || []).reduce((sum, s: any) => {
+        if (s.clocked_in_at && s.clocked_out_at) {
+          const ms = new Date(s.clocked_out_at).getTime() - new Date(s.clocked_in_at).getTime();
+          return sum + Math.max(0, ms / 3_600_000);
+        }
+        if (s.status === "completed" && s.start_time && s.end_time) {
+          const [h1, m1] = s.start_time.split(":").map(Number);
+          const [h2, m2] = s.end_time.split(":").map(Number);
+          let dur = h2 + m2 / 60 - h1 - m1 / 60;
+          if (dur < 0) dur += 24; // shift à cheval sur minuit
+          return sum + dur;
+        }
+        return sum;
       }, 0);
+
+      // Nombre de shifts effectivement réalisés sur les 7 derniers jours
+      const weekDone = (weekS || []).filter(
+        (s: any) => s.status === "completed" || (s.clocked_in_at && s.clocked_out_at),
+      ).length;
 
       setData({
         todayShifts: (todayS || []) as ShiftRow[],
-        weekCount: weekS?.length || 0,
+        weekCount: weekDone,
         totalHours: Math.round(totalHours),
         studios: new Map((studios || []).map((s) => [s.id, s.name])),
         profiles: new Map((profiles || []).map((p) => [p.id, { first_name: p.first_name, last_name: p.last_name }])),
@@ -83,11 +105,17 @@ function DashboardPage() {
       });
     };
     load();
+    // Realtime : recharge à chaque changement sur shifts (pointage, statut, création…)
     const ch = supabase
       .channel("dashboard-shifts")
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, load)
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    // Filet de sécurité : rafraîchit toutes les 30s même sans event realtime
+    const poll = setInterval(load, 30_000);
+    return () => {
+      supabase.removeChannel(ch);
+      clearInterval(poll);
+    };
   }, []);
 
   if (!data) return <div className="p-4 md:p-6" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement…</div>;
