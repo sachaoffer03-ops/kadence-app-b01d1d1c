@@ -42,6 +42,11 @@ function LoginPage() {
       const currentMode = getAppMode();
       const isEmployeeSpace = currentMode === "employee";
 
+      if (isEmployeeSpace && !hasEmployee && !hasAdminOrManager) {
+        toast.error("Compte sans accès. Contactez un administrateur.");
+        await supabase.auth.signOut();
+        return;
+      }
       if (isEmployeeSpace && !hasEmployee) {
         toast.error("Ce compte est administrateur. Utilisez un compte employé pour app.shyft.flashsite.fr");
         await supabase.auth.signOut();
