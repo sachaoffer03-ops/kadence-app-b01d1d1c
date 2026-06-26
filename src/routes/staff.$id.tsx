@@ -389,7 +389,7 @@ function EmployeeDetailPage() {
             {emp.contract === "etudiant" && <Row label="Carte étudiant" value={emp.student_card_valid ? "Valide" : "Manquante"} />}
           </div>
 
-          {appRole === "admin" && <AppRoleCard userId={emp.id} selfId={user?.id} />}
+          {appRole === "admin" && <AppRoleCard userId={emp.id} selfId={user?.id} userName={`${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim()} />}
 
           <div className="flex gap-2">
             <button onClick={handleExport} className="flex-1 rounded-md px-3 py-2 flex items-center justify-center gap-1.5"
