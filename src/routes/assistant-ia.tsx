@@ -635,9 +635,12 @@ function EditSheet({ initial, onClose, onSave }:
     }
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
       try {
-        const pdfjs: any = await import(/* @vite-ignore */ "pdfjs-dist/build/pdf.mjs" as any);
-        const worker: any = await import(/* @vite-ignore */ "pdfjs-dist/build/pdf.worker.mjs?url" as any);
-        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+        const pdfjs: any = await import("pdfjs-dist");
+        // Instancie le worker via Vite (?worker) — fiable en dev & prod
+        const PdfWorker: any = (await import("pdfjs-dist/build/pdf.worker.mjs?worker")).default;
+        if (!pdfjs.GlobalWorkerOptions.workerPort) {
+          pdfjs.GlobalWorkerOptions.workerPort = new PdfWorker();
+        }
         const buf = await file.arrayBuffer();
         const doc = await pdfjs.getDocument({ data: buf }).promise;
         let out = "";
@@ -647,7 +650,9 @@ function EditSheet({ initial, onClose, onSave }:
           out += tc.items.map((it: any) => it.str).join(" ") + "\n\n";
           if (out.length > 200000) break;
         }
-        return out.trim().slice(0, 200000);
+        const text = out.trim().slice(0, 200000);
+        if (!text) console.warn("PDF parsé mais aucun texte trouvé (peut-être scanné/image)");
+        return text;
       } catch (e) {
         console.error("PDF extract failed", e);
         return "";
@@ -683,7 +688,7 @@ function EditSheet({ initial, onClose, onSave }:
     let data: any = {};
     if (entryType === "faq") data = { question: faqQ, answer: faqA };
     else if (entryType === "link") data = { url: linkUrl, description: linkDesc };
-    else if (entryType === "file") data = { file_path: filePath, file_name: fileName, description: fileDesc };
+    else if (entryType === "file") data = { file_path: filePath, file_name: fileName, description: fileDesc, extracted_text: fileText };
     else if (entryType === "table") data = { raw: tableText };
     try {
       await onSave({
