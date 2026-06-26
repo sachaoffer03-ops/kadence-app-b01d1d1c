@@ -90,7 +90,7 @@ function TrousPage() {
     const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }, { data: sh }, { data: settings }] = await Promise.all([
       supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id").is("user_id", null).gte("shift_date", today).order("shift_date").order("start_time"),
       supabase.from("studios").select("id,name"),
-      supabase.from("profiles").select("id,first_name,last_name,score,studio_id").eq("status", "active"),
+      supabase.from("profiles").select("id,first_name,last_name,score,studio_id").in("status", ["active", "invited"]),
       supabase.from("user_business_roles").select("user_id,role"),
       supabase.from("shift_proposals").select("id,shift_id,user_id,status,sent_at,responded_at").order("sent_at", { ascending: false }),
       supabase.from("availabilities").select("user_id,avail_date,start_time,end_time").gte("avail_date", today),
