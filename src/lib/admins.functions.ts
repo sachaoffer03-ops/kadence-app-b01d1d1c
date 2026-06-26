@@ -124,5 +124,83 @@ export const setUserAppRole = createServerFn({ method: "POST" })
       category: "account",
     });
 
+    if (data.role === "manager") {
+      const { ALL_PERMISSION_KEYS } = await import("@/lib/permissions");
+      const { data: existing } = await supabaseAdmin
+        .from("manager_permissions")
+        .select("user_id")
+        .eq("user_id", data.user_id)
+        .maybeSingle();
+      if (!existing) {
+        await supabaseAdmin.from("manager_permissions").insert({
+          user_id: data.user_id,
+          permissions: ALL_PERMISSION_KEYS,
+          updated_by: userId,
+        });
+      }
+    } else {
+      await supabaseAdmin.from("manager_permissions").delete().eq("user_id", data.user_id);
+    }
+
     return { ok: true };
+  });
+
+export const getManagerPermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ user_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("manager_permissions")
+      .select("permissions")
+      .eq("user_id", data.user_id)
+      .maybeSingle();
+    return { permissions: (row?.permissions as string[] | null) ?? [] };
+  });
+
+export const setManagerPermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({
+      user_id: z.string().uuid(),
+      permissions: z.array(z.string()).max(64),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: roleRow } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user_id)
+      .maybeSingle();
+    if (!roleRow || roleRow.role !== "manager") {
+      throw new Error("Permissions modifiables uniquement pour un Manager");
+    }
+
+    const { ALL_PERMISSION_KEYS } = await import("@/lib/permissions");
+    const sanitized = Array.from(new Set(data.permissions.filter((k) => ALL_PERMISSION_KEYS.includes(k))));
+
+    const { error } = await supabaseAdmin
+      .from("manager_permissions")
+      .upsert(
+        { user_id: data.user_id, permissions: sanitized, updated_by: userId, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" },
+      );
+    if (error) throw new Error(error.message);
+
+    await supabaseAdmin.from("notifications").insert({
+      user_id: data.user_id,
+      type: "permissions_changed",
+      title: "Tes accès Manager ont été mis à jour",
+      body: `${sanitized.length} section${sanitized.length > 1 ? "s" : ""} accessible${sanitized.length > 1 ? "s" : ""}.`,
+      priority: "normal",
+      category: "account",
+    });
+
+    return { ok: true, permissions: sanitized };
   });
