@@ -175,7 +175,7 @@ function RootComponent() {
 function AppShell() {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { session, appRole, loading } = useAuth();
+  const { session, appRole, managerPermissions, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
