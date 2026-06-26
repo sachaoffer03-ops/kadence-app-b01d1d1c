@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { X, ShieldCheck } from "lucide-react";
-import { PERMISSION_SECTIONS, ALL_PERMISSION_KEYS } from "@/lib/permissions";
+import { X, ShieldCheck, ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import {
+  PERMISSION_SECTIONS,
+  ALL_PAGE_KEYS,
+  ALL_ACTION_KEYS,
+  PRESET_MANAGER_SKULT,
+} from "@/lib/permissions";
 import { getManagerPermissions, setManagerPermissions } from "@/lib/admins.functions";
 
 interface Props {
@@ -15,6 +20,7 @@ interface Props {
 
 export function ManagerPermissionsModal({ open, userId, userName, onClose, onSaved }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const getFn = useServerFn(getManagerPermissions);
@@ -29,28 +35,70 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
       .finally(() => setLoading(false));
   }, [open, userId, getFn]);
 
-  if (!open) return null;
-
-  const toggle = (key: string) => {
+  const togglePage = (pageKey: string, actionKeys: string[]) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(pageKey)) {
+        // Décocher page → décocher toutes les sous-actions
+        next.delete(pageKey);
+        actionKeys.forEach((k) => next.delete(k));
+      } else {
+        next.add(pageKey);
+      }
       return next;
     });
   };
 
-  const toggleSection = (keys: string[], allChecked: boolean) => {
+  const toggleAction = (pageKey: string, fullActionKey: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (allChecked) keys.forEach((k) => next.delete(k));
-      else keys.forEach((k) => next.add(k));
+      if (next.has(fullActionKey)) {
+        next.delete(fullActionKey);
+      } else {
+        next.add(fullActionKey);
+        next.add(pageKey); // cocher sous-action → cocher page parente
+      }
       return next;
     });
   };
 
-  const checkAll = () => setSelected(new Set(ALL_PERMISSION_KEYS));
+  const toggleExpanded = (pageKey: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(pageKey)) next.delete(pageKey);
+      else next.add(pageKey);
+      return next;
+    });
+  };
+
+  const toggleSection = (section: typeof PERMISSION_SECTIONS[number], allChecked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      section.items.forEach((item) => {
+        const actionKeys = (item.actions ?? []).map((a) => `${item.key}:${a.key}`);
+        if (allChecked) {
+          next.delete(item.key);
+          actionKeys.forEach((k) => next.delete(k));
+        } else {
+          next.add(item.key);
+        }
+      });
+      return next;
+    });
+  };
+
+  const checkAll = () => setSelected(new Set([...ALL_PAGE_KEYS, ...ALL_ACTION_KEYS]));
   const uncheckAll = () => setSelected(new Set());
+  const applyPreset = () => {
+    setSelected(new Set(PRESET_MANAGER_SKULT));
+    toast.success("Preset Manager Skult appliqué");
+  };
+
+  const counts = useMemo(() => {
+    let pages = 0, actions = 0;
+    selected.forEach((k) => (k.includes(":") ? actions++ : pages++));
+    return { pages, actions };
+  }, [selected]);
 
   const save = async () => {
     setSaving(true);
@@ -67,6 +115,8 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
     }
   };
 
+  if (!open) return null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -75,14 +125,11 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
     >
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col"
-        style={{ backgroundColor: "var(--card)", maxHeight: "90vh" }}
+        style={{ backgroundColor: "var(--card)", maxHeight: "92vh" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div
-          className="flex items-start justify-between gap-3 px-6 py-5 border-b"
-          style={{ borderColor: "var(--border)" }}
-        >
+        <div className="flex items-start justify-between gap-3 px-6 py-5 border-b" style={{ borderColor: "var(--border)" }}>
           <div className="flex gap-3">
             <div
               className="flex items-center justify-center rounded-lg shrink-0"
@@ -93,40 +140,35 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
             <div>
               <div style={{ fontSize: 15, fontWeight: 500 }}>Accès Manager</div>
               <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
-                {userName ? `Configure ce que ${userName} peut voir dans la console.` : "Configure les sections accessibles."}
+                {userName ? `Configure ce que ${userName} peut voir et faire.` : "Configure les pages et actions accessibles."}
               </div>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 hover:bg-[var(--muted)]"
-            style={{ color: "var(--muted-foreground)" }}
-          >
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-[var(--muted)]" style={{ color: "var(--muted-foreground)" }}>
             <X size={18} />
           </button>
         </div>
 
         {/* Quick actions */}
         <div
-          className="flex items-center justify-between gap-2 px-6 py-3 border-b"
+          className="flex flex-wrap items-center justify-between gap-2 px-6 py-3 border-b"
           style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}
         >
           <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-            {selected.size} / {ALL_PERMISSION_KEYS.length} sections
+            {counts.pages} page{counts.pages > 1 ? "s" : ""} · {counts.actions} action{counts.actions > 1 ? "s" : ""}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
-              onClick={checkAll}
-              className="rounded-md px-2.5 py-1"
-              style={{ fontSize: 11, border: "0.5px solid var(--border)" }}
+              onClick={applyPreset}
+              className="rounded-md px-2.5 py-1 inline-flex items-center gap-1"
+              style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
             >
+              <Sparkles size={11} /> Preset Manager Skult
+            </button>
+            <button onClick={checkAll} className="rounded-md px-2.5 py-1" style={{ fontSize: 11, border: "0.5px solid var(--border)" }}>
               Tout cocher
             </button>
-            <button
-              onClick={uncheckAll}
-              className="rounded-md px-2.5 py-1"
-              style={{ fontSize: 11, border: "0.5px solid var(--border)" }}
-            >
+            <button onClick={uncheckAll} className="rounded-md px-2.5 py-1" style={{ fontSize: 11, border: "0.5px solid var(--border)" }}>
               Tout décocher
             </button>
           </div>
@@ -140,61 +182,97 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
             </div>
           ) : (
             PERMISSION_SECTIONS.map((section) => {
-              const sectionKeys = section.items.map((i) => i.key);
-              const allChecked = sectionKeys.every((k) => selected.has(k));
-              const someChecked = sectionKeys.some((k) => selected.has(k));
+              const sectionPageKeys = section.items.map((i) => i.key);
+              const allChecked = sectionPageKeys.every((k) => selected.has(k));
               return (
                 <div key={section.title} className="mb-5">
                   <div className="flex items-center justify-between mb-2">
                     <div
                       style={{
-                        fontSize: 10,
-                        fontWeight: 500,
-                        color: "var(--muted-foreground)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
+                        fontSize: 10, fontWeight: 500, color: "var(--muted-foreground)",
+                        textTransform: "uppercase", letterSpacing: "0.08em",
                       }}
                     >
                       {section.title}
                     </div>
                     <button
-                      onClick={() => toggleSection(sectionKeys, allChecked)}
-                      style={{
-                        fontSize: 11,
-                        color: allChecked ? "var(--muted-foreground)" : "var(--coral)",
-                        fontWeight: 500,
-                      }}
+                      onClick={() => toggleSection(section, allChecked)}
+                      style={{ fontSize: 11, color: allChecked ? "var(--muted-foreground)" : "var(--coral)", fontWeight: 500 }}
                     >
-                      {allChecked ? "Tout retirer" : someChecked ? "Tout cocher" : "Tout cocher"}
+                      {allChecked ? "Tout retirer" : "Tout cocher"}
                     </button>
                   </div>
                   <div className="flex flex-col gap-1">
                     {section.items.map((item) => {
-                      const checked = selected.has(item.key);
+                      const pageChecked = selected.has(item.key);
+                      const actions = item.actions ?? [];
+                      const hasActions = actions.length > 0;
+                      const isOpen = expanded.has(item.key);
                       return (
-                        <label
+                        <div
                           key={item.key}
-                          className="flex items-start gap-3 rounded-md px-3 py-2 cursor-pointer transition"
-                          style={{
-                            backgroundColor: checked ? "var(--coral-soft, var(--background))" : "var(--background)",
-                            border: "0.5px solid var(--border)",
-                          }}
+                          className="rounded-md"
+                          style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
                         >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggle(item.key)}
-                            style={{ marginTop: 3, accentColor: "var(--coral)" }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div style={{ fontSize: 13, fontWeight: 500 }}>{item.label}</div>
-                            {item.description && (
-                              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 1 }}>
-                                {item.description}
-                              </div>
+                          <div className="flex items-start gap-2 px-3 py-2">
+                            {hasActions ? (
+                              <button onClick={() => toggleExpanded(item.key)} className="mt-1 shrink-0" style={{ color: "var(--muted-foreground)" }}>
+                                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                              </button>
+                            ) : (
+                              <span style={{ width: 14, display: "inline-block" }} />
                             )}
+                            <input
+                              type="checkbox"
+                              checked={pageChecked}
+                              onChange={() => togglePage(item.key, actions.map((a) => `${item.key}:${a.key}`))}
+                              style={{ marginTop: 4, accentColor: "var(--coral)" }}
+                            />
+                            <label
+                              className="flex-1 min-w-0 cursor-pointer"
+                              onClick={() => togglePage(item.key, actions.map((a) => `${item.key}:${a.key}`))}
+                            >
+                              <div style={{ fontSize: 13, fontWeight: 500 }}>
+                                {item.label}
+                                {hasActions && (
+                                  <span style={{ marginLeft: 6, fontSize: 10, color: "var(--muted-foreground)", fontWeight: 400 }}>
+                                    · {actions.filter((a) => selected.has(`${item.key}:${a.key}`)).length}/{actions.length} actions
+                                  </span>
+                                )}
+                              </div>
+                              {item.description && (
+                                <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 1 }}>{item.description}</div>
+                              )}
+                            </label>
                           </div>
-                        </label>
+                          {hasActions && isOpen && (
+                            <div
+                              className="flex flex-col gap-0.5 pl-10 pr-3 pb-2"
+                              style={{ opacity: pageChecked ? 1 : 0.45, pointerEvents: pageChecked ? "auto" : "none" }}
+                            >
+                              {actions.map((a) => {
+                                const full = `${item.key}:${a.key}`;
+                                const aChecked = selected.has(full);
+                                return (
+                                  <label key={full} className="flex items-start gap-2 py-1 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={aChecked}
+                                      onChange={() => toggleAction(item.key, full)}
+                                      style={{ marginTop: 3, accentColor: "var(--coral)" }}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div style={{ fontSize: 12 }}>{a.label}</div>
+                                      {a.description && (
+                                        <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 1 }}>{a.description}</div>
+                                      )}
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -206,31 +284,25 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
 
         {/* Footer */}
         <div
-          className="flex items-center justify-end gap-2 px-6 py-4 border-t"
+          className="flex items-center justify-between gap-2 px-6 py-4 border-t"
           style={{ borderColor: "var(--border)" }}
         >
-          <button
-            onClick={onClose}
-            disabled={saving}
-            className="rounded-md px-3 py-1.5"
-            style={{ fontSize: 12, border: "0.5px solid var(--border)" }}
-          >
-            Annuler
-          </button>
-          <button
-            onClick={save}
-            disabled={saving || loading}
-            className="rounded-md px-3 py-1.5"
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              backgroundColor: "var(--foreground)",
-              color: "var(--card)",
-              opacity: saving || loading ? 0.6 : 1,
-            }}
-          >
-            {saving ? "Enregistrement…" : "Enregistrer les accès"}
-          </button>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+            Ce manager pourra accéder à {counts.pages} page{counts.pages > 1 ? "s" : ""} et effectuer {counts.actions} action{counts.actions > 1 ? "s" : ""}.
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose} disabled={saving} className="rounded-md px-3 py-1.5" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}>
+              Annuler
+            </button>
+            <button
+              onClick={save}
+              disabled={saving || loading}
+              className="rounded-md px-3 py-1.5"
+              style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)", opacity: saving || loading ? 0.6 : 1 }}
+            >
+              {saving ? "Enregistrement…" : "Enregistrer les accès"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
