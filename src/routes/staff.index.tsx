@@ -59,16 +59,24 @@ function StaffPage() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: ps }, { data: br }, { data: sts }, { data: shifts }] = await Promise.all([
+      const [{ data: ps }, { data: br }, { data: sts }, { data: shifts }, { data: ar }] = await Promise.all([
         supabase.from("profiles").select("id,first_name,last_name,email,phone,contract,studio_id,status,score,quota_used,quota_max,avatar_url"),
         supabase.from("user_business_roles").select("user_id,role"),
         supabase.from("studios").select("id,name").order("name"),
         supabase.from("shifts").select("user_id,shift_date").gte("shift_date", new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)),
+        supabase.from("user_roles").select("user_id,role"),
       ]);
       setProfiles(ps || []);
       const map: Record<string, Role[]> = {};
       (br || []).forEach(r => { (map[r.user_id] ||= []).push(r.role as Role); });
       setRolesByUser(map);
+      const arMap: Record<string, AppRole> = {};
+      const rank: Record<string, number> = { admin: 3, manager: 2, employee: 1 };
+      (ar || []).forEach((r: { user_id: string; role: string }) => {
+        const cur = arMap[r.user_id];
+        if (!cur || (rank[r.role] || 0) > (rank[cur] || 0)) arMap[r.user_id] = r.role as AppRole;
+      });
+      setAppRoleByUser(arMap);
       setStudios(sts || []);
       const counts: Record<string, number> = {};
       (shifts || []).forEach(s => { if (s.user_id) counts[s.user_id] = (counts[s.user_id] || 0) + 1; });
@@ -77,6 +85,7 @@ function StaffPage() {
     load();
     const channel = supabase.channel("staff-list-admin")
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
