@@ -173,12 +173,12 @@ export const setManagerPermissions = createServerFn({ method: "POST" })
     await assertAdmin(supabase, userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: roleRow } = await supabaseAdmin
+    const { data: roleRows } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", data.user_id)
-      .maybeSingle();
-    if (!roleRow || roleRow.role !== "manager") {
+      .eq("user_id", data.user_id);
+    const roles = (roleRows ?? []).map((r: any) => r.role);
+    if (!roles.includes("manager")) {
       throw new Error("Permissions modifiables uniquement pour un Manager");
     }
 
