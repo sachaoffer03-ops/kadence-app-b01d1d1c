@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import logo from "@/assets/kadence-logo.png";
 import { useSidebarCounts } from "@/hooks/use-sidebar-counts";
+import { useAuth } from "@/hooks/use-auth";
 
 
 interface NavItem {
