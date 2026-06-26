@@ -31,7 +31,7 @@ const EntryTypeEnum = z.enum(["text", "faq", "link", "file", "table"]);
 const UpsertSchema = z.object({
   id: z.string().uuid().optional(),
   title: z.string().min(1).max(200),
-  content: z.string().min(1).max(20000),
+  content: z.string().min(1).max(100000),
   category: z.string().min(1).max(60),
   tags: z.array(z.string().min(1).max(60)).max(20).default([]),
   priority: z.number().int().min(0).max(100).default(0),
@@ -119,6 +119,126 @@ export const getKnowledgeFileUrl = createServerFn({ method: "POST" })
       .createSignedUrl(data.path, 3600);
     if (error) throw new Error(error.message);
     return { url: signed.signedUrl };
+  });
+
+const StoredFileExtractSchema = z.object({
+  path: z.string().min(1),
+  fileName: z.string().min(1).max(240),
+  mimeType: z.string().max(120).optional().nullable(),
+});
+
+function guessMimeType(fileName: string, mimeType?: string | null) {
+  if (mimeType && mimeType !== "application/octet-stream") return mimeType;
+  const n = fileName.toLowerCase();
+  if (n.endsWith(".pdf")) return "application/pdf";
+  if (n.endsWith(".png")) return "image/png";
+  if (n.endsWith(".jpg") || n.endsWith(".jpeg")) return "image/jpeg";
+  if (n.endsWith(".webp")) return "image/webp";
+  if (/\.(txt|md|csv|tsv|json|log|html|xml|yaml|yml)$/.test(n)) return "text/plain";
+  return mimeType || "application/octet-stream";
+}
+
+function isPlainTextKnowledgeFile(fileName: string, mimeType: string) {
+  return mimeType.startsWith("text/") || /\.(txt|md|csv|tsv|json|log|html|xml|yaml|yml)$/.test(fileName.toLowerCase());
+}
+
+async function extractPdfTextLocally(arrayBuffer: ArrayBuffer) {
+  try {
+    const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer), disableWorker: true }).promise;
+    let out = "";
+    for (let i = 1; i <= doc.numPages; i += 1) {
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent();
+      out += tc.items.map((it: any) => it.str).join(" ") + "\n\n";
+      if (out.length > 90000) break;
+    }
+    return out.replace(/\n{3,}/g, "\n\n").trim().slice(0, 90000);
+  } catch (error) {
+    console.error("Server PDF text extraction failed", error);
+    return "";
+  }
+}
+
+async function extractKnowledgeTextWithAI(args: { fileName: string; mimeType: string; base64: string }) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("Extraction IA indisponible : clé IA manquante");
+
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  const client = new Anthropic({ apiKey });
+  const source = { type: "base64", media_type: args.mimeType, data: args.base64 };
+  const fileBlock = args.mimeType.startsWith("image/")
+    ? { type: "image", source }
+    : { type: "document", source };
+
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 8192,
+    messages: [{
+      role: "user",
+      content: [
+        fileBlock,
+        {
+          type: "text",
+          text: `Extrais le contenu utile de ce fichier pour la base de connaissances du chatbot Kadence.
+
+Fichier : ${args.fileName}
+
+Règles :
+- Réponds uniquement avec le contenu exploitable par le chatbot, en français si le document est en français.
+- Conserve les recettes, procédures, quantités, étapes, FAQ, titres et détails importants.
+- Si c'est un scan ou une image, fais l'OCR au mieux.
+- Ne dis pas que tu es une IA et n'ajoute pas de commentaire extérieur au document.`,
+        },
+      ],
+    }],
+  } as any);
+
+  return response.content
+    .filter((b: any) => b.type === "text")
+    .map((b: any) => b.text)
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, 90000);
+}
+
+/** Ré-extrait le texte d'un fichier déjà uploadé dans ai-knowledge, utile pour les PDF/scans. */
+export const extractKnowledgeStoredFileText = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => StoredFileExtractSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: blob, error } = await supabaseAdmin.storage.from("ai-knowledge").download(data.path);
+    if (error) throw new Error(error.message);
+    if (!blob) throw new Error("Fichier introuvable");
+
+    const mimeType = guessMimeType(data.fileName, data.mimeType || blob.type);
+    const arrayBuffer = await blob.arrayBuffer();
+    if (arrayBuffer.byteLength > 18 * 1024 * 1024) {
+      throw new Error("Fichier trop lourd pour l'extraction automatique (max 18 MB)");
+    }
+
+    if (isPlainTextKnowledgeFile(data.fileName, mimeType)) {
+      const text = new TextDecoder("utf-8").decode(arrayBuffer).trim().slice(0, 90000);
+      return { text, source: "text" as const };
+    }
+
+    if (mimeType === "application/pdf") {
+      const localPdfText = await extractPdfTextLocally(arrayBuffer);
+      if (localPdfText) return { text: localPdfText, source: "pdf" as const };
+    }
+
+    if (mimeType !== "application/pdf" && !mimeType.startsWith("image/")) {
+      return { text: "", source: "unsupported" as const };
+    }
+
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const text = await extractKnowledgeTextWithAI({ fileName: data.fileName, mimeType, base64 });
+    return { text, source: "ai" as const };
   });
 
 export const KNOWLEDGE_CATEGORIES = [

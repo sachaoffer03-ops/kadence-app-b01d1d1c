@@ -142,7 +142,7 @@ export const askKadenceAI = createServerFn({ method: "POST" })
         .select("training_courses(title)").eq("user_id", contextUserId),
       supabaseAdmin.from("user_contracts").select("contract").eq("user_id", contextUserId),
       supabaseAdmin.from("ai_knowledge_entries")
-        .select("title, content, category, priority")
+        .select("title, content, category, priority, entry_type, data")
         .eq("is_active", true)
         .order("priority", { ascending: false })
         .order("updated_at", { ascending: false })
@@ -157,9 +157,13 @@ export const askKadenceAI = createServerFn({ method: "POST" })
     const adminKnowledge = (knowledgeRes.data ?? []).length === 0
       ? ""
       : "\n\n# CONNAISSANCES COMPLÉMENTAIRES (ajoutées par l'admin Skult)\n\n" +
-        (knowledgeRes.data ?? []).map((k: any) =>
-          `## ${k.title}\n_Catégorie : ${k.category}_\n\n${k.content}`
-        ).join("\n\n---\n\n");
+        (knowledgeRes.data ?? []).map((k: any) => {
+          const extracted = typeof k.data?.extracted_text === "string" ? k.data.extracted_text.trim() : "";
+          const fileMeta = k.entry_type === "file" && k.data?.file_name ? `\n_Fichier : ${k.data.file_name}_` : "";
+          const alreadyInContent = extracted && k.content?.includes(extracted.slice(0, Math.min(200, extracted.length)));
+          const body = extracted && !alreadyInContent ? `${k.content}\n\n${extracted}` : k.content;
+          return `## ${k.title}\n_Catégorie : ${k.category}_${fileMeta}\n\n${body}`;
+        }).join("\n\n---\n\n");
 
     const fbList = (feedbackRes.data ?? []) as any[];
     const corrections = fbList.filter((f) => f.rating === "correction" && f.corrected_answer);
