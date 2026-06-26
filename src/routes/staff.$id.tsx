@@ -21,7 +21,7 @@ import { countUnviewedDocuments } from "@/lib/documents.functions";
 import { RatingInput, RatingBadge } from "@/components/RatingInput";
 import { ExtendedHoursCard } from "@/components/staff/ExtendedHoursCard";
 import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHistoryTab";
-import { setUserAppRole } from "@/lib/admins.functions";
+import { setUserAppRole, setUserAppRoles } from "@/lib/admins.functions";
 import { ManagerPermissionsModal } from "@/components/ManagerPermissionsModal";
 
 export const Route = createFileRoute("/staff/$id")({
