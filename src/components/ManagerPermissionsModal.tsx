@@ -161,7 +161,7 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-md p-1 hover:bg-[var(--muted)]" style={{ color: "var(--muted-foreground)" }}>
+          <button onClick={handleCancel} className="rounded-md p-1 hover:bg-[var(--muted)]" style={{ color: "var(--muted-foreground)" }}>
             <X size={18} />
           </button>
         </div>
@@ -308,7 +308,7 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
             Ce manager pourra accéder à {counts.pages} page{counts.pages > 1 ? "s" : ""} et effectuer {counts.actions} action{counts.actions > 1 ? "s" : ""}.
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} disabled={saving} className="rounded-md px-3 py-1.5" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}>
+            <button onClick={handleCancel} disabled={saving} className="rounded-md px-3 py-1.5" style={{ fontSize: 12, border: "0.5px solid var(--border)" }}>
               Annuler
             </button>
             <button
