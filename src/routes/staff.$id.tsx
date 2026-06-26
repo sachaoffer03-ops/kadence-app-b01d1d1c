@@ -21,6 +21,7 @@ import { countUnviewedDocuments } from "@/lib/documents.functions";
 import { RatingInput, RatingBadge } from "@/components/RatingInput";
 import { ExtendedHoursCard } from "@/components/staff/ExtendedHoursCard";
 import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHistoryTab";
+import { setUserAppRole } from "@/lib/admins.functions";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
