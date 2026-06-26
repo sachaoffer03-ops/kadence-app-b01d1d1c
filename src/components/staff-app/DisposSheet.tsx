@@ -140,6 +140,9 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
         });
       });
       setRanges(map);
+      // Considère le mois comme "validé" dès qu'il y a au moins une dispo
+      // enregistrée côté serveur — robuste à un localStorage vidé (PWA, autre device).
+      if ((data?.length ?? 0) > 0) setValidated(true);
       setLoading(false);
     })();
   }, [open, userId, year, month, daysInMonth, refreshLockInfo, closedDaysFn]);
@@ -252,6 +255,8 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     try {
       const res: any = await createFn({ data: { avail_date: dateISO(day), start_time: free.start, end_time: free.end } });
       setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...free, id: res.id }] }));
+      setValidated(true);
+      try { window.localStorage?.setItem(disposKey(userId, year, month), new Date().toISOString()); } catch {}
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur de sauvegarde");
     }
