@@ -16,9 +16,15 @@ interface Props {
   userName?: string;
   onClose: () => void;
   onSaved?: (permissions: string[]) => void;
+  /** If true, user isn't manager yet — pre-fill preset and call beforeSave to promote first */
+  pendingPromotion?: boolean;
+  /** Called before persisting permissions — use to promote user to manager */
+  beforeSave?: () => Promise<void>;
+  /** Called when modal closes via Cancel/backdrop (NOT after a successful save) */
+  onCancel?: () => void;
 }
 
-export function ManagerPermissionsModal({ open, userId, userName, onClose, onSaved }: Props) {
+export function ManagerPermissionsModal({ open, userId, userName, onClose, onSaved, pendingPromotion, beforeSave, onCancel }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -29,11 +35,16 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
   useEffect(() => {
     if (!open) return;
     setLoading(true);
+    if (pendingPromotion) {
+      setSelected(new Set(PRESET_MANAGER_SKULT));
+      setLoading(false);
+      return;
+    }
     getFn({ data: { user_id: userId } })
       .then((res) => setSelected(new Set(res.permissions)))
       .catch(() => setSelected(new Set()))
       .finally(() => setLoading(false));
-  }, [open, userId, getFn]);
+  }, [open, userId, getFn, pendingPromotion]);
 
   const togglePage = (pageKey: string, actionKeys: string[]) => {
     setSelected((prev) => {
