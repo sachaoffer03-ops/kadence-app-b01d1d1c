@@ -39,32 +39,44 @@ interface StudioRow { id: string; name: string; }
 
 const initials = (f: string, l: string) => `${(f?.[0] || "").toUpperCase()}${(l?.[0] || "").toUpperCase()}`;
 
+type AppRole = "admin" | "manager" | "employee";
+
 function StaffPage() {
   const [tab, setTab] = useState<"employees" | "suspended" | "invitations">("employees");
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [rolesByUser, setRolesByUser] = useState<Record<string, Role[]>>({});
+  const [appRoleByUser, setAppRoleByUser] = useState<Record<string, AppRole>>({});
   const [shiftCountByUser, setShiftCountByUser] = useState<Record<string, number>>({});
   const [studios, setStudios] = useState<StudioRow[]>([]);
   const [search, setSearch] = useState("");
   const [contractFilters, setContractFilters] = useState<Set<string>>(new Set());
   const [studioFilters, setStudioFilters] = useState<Set<string>>(new Set());
   const [roleFilters, setRoleFilters] = useState<Set<string>>(new Set());
+  const [appRoleFilters, setAppRoleFilters] = useState<Set<AppRole>>(new Set());
   const [sortScore, setSortScore] = useState<"none" | "desc" | "asc">("none");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ p: ProfileRow; action: "deactivate" | "reactivate" } | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: ps }, { data: br }, { data: sts }, { data: shifts }] = await Promise.all([
+      const [{ data: ps }, { data: br }, { data: sts }, { data: shifts }, { data: ar }] = await Promise.all([
         supabase.from("profiles").select("id,first_name,last_name,email,phone,contract,studio_id,status,score,quota_used,quota_max,avatar_url"),
         supabase.from("user_business_roles").select("user_id,role"),
         supabase.from("studios").select("id,name").order("name"),
         supabase.from("shifts").select("user_id,shift_date").gte("shift_date", new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)),
+        supabase.from("user_roles").select("user_id,role"),
       ]);
       setProfiles(ps || []);
       const map: Record<string, Role[]> = {};
       (br || []).forEach(r => { (map[r.user_id] ||= []).push(r.role as Role); });
       setRolesByUser(map);
+      const arMap: Record<string, AppRole> = {};
+      const rank: Record<string, number> = { admin: 3, manager: 2, employee: 1 };
+      (ar || []).forEach((r: { user_id: string; role: string }) => {
+        const cur = arMap[r.user_id];
+        if (!cur || (rank[r.role] || 0) > (rank[cur] || 0)) arMap[r.user_id] = r.role as AppRole;
+      });
+      setAppRoleByUser(arMap);
       setStudios(sts || []);
       const counts: Record<string, number> = {};
       (shifts || []).forEach(s => { if (s.user_id) counts[s.user_id] = (counts[s.user_id] || 0) + 1; });
@@ -73,6 +85,7 @@ function StaffPage() {
     load();
     const channel = supabase.channel("staff-list-admin")
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
@@ -97,6 +110,10 @@ function StaffPage() {
         const roles = rolesByUser[p.id] || [];
         if (!roles.some(r => roleFilters.has(r))) return false;
       }
+      if (appRoleFilters.size) {
+        const ar = appRoleByUser[p.id] || "employee";
+        if (!appRoleFilters.has(ar)) return false;
+      }
       return true;
     });
     if (sortScore !== "none") {
@@ -105,16 +122,20 @@ function StaffPage() {
         return sortScore === "desc" ? sb - sa : sa - sb;
       });
     } else {
-      list.sort((a, b) =>
-        `${a.first_name} ${a.last_name}`.localeCompare(
+      const rank: Record<AppRole, number> = { admin: 0, manager: 1, employee: 2 };
+      list.sort((a, b) => {
+        const ra = rank[appRoleByUser[a.id] || "employee"];
+        const rb = rank[appRoleByUser[b.id] || "employee"];
+        if (ra !== rb) return ra - rb;
+        return `${a.first_name} ${a.last_name}`.localeCompare(
           `${b.first_name} ${b.last_name}`,
           "fr",
           { sensitivity: "base" },
-        ),
-      );
+        );
+      });
     }
     return list;
-  }, [profiles, tab, search, contractFilters, studioFilters, roleFilters, sortScore, rolesByUser]);
+  }, [profiles, tab, search, contractFilters, studioFilters, roleFilters, appRoleFilters, sortScore, rolesByUser, appRoleByUser]);
 
   const toggle = (set: Set<string>, fn: (s: Set<string>) => void, key: string) => {
     const next = new Set(set);
@@ -181,10 +202,10 @@ function StaffPage() {
             </div>
             <div className="flex items-center gap-1 flex-wrap">
               {(() => {
-                const noFilter = contractFilters.size === 0 && studioFilters.size === 0 && roleFilters.size === 0;
+                const noFilter = contractFilters.size === 0 && studioFilters.size === 0 && roleFilters.size === 0 && appRoleFilters.size === 0;
                 return (
                   <button
-                    onClick={() => { setContractFilters(new Set()); setStudioFilters(new Set()); setRoleFilters(new Set()); }}
+                    onClick={() => { setContractFilters(new Set()); setStudioFilters(new Set()); setRoleFilters(new Set()); setAppRoleFilters(new Set()); }}
                     className="rounded-full px-2.5 py-1"
                     style={{ fontSize: 12, fontWeight: noFilter ? 500 : 400,
                       backgroundColor: noFilter ? "var(--foreground)" : "transparent",
@@ -194,6 +215,30 @@ function StaffPage() {
                   </button>
                 );
               })()}
+              <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
+              {([
+                { key: "admin" as AppRole, label: "Admins", color: "var(--coral)" },
+                { key: "manager" as AppRole, label: "Managers", color: "var(--info-text)" },
+                { key: "employee" as AppRole, label: "Employés", color: "var(--muted-foreground)" },
+              ]).map(({ key, label, color }) => {
+                const a = appRoleFilters.has(key);
+                const count = profiles.filter(p => (appRoleByUser[p.id] || "employee") === key && (isInactiveTab ? p.status === "suspended" : p.status !== "suspended")).length;
+                if (count === 0) return null;
+                return (
+                  <button key={key} onClick={() => {
+                    const next = new Set(appRoleFilters);
+                    next.has(key) ? next.delete(key) : next.add(key);
+                    setAppRoleFilters(next);
+                  }} className="rounded-full px-2.5 py-1 inline-flex items-center gap-1.5"
+                    style={{ fontSize: 12, fontWeight: a ? 500 : 400,
+                      backgroundColor: a ? color : "transparent",
+                      color: a ? "#fff" : "var(--muted-foreground)",
+                      border: a ? "none" : "0.5px solid var(--border)" }}>
+                    <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: a ? "#fff" : color }} />
+                    {label} · {count}
+                  </button>
+                );
+              })}
               <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
               {contracts.map(c => {
                 const a = contractFilters.has(c);
@@ -302,7 +347,15 @@ function StaffPage() {
                               : initials(p.first_name, p.last_name)}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 500 }}>{p.first_name} {p.last_name}</div>
+                            <div className="flex items-center gap-1.5" style={{ fontWeight: 500 }}>
+                              {p.first_name} {p.last_name}
+                              {(() => {
+                                const ar = appRoleByUser[p.id];
+                                if (ar === "admin") return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>ADMIN</span>;
+                                if (ar === "manager") return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--info-bg)", color: "var(--info-text)" }}>MANAGER</span>;
+                                return null;
+                              })()}
+                            </div>
                             <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{studioName(p.studio_id).replace("Skult ", "")}</div>
                           </div>
                         </div>
