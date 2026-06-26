@@ -635,8 +635,8 @@ function EditSheet({ initial, onClose, onSave }:
     }
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
       try {
-        const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
-        const worker = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+        const pdfjs: any = await import(/* @vite-ignore */ "pdfjs-dist/build/pdf.mjs" as any);
+        const worker: any = await import(/* @vite-ignore */ "pdfjs-dist/build/pdf.worker.mjs?url" as any);
         pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
         const buf = await file.arrayBuffer();
         const doc = await pdfjs.getDocument({ data: buf }).promise;
