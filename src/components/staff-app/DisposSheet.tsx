@@ -140,6 +140,9 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
         });
       });
       setRanges(map);
+      // Considère le mois comme "validé" dès qu'il y a au moins une dispo
+      // enregistrée côté serveur — robuste à un localStorage vidé (PWA, autre device).
+      if ((data?.length ?? 0) > 0) setValidated(true);
       setLoading(false);
     })();
   }, [open, userId, year, month, daysInMonth, refreshLockInfo, closedDaysFn]);
