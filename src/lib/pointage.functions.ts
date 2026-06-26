@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertManagerPermission } from "@/lib/permission-guard.server";
 import { assertAdminOrManager, computeShiftStatus, todayIso, type PointageStatus } from "./pointage.server";
 
 // ---------- Types ----------
@@ -227,7 +228,7 @@ export const manualClockInFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
-    await assertAdminOrManager(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/pointage:edit");
     const shift = await loadShift(supabase, data.shiftId);
     if (shift.clocked_in_at) throw new Error("Déjà pointé à l'arrivée");
     const iso = combineDateTime(shift.shift_date, data.time);
@@ -250,7 +251,7 @@ export const manualClockOutFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
-    await assertAdminOrManager(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/pointage:edit");
     const shift = await loadShift(supabase, data.shiftId);
     if (!shift.clocked_in_at) throw new Error("Pointage d'arrivée manquant");
     if (shift.clocked_out_at) throw new Error("Déjà pointé à la sortie");
@@ -273,7 +274,7 @@ export const editMinutesLateFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
-    await assertAdminOrManager(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/pointage:edit");
     const shift = await loadShift(supabase, data.shiftId);
     const before = { minutes_late: shift.minutes_late };
     const { error } = await supabase.from("shifts").update({ minutes_late: data.newValue }).eq("id", shift.id);
@@ -287,7 +288,7 @@ export const markNoShowFn = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ shiftId: z.string().uuid(), reason: z.string().min(1).max(500) }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
-    await assertAdminOrManager(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/pointage:edit");
     const shift = await loadShift(supabase, data.shiftId);
     const before = { status: shift.status };
     const { error } = await supabase.from("shifts").update({ status: "cancelled" }).eq("id", shift.id);
@@ -301,7 +302,7 @@ export const undoNoShowFn = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ shiftId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
-    await assertAdminOrManager(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/pointage:edit");
     const shift = await loadShift(supabase, data.shiftId);
     const before = { status: shift.status };
     const nextStatus = shift.clocked_out_at ? "completed" : "scheduled";
@@ -318,7 +319,7 @@ export const setAdminNoteFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
-    await assertAdminOrManager(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/pointage:edit");
     const shift = await loadShift(supabase, data.shiftId);
     const before = { clock_admin_note: shift.clock_admin_note };
     const cleaned = data.note.trim() ? data.note.trim() : null;
@@ -351,7 +352,7 @@ export const editClockTimesFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
-    await assertAdminOrManager(supabase, userId);
+    await assertManagerPermission(supabase, userId, "/pointage:edit");
     const shift = await loadShift(supabase, data.shiftId);
 
     const inTime = data.clockedInTime || null;
