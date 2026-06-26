@@ -39,16 +39,20 @@ interface StudioRow { id: string; name: string; }
 
 const initials = (f: string, l: string) => `${(f?.[0] || "").toUpperCase()}${(l?.[0] || "").toUpperCase()}`;
 
+type AppRole = "admin" | "manager" | "employee";
+
 function StaffPage() {
   const [tab, setTab] = useState<"employees" | "suspended" | "invitations">("employees");
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [rolesByUser, setRolesByUser] = useState<Record<string, Role[]>>({});
+  const [appRoleByUser, setAppRoleByUser] = useState<Record<string, AppRole>>({});
   const [shiftCountByUser, setShiftCountByUser] = useState<Record<string, number>>({});
   const [studios, setStudios] = useState<StudioRow[]>([]);
   const [search, setSearch] = useState("");
   const [contractFilters, setContractFilters] = useState<Set<string>>(new Set());
   const [studioFilters, setStudioFilters] = useState<Set<string>>(new Set());
   const [roleFilters, setRoleFilters] = useState<Set<string>>(new Set());
+  const [appRoleFilters, setAppRoleFilters] = useState<Set<AppRole>>(new Set());
   const [sortScore, setSortScore] = useState<"none" | "desc" | "asc">("none");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ p: ProfileRow; action: "deactivate" | "reactivate" } | null>(null);
