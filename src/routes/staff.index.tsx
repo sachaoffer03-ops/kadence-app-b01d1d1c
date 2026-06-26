@@ -202,10 +202,10 @@ function StaffPage() {
             </div>
             <div className="flex items-center gap-1 flex-wrap">
               {(() => {
-                const noFilter = contractFilters.size === 0 && studioFilters.size === 0 && roleFilters.size === 0;
+                const noFilter = contractFilters.size === 0 && studioFilters.size === 0 && roleFilters.size === 0 && appRoleFilters.size === 0;
                 return (
                   <button
-                    onClick={() => { setContractFilters(new Set()); setStudioFilters(new Set()); setRoleFilters(new Set()); }}
+                    onClick={() => { setContractFilters(new Set()); setStudioFilters(new Set()); setRoleFilters(new Set()); setAppRoleFilters(new Set()); }}
                     className="rounded-full px-2.5 py-1"
                     style={{ fontSize: 12, fontWeight: noFilter ? 500 : 400,
                       backgroundColor: noFilter ? "var(--foreground)" : "transparent",
@@ -215,6 +215,30 @@ function StaffPage() {
                   </button>
                 );
               })()}
+              <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
+              {([
+                { key: "admin" as AppRole, label: "Admins", color: "var(--coral)" },
+                { key: "manager" as AppRole, label: "Managers", color: "var(--info-text)" },
+                { key: "employee" as AppRole, label: "Employés", color: "var(--muted-foreground)" },
+              ]).map(({ key, label, color }) => {
+                const a = appRoleFilters.has(key);
+                const count = profiles.filter(p => (appRoleByUser[p.id] || "employee") === key && (isInactiveTab ? p.status === "suspended" : p.status !== "suspended")).length;
+                if (count === 0) return null;
+                return (
+                  <button key={key} onClick={() => {
+                    const next = new Set(appRoleFilters);
+                    next.has(key) ? next.delete(key) : next.add(key);
+                    setAppRoleFilters(next);
+                  }} className="rounded-full px-2.5 py-1 inline-flex items-center gap-1.5"
+                    style={{ fontSize: 12, fontWeight: a ? 500 : 400,
+                      backgroundColor: a ? color : "transparent",
+                      color: a ? "#fff" : "var(--muted-foreground)",
+                      border: a ? "none" : "0.5px solid var(--border)" }}>
+                    <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: a ? "#fff" : color }} />
+                    {label} · {count}
+                  </button>
+                );
+              })}
               <span className="mx-2" style={{ width: 1, height: 16, backgroundColor: "var(--border)", display: "inline-block" }} />
               {contracts.map(c => {
                 const a = contractFilters.has(c);
