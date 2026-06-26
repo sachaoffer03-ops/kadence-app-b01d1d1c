@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+import { getAppMode } from "@/lib/app-mode";
 
 type AppRole = "admin" | "manager" | "employee";
 
@@ -62,11 +63,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchRole = async (userId: string) => {
     const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const roles = (data ?? []).map((r) => r.role as AppRole);
+    const hasAdmin = roles.includes("admin");
+    const hasManager = roles.includes("manager");
+    const hasEmployee = roles.includes("employee");
+
+    // Role est contextuel à l'espace : un utilisateur ayant plusieurs rôles
+    // (ex: manager + employee) doit utiliser le rôle qui correspond au domaine.
+    const mode = typeof window !== "undefined" ? getAppMode() : "admin";
     let role: AppRole = "employee";
-    if (data && data.length > 0) {
-      const roles = data.map((r) => r.role as AppRole);
-      if (roles.includes("admin")) role = "admin";
-      else if (roles.includes("manager")) role = "manager";
+    if (mode === "employee") {
+      if (hasEmployee) role = "employee";
+      else if (hasAdmin) role = "admin";
+      else if (hasManager) role = "manager";
+    } else {
+      if (hasAdmin) role = "admin";
+      else if (hasManager) role = "manager";
+      else role = "employee";
     }
     setAppRole(role);
 
