@@ -218,10 +218,15 @@ function EmployeeDetailPage() {
         <ArrowLeft size={14} /> Retour au staff
       </Link>
 
-      {emp.status !== "active" && (
+      {emp.status === "suspended" && (
         <div className="rounded-lg border px-3 py-2 mb-4 flex items-center justify-between" style={{ backgroundColor: "var(--warning-bg)", borderColor: "var(--border)", color: "var(--warning-text)", fontSize: 12 }}>
           <span>Compte suspendu — n'apparaît plus dans les plannings.</span>
           <button onClick={handleDeactivate} className="rounded-md px-2 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--card)" }}>Réactiver</button>
+        </div>
+      )}
+      {emp.status === "invited" && (
+        <div className="rounded-lg border px-3 py-2 mb-4" style={{ backgroundColor: "var(--info-bg)", borderColor: "var(--border)", color: "var(--info-text)", fontSize: 12 }}>
+          Invitation envoyée — l'employé n'a pas encore terminé son inscription. Tu peux renvoyer le mail depuis Employés → Invitations.
         </div>
       )}
 
