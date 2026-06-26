@@ -54,7 +54,9 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
         next.delete(pageKey);
         actionKeys.forEach((k) => next.delete(k));
       } else {
+        // Cocher page → cocher toutes les sous-actions par défaut
         next.add(pageKey);
+        actionKeys.forEach((k) => next.add(k));
       }
       return next;
     });
