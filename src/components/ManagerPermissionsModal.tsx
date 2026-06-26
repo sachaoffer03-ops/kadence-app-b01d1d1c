@@ -94,6 +94,7 @@ export function ManagerPermissionsModal({ open, userId, userName, onClose, onSav
           actionKeys.forEach((k) => next.delete(k));
         } else {
           next.add(item.key);
+          actionKeys.forEach((k) => next.add(k));
         }
       });
       return next;
