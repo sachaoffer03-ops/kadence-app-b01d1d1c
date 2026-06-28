@@ -100,9 +100,14 @@ export function EmployeeShiftsHistoryTab({ userId }: Props) {
   const today = todayStr();
 
   const filtered = useMemo(() => {
-    if (filter === "upcoming") return shifts.filter((s) => s.shift_date >= today);
-    if (filter === "past") return shifts.filter((s) => s.shift_date < today);
-    return shifts;
+    const upcoming = shifts
+      .filter((s) => s.shift_date >= today)
+      .slice()
+      .sort((a, b) => a.shift_date.localeCompare(b.shift_date) || a.start_time.localeCompare(b.start_time));
+    const past = shifts.filter((s) => s.shift_date < today);
+    if (filter === "upcoming") return upcoming;
+    if (filter === "past") return past;
+    return [...upcoming, ...past];
   }, [shifts, filter, today]);
 
   const stats = useMemo(() => {
