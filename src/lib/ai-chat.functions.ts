@@ -309,8 +309,10 @@ export const getChatHistory = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .eq("is_test", data?.is_test ?? false)
       .order("created_at", { ascending: true })
+      .order("role", { ascending: false }) // user avant assistant en cas d'égalité
       .limit(500);
     return { messages: rows ?? [] };
+
   });
 
 const ClearHistoryInput = z.object({ is_test: z.boolean().optional().default(false) }).optional();
