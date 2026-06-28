@@ -1,14 +1,108 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Send, AlertTriangle, Check, Info, Search, X } from "lucide-react";
+import { Send, AlertTriangle, Check, Info, Search, X, FileCheck, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getRoleStyle, hhmm, fullName } from "@/lib/staff-helpers";
 
 export const Route = createFileRoute("/dimona")({
-  component: DimonaPage,
+  component: DimonaRoute,
   head: () => ({ meta: [{ title: "Dimona — Kadence" }] }),
 });
+
+function DimonaRoute() {
+  const [showPreview, setShowPreview] = useState(false);
+  if (!showPreview) return <DimonaComingSoon onPreview={() => setShowPreview(true)} />;
+  return (
+    <div>
+      <div
+        className="flex items-center justify-between px-4 md:px-6 py-2.5"
+        style={{ backgroundColor: "var(--info-bg)", borderBottom: "0.5px solid var(--border)" }}
+      >
+        <div className="flex items-center gap-2" style={{ fontSize: 12, color: "var(--info-text)" }}>
+          <Info size={13} />
+          <span>Aperçu en développement</span>
+        </div>
+        <button
+          onClick={() => setShowPreview(false)}
+          className="flex items-center gap-1.5 rounded-md px-2.5 py-1"
+          style={{ fontSize: 12, fontWeight: 500, color: "var(--info-text)", border: "0.5px solid var(--info-text)" }}
+        >
+          <ArrowLeft size={12} /> Retour à l'écran d'attente
+        </button>
+      </div>
+      <DimonaPage />
+    </div>
+  );
+}
+
+function DimonaComingSoon({ onPreview }: { onPreview: () => void }) {
+  return (
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-6">
+      <div
+        className="w-full"
+        style={{
+          maxWidth: 560,
+          backgroundColor: "var(--card)",
+          border: "0.5px solid var(--border)",
+          borderRadius: 16,
+          padding: "48px 40px",
+        }}
+      >
+        <div
+          className="flex items-center justify-center mb-6"
+          style={{
+            width: 56,
+            height: 56,
+            backgroundColor: "var(--coral-soft, #FCE4D9)",
+            borderRadius: 14,
+          }}
+        >
+          <FileCheck size={28} style={{ color: "var(--coral-dark, #C56A4E)" }} />
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "var(--coral-dark, #C56A4E)",
+            marginBottom: 8,
+          }}
+        >
+          Bientôt
+        </div>
+        <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.015em", marginBottom: 16 }}>
+          Intégration Dimona — bientôt
+        </h1>
+        <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--muted-foreground)", marginBottom: 14 }}>
+          Kadence travaille avec ton secrétariat social pour automatiser les déclarations Dimona.
+          À terme : déclaration en 1 clic, suivi temps réel des statuts, alertes de conformité, et
+          synchro bidirectionnelle avec Startable / Horecafocus / SD Worx.
+        </p>
+        <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--muted-foreground)", marginBottom: 28 }}>
+          En attendant, tu peux explorer la prévisualisation de ce que sera l'interface :
+        </p>
+        <button
+          onClick={onPreview}
+          className="rounded-[10px]"
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            padding: "10px 20px",
+            backgroundColor: "var(--foreground)",
+            color: "var(--card)",
+          }}
+        >
+          Voir la prévisualisation →
+        </button>
+        <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 28, opacity: 0.8 }}>
+          Pas de date de sortie communiquée pour l'instant. Reviens régulièrement.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 interface DShift {
   id: string; shift_date: string; start_time: string; end_time: string;
