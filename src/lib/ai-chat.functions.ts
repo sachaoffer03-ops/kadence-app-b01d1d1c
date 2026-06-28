@@ -283,11 +283,14 @@ Réponds à sa question en utilisant uniquement ces informations + tes connaissa
       .map((b: any) => b.text)
       .join("\n");
 
-    // 4. Sauvegarder
+    // 4. Sauvegarder (séquentiel pour garantir l'ordre user → assistant)
+    const nowIso = new Date().toISOString();
+    const laterIso = new Date(Date.now() + 1).toISOString();
     await supabaseAdmin.from("ai_chat_messages").insert([
-      { user_id: userId, role: "user", content: data.question, is_test: data.is_test, impersonate_user_id: data.impersonate_user_id ?? null },
-      { user_id: userId, role: "assistant", content: answer, is_test: data.is_test, impersonate_user_id: data.impersonate_user_id ?? null },
+      { user_id: userId, role: "user", content: data.question, is_test: data.is_test, impersonate_user_id: data.impersonate_user_id ?? null, created_at: nowIso },
+      { user_id: userId, role: "assistant", content: answer, is_test: data.is_test, impersonate_user_id: data.impersonate_user_id ?? null, created_at: laterIso },
     ]);
+
 
     return { answer };
   });
