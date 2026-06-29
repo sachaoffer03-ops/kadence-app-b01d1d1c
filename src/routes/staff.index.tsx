@@ -45,7 +45,7 @@ function StaffPage() {
   const [tab, setTab] = useState<"employees" | "suspended" | "invitations">("employees");
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [rolesByUser, setRolesByUser] = useState<Record<string, Role[]>>({});
-  const [appRoleByUser, setAppRoleByUser] = useState<Record<string, AppRole>>({});
+  const [appRolesByUser, setAppRolesByUser] = useState<Record<string, Set<AppRole>>>({});
   const [shiftCountByUser, setShiftCountByUser] = useState<Record<string, number>>({});
   const [studios, setStudios] = useState<StudioRow[]>([]);
   const [search, setSearch] = useState("");
