@@ -531,6 +531,9 @@ function Row({
           </IconBtn>
           {inv.status === "pending" && (
             <>
+              <IconBtn label="Voir le lien" onClick={onShowLink}>
+                <LinkIcon size={13} />
+              </IconBtn>
               <IconBtn label="Copier le lien" onClick={onCopy}>
                 <Copy size={13} />
               </IconBtn>
@@ -546,9 +549,14 @@ function Row({
             </>
           )}
           {inv.status === "expired" && (
-            <IconBtn label="Renvoyer une nouvelle invitation" onClick={onResend}>
-              <Send size={13} />
-            </IconBtn>
+            <>
+              <IconBtn label="Voir le lien" onClick={onShowLink}>
+                <LinkIcon size={13} />
+              </IconBtn>
+              <IconBtn label="Renvoyer une nouvelle invitation" onClick={onResend}>
+                <Send size={13} />
+              </IconBtn>
+            </>
           )}
         </div>
       </td>
