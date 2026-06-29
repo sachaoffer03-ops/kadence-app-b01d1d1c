@@ -109,11 +109,19 @@ function StaffPage() {
         if (!roles.some(r => roleFilters.has(r))) return false;
       }
       if (appRoleFilters.size) {
-        const ar = appRoleByUser[p.id] || "employee";
-        if (!appRoleFilters.has(ar)) return false;
+        const rs = appRolesByUser[p.id];
+        const hasAny = rs ? Array.from(appRoleFilters).some(f => rs.has(f)) : appRoleFilters.has("employee");
+        if (!hasAny) return false;
       }
       return true;
     });
+    const topRole = (id: string): AppRole => {
+      const rs = appRolesByUser[id];
+      if (!rs) return "employee";
+      if (rs.has("admin")) return "admin";
+      if (rs.has("manager")) return "manager";
+      return "employee";
+    };
     if (sortScore !== "none") {
       list.sort((a, b) => {
         const sa = a.score ?? -1; const sb = b.score ?? -1;
@@ -122,8 +130,8 @@ function StaffPage() {
     } else {
       const rank: Record<AppRole, number> = { admin: 0, manager: 1, employee: 2 };
       list.sort((a, b) => {
-        const ra = rank[appRoleByUser[a.id] || "employee"];
-        const rb = rank[appRoleByUser[b.id] || "employee"];
+        const ra = rank[topRole(a.id)];
+        const rb = rank[topRole(b.id)];
         if (ra !== rb) return ra - rb;
         return `${a.first_name} ${a.last_name}`.localeCompare(
           `${b.first_name} ${b.last_name}`,
@@ -133,7 +141,7 @@ function StaffPage() {
       });
     }
     return list;
-  }, [profiles, tab, search, contractFilters, studioFilters, roleFilters, appRoleFilters, sortScore, rolesByUser, appRoleByUser]);
+  }, [profiles, tab, search, contractFilters, studioFilters, roleFilters, appRoleFilters, sortScore, rolesByUser, appRolesByUser]);
 
   const toggle = (set: Set<string>, fn: (s: Set<string>) => void, key: string) => {
     const next = new Set(set);
