@@ -356,9 +356,9 @@ function StaffPage() {
                             <div className="flex items-center gap-1.5" style={{ fontWeight: 500 }}>
                               {p.first_name} {p.last_name}
                               {(() => {
-                                const ar = appRoleByUser[p.id];
-                                if (ar === "admin") return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>ADMIN</span>;
-                                if (ar === "manager") return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--info-bg)", color: "var(--info-text)" }}>MANAGER</span>;
+                                const rs = appRolesByUser[p.id];
+                                if (rs?.has("admin")) return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>ADMIN</span>;
+                                if (rs?.has("manager")) return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--info-bg)", color: "var(--info-text)" }}>MANAGER</span>;
                                 return null;
                               })()}
                             </div>
