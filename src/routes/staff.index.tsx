@@ -228,7 +228,7 @@ function StaffPage() {
                 { key: "employee" as AppRole, label: "Employés", color: "var(--muted-foreground)" },
               ]).map(({ key, label, color }) => {
                 const a = appRoleFilters.has(key);
-                const count = profiles.filter(p => (appRoleByUser[p.id] || "employee") === key && (isInactiveTab ? p.status === "suspended" : p.status !== "suspended")).length;
+                const count = profiles.filter(p => { const rs = appRolesByUser[p.id]; const has = rs ? rs.has(key) : key === "employee"; return has && (isInactiveTab ? p.status === "suspended" : p.status !== "suspended"); }).length;
                 if (count === 0) return null;
                 return (
                   <button key={key} onClick={() => {
