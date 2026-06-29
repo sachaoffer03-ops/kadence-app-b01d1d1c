@@ -402,10 +402,6 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
           onCopy={() => copyLink(linkView.token)}
         />
       )}
-            </tbody>
-          </table>
-        )}
-      </div>
     </div>
   );
 }
