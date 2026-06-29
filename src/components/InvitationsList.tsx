@@ -17,6 +17,8 @@ import {
   UserPlus,
   Eye,
   CheckCheck,
+  Link as LinkIcon,
+  X,
 } from "lucide-react";
 
 type Status = "pending" | "accepted" | "expired" | "revoked";
