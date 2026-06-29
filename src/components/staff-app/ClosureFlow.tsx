@@ -1032,15 +1032,6 @@ function Step6({ recap, studios, phase, firstName, onClose, onRetry, finalizing 
             <Row label="Rémunération" value={<span style={{ fontSize: 18, fontWeight: 500 }}>{fmtEUR(recap.earnings)}</span>} last />
           </Card>
 
-          <Card title="Impact sur ton score">
-            <div className="flex items-center justify-between mb-3">
-              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Total</span>
-              <span style={{ fontSize: 22, fontWeight: 500, color: "var(--coral-dark)" }}>+{recap.score.total} pts</span>
-            </div>
-            <Row label="Ponctualité" value={`+${recap.score.ponctualite}`} />
-            <Row label="Checklist" value={`+${recap.score.checklist}`} />
-            <Row label="Photos" value={`+${recap.score.photos}`} last />
-          </Card>
 
           <Card title="Ton prochain shift">
             {recap.nextShift ? (
