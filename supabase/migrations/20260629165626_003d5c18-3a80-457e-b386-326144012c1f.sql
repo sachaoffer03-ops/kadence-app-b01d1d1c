@@ -1,0 +1,1 @@
+UPDATE public.invitations SET status='accepted' WHERE lower(email)='anais@skult-studios.com' AND status='pending';

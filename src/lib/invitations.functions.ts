@@ -27,6 +27,26 @@ export const sendInvitation = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // Garde-fous anti-doublons
+    const emailNorm = data.email.trim().toLowerCase();
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, status")
+      .ilike("email", emailNorm)
+      .maybeSingle();
+    if (existingProfile) {
+      throw new Error("Un compte existe déjà pour cet email");
+    }
+    const { data: existingInv } = await supabaseAdmin
+      .from("invitations")
+      .select("id")
+      .ilike("email", emailNorm)
+      .eq("status", "pending")
+      .maybeSingle();
+    if (existingInv) {
+      throw new Error("Une invitation est déjà en attente pour cet email");
+    }
+
     // Insérer l'invitation
     const { data: inv, error: invErr } = await supabaseAdmin
       .from("invitations")
