@@ -657,3 +657,87 @@ function formatRelative(iso: string, future = false) {
   if (days < 30) return future ? `dans ${days}j` : `il y a ${days}j`;
   return d.toLocaleDateString("fr-BE", { day: "numeric", month: "short" });
 }
+
+function LinkModal({
+  inv,
+  onClose,
+  onCopy,
+}: {
+  inv: Invitation;
+  onClose: () => void;
+  onCopy: () => void;
+}) {
+  const APP_URL = "https://app.shyft.flashsite.fr";
+  const link = `${APP_URL}/activation?token=${inv.token}`;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg rounded-xl border p-5"
+        style={{
+          backgroundColor: "var(--card)",
+          borderColor: "var(--border)",
+        }}
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 500 }}>Lien d'activation</h3>
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+              {inv.first_name} {inv.last_name} — {inv.email}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1"
+            style={{ color: "var(--muted-foreground)" }}
+            aria-label="Fermer"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div
+          className="rounded-md border p-3 mb-3 break-all"
+          style={{
+            backgroundColor: "var(--muted)",
+            borderColor: "var(--border)",
+            fontSize: 12,
+            fontFamily: "ui-monospace, monospace",
+            color: "var(--foreground)",
+          }}
+        >
+          {link}
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-md px-3 py-1.5"
+            style={{
+              fontSize: 12,
+              border: "0.5px solid var(--border)",
+              backgroundColor: "transparent",
+              color: "var(--foreground)",
+            }}
+          >
+            Fermer
+          </button>
+          <button
+            onClick={onCopy}
+            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5"
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              backgroundColor: "var(--foreground)",
+              color: "var(--card)",
+            }}
+          >
+            <Copy size={13} /> Copier le lien
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
