@@ -381,6 +381,7 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
                     inv={inv}
                     studioNames={names}
                     onCopy={() => copyLink(inv.token)}
+                    onShowLink={() => setLinkView(inv)}
                     onResend={() => resendEmail(inv)}
                     onRevoke={() => revoke(inv)}
                     onValidate={() => validateManually(inv)}
@@ -390,6 +391,17 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
                   />
                 );
               })}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {linkView && (
+        <LinkModal
+          inv={linkView}
+          onClose={() => setLinkView(null)}
+          onCopy={() => copyLink(linkView.token)}
+        />
+      )}
             </tbody>
           </table>
         )}
