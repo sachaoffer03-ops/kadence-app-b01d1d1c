@@ -410,6 +410,7 @@ function Row({
   inv,
   studioNames,
   onCopy,
+  onShowLink,
   onResend,
   onRevoke,
   onValidate,
@@ -418,6 +419,7 @@ function Row({
   inv: Invitation;
   studioNames: string[];
   onCopy: () => void;
+  onShowLink: () => void;
   onResend: () => void;
   onRevoke: () => void;
   onValidate: () => void;
