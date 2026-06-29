@@ -64,6 +64,7 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
   const [loading, setLoading] = useState(true);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [studios, setStudios] = useState<Studio[]>([]);
+  const [linkView, setLinkView] = useState<Invitation | null>(null);
 
   const load = async (opts?: { background?: boolean }) => {
     if (!opts?.background) setLoading(true);
