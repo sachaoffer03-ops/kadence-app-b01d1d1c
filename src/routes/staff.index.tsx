@@ -70,13 +70,11 @@ function StaffPage() {
       const map: Record<string, Role[]> = {};
       (br || []).forEach(r => { (map[r.user_id] ||= []).push(r.role as Role); });
       setRolesByUser(map);
-      const arMap: Record<string, AppRole> = {};
-      const rank: Record<string, number> = { admin: 3, manager: 2, employee: 1 };
+      const arMap: Record<string, Set<AppRole>> = {};
       (ar || []).forEach((r: { user_id: string; role: string }) => {
-        const cur = arMap[r.user_id];
-        if (!cur || (rank[r.role] || 0) > (rank[cur] || 0)) arMap[r.user_id] = r.role as AppRole;
+        (arMap[r.user_id] ||= new Set<AppRole>()).add(r.role as AppRole);
       });
-      setAppRoleByUser(arMap);
+      setAppRolesByUser(arMap);
       setStudios(sts || []);
       const counts: Record<string, number> = {};
       (shifts || []).forEach(s => { if (s.user_id) counts[s.user_id] = (counts[s.user_id] || 0) + 1; });
