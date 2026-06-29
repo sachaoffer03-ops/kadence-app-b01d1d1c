@@ -45,7 +45,7 @@ function StaffPage() {
   const [tab, setTab] = useState<"employees" | "suspended" | "invitations">("employees");
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [rolesByUser, setRolesByUser] = useState<Record<string, Role[]>>({});
-  const [appRoleByUser, setAppRoleByUser] = useState<Record<string, AppRole>>({});
+  const [appRolesByUser, setAppRolesByUser] = useState<Record<string, Set<AppRole>>>({});
   const [shiftCountByUser, setShiftCountByUser] = useState<Record<string, number>>({});
   const [studios, setStudios] = useState<StudioRow[]>([]);
   const [search, setSearch] = useState("");
@@ -70,13 +70,11 @@ function StaffPage() {
       const map: Record<string, Role[]> = {};
       (br || []).forEach(r => { (map[r.user_id] ||= []).push(r.role as Role); });
       setRolesByUser(map);
-      const arMap: Record<string, AppRole> = {};
-      const rank: Record<string, number> = { admin: 3, manager: 2, employee: 1 };
+      const arMap: Record<string, Set<AppRole>> = {};
       (ar || []).forEach((r: { user_id: string; role: string }) => {
-        const cur = arMap[r.user_id];
-        if (!cur || (rank[r.role] || 0) > (rank[cur] || 0)) arMap[r.user_id] = r.role as AppRole;
+        (arMap[r.user_id] ||= new Set<AppRole>()).add(r.role as AppRole);
       });
-      setAppRoleByUser(arMap);
+      setAppRolesByUser(arMap);
       setStudios(sts || []);
       const counts: Record<string, number> = {};
       (shifts || []).forEach(s => { if (s.user_id) counts[s.user_id] = (counts[s.user_id] || 0) + 1; });
@@ -111,11 +109,19 @@ function StaffPage() {
         if (!roles.some(r => roleFilters.has(r))) return false;
       }
       if (appRoleFilters.size) {
-        const ar = appRoleByUser[p.id] || "employee";
-        if (!appRoleFilters.has(ar)) return false;
+        const rs = appRolesByUser[p.id];
+        const hasAny = rs ? Array.from(appRoleFilters).some(f => rs.has(f)) : appRoleFilters.has("employee");
+        if (!hasAny) return false;
       }
       return true;
     });
+    const topRole = (id: string): AppRole => {
+      const rs = appRolesByUser[id];
+      if (!rs) return "employee";
+      if (rs.has("admin")) return "admin";
+      if (rs.has("manager")) return "manager";
+      return "employee";
+    };
     if (sortScore !== "none") {
       list.sort((a, b) => {
         const sa = a.score ?? -1; const sb = b.score ?? -1;
@@ -124,8 +130,8 @@ function StaffPage() {
     } else {
       const rank: Record<AppRole, number> = { admin: 0, manager: 1, employee: 2 };
       list.sort((a, b) => {
-        const ra = rank[appRoleByUser[a.id] || "employee"];
-        const rb = rank[appRoleByUser[b.id] || "employee"];
+        const ra = rank[topRole(a.id)];
+        const rb = rank[topRole(b.id)];
         if (ra !== rb) return ra - rb;
         return `${a.first_name} ${a.last_name}`.localeCompare(
           `${b.first_name} ${b.last_name}`,
@@ -135,7 +141,7 @@ function StaffPage() {
       });
     }
     return list;
-  }, [profiles, tab, search, contractFilters, studioFilters, roleFilters, appRoleFilters, sortScore, rolesByUser, appRoleByUser]);
+  }, [profiles, tab, search, contractFilters, studioFilters, roleFilters, appRoleFilters, sortScore, rolesByUser, appRolesByUser]);
 
   const toggle = (set: Set<string>, fn: (s: Set<string>) => void, key: string) => {
     const next = new Set(set);
@@ -222,7 +228,7 @@ function StaffPage() {
                 { key: "employee" as AppRole, label: "Employés", color: "var(--muted-foreground)" },
               ]).map(({ key, label, color }) => {
                 const a = appRoleFilters.has(key);
-                const count = profiles.filter(p => (appRoleByUser[p.id] || "employee") === key && (isInactiveTab ? p.status === "suspended" : p.status !== "suspended")).length;
+                const count = profiles.filter(p => { const rs = appRolesByUser[p.id]; const has = rs ? rs.has(key) : key === "employee"; return has && (isInactiveTab ? p.status === "suspended" : p.status !== "suspended"); }).length;
                 if (count === 0) return null;
                 return (
                   <button key={key} onClick={() => {
@@ -350,9 +356,9 @@ function StaffPage() {
                             <div className="flex items-center gap-1.5" style={{ fontWeight: 500 }}>
                               {p.first_name} {p.last_name}
                               {(() => {
-                                const ar = appRoleByUser[p.id];
-                                if (ar === "admin") return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>ADMIN</span>;
-                                if (ar === "manager") return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--info-bg)", color: "var(--info-text)" }}>MANAGER</span>;
+                                const rs = appRolesByUser[p.id];
+                                if (rs?.has("admin")) return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>ADMIN</span>;
+                                if (rs?.has("manager")) return <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--info-bg)", color: "var(--info-text)" }}>MANAGER</span>;
                                 return null;
                               })()}
                             </div>
