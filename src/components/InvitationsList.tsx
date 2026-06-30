@@ -241,12 +241,11 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
       {/* Sub-tabs + search */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div
-          className="flex items-center gap-2 rounded-md border px-3"
+          className="flex items-center gap-2 rounded-md border px-3 w-full sm:w-[220px]"
           style={{
             height: 32,
             borderColor: "var(--border)",
             backgroundColor: "var(--card)",
-            width: 220,
           }}
         >
           <Search size={14} style={{ color: "var(--muted-foreground)" }} />
@@ -255,10 +254,11 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
             placeholder="Rechercher..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-0 bg-transparent outline-none flex-1"
+            className="border-0 bg-transparent outline-none flex-1 min-w-0"
             style={{ fontSize: 12, color: "var(--foreground)" }}
           />
         </div>
+
         <div className="flex items-center gap-1">
           {subTabs.map((t) => {
             const active = tab === t.key;
