@@ -593,6 +593,107 @@ function Row({
   );
 }
 
+function MobileCard({
+  inv,
+  studioNames,
+  onCopy,
+  onShowLink,
+  onResend,
+  onRevoke,
+  onValidate,
+  onPreview,
+}: {
+  inv: Invitation;
+  studioNames: string[];
+  onCopy: () => void;
+  onShowLink: () => void;
+  onResend: () => void;
+  onRevoke: () => void;
+  onValidate: () => void;
+  onPreview: () => void;
+}) {
+  const initials = `${inv.first_name[0] ?? ""}${inv.last_name[0] ?? ""}`.toUpperCase();
+  const contractsList = (inv.contracts && inv.contracts.length > 0)
+    ? inv.contracts
+    : (inv.contract ? [inv.contract] : []);
+  return (
+    <li className="p-3" style={{ borderColor: "var(--border)" }}>
+      <div className="flex items-start gap-3">
+        <div
+          className="flex items-center justify-center rounded-full shrink-0"
+          style={{
+            width: 34, height: 34,
+            backgroundColor: "var(--muted)", color: "var(--muted-foreground)",
+            fontSize: 11, fontWeight: 500,
+          }}
+        >
+          {initials}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>
+                {inv.first_name} {inv.last_name}
+              </div>
+              <div className="truncate" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                {inv.email}
+              </div>
+            </div>
+            <StatusBadge status={inv.status} />
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+            {studioNames.length > 0 && <span>{studioNames.join(" · ")}</span>}
+            {contractsList.length > 0 && <span>· {contractsList.join(" · ")}</span>}
+            <span>· {formatRelative(inv.created_at)}</span>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {inv.status === "pending" && (
+              <>
+                <MobileActionBtn onClick={onShowLink} icon={<LinkIcon size={13} />} label="Voir lien" primary />
+                <MobileActionBtn onClick={onCopy} icon={<Copy size={13} />} label="Copier" />
+                <MobileActionBtn onClick={onResend} icon={<Send size={13} />} label="Renvoyer" />
+                <MobileActionBtn onClick={onPreview} icon={<Eye size={13} />} label="Aperçu" />
+                <MobileActionBtn onClick={onValidate} icon={<CheckCheck size={13} />} label="Marquer inscrit" />
+                <MobileActionBtn onClick={onRevoke} icon={<XCircle size={13} />} label="Révoquer" danger />
+              </>
+            )}
+            {inv.status === "expired" && (
+              <>
+                <MobileActionBtn onClick={onShowLink} icon={<LinkIcon size={13} />} label="Voir lien" primary />
+                <MobileActionBtn onClick={onResend} icon={<Send size={13} />} label="Renvoyer" />
+              </>
+            )}
+            {(inv.status === "accepted" || inv.status === "revoked") && (
+              <MobileActionBtn onClick={onPreview} icon={<Eye size={13} />} label="Aperçu" />
+            )}
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function MobileActionBtn({
+  onClick, icon, label, primary, danger,
+}: { onClick: () => void; icon: React.ReactNode; label: string; primary?: boolean; danger?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1 rounded-md px-2 py-1"
+      style={{
+        fontSize: 11,
+        fontWeight: 500,
+        backgroundColor: primary ? "var(--foreground)" : "transparent",
+        color: primary ? "var(--card)" : danger ? "var(--danger-text)" : "var(--foreground)",
+        border: primary ? "none" : `0.5px solid ${danger ? "var(--danger-text)" : "var(--border)"}`,
+      }}
+    >
+      {icon} {label}
+    </button>
+  );
+}
+
+
 function StatusBadge({ status }: { status: Status }) {
   const cfg: Record<Status, { label: string; bg: string; text: string; Icon: typeof Clock }> = {
     pending: {
