@@ -349,7 +349,9 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
             </p>
           </div>
         ) : (
-          <table className="w-full" style={{ fontSize: 13 }}>
+          <>
+          {/* Desktop table */}
+          <table className="w-full hidden md:table" style={{ fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: "0.5px solid var(--border)" }}>
                 {["Personne", "Email", "Studio", "Contrat", "Statut", "Envoyée", "Expire", ""].map(
@@ -393,7 +395,34 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
               })}
             </tbody>
           </table>
+
+          {/* Mobile cards */}
+          <ul className="md:hidden divide-y" style={{ borderColor: "var(--border)" }}>
+            {filtered.map((inv) => {
+              const ids = (inv.studio_ids && inv.studio_ids.length > 0)
+                ? inv.studio_ids
+                : (inv.studio_id ? [inv.studio_id] : []);
+              const names = ids.map((id) => studioName(id)).filter(Boolean);
+              return (
+                <MobileCard
+                  key={inv.id}
+                  inv={inv}
+                  studioNames={names}
+                  onCopy={() => copyLink(inv.token)}
+                  onShowLink={() => setLinkView(inv)}
+                  onResend={() => resendEmail(inv)}
+                  onRevoke={() => revoke(inv)}
+                  onValidate={() => validateManually(inv)}
+                  onPreview={() =>
+                    window.open(`/activation?preview=${inv.id}`, "_blank", "noopener")
+                  }
+                />
+              );
+            })}
+          </ul>
+          </>
         )}
+
       </div>
       {linkView && (
         <LinkModal
