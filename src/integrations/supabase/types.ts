@@ -2740,6 +2740,7 @@ export type Database = {
       diag_get_crons: { Args: never; Returns: Json }
       diag_realtime_tables: { Args: never; Returns: Json }
       diag_test_locale: { Args: never; Returns: Json }
+      email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
