@@ -33,11 +33,17 @@ export const Route = createFileRoute("/api/public/studio-qr/$studioId")({
         let genAt = studio.qr_generated_at ?? null;
 
         if (!code || ageSec >= renewal) {
+          const previousCode = studio.current_qr_code ?? null;
           code = randomCode(5);
           genAt = new Date(now).toISOString();
           const { error: upErr } = await supabaseAdmin
             .from("studios")
-            .update({ current_qr_code: code, qr_generated_at: genAt })
+            .update({
+              current_qr_code: code,
+              qr_generated_at: genAt,
+              previous_qr_code: previousCode,
+              previous_qr_rotated_at: previousCode ? genAt : null,
+            })
             .eq("id", studioId);
           if (upErr) return new Response(upErr.message, { status: 500 });
         }
