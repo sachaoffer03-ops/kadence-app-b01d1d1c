@@ -275,8 +275,10 @@ function AppShell() {
           if (allowedPrefixes.length > 0) {
             navigate({ to: allowedPrefixes[0] as any });
           } else {
+            // Pas de permissions configurées : ne pas déconnecter (sinon
+            // boucle login/logout). On envoie vers le profil et on prévient.
             toast.error("Aucun accès configuré. Contacte un administrateur.");
-            supabase.auth.signOut();
+            if (currentPath !== "/profile") navigate({ to: "/profile" as any });
           }
         }
       }
