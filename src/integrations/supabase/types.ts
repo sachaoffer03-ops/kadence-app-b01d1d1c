@@ -2026,6 +2026,8 @@ export type Database = {
           opening_hours: string | null
           phone: string | null
           postal_code: string | null
+          previous_qr_code: string | null
+          previous_qr_rotated_at: string | null
           qr_display_support: string
           qr_generated_at: string | null
           qr_renewal_seconds: number
@@ -2061,6 +2063,8 @@ export type Database = {
           opening_hours?: string | null
           phone?: string | null
           postal_code?: string | null
+          previous_qr_code?: string | null
+          previous_qr_rotated_at?: string | null
           qr_display_support?: string
           qr_generated_at?: string | null
           qr_renewal_seconds?: number
@@ -2096,6 +2100,8 @@ export type Database = {
           opening_hours?: string | null
           phone?: string | null
           postal_code?: string | null
+          previous_qr_code?: string | null
+          previous_qr_rotated_at?: string | null
           qr_display_support?: string
           qr_generated_at?: string | null
           qr_renewal_seconds?: number
