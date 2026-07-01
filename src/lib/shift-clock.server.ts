@@ -222,7 +222,7 @@ export async function validateClockIn(input: ValidateClockInInput) {
 
   const { data: studio, error: stErr } = await supabaseAdmin
     .from("studios")
-    .select("id,current_qr_code,geofencing_enabled,geofencing_radius_m,lat,lng")
+    .select("id,current_qr_code,previous_qr_code,previous_qr_rotated_at,geofencing_enabled,geofencing_radius_m,lat,lng")
     .eq("id", shift.studio_id)
     .maybeSingle();
   if (stErr) throw new Error(stErr.message);
@@ -230,7 +230,11 @@ export async function validateClockIn(input: ValidateClockInInput) {
 
   const expected = (studio.current_qr_code ?? "").trim();
   if (!expected) throw new Error("Aucun QR code actif pour ce studio. Demande à l'admin de le régénérer.");
-  if (expected.toLowerCase() !== (input.qrCode ?? "").trim().toLowerCase()) {
+  const submitted = (input.qrCode ?? "").trim().toLowerCase();
+  const prev = (((studio as any).previous_qr_code as string) ?? "").trim().toLowerCase();
+  const prevAt = (studio as any).previous_qr_rotated_at ? new Date((studio as any).previous_qr_rotated_at).getTime() : 0;
+  const prevValid = !!prev && submitted === prev && (Date.now() - prevAt) <= 45_000;
+  if (expected.toLowerCase() !== submitted && !prevValid) {
     throw new Error("Code invalide. Vérifie le QR affiché sur la tablette.");
   }
 
