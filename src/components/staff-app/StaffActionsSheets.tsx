@@ -346,13 +346,18 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
 
   const needsShift = type === "cancel" || type === "time_change";
 
-  const submit = async () => {
-    if (reason.trim().length === 0) { toast.error("Indique la raison"); return; }
-    if (needsShift && !selectedShift) { toast.error("Sélectionne un shift"); return; }
-    if (type === "time_change" && (!propStart || !propEnd)) { toast.error("Indique le créneau proposé"); return; }
-    if (type === "unavailable" && (!unavailStart || !unavailEnd)) { toast.error("Indique la période"); return; }
-    if (type === "unavailable" && unavailStart > unavailEnd) { toast.error("La date de fin doit être après le début"); return; }
+  const validate = () => {
+    if (reason.trim().length === 0) { toast.error("Indique la raison"); return false; }
+    if (needsShift && !selectedShift) { toast.error("Sélectionne un shift"); return false; }
+    if (type === "time_change" && (!propStart || !propEnd)) { toast.error("Indique le créneau proposé"); return false; }
+    if (type === "unavailable" && (!unavailStart || !unavailEnd)) { toast.error("Indique la période"); return false; }
+    if (type === "unavailable" && unavailStart > unavailEnd) { toast.error("La date de fin doit être après le début"); return false; }
+    return true;
+  };
 
+  const askConfirm = () => { if (validate()) setConfirmOpen(true); };
+
+  const submit = async () => {
     setSubmitting(true);
     try {
       await createFn({
@@ -368,6 +373,7 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
         },
       });
       toast.success("Demande envoyée, tu seras notifié de la décision");
+      setConfirmOpen(false);
       onClose();
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur d'envoi");
