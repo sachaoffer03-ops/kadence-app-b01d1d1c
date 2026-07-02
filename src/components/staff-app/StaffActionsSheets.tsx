@@ -311,6 +311,7 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
   const [propEnd, setPropEnd] = useState("");
   const [unavailStart, setUnavailStart] = useState("");
   const [unavailEnd, setUnavailEnd] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const createFn = useServerFn(createModificationRequest);
 
@@ -345,13 +346,18 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
 
   const needsShift = type === "cancel" || type === "time_change";
 
-  const submit = async () => {
-    if (reason.trim().length === 0) { toast.error("Indique la raison"); return; }
-    if (needsShift && !selectedShift) { toast.error("Sélectionne un shift"); return; }
-    if (type === "time_change" && (!propStart || !propEnd)) { toast.error("Indique le créneau proposé"); return; }
-    if (type === "unavailable" && (!unavailStart || !unavailEnd)) { toast.error("Indique la période"); return; }
-    if (type === "unavailable" && unavailStart > unavailEnd) { toast.error("La date de fin doit être après le début"); return; }
+  const validate = () => {
+    if (reason.trim().length === 0) { toast.error("Indique la raison"); return false; }
+    if (needsShift && !selectedShift) { toast.error("Sélectionne un shift"); return false; }
+    if (type === "time_change" && (!propStart || !propEnd)) { toast.error("Indique le créneau proposé"); return false; }
+    if (type === "unavailable" && (!unavailStart || !unavailEnd)) { toast.error("Indique la période"); return false; }
+    if (type === "unavailable" && unavailStart > unavailEnd) { toast.error("La date de fin doit être après le début"); return false; }
+    return true;
+  };
 
+  const askConfirm = () => { if (validate()) setConfirmOpen(true); };
+
+  const submit = async () => {
     setSubmitting(true);
     try {
       await createFn({
@@ -367,6 +373,7 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
         },
       });
       toast.success("Demande envoyée, tu seras notifié de la décision");
+      setConfirmOpen(false);
       onClose();
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur d'envoi");
@@ -463,7 +470,56 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
         <TextArea value={reason} onChange={(v) => setReason(v.slice(0, 500))} rows={4}
           placeholder="Ex: Examen ce matin-là / Maladie / Conflit avec un autre engagement..." />
       </FormField>
-      <div className="mt-2"><PrimaryButton onClick={submit} disabled={submitting}>{submitting ? "Envoi…" : "Envoyer la demande"}</PrimaryButton></div>
+      <div className="mt-2"><PrimaryButton onClick={askConfirm} disabled={submitting}>{submitting ? "Envoi…" : "Envoyer la demande"}</PrimaryButton></div>
+
+      {confirmOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !submitting && setConfirmOpen(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              maxWidth: 380,
+              width: "100%",
+              padding: 20,
+              boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
+            }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 12 }}>Avant de valider</div>
+            <div style={{ fontSize: 13, color: "var(--foreground)", lineHeight: 1.55, whiteSpace: "pre-line" }}>
+              {`Bonjour,\n\nLorsqu'une disponibilité est communiquée et qu'un shift est accepté, il est important de maintenir cet engagement, sauf en cas d'urgence réelle. Les annulations ont un impact direct sur l'organisation de l'équipe.\n\nLe système prendra également en compte ces désistements dans le scoring de fiabilité, ce qui pourra influencer l'attribution de futurs shifts.\n\nMerci pour votre compréhension.`}
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setConfirmOpen(false)}
+                disabled={submitting}
+                className="flex-1 rounded-xl py-3"
+                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "transparent", color: "var(--muted-foreground)", border: "0.5px solid var(--border)" }}
+              >
+                Retour
+              </button>
+              <button
+                onClick={submit}
+                disabled={submitting}
+                className="flex-1 rounded-xl py-3"
+                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
+              >
+                {submitting ? "Envoi…" : "Confirmer et envoyer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Sheet>
   );
 }
