@@ -311,6 +311,7 @@ export function RequestModificationSheet({ open, onClose, userId, shiftId }: { o
   const [propEnd, setPropEnd] = useState("");
   const [unavailStart, setUnavailStart] = useState("");
   const [unavailEnd, setUnavailEnd] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const createFn = useServerFn(createModificationRequest);
 
