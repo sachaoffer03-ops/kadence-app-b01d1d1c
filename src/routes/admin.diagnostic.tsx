@@ -8,6 +8,7 @@ import { runDataDiagnostic } from "@/lib/data-diagnostic.functions";
 import { collectIntegrityStats } from "@/lib/integrity-report.functions";
 import { getSystemHealthChecks, triggerAvailRemindersTick, getRecentEmailLogs } from "@/lib/system-health.functions";
 import { diagnoseLastPlanningRun } from "@/lib/planning-diagnose.functions";
+import { sendTestEmail } from "@/lib/email-test.functions";
 
 export const Route = createFileRoute("/admin/diagnostic")({
   component: () => (
