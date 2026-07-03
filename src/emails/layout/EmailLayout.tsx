@@ -47,8 +47,8 @@ export default function EmailLayout({
         <Container style={container}>
           <Section style={header}>
             <Img
-              src={KADENCE_LOGO_URL}
-              alt="Kadence"
+              src={logoSrc}
+              alt={displayName}
               width="360"
               height="100"
               style={logoImg}
@@ -60,21 +60,20 @@ export default function EmailLayout({
           <Section style={footer}>
             <Img
               src={SKULT_LOGO_URL}
-              alt={studioName ?? "Skult Studios"}
+              alt={displayName}
               width="72"
               height="28"
               style={skultLogoImg}
             />
             <Text style={footerText}>
-              Cet email t'a été envoyé via Kadence pour{" "}
-              {studioName ?? "Skult Studios"}.
+              Cet email t'a été envoyé via Kadence pour {displayName}.
             </Text>
             <Text style={footerText}>
-              Si tu n'es plus concerné, contacte ton manager.
+              {tenant.footerNote ?? "Si tu n'es plus concerné, contacte ton manager."}
             </Text>
             <Hr style={footerHr} />
             <Text style={footerText}>
-              <Link href="https://kadence.io/privacy" style={footerLink}>
+              <Link href={tenant.privacyUrl} style={footerLink}>
                 Politique de confidentialité
               </Link>
             </Text>
