@@ -40,14 +40,15 @@ export async function getEmailTenantConfig(
     return DEFAULT_EMAIL_TENANT;
   }
 
+  const row = data as any;
   const value: EmailTenantConfig = {
-    displayName: data.display_name ?? DEFAULT_EMAIL_TENANT.displayName,
-    fromName: data.from_name ?? DEFAULT_EMAIL_TENANT.fromName,
-    brandColor: data.brand_color ?? DEFAULT_EMAIL_TENANT.brandColor,
-    logoUrl: data.logo_url ?? null,
-    replyToEmail: data.reply_to_email ?? null,
-    footerNote: data.footer_note ?? null,
-    privacyUrl: data.privacy_url ?? DEFAULT_EMAIL_TENANT.privacyUrl,
+    displayName: row.display_name ?? DEFAULT_EMAIL_TENANT.displayName,
+    fromName: row.from_name ?? DEFAULT_EMAIL_TENANT.fromName,
+    brandColor: row.brand_color ?? DEFAULT_EMAIL_TENANT.brandColor,
+    logoUrl: row.logo_url ?? null,
+    replyToEmail: row.reply_to_email ?? null,
+    footerNote: row.footer_note ?? null,
+    privacyUrl: row.privacy_url ?? DEFAULT_EMAIL_TENANT.privacyUrl,
   };
 
   if (!organizationId) {
