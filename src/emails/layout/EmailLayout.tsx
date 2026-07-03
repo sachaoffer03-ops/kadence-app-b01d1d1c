@@ -18,6 +18,8 @@ export const KADENCE_LOGO_URL =
 export const SKULT_LOGO_URL =
   "https://vqejayodpprbfgwaejmb.supabase.co/storage/v1/object/public/avatars/_brand%2Fskult-logo.jpg";
 
+import { useEmailTenant } from "@/emails/tenant-context";
+
 interface EmailLayoutProps {
   children: React.ReactNode;
   studioName?: string;
@@ -29,6 +31,11 @@ export default function EmailLayout({
   studioName,
   preview,
 }: EmailLayoutProps) {
+  const tenant = useEmailTenant();
+  // Compat ascendante : si un template passe explicitement `studioName`, on
+  // le respecte ; sinon on prend le displayName du tenant (default = Skult).
+  const displayName = studioName ?? tenant.displayName;
+  const logoSrc = tenant.logoUrl ?? KADENCE_LOGO_URL;
   return (
     <Html lang="fr">
       <Head>
