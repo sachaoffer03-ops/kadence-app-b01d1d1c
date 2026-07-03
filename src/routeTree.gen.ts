@@ -55,6 +55,7 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as ApiPublicWebhooksResendRouteImport } from './routes/api/public/webhooks/resend'
 import { Route as ApiPublicStudioQrStudioIdRouteImport } from './routes/api/public/studio-qr.$studioId'
 import { Route as ApiPublicCalendarTokenRouteImport } from './routes/api/public/calendar.$token'
 
@@ -293,6 +294,11 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   path: '/lovable/email/auth/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWebhooksResendRoute = ApiPublicWebhooksResendRouteImport.update({
+  id: '/api/public/webhooks/resend',
+  path: '/api/public/webhooks/resend',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicStudioQrStudioIdRoute =
   ApiPublicStudioQrStudioIdRouteImport.update({
     id: '/api/public/studio-qr/$studioId',
@@ -349,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
+  '/api/public/webhooks/resend': typeof ApiPublicWebhooksResendRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -398,6 +405,7 @@ export interface FileRoutesByTo {
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
+  '/api/public/webhooks/resend': typeof ApiPublicWebhooksResendRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -449,6 +457,7 @@ export interface FileRoutesById {
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/studio-qr/$studioId': typeof ApiPublicStudioQrStudioIdRoute
+  '/api/public/webhooks/resend': typeof ApiPublicWebhooksResendRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -501,6 +510,7 @@ export interface FileRouteTypes {
     | '/staff/checklist/$shiftId'
     | '/api/public/calendar/$token'
     | '/api/public/studio-qr/$studioId'
+    | '/api/public/webhooks/resend'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -550,6 +560,7 @@ export interface FileRouteTypes {
     | '/staff/checklist/$shiftId'
     | '/api/public/calendar/$token'
     | '/api/public/studio-qr/$studioId'
+    | '/api/public/webhooks/resend'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -600,6 +611,7 @@ export interface FileRouteTypes {
     | '/staff/checklist/$shiftId'
     | '/api/public/calendar/$token'
     | '/api/public/studio-qr/$studioId'
+    | '/api/public/webhooks/resend'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -646,6 +658,7 @@ export interface RootRouteChildren {
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicCalendarTokenRoute: typeof ApiPublicCalendarTokenRoute
   ApiPublicStudioQrStudioIdRoute: typeof ApiPublicStudioQrStudioIdRoute
+  ApiPublicWebhooksResendRoute: typeof ApiPublicWebhooksResendRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -977,6 +990,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/resend': {
+      id: '/api/public/webhooks/resend'
+      path: '/api/public/webhooks/resend'
+      fullPath: '/api/public/webhooks/resend'
+      preLoaderRoute: typeof ApiPublicWebhooksResendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/studio-qr/$studioId': {
       id: '/api/public/studio-qr/$studioId'
       path: '/api/public/studio-qr/$studioId'
@@ -1071,6 +1091,7 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicCalendarTokenRoute: ApiPublicCalendarTokenRoute,
   ApiPublicStudioQrStudioIdRoute: ApiPublicStudioQrStudioIdRoute,
+  ApiPublicWebhooksResendRoute: ApiPublicWebhooksResendRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
