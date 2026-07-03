@@ -106,18 +106,24 @@ export async function enqueueTemplateEmail(
   });
 
   // 5. enqueue
+  // Champs additionnels (from_name, reply_to, template_name, organization_id)
+  // consommés par le queue processor pour router vers Resend le cas échéant.
   const { error: enqErr } = await supabaseAdmin.rpc("enqueue_email", {
     queue_name: "transactional_emails",
     payload: {
       message_id: messageId,
       to: recipient,
-      from: `${SITE_NAME} <notifications@${FROM_DOMAIN}>`,
+      from: `${tenant.fromName} <notifications@${FROM_DOMAIN}>`,
+      from_name: tenant.fromName,
+      reply_to: tenant.replyToEmail,
       sender_domain: SENDER_DOMAIN,
       subject,
       html,
       text,
       purpose: "transactional",
       label: input.templateId,
+      template_name: input.templateId,
+      organization_id: input.organizationId ?? "default",
       idempotency_key: idempotencyKey,
       unsubscribe_token: token,
       queued_at: new Date().toISOString(),
