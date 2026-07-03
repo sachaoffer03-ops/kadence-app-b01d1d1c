@@ -9,8 +9,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { EMAIL_REGISTRY } from "@/emails";
 
 const SITE_NAME = "Skult Studios";
-const SENDER_DOMAIN = "notify.app.shyft.flashsite.fr";
-const FROM_DOMAIN = "app.shyft.flashsite.fr";
+const SENDER_DOMAIN = "notify.kadence.be";
+const FROM_DOMAIN = "kadence.be";
 
 function genToken() {
   const bytes = new Uint8Array(32);
@@ -102,7 +102,7 @@ export async function enqueueTemplateEmail(
     payload: {
       message_id: messageId,
       to: recipient,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+      from: `${SITE_NAME} <notifications@${FROM_DOMAIN}>`,
       sender_domain: SENDER_DOMAIN,
       subject,
       html,

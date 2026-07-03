@@ -22,9 +22,9 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 const SITE_NAME = 'Kadence'
-const SENDER_DOMAIN = 'notify.app.shyft.flashsite.fr'
-const ROOT_DOMAIN = 'app.shyft.flashsite.fr'
-const FROM_DOMAIN = 'app.shyft.flashsite.fr'
+const SENDER_DOMAIN = 'notify.kadence.be'
+const ROOT_DOMAIN = 'kadence.be'
+const FROM_DOMAIN = 'kadence.be'
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'
@@ -151,7 +151,7 @@ export const Route = createFileRoute('/lovable/email/auth/webhook')({
             run_id,
             message_id: messageId,
             to: payload.data.email,
-            from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+            from: `${SITE_NAME} <notifications@${FROM_DOMAIN}>`,
             sender_domain: SENDER_DOMAIN,
             subject: EMAIL_SUBJECTS[emailType] || 'Notification Kadence',
             html,
