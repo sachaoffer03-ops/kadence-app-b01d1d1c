@@ -753,7 +753,9 @@ export type Database = {
           id: string
           message_id: string | null
           metadata: Json | null
+          provider: string | null
           recipient_email: string
+          resend_email_id: string | null
           status: string
           template_name: string
         }
@@ -763,7 +765,9 @@ export type Database = {
           id?: string
           message_id?: string | null
           metadata?: Json | null
+          provider?: string | null
           recipient_email: string
+          resend_email_id?: string | null
           status: string
           template_name: string
         }
@@ -773,7 +777,9 @@ export type Database = {
           id?: string
           message_id?: string | null
           metadata?: Json | null
+          provider?: string | null
           recipient_email?: string
+          resend_email_id?: string | null
           status?: string
           template_name?: string
         }
@@ -830,6 +836,33 @@ export type Database = {
           id?: string
           token?: string
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      email_webhook_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json | null
+          provider: string
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          provider: string
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          provider?: string
+          received_at?: string
         }
         Relationships: []
       }
