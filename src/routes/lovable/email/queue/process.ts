@@ -1,6 +1,8 @@
 import { sendLovableEmail } from '@lovable.dev/email-js'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { createFileRoute } from '@tanstack/react-router'
+import { getEmailProvider } from '@/lib/email/provider-config.server'
+import { sendViaResend } from '@/lib/email/resend-provider.server'
 
 const MAX_RETRIES = 5
 const DEFAULT_BATCH_SIZE = 10
