@@ -1212,6 +1212,48 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_email_config: {
+        Row: {
+          brand_color: string
+          created_at: string
+          display_name: string
+          footer_note: string | null
+          from_name: string
+          id: string
+          logo_url: string | null
+          privacy_url: string | null
+          reply_to_email: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          brand_color?: string
+          created_at?: string
+          display_name?: string
+          footer_note?: string | null
+          from_name?: string
+          id?: string
+          logo_url?: string | null
+          privacy_url?: string | null
+          reply_to_email?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          brand_color?: string
+          created_at?: string
+          display_name?: string
+          footer_note?: string | null
+          from_name?: string
+          id?: string
+          logo_url?: string | null
+          privacy_url?: string | null
+          reply_to_email?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       planning_publications: {
         Row: {
           id: string

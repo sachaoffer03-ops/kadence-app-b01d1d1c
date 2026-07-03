@@ -4,6 +4,8 @@ import { z } from "zod";
 import { render } from "@react-email/render";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { EMAIL_REGISTRY } from "@/emails";
+import { EmailTenantProvider } from "@/emails/tenant-context";
+import { getEmailTenantConfig } from "@/lib/email-tenant.server";
 
 export const getEmailPreview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -16,8 +18,13 @@ export const getEmailPreview = createServerFn({ method: "GET" })
       throw new Error(`Template introuvable: ${data.templateId}`);
     }
     const Component = template.component as React.ComponentType<any>;
+    const tenant = await getEmailTenantConfig();
     const html = await render(
-      React.createElement(Component, template.mockData),
+      React.createElement(
+        EmailTenantProvider as any,
+        { value: tenant },
+        React.createElement(Component, template.mockData),
+      ),
     );
     return { html, subject: template.subject };
   });

@@ -7,6 +7,8 @@ import * as React from "react";
 import { render } from "@react-email/components";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { EMAIL_REGISTRY } from "@/emails";
+import { EmailTenantProvider } from "@/emails/tenant-context";
+import { getEmailTenantConfig } from "@/lib/email-tenant.server";
 
 const SITE_NAME = "Skult Studios";
 const SENDER_DOMAIN = "notify.kadence.be";
@@ -26,6 +28,7 @@ export interface EnqueueTemplateEmailInput {
   data: Record<string, any>;
   idempotencyKey?: string;
   subject?: string;
+  organizationId?: string | null;
 }
 
 export interface EnqueueTemplateEmailResult {
@@ -79,8 +82,14 @@ export async function enqueueTemplateEmail(
     token = stored?.token ?? token;
   }
 
-  // 3. render
-  const element = React.createElement(template.component as any, input.data);
+  // 3. render (wrappé dans le provider tenant pour brand-awareness)
+  const tenant = await getEmailTenantConfig(input.organizationId);
+  const templateEl = React.createElement(template.component as any, input.data);
+  const element = React.createElement(
+    EmailTenantProvider as any,
+    { value: tenant },
+    templateEl,
+  );
   const html = await render(element);
   const text = await render(element, { plainText: true });
 

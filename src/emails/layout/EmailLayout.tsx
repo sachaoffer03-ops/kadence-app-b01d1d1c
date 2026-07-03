@@ -18,6 +18,8 @@ export const KADENCE_LOGO_URL =
 export const SKULT_LOGO_URL =
   "https://vqejayodpprbfgwaejmb.supabase.co/storage/v1/object/public/avatars/_brand%2Fskult-logo.jpg";
 
+import { useEmailTenant } from "@/emails/tenant-context";
+
 interface EmailLayoutProps {
   children: React.ReactNode;
   studioName?: string;
@@ -29,6 +31,11 @@ export default function EmailLayout({
   studioName,
   preview,
 }: EmailLayoutProps) {
+  const tenant = useEmailTenant();
+  // Compat ascendante : si un template passe explicitement `studioName`, on
+  // le respecte ; sinon on prend le displayName du tenant (default = Skult).
+  const displayName = studioName ?? tenant.displayName;
+  const logoSrc = tenant.logoUrl ?? KADENCE_LOGO_URL;
   return (
     <Html lang="fr">
       <Head>
@@ -40,8 +47,8 @@ export default function EmailLayout({
         <Container style={container}>
           <Section style={header}>
             <Img
-              src={KADENCE_LOGO_URL}
-              alt="Kadence"
+              src={logoSrc}
+              alt={displayName}
               width="360"
               height="100"
               style={logoImg}
@@ -53,21 +60,20 @@ export default function EmailLayout({
           <Section style={footer}>
             <Img
               src={SKULT_LOGO_URL}
-              alt={studioName ?? "Skult Studios"}
+              alt={displayName}
               width="72"
               height="28"
               style={skultLogoImg}
             />
             <Text style={footerText}>
-              Cet email t'a été envoyé via Kadence pour{" "}
-              {studioName ?? "Skult Studios"}.
+              Cet email t'a été envoyé via Kadence pour {displayName}.
             </Text>
             <Text style={footerText}>
-              Si tu n'es plus concerné, contacte ton manager.
+              {tenant.footerNote ?? "Si tu n'es plus concerné, contacte ton manager."}
             </Text>
             <Hr style={footerHr} />
             <Text style={footerText}>
-              <Link href="https://kadence.io/privacy" style={footerLink}>
+              <Link href={tenant.privacyUrl} style={footerLink}>
                 Politique de confidentialité
               </Link>
             </Text>
