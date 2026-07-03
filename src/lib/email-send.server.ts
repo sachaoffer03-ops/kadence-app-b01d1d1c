@@ -86,7 +86,7 @@ export async function enqueueTemplateEmail(
   const tenant = await getEmailTenantConfig(input.organizationId);
   const templateEl = React.createElement(template.component as any, input.data);
   const element = React.createElement(
-    EmailTenantProvider,
+    EmailTenantProvider as any,
     { value: tenant },
     templateEl,
   );
