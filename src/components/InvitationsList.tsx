@@ -147,7 +147,7 @@ export function InvitationsList({ onInviteClick }: { onInviteClick: () => void }
 
   const copyLink = async (token: string) => {
     // Toujours pointer vers le domaine de production (employé) — le lien sera partagé par email/SMS.
-    const APP_URL = "https://app.shyft.flashsite.fr";
+    const APP_URL = "https://app.kadence.be";
     const link = `${APP_URL}/activation?token=${token}`;
     try {
       await navigator.clipboard.writeText(link);
@@ -797,7 +797,7 @@ function LinkModal({
   onClose: () => void;
   onCopy: () => void;
 }) {
-  const APP_URL = "https://app.shyft.flashsite.fr";
+  const APP_URL = "https://app.kadence.be";
   const link = `${APP_URL}/activation?token=${inv.token}`;
   return (
     <div

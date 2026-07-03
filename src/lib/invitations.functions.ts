@@ -77,8 +77,8 @@ export const sendInvitation = createServerFn({ method: "POST" })
     // URL d'activation : toujours le domaine de production, selon le rôle
     const activationOrigin =
       data.app_role === "employee"
-        ? "https://app.shyft.flashsite.fr"
-        : "https://admin.shyft.flashsite.fr";
+        ? "https://app.kadence.be"
+        : "https://admin.kadence.be";
     const activationUrl = `${activationOrigin}/activation?token=${inv.token}`;
 
     const { data: studio } = await supabaseAdmin
@@ -152,8 +152,8 @@ export const resendInvitation = createServerFn({ method: "POST" })
 
     const activationOrigin =
       inv.app_role === "employee"
-        ? "https://app.shyft.flashsite.fr"
-        : "https://admin.shyft.flashsite.fr";
+        ? "https://app.kadence.be"
+        : "https://admin.kadence.be";
     const activationUrl = `${activationOrigin}/activation?token=${inv.token}`;
 
     const studioId = inv.studio_ids?.[0] ?? inv.studio_id ?? null;

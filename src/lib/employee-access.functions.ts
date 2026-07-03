@@ -129,8 +129,8 @@ export const regenerateEmployeeAccessLink = createServerFn({ method: "POST" })
 
     const origin =
       appRole === "employee"
-        ? "https://app.shyft.flashsite.fr"
-        : "https://admin.shyft.flashsite.fr";
+        ? "https://app.kadence.be"
+        : "https://admin.kadence.be";
     const url = `${origin}/activation?token=${newToken}`;
 
     return {

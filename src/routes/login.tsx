@@ -28,7 +28,7 @@ function LoginPage() {
 
   useEffect(() => {
     setAppMode(getAppMode());
-    setShowPreviewSwitch(!window.location.hostname.includes("shyft.flashsite.fr"));
+    setShowPreviewSwitch(!window.location.hostname.includes("kadence.be"));
   }, []);
 
   useEffect(() => {
@@ -50,20 +50,20 @@ function LoginPage() {
       // Manager/admin pur sur l'espace employé → on bascule vers admin au lieu de bloquer
       if (isEmployeeSpace && !hasEmployee && hasAdminOrManager) {
         toast.info("Compte manager — redirection vers la console admin…");
-        window.location.replace("https://admin.shyft.flashsite.fr/login");
+        window.location.replace("https://admin.kadence.be/login");
         return;
       }
       if (!isEmployeeSpace && !hasAdminOrManager) {
-        toast.error("Ce compte est employé. Connectez-vous sur app.shyft.flashsite.fr");
+        toast.error("Ce compte est employé. Connectez-vous sur app.kadence.be");
         await supabase.auth.signOut();
-        window.location.replace("https://app.shyft.flashsite.fr/login");
+        window.location.replace("https://app.kadence.be/login");
         return;
       }
       // Multi-rôles : on signale clairement que l'autre espace est dispo
       if (hasEmployee && hasAdminOrManager) {
         const otherUrl = isEmployeeSpace
-          ? "https://admin.shyft.flashsite.fr"
-          : "https://app.shyft.flashsite.fr";
+          ? "https://admin.kadence.be"
+          : "https://app.kadence.be";
         const otherLabel = isEmployeeSpace ? "Console admin" : "Espace employé";
         toast(`${otherLabel} disponible aussi`, {
           description: "Tu as plusieurs accès — tu peux basculer à tout moment.",
@@ -183,7 +183,7 @@ function AdminLogin(p: AdminFormProps) {
 
         <div className="mt-5 text-center">
           <a
-            href="https://app.shyft.flashsite.fr/login"
+            href="https://app.kadence.be/login"
             style={{ fontSize: 12, color: "var(--muted-foreground)" }}
             className="hover:underline"
           >

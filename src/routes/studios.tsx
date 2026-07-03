@@ -375,7 +375,7 @@ function StudiosPage() {
         <div className="ml-auto flex items-center gap-2">
           {currentRow && (
             <button
-              onClick={() => window.open(`https://admin.shyft.flashsite.fr/display/${currentRow.id}`, "_blank")}
+              onClick={() => window.open(`https://admin.kadence.be/display/${currentRow.id}`, "_blank")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors"
               style={{
                 fontSize: 12,

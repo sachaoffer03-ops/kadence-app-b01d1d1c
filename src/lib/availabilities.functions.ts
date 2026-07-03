@@ -603,7 +603,7 @@ export const remindLateEmployees = createServerFn({ method: "POST" })
       const deadline = brusselsDeadlineDate(deadlineYear, deadlineMonth, lockDay);
       const deadlineLabel = formatBrusselsDeadlineLabel(deadline);
 
-      const statsAppUrl = "https://app.shyft.flashsite.fr/staff-app";
+      const statsAppUrl = "https://app.kadence.be/staff-app";
 
       const { enqueueTemplateEmail } = await import("@/lib/email-send.server");
       const recipients = (profiles ?? []).filter((p: any) => p.email);
