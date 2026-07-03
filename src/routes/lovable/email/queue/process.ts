@@ -223,30 +223,73 @@ export const Route = createFileRoute("/lovable/email/queue/process")({
             }
 
             try {
-              await sendLovableEmail(
-                {
-                  run_id: payload.run_id,
+              // Routing par provider :
+              // - Queue "auth_emails" reste TOUJOURS sur Lovable (invite/reset/signup)
+              // - Queue "transactional_emails" respecte EMAIL_PROVIDER (lovable | resend | both)
+              const provider = queue === 'transactional_emails' ? getEmailProvider() : 'lovable'
+              const useResend = provider === 'resend' || provider === 'both'
+              const useLovable = provider === 'lovable' || provider === 'both'
+
+              let resendId: string | undefined
+              let resendError: string | undefined
+              if (useResend) {
+                const r = await sendViaResend({
                   to: payload.to,
-                  from: payload.from,
-                  sender_domain: payload.sender_domain,
+                  fromName: payload.from_name || 'Skult Studios',
+                  replyTo: payload.reply_to ?? undefined,
                   subject: payload.subject,
                   html: payload.html,
                   text: payload.text,
-                  purpose: payload.purpose,
-                  label: payload.label,
-                  idempotency_key: payload.idempotency_key,
-                  unsubscribe_token: payload.unsubscribe_token,
-                  message_id: payload.message_id,
-                },
-                { apiKey, sendUrl: process.env.LOVABLE_SEND_URL }
-              )
+                  tags: {
+                    template_id: payload.template_name || payload.label || 'unknown',
+                    organization_id: payload.organization_id || 'default',
+                    environment: process.env.NODE_ENV || 'production',
+                  },
+                  headers: {
+                    'X-Entity-Ref-ID': payload.message_id || '',
+                  },
+                })
+                if (r.ok) {
+                  resendId = r.id
+                } else {
+                  resendError = r.error
+                  // Mode "both" : on continue quand même vers Lovable
+                  // Mode "resend" pur : on throw pour déclencher retry
+                  if (!useLovable) {
+                    throw new Error(`Resend send failed: ${r.error}`)
+                  }
+                }
+              }
 
-              // Log success
+              if (useLovable) {
+                await sendLovableEmail(
+                  {
+                    run_id: payload.run_id,
+                    to: payload.to,
+                    from: payload.from,
+                    sender_domain: payload.sender_domain,
+                    subject: payload.subject,
+                    html: payload.html,
+                    text: payload.text,
+                    purpose: payload.purpose,
+                    label: payload.label,
+                    idempotency_key: payload.idempotency_key,
+                    unsubscribe_token: payload.unsubscribe_token,
+                    message_id: payload.message_id,
+                  },
+                  { apiKey, sendUrl: process.env.LOVABLE_SEND_URL }
+                )
+              }
+
+              // Log success — provider stocké pour tracer
               await supabase.from('email_send_log').insert({
                 message_id: payload.message_id,
                 template_name: payload.label || queue,
                 recipient_email: payload.to,
                 status: 'sent',
+                provider,
+                resend_email_id: resendId ?? null,
+                error_message: resendError ? `(both) resend leg failed: ${resendError}` : null,
               })
 
               // Delete from queue
