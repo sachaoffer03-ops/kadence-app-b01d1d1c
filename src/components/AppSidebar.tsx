@@ -1,4 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -85,7 +87,21 @@ function buildNavSections(counts: ReturnType<typeof useSidebarCounts>): NavSecti
 function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { onNavigate?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const counts = useSidebarCounts();
-  const { appRole, managerPermissions } = useAuth();
+  const { appRole, managerPermissions, user } = useAuth();
+  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
+  useEffect(() => {
+    if (!user?.id) { setProfile(null); return; }
+    let cancelled = false;
+    supabase.from("profiles").select("first_name,last_name").eq("id", user.id).maybeSingle().then(({ data }) => {
+      if (!cancelled) setProfile(data ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+  const firstName = profile?.first_name?.trim() || user?.email?.split("@")[0] || "";
+  const lastName = profile?.last_name?.trim() || "";
+  const displayName = [firstName, lastName].filter(Boolean).join(" ") || "Utilisateur";
+  const initialsStr = ((firstName[0] || "") + (lastName[0] || "")).toUpperCase() || "?";
+  const roleLabel = appRole === "admin" ? "Administrateur" : appRole === "manager" ? "Manager" : "Employé";
   const rawSections = buildNavSections(counts);
   const navSections = rawSections
     .map((section) => ({
@@ -273,14 +289,14 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
             fontWeight: 500,
             flexShrink: 0,
           }}
-          title={collapsed ? "Sacha — Administrateur" : undefined}
+          title={collapsed ? `${displayName} — ${roleLabel}` : undefined}
         >
-          SA
+          {initialsStr}
         </div>
         {!collapsed && (
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>Sacha</div>
-            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Administrateur</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>{displayName}</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{roleLabel}</div>
           </div>
         )}
       </div>
