@@ -771,9 +771,15 @@ export const getClosedDaysForMonth = createServerFn({ method: "GET" })
     ]);
 
     // hasNeed[studio][dow] = true si au moins un template requis > 0
+    // hasAnyTemplate[studio] = true si le studio a au moins un staffing_template.
+    // Un studio SANS aucun template n'est pas "fermé" par défaut : il n'est simplement
+    // pas configuré → on le considère comme ouvert tous les jours pour ne pas bloquer
+    // les employés (sinon toutes leurs dispos seraient grisées).
     const hasNeed: Record<string, Record<number, boolean>> = {};
-    for (const sid of studioIds) hasNeed[sid] = {};
+    const hasAnyTemplate: Record<string, boolean> = {};
+    for (const sid of studioIds) { hasNeed[sid] = {}; hasAnyTemplate[sid] = false; }
     for (const t of (tpl ?? []) as any[]) {
+      hasAnyTemplate[t.studio_id] = true;
       if ((t.required_count ?? 0) > 0) {
         hasNeed[t.studio_id][t.day_of_week] = true;
       }
@@ -794,7 +800,10 @@ export const getClosedDaysForMonth = createServerFn({ method: "GET" })
       const dow = new Date(data.year, data.month - 1, day).getDay();
       let allClosed = true;
       for (const sid of studioIds) {
-        const closedHere = closures[sid].has(iso) || !hasNeed[sid][dow];
+        // Studio non configuré → toujours ouvert (pas de blocage sur absence de templates)
+        const closedHere = hasAnyTemplate[sid]
+          ? (closures[sid].has(iso) || !hasNeed[sid][dow])
+          : false;
         if (!closedHere) { allClosed = false; break; }
       }
       if (allClosed) closedDays.push(day);
