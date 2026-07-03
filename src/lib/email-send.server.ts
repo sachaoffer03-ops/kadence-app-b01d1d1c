@@ -82,8 +82,14 @@ export async function enqueueTemplateEmail(
     token = stored?.token ?? token;
   }
 
-  // 3. render
-  const element = React.createElement(template.component as any, input.data);
+  // 3. render (wrappé dans le provider tenant pour brand-awareness)
+  const tenant = await getEmailTenantConfig(input.organizationId);
+  const templateEl = React.createElement(template.component as any, input.data);
+  const element = React.createElement(
+    EmailTenantProvider,
+    { value: tenant },
+    templateEl,
+  );
   const html = await render(element);
   const text = await render(element, { plainText: true });
 
