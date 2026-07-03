@@ -72,7 +72,10 @@ function DiagnosticPage() {
         </button>
       </div>
 
+      <EmailTestBox />
+
       <Tabs defaultValue="systeme" className="w-full">
+
         <TabsList className="mb-4">
           <TabsTrigger value="systeme">🔧 Système</TabsTrigger>
           <TabsTrigger value="donnees">📊 Données</TabsTrigger>
