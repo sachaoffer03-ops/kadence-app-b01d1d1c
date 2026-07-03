@@ -289,14 +289,14 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: { o
             fontWeight: 500,
             flexShrink: 0,
           }}
-          title={collapsed ? "Sacha — Administrateur" : undefined}
+          title={collapsed ? `${displayName} — ${roleLabel}` : undefined}
         >
-          SA
+          {initialsStr}
         </div>
         {!collapsed && (
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>Sacha</div>
-            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Administrateur</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>{displayName}</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{roleLabel}</div>
           </div>
         )}
       </div>
