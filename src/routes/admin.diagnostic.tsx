@@ -92,6 +92,59 @@ function DiagnosticPage() {
   );
 }
 
+/* ============== Test envoi email (provider actuel) ============== */
+function EmailTestBox() {
+  const fn = useServerFn(sendTestEmail);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const send = async () => {
+    if (!email) return;
+    setBusy(true); setResult(null);
+    try {
+      const r = await fn({ data: { recipient: email, templateId: "bienvenue-employe" } });
+      setResult(r);
+    } catch (e: any) {
+      setResult({ ok: false, error: e?.message ?? String(e) });
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="rounded-lg mb-6 p-4" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>
+        ✉️ Test envoi email (provider actuel)
+      </div>
+      <div className="flex gap-2 flex-wrap items-center">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="ton@email.com"
+          className="rounded-md px-3 py-2 flex-1 min-w-[220px]"
+          style={{ fontSize: 12, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
+        />
+        <button
+          onClick={send}
+          disabled={busy || !email}
+          className="rounded-md px-3 py-2 disabled:opacity-50"
+          style={{ fontSize: 12, fontWeight: 500, backgroundColor: "#F0997B", color: "#fff" }}
+        >
+          {busy ? "Envoi…" : "Envoyer test"}
+        </button>
+      </div>
+      {result && (
+        <div className="mt-2" style={{ fontSize: 11, color: result.ok ? "#047857" : "#B91C1C" }}>
+          {result.ok
+            ? `✓ File d'attente OK · provider="${result.provider}" · message_id=${result.messageId}`
+            : `✗ ${result.error || result.reason}`}
+        </div>
+      )}
+      <div className="mt-1" style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
+        Template "bienvenue-employe" · Envoie via EMAIL_PROVIDER (defaut: lovable) · L'email sort du worker au prochain tick du cron process-queue.
+      </div>
+    </div>
+  );
+}
+
 /* ============== TAB 1 — SYSTÈME ============== */
 function SystemTab({ sys, integ, loading, err }: any) {
   if (loading && !sys) return <Loading />;
