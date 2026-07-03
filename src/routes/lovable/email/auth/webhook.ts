@@ -22,9 +22,9 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 const SITE_NAME = 'Kadence'
-const SENDER_DOMAIN = 'notify.app.shyft.flashsite.fr'
-const ROOT_DOMAIN = 'app.shyft.flashsite.fr'
-const FROM_DOMAIN = 'app.shyft.flashsite.fr'
+const SENDER_DOMAIN = 'notify.kadence.be'
+const ROOT_DOMAIN = 'kadence.be'
+const FROM_DOMAIN = 'kadence.be'
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'
