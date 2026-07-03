@@ -28,6 +28,7 @@ export interface EnqueueTemplateEmailInput {
   data: Record<string, any>;
   idempotencyKey?: string;
   subject?: string;
+  organizationId?: string | null;
 }
 
 export interface EnqueueTemplateEmailResult {
