@@ -232,7 +232,7 @@ function AppShell() {
       // Mauvais espace pour ce rôle → déconnexion + message
       // (skip sur preview pour permettre aux admins de tester l'espace employé)
       if (!isPreviewHost && isEmployeeSpace && !userIsEmployee) {
-        toast.error("Ce compte est administrateur. Utilisez un compte employé pour app.shyft.flashsite.fr");
+        toast.error("Ce compte est administrateur. Utilisez un compte employé pour app.kadence.be");
         if (isStaffApp) {
           navigate({ to: "/dashboard" });
           return;
@@ -243,7 +243,7 @@ function AppShell() {
       if (!isEmployeeSpace && userIsEmployee) {
         toast.error("Ce compte est employé. Redirection vers l'espace employé…");
         supabase.auth.signOut();
-        if (typeof window !== "undefined") window.location.replace("https://app.shyft.flashsite.fr/login");
+        if (typeof window !== "undefined") window.location.replace("https://app.kadence.be/login");
         return;
       }
 

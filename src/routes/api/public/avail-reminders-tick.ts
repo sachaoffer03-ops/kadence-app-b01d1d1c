@@ -8,7 +8,7 @@ import {
   monthStartISO,
 } from "@/lib/brussels-time";
 
-const APP_URL = "https://app.shyft.flashsite.fr/staff-app";
+const APP_URL = "https://app.kadence.be/staff-app";
 
 
 type Threshold = "3d" | "2d" | "24h" | "5h" | "1h";

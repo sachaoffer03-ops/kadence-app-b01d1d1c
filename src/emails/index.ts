@@ -55,7 +55,7 @@ export const EMAIL_REGISTRY: EmailTemplate[] = [
     mockData: {
       firstName: "Léa",
       studioName: "Skult Châtelain",
-      appUrl: "https://app.shyft.flashsite.fr/staff-app",
+      appUrl: "https://app.kadence.be/staff-app",
     },
   },
   {
@@ -221,7 +221,7 @@ export const EMAIL_REGISTRY: EmailTemplate[] = [
       deadlineLabel: "Vendredi 25 juin à 23h59",
       urgency: "soft",
       studioName: "Skult Châtelain",
-      statsAppUrl: "https://app.shyft.flashsite.fr/staff-app",
+      statsAppUrl: "https://app.kadence.be/staff-app",
     },
   },
   {

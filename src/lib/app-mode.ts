@@ -4,8 +4,8 @@
 
 export type AppMode = "admin" | "employee";
 
-const ADMIN_HOST = "admin.shyft.flashsite.fr";
-const EMPLOYEE_HOST = "app.shyft.flashsite.fr";
+const ADMIN_HOST = "admin.kadence.be";
+const EMPLOYEE_HOST = "app.kadence.be";
 
 export function getAppMode(): AppMode {
   if (typeof window === "undefined") return "admin";

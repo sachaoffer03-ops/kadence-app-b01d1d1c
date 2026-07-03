@@ -10,7 +10,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 const SITE_NAME = 'Kadence'
-const SAMPLE_PROJECT_URL = 'https://app.shyft.flashsite.fr'
+const SAMPLE_PROJECT_URL = 'https://app.kadence.be'
 const SAMPLE_EMAIL = 'user@example.test'
 
 const SAMPLE_DATA: Record<string, object> = {

@@ -348,8 +348,8 @@ function ActivationPage() {
     // Email de bienvenue à l'employé (fire-and-forget, ne bloque pas la redirection)
     try {
       const appUrl = isAdmin
-        ? "https://admin.shyft.flashsite.fr"
-        : "https://app.shyft.flashsite.fr/staff-app";
+        ? "https://admin.kadence.be"
+        : "https://app.kadence.be/staff-app";
       const { sendEmail } = await import("@/lib/email.functions");
       void sendEmail({
         data: {
