@@ -81,20 +81,19 @@ async function getDeadlineDay(supabase: any): Promise<number> {
  *  - la deadline (jour J du mois précédent la cible, à 23:59:59.999) est dépassée.
  */
 async function isMonthLocked(supabase: any, targetDate: string, _userId?: string): Promise<boolean> {
-
-
-  const [y, m] = targetDate.split("-").map(Number);
-  const monthStart = monthStartISO(y, m);
-  const monthEnd = monthEndISO(y, m);
+  // Verrou "publication" : seulement si une publication couvre RÉELLEMENT la date cible
+  // (une publication d'une semaine qui déborde d'un jour sur le mois suivant ne doit
+  // pas verrouiller tout ce mois).
   const { data } = await supabase
     .from("planning_publications")
     .select("id")
-    .lte("period_start", monthEnd)
-    .gte("period_end", monthStart)
+    .lte("period_start", targetDate)
+    .gte("period_end", targetDate)
     .limit(1);
   if ((data?.length ?? 0) > 0) return true;
 
   // Deadline : jour J du mois précédent la cible, à 23:59:59.999 heure Brussels.
+  const [y, m] = targetDate.split("-").map(Number);
   const day = await getDeadlineDay(supabase);
   const deadlineMonth = addMonthsYM(y, m, -1);
   const deadline = brusselsDeadlineDate(deadlineMonth.year, deadlineMonth.month, day);
