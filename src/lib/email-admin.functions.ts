@@ -4,6 +4,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertManagerPermission } from "@/lib/permission-guard.server";
 
 const CONFIG_ID = "00000000-0000-0000-0000-000000000001";
+const LOGO_BUCKET = "avatars";
+const LOGO_PREFIX = "_brand/org-logos";
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+const ALLOWED_LOGO_MIME: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+};
 
 async function assertAccess(supabase: any, userId: string) {
   await assertManagerPermission(supabase, userId, "/reglages:edit_general");
