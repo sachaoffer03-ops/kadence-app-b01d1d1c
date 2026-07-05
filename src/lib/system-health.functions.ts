@@ -34,7 +34,7 @@ export const triggerAvailRemindersTick = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const { getRequestHeader } = await import("@tanstack/react-start/server");
-    const host = getRequestHeader("host") ?? "kadence-app.lovable.app";
+    const host = getRequestHeader("host") ?? "app.kadence.be";
     const proto = getRequestHeader("x-forwarded-proto") ?? "https";
     const url = `${proto}://${host}/api/public/avail-reminders-tick`;
     try {
