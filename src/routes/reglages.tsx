@@ -13,16 +13,20 @@ export const Route = createFileRoute("/reglages")({
   head: () => ({ meta: [{ title: "Réglages — Kadence" }] }),
 });
 
-const tabs = [
+const ALL_TABS = [
   { id: "ai", label: "Algorithme IA", icon: Sparkles },
   { id: "templates", label: "Besoins par studio", icon: Puzzle },
   { id: "admins", label: "Administrateurs", icon: ShieldCheck },
+  { id: "emails", label: "Emails", icon: Mail },
   { id: "billing", label: "Facturation", icon: CreditCard },
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "danger", label: "Zone dangereuse", icon: AlertTriangle },
 ] as const;
 
 function ReglagesPage() {
+  const { appRole, managerPermissions } = useAuth();
+  const canEmails = hasPermission("/reglages:edit_general", appRole, managerPermissions);
+  const tabs = ALL_TABS.filter((t) => t.id !== "emails" || canEmails);
   const [activeTab, setActiveTab] = useState<string>("ai");
 
   return (
