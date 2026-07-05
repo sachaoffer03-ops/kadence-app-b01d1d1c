@@ -61,7 +61,8 @@ function ReglagesPage() {
           {activeTab === "ai" && <AISettings />}
           {activeTab === "templates" && <StaffingTemplatesEditor />}
           {activeTab === "admins" && <AdminsSettings />}
-          {!["ai", "templates", "admins"].includes(activeTab) && (
+          {activeTab === "emails" && <EmailsTab />}
+          {!["ai", "templates", "admins", "emails"].includes(activeTab) && (
             <div className="rounded-xl border p-8 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
               <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
                 {tabs.find((t) => t.id === activeTab)?.label}
