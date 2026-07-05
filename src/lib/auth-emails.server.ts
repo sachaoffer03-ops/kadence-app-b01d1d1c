@@ -21,7 +21,7 @@ export function getAuthEmailProvider(): AuthEmailProvider {
   return raw === "kadence" ? "kadence" : "lovable";
 }
 
-const ROOT_DOMAIN = "kadence.be";
+const APP_URL = process.env.PUBLIC_APP_URL || "https://app.kadence.be";
 
 // Mapping type Supabase → template Kadence enregistré dans EMAIL_REGISTRY.
 const TEMPLATE_BY_TYPE: Record<AuthEmailType, string> = {
@@ -89,7 +89,7 @@ export async function sendAuthEmail(
 
   // Pour recovery on route vers notre page /reset-password (verifyOtp)
   if (input.type === "recovery" && tokenHash) {
-    confirmationUrl = `https://${ROOT_DOMAIN}/reset-password?token_hash=${encodeURIComponent(
+    confirmationUrl = `${APP_URL}/reset-password?token_hash=${encodeURIComponent(
       tokenHash,
     )}&type=recovery`;
   }

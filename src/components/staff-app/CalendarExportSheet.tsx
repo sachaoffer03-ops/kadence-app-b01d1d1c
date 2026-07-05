@@ -30,7 +30,7 @@ export function CalendarExportSheet({ open, onClose, userId }: { open: boolean; 
 
   // Toujours utiliser l'URL publiée stable : Apple/Google ne peuvent pas
   // s'abonner à l'URL de preview (protégée par auth Lovable).
-  const PUBLIC_BASE = "https://kadence-app.lovable.app";
+  const PUBLIC_BASE = "https://app.kadence.be";
   const httpsUrl = token ? `${PUBLIC_BASE}/api/public/calendar/${token}.ics` : "";
   const webcalUrl = token ? httpsUrl.replace(/^https?:/, "webcal:") : "";
 
