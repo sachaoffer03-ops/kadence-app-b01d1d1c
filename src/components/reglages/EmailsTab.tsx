@@ -1,14 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, Loader2, Mail, Save, ShieldAlert, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ImageIcon,
+  Loader2,
+  Mail,
+  Monitor,
+  Save,
+  ShieldAlert,
+  Smartphone,
+  TrendingDown,
+  TrendingUp,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import {
   getBounces30d,
   getComplaints30d,
   getEmailConfig,
   getEmailStats30d,
   reactivateEmail,
+  removeOrganizationLogo,
   updateEmailConfig,
+  uploadOrganizationLogo,
 } from "@/lib/email-admin.functions";
+import { previewEmailTemplate } from "@/lib/email-preview.functions";
+import { EMAIL_REGISTRY } from "@/emails";
 
 interface Stats {
   sent: number;
