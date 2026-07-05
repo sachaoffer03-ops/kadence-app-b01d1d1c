@@ -19,10 +19,15 @@ import EmployeRetardEmail from "./admin/EmployeRetardEmail";
 import QuotaEtudiantDepasseEmail from "./admin/QuotaEtudiantDepasseEmail";
 import NouvelleInscriptionEmail from "./admin/NouvelleInscriptionEmail";
 
+import SignupConfirmEmail from "./auth/SignupConfirmEmail";
+import MagicLinkEmail from "./auth/MagicLinkEmail";
+import ChangeEmailEmail from "./auth/ChangeEmailEmail";
+import ReauthEmail from "./auth/ReauthEmail";
+
 export interface EmailTemplate {
   id: string;
   name: string;
-  category: "employee" | "admin";
+  category: "employee" | "admin" | "auth";
   description: string;
   subject: string;
   component: ComponentType<any>;
