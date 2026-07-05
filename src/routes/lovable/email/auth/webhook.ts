@@ -113,14 +113,14 @@ export const Route = createFileRoute('/lovable/email/auth/webhook')({
         // flux PKCE qui exige le code_verifier dans le navigateur d'origine.
         let confirmationUrl = payload.data.url
         if (emailType === 'recovery' && payload.data.token_hash) {
-          confirmationUrl = `https://${ROOT_DOMAIN}/reset-password?token_hash=${encodeURIComponent(
+          confirmationUrl = `${APP_URL}/reset-password?token_hash=${encodeURIComponent(
             payload.data.token_hash,
           )}&type=recovery`
         }
 
         const templateProps = {
           siteName: SITE_NAME,
-          siteUrl: `https://${ROOT_DOMAIN}`,
+          siteUrl: APP_URL,
           recipient: payload.data.email,
           confirmationUrl,
           token: payload.data.token,
