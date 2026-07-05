@@ -312,4 +312,56 @@ export const EMAIL_REGISTRY: EmailTemplate[] = [
       profileUrl: "https://app.kadence.io/staff/abc",
     },
   },
+  {
+    id: "auth-signup-confirm",
+    name: "Auth · Confirmation d'inscription",
+    category: "auth",
+    description:
+      "Envoyé quand un user s'inscrit et doit confirmer son adresse email (Supabase Auth signup).",
+    subject: "Confirme ton compte Kadence",
+    component: SignupConfirmEmail,
+    mockData: {
+      firstName: "Léa",
+      confirmationUrl: "https://app.kadence.be/auth/callback?token=abc",
+    },
+  },
+  {
+    id: "auth-magic-link",
+    name: "Auth · Magic link",
+    category: "auth",
+    description:
+      "Envoyé pour une connexion sans mot de passe (Supabase Auth magiclink).",
+    subject: "Ton lien de connexion Kadence",
+    component: MagicLinkEmail,
+    mockData: {
+      confirmationUrl: "https://app.kadence.be/auth/callback?token=abc",
+    },
+  },
+  {
+    id: "auth-email-change",
+    name: "Auth · Changement d'email",
+    category: "auth",
+    description:
+      "Envoyé à la nouvelle adresse pour confirmer un changement d'email (Supabase Auth email_change).",
+    subject: "Confirme ta nouvelle adresse email Kadence",
+    component: ChangeEmailEmail,
+    mockData: {
+      confirmationUrl: "https://app.kadence.be/auth/callback?token=abc",
+      oldEmail: "ancienne@example.com",
+      newEmail: "nouvelle@example.com",
+    },
+  },
+  {
+    id: "auth-reauthentication",
+    name: "Auth · Réauthentification",
+    category: "auth",
+    description:
+      "Envoyé avec un code à 6 chiffres pour confirmer une action sensible (Supabase Auth reauthentication).",
+    subject: "Code de vérification Kadence",
+    component: ReauthEmail,
+    mockData: {
+      token: "123456",
+    },
+  },
 ];
+
