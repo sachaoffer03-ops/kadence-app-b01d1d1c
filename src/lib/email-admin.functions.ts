@@ -4,6 +4,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertManagerPermission } from "@/lib/permission-guard.server";
 
 const CONFIG_ID = "00000000-0000-0000-0000-000000000001";
+const LOGO_BUCKET = "avatars";
+const LOGO_PREFIX = "_brand/org-logos";
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+const ALLOWED_LOGO_MIME: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+};
 
 async function assertAccess(supabase: any, userId: string) {
   await assertManagerPermission(supabase, userId, "/reglages:edit_general");
@@ -61,13 +70,14 @@ export const getEmailConfig = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("organization_email_config" as any)
-      .select("id, display_name, from_name, reply_to_email")
+      .select("id, display_name, from_name, reply_to_email, logo_url")
       .eq("id", CONFIG_ID)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return {
       display_name: (data as any)?.from_name ?? (data as any)?.display_name ?? "",
       reply_to_email: (data as any)?.reply_to_email ?? "",
+      logo_url: (data as any)?.logo_url ?? null,
     };
   });
 
@@ -94,6 +104,70 @@ export const updateEmailConfig = createServerFn({ method: "POST" })
       })
       .eq("id", CONFIG_ID);
     if (error) throw new Error(error.message);
+    const { clearEmailTenantCache } = await import("@/lib/email-tenant.server");
+    clearEmailTenantCache();
+    return { ok: true };
+  });
+
+export const uploadOrganizationLogo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        mime: z.string().min(1).max(50),
+        // base64 (sans préfixe data:) du fichier
+        base64: z.string().min(1).max(4_000_000),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAccess(context.supabase, context.userId);
+    const ext = ALLOWED_LOGO_MIME[data.mime];
+    if (!ext) throw new Error("Format non supporté (PNG, JPEG, WEBP ou SVG uniquement)");
+    const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
+    if (bytes.byteLength > MAX_LOGO_BYTES) {
+      throw new Error("Fichier trop lourd (max 2 MB)");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Nettoie les anciennes variantes d'extension pour éviter les fichiers orphelins
+    const previous = Object.values(ALLOWED_LOGO_MIME).map(
+      (e) => `${LOGO_PREFIX}/${CONFIG_ID}.${e}`,
+    );
+    await supabaseAdmin.storage.from(LOGO_BUCKET).remove(previous);
+    const path = `${LOGO_PREFIX}/${CONFIG_ID}.${ext}`;
+    const { error: upErr } = await supabaseAdmin.storage
+      .from(LOGO_BUCKET)
+      .upload(path, bytes, { contentType: data.mime, upsert: true, cacheControl: "3600" });
+    if (upErr) throw new Error(upErr.message);
+    const { data: pub } = supabaseAdmin.storage.from(LOGO_BUCKET).getPublicUrl(path);
+    // cache-buster pour forcer le rechargement dans la preview/emails
+    const publicUrl = `${pub.publicUrl}?v=${Date.now()}`;
+    const { error: updErr } = await supabaseAdmin
+      .from("organization_email_config" as any)
+      .update({ logo_url: publicUrl, updated_at: new Date().toISOString() })
+      .eq("id", CONFIG_ID);
+    if (updErr) throw new Error(updErr.message);
+    const { clearEmailTenantCache } = await import("@/lib/email-tenant.server");
+    clearEmailTenantCache();
+    return { ok: true, logo_url: publicUrl };
+  });
+
+export const removeOrganizationLogo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAccess(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const paths = Object.values(ALLOWED_LOGO_MIME).map(
+      (e) => `${LOGO_PREFIX}/${CONFIG_ID}.${e}`,
+    );
+    await supabaseAdmin.storage.from(LOGO_BUCKET).remove(paths);
+    const { error } = await supabaseAdmin
+      .from("organization_email_config" as any)
+      .update({ logo_url: null, updated_at: new Date().toISOString() })
+      .eq("id", CONFIG_ID);
+    if (error) throw new Error(error.message);
+    const { clearEmailTenantCache } = await import("@/lib/email-tenant.server");
+    clearEmailTenantCache();
     return { ok: true };
   });
 
