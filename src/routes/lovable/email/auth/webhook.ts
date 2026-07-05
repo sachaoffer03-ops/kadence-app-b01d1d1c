@@ -23,7 +23,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 
 const SITE_NAME = 'Kadence'
 const SENDER_DOMAIN = 'notify.kadence.be'
-const ROOT_DOMAIN = 'kadence.be'
+const APP_URL = process.env.PUBLIC_APP_URL || 'https://app.kadence.be'
 const FROM_DOMAIN = 'kadence.be'
 
 function redactEmail(email: string | null | undefined): string {
