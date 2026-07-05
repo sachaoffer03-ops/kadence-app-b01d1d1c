@@ -165,33 +165,75 @@ function Kpi({
   );
 }
 
+const PREVIEW_TEMPLATE_IDS = [
+  "bienvenue-employe",
+  "invitation-employe",
+  "dispo-deadline-reminder",
+] as const;
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const s = String(r.result || "");
+      const idx = s.indexOf(",");
+      resolve(idx >= 0 ? s.slice(idx + 1) : s);
+    };
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
 function BrandingSection() {
-  const [initial, setInitial] = useState({ display_name: "", reply_to_email: "" });
+  const [initial, setInitial] = useState({
+    display_name: "",
+    reply_to_email: "",
+    logo_url: null as string | null,
+  });
   const [displayName, setDisplayName] = useState("");
   const [replyTo, setReplyTo] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getEmailConfig()
       .then((c: any) => {
-        setInitial({ display_name: c.display_name ?? "", reply_to_email: c.reply_to_email ?? "" });
-        setDisplayName(c.display_name ?? "");
-        setReplyTo(c.reply_to_email ?? "");
+        const next = {
+          display_name: c.display_name ?? "",
+          reply_to_email: c.reply_to_email ?? "",
+          logo_url: c.logo_url ?? null,
+        };
+        setInitial(next);
+        setDisplayName(next.display_name);
+        setReplyTo(next.reply_to_email);
+        setLogoUrl(next.logo_url);
       })
       .catch((e: any) => toast.error(e?.message || "Erreur chargement config"))
       .finally(() => setLoading(false));
   }, []);
 
-  const dirty = displayName.trim() !== initial.display_name || replyTo.trim() !== initial.reply_to_email;
+  const dirty =
+    displayName.trim() !== initial.display_name ||
+    replyTo.trim() !== initial.reply_to_email;
 
   const save = async () => {
     if (!displayName.trim()) return toast.error("Le nom affiché est requis");
     setSaving(true);
     try {
-      await updateEmailConfig({ data: { display_name: displayName.trim(), reply_to_email: replyTo.trim() } });
-      setInitial({ display_name: displayName.trim(), reply_to_email: replyTo.trim() });
-      toast.success("Configuration enregistrée");
+      await updateEmailConfig({
+        data: { display_name: displayName.trim(), reply_to_email: replyTo.trim() },
+      });
+      setInitial((prev) => ({
+        ...prev,
+        display_name: displayName.trim(),
+        reply_to_email: replyTo.trim(),
+      }));
+      toast.success(
+        "Configuration enregistrée. Les prochains emails utiliseront ce branding.",
+      );
     } catch (e: any) {
       toast.error(e?.message || "Erreur enregistrement");
     } finally {
@@ -199,69 +241,365 @@ function BrandingSection() {
     }
   };
 
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) return toast.error("Fichier trop lourd (max 2 MB)");
+    const allowed = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+    if (!allowed.includes(file.type))
+      return toast.error("Format non supporté (PNG, JPEG, WEBP ou SVG)");
+    setUploading(true);
+    try {
+      const base64 = await fileToBase64(file);
+      const res: any = await uploadOrganizationLogo({
+        data: { mime: file.type, base64 },
+      });
+      setLogoUrl(res.logo_url);
+      setInitial((prev) => ({ ...prev, logo_url: res.logo_url }));
+      toast.success("Logo mis à jour");
+    } catch (err: any) {
+      toast.error(err?.message || "Erreur upload logo");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeLogo = async () => {
+    setUploading(true);
+    try {
+      await removeOrganizationLogo();
+      setLogoUrl(null);
+      setInitial((prev) => ({ ...prev, logo_url: null }));
+      toast.success("Logo retiré — le logo Kadence par défaut sera utilisé");
+    } catch (err: any) {
+      toast.error(err?.message || "Erreur suppression logo");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div style={cardStyle()} className="p-5">
-      <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>Configuration branding</div>
-      <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 16 }}>
-        Ce qui apparaît dans les emails envoyés à tes employés.
+      <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>
+        Configuration branding
+      </div>
+      <div
+        style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 16 }}
+      >
+        Ce qui apparaît dans les emails envoyés à tes employés. La preview à droite
+        se met à jour en temps réel.
       </div>
 
       {loading ? (
-        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          Chargement…
+        </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1">
-            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Nom affiché</span>
-            <input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Ex : Skult Studios"
-              className="rounded-md px-2 py-1.5 outline-none"
-              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", maxWidth: 360 }}
-            />
-            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-              Ce nom apparaît comme expéditeur dans la boîte de tes employés.
-            </span>
-          </label>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* --- Colonne gauche : form --- */}
+          <div className="flex flex-col gap-4">
+            {/* Logo */}
+            <div className="flex flex-col gap-2">
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Logo
+              </span>
+              <div
+                className="flex items-center gap-3 p-3 rounded-md"
+                style={{ border: "0.5px solid var(--border)" }}
+              >
+                <div
+                  className="flex items-center justify-center rounded-md overflow-hidden shrink-0"
+                  style={{
+                    width: 64,
+                    height: 64,
+                    backgroundColor: "var(--muted)",
+                    border: "0.5px solid var(--border)",
+                  }}
+                >
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt="Logo"
+                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                    />
+                  ) : (
+                    <ImageIcon size={22} style={{ color: "var(--muted-foreground)" }} />
+                  )}
+                </div>
+                <div className="flex flex-col gap-1 flex-1">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="rounded-md px-3 py-1.5 flex items-center gap-1.5"
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 500,
+                        border: "0.5px solid var(--border)",
+                        opacity: uploading ? 0.5 : 1,
+                      }}
+                    >
+                      {uploading ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Upload size={12} />
+                      )}
+                      {logoUrl ? "Changer le logo" : "Uploader un logo"}
+                    </button>
+                    {logoUrl && (
+                      <button
+                        type="button"
+                        onClick={removeLogo}
+                        disabled={uploading}
+                        className="rounded-md px-3 py-1.5 flex items-center gap-1.5"
+                        style={{
+                          fontSize: 12,
+                          color: "var(--muted-foreground)",
+                        }}
+                      >
+                        <Trash2 size={12} />
+                        Retirer
+                      </button>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                    Carré 1:1, 500×500 px min., PNG / SVG transparent, max 2 MB.
+                  </span>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={onFileChange}
+                  style={{ display: "none" }}
+                />
+              </div>
+            </div>
 
-          <label className="flex flex-col gap-1">
-            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Email de réponse</span>
-            <input
-              type="email"
-              value={replyTo}
-              onChange={(e) => setReplyTo(e.target.value)}
-              placeholder="contact@skult-studios.com"
-              className="rounded-md px-2 py-1.5 outline-none"
-              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", maxWidth: 360 }}
-            />
-            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-              Quand un employé répond à un email Kadence, la réponse va à cette adresse.
-            </span>
-          </label>
+            <label className="flex flex-col gap-1">
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Nom affiché
+              </span>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Ex : Skult Studios"
+                className="rounded-md px-2 py-1.5 outline-none"
+                style={{
+                  fontSize: 13,
+                  border: "0.5px solid var(--border)",
+                  backgroundColor: "var(--background)",
+                }}
+              />
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                Ce nom apparaît comme expéditeur dans la boîte de tes employés.
+              </span>
+            </label>
 
-          <div>
-            <button
-              onClick={save}
-              disabled={!dirty || saving}
-              className="rounded-md px-4 py-2 flex items-center gap-2"
-              style={{
-                fontSize: 13,
-                fontWeight: 500,
-                backgroundColor: "var(--foreground)",
-                color: "var(--card)",
-                opacity: !dirty || saving ? 0.5 : 1,
-                cursor: !dirty || saving ? "not-allowed" : "pointer",
-              }}
-            >
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-              Enregistrer
-            </button>
+            <label className="flex flex-col gap-1">
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Email de réponse
+              </span>
+              <input
+                type="email"
+                value={replyTo}
+                onChange={(e) => setReplyTo(e.target.value)}
+                placeholder="contact@skult-studios.com"
+                className="rounded-md px-2 py-1.5 outline-none"
+                style={{
+                  fontSize: 13,
+                  border: "0.5px solid var(--border)",
+                  backgroundColor: "var(--background)",
+                }}
+              />
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                Quand un employé répond à un email Kadence, la réponse va à cette
+                adresse.
+              </span>
+            </label>
+
+            <div>
+              <button
+                onClick={save}
+                disabled={!dirty || saving}
+                className="rounded-md px-4 py-2 flex items-center gap-2"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  backgroundColor: "var(--foreground)",
+                  color: "var(--card)",
+                  opacity: !dirty || saving ? 0.5 : 1,
+                  cursor: !dirty || saving ? "not-allowed" : "pointer",
+                }}
+              >
+                {saving ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Save size={13} />
+                )}
+                Enregistrer
+              </button>
+            </div>
           </div>
+
+          {/* --- Colonne droite : preview live --- */}
+          <LivePreview
+            displayName={displayName}
+            replyTo={replyTo}
+            logoUrl={logoUrl}
+          />
         </div>
       )}
     </div>
   );
 }
+
+function LivePreview({
+  displayName,
+  replyTo,
+  logoUrl,
+}: {
+  displayName: string;
+  replyTo: string;
+  logoUrl: string | null;
+}) {
+  const [templateId, setTemplateId] = useState<string>(PREVIEW_TEMPLATE_IDS[0]);
+  const [mode, setMode] = useState<"desktop" | "mobile">("desktop");
+  const [html, setHtml] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  const templates = useMemo(
+    () =>
+      PREVIEW_TEMPLATE_IDS.map((id) => {
+        const t = EMAIL_REGISTRY.find((x) => x.id === id);
+        return { id, name: t?.name ?? id };
+      }),
+    [],
+  );
+
+  // Debounce 300 ms sur les changements pour ne pas spammer le serveur
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res: any = await previewEmailTemplate({
+          data: {
+            templateId,
+            overrides: {
+              display_name: displayName.trim() || undefined,
+              reply_to_email: replyTo.trim(),
+              logo_url: logoUrl,
+            },
+          },
+        });
+        setHtml(res.html);
+      } catch (e: any) {
+        // silencieux : on garde le HTML précédent
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [templateId, displayName, replyTo, logoUrl]);
+
+  return (
+    <div className="flex flex-col gap-2 min-w-0">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <select
+          value={templateId}
+          onChange={(e) => setTemplateId(e.target.value)}
+          className="rounded-md px-2 py-1.5 outline-none"
+          style={{
+            fontSize: 12,
+            border: "0.5px solid var(--border)",
+            backgroundColor: "var(--background)",
+          }}
+        >
+          {templates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        <div
+          className="flex rounded-md overflow-hidden"
+          style={{ border: "0.5px solid var(--border)" }}
+        >
+          <button
+            type="button"
+            onClick={() => setMode("desktop")}
+            className="px-2 py-1.5 flex items-center gap-1"
+            style={{
+              fontSize: 11,
+              backgroundColor:
+                mode === "desktop" ? "var(--muted)" : "transparent",
+            }}
+          >
+            <Monitor size={12} />
+            Desktop
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("mobile")}
+            className="px-2 py-1.5 flex items-center gap-1"
+            style={{
+              fontSize: 11,
+              backgroundColor:
+                mode === "mobile" ? "var(--muted)" : "transparent",
+              borderLeft: "0.5px solid var(--border)",
+            }}
+          >
+            <Smartphone size={12} />
+            Mobile
+          </button>
+        </div>
+      </div>
+
+      <div
+        className="rounded-md overflow-hidden flex justify-center relative"
+        style={{
+          backgroundColor: "var(--muted)",
+          border: "0.5px solid var(--border)",
+          minHeight: 500,
+          padding: mode === "mobile" ? 16 : 0,
+        }}
+      >
+        {loading && (
+          <div
+            className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md"
+            style={{
+              fontSize: 10,
+              backgroundColor: "var(--background)",
+              border: "0.5px solid var(--border)",
+              color: "var(--muted-foreground)",
+              zIndex: 2,
+            }}
+          >
+            <Loader2 size={10} className="animate-spin" /> maj…
+          </div>
+        )}
+        <iframe
+          title="Preview email"
+          srcDoc={html}
+          sandbox=""
+          style={{
+            width: mode === "mobile" ? 375 : "100%",
+            height: 640,
+            border:
+              mode === "mobile" ? "8px solid var(--foreground)" : "none",
+            borderRadius: mode === "mobile" ? 24 : 0,
+            backgroundColor: "#ffffff",
+            display: "block",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 
 function SuppressionSection({ kind }: { kind: "bounce" | "complaint" }) {
   const [items, setItems] = useState<SuppressionItem[]>([]);
