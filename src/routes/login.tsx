@@ -92,14 +92,19 @@ function LoginPage() {
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setLoading(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Email de réinitialisation envoyé");
+    try {
+      await requestPasswordReset({
+        data: {
+          email,
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
+      });
+      toast.success("Si un compte existe, un email de réinitialisation a été envoyé");
       setMode("login");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setLoading(false);
     }
   };
 
