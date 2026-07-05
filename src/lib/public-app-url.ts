@@ -11,8 +11,8 @@ export function getPublicAppUrl(): string {
     // ignore
   }
   try {
-    // @ts-expect-error import.meta.env only exists in Vite context
-    const v = import.meta?.env?.VITE_PUBLIC_APP_URL as string | undefined;
+    const meta = import.meta as unknown as { env?: Record<string, string | undefined> };
+    const v = meta?.env?.VITE_PUBLIC_APP_URL;
     if (v) return v;
   } catch {
     // ignore
