@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import logo from "@/assets/kadence-logo.png";
 import { getAppMode, getOtherSpaceUrl, setPreviewMode, type AppMode } from "@/lib/app-mode";
+import { requestPasswordReset } from "@/lib/auth-email.functions";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
