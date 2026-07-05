@@ -89,7 +89,7 @@ export async function sendAuthEmail(
 
   // Pour recovery on route vers notre page /reset-password (verifyOtp)
   if (input.type === "recovery" && tokenHash) {
-    confirmationUrl = `https://${ROOT_DOMAIN}/reset-password?token_hash=${encodeURIComponent(
+    confirmationUrl = `${APP_URL}/reset-password?token_hash=${encodeURIComponent(
       tokenHash,
     )}&type=recovery`;
   }
