@@ -1,25 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Save, ShieldCheck, Plus, Loader2 } from "lucide-react";
+import { Sparkles, Puzzle, CreditCard, ScrollText, AlertTriangle, Lock, Save, ShieldCheck, Plus, Loader2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { StaffingTemplatesEditor } from "@/components/StaffingTemplatesEditor";
+import { EmailsTab } from "@/components/reglages/EmailsTab";
+import { useAuth } from "@/hooks/use-auth";
+import { hasPermission } from "@/lib/permissions";
 
 export const Route = createFileRoute("/reglages")({
   component: ReglagesPage,
   head: () => ({ meta: [{ title: "Réglages — Kadence" }] }),
 });
 
-const tabs = [
+const ALL_TABS = [
   { id: "ai", label: "Algorithme IA", icon: Sparkles },
   { id: "templates", label: "Besoins par studio", icon: Puzzle },
   { id: "admins", label: "Administrateurs", icon: ShieldCheck },
+  { id: "emails", label: "Emails", icon: Mail },
   { id: "billing", label: "Facturation", icon: CreditCard },
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "danger", label: "Zone dangereuse", icon: AlertTriangle },
 ] as const;
 
 function ReglagesPage() {
+  const { appRole, managerPermissions } = useAuth();
+  const canEmails = hasPermission("/reglages:edit_general", appRole, managerPermissions);
+  const tabs = ALL_TABS.filter((t) => t.id !== "emails" || canEmails);
   const [activeTab, setActiveTab] = useState<string>("ai");
 
   return (
@@ -54,7 +61,8 @@ function ReglagesPage() {
           {activeTab === "ai" && <AISettings />}
           {activeTab === "templates" && <StaffingTemplatesEditor />}
           {activeTab === "admins" && <AdminsSettings />}
-          {!["ai", "templates", "admins"].includes(activeTab) && (
+          {activeTab === "emails" && <EmailsTab />}
+          {!["ai", "templates", "admins", "emails"].includes(activeTab) && (
             <div className="rounded-xl border p-8 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
               <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
                 {tabs.find((t) => t.id === activeTab)?.label}
