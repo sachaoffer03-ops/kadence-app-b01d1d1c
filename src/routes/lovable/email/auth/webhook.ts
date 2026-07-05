@@ -37,6 +37,12 @@ export const Route = createFileRoute('/lovable/email/auth/webhook')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Feature flag : quand Kadence gère les emails auth via Resend,
+        // on court-circuite ce webhook pour éviter tout double envoi.
+        if ((process.env.AUTH_EMAIL_PROVIDER || '').toLowerCase() === 'kadence') {
+          return Response.json({ success: true, skipped: 'kadence_provider' })
+        }
+
         const apiKey = process.env.LOVABLE_API_KEY
 
         if (!apiKey) {
