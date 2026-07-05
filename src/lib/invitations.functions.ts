@@ -152,32 +152,20 @@ export const resendInvitation = createServerFn({ method: "POST" })
       ? await supabaseAdmin.from("studios").select("name").eq("id", studioId).maybeSingle()
       : { data: null as any };
 
-    const { getRequestHeader } = await import("@tanstack/react-start/server");
-    const host = getRequestHeader("host");
-    const proto = getRequestHeader("x-forwarded-proto") ?? "https";
-    const authHeader = getRequestHeader("authorization");
-
-    const r = await fetch(`${proto}://${host}/lovable/email/transactional/send`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(authHeader ? { Authorization: authHeader } : {}),
+    const { enqueueTemplateEmail } = await import("@/lib/email-send.server");
+    const res = await enqueueTemplateEmail({
+      templateId: "invitation-employe",
+      recipient: inv.email,
+      // suffix timestamp to bypass idempotency cache after a previous DLQ
+      idempotencyKey: `invitation-employe-${inv.id}-${Date.now()}`,
+      data: {
+        firstName: inv.first_name,
+        studioName: studio?.name ?? "Skult Studios",
+        inviteUrl: activationUrl,
       },
-      body: JSON.stringify({
-        templateName: "invitation-employe",
-        recipientEmail: inv.email,
-        // suffix timestamp to bypass idempotency cache after a previous DLQ
-        idempotencyKey: `invitation-employe-${inv.id}-${Date.now()}`,
-        templateData: {
-          firstName: inv.first_name,
-          studioName: studio?.name ?? "Skult Studios",
-          inviteUrl: activationUrl,
-        },
-      }),
     });
-    if (!r.ok) {
-      const txt = await r.text();
-      console.error("Resend invitation email failed:", r.status, txt);
+    if (!res.ok) {
+      console.error("Resend invitation email failed:", res.reason);
       throw new Error("L'envoi de l'email a échoué");
     }
     return { ok: true, email: inv.email };
