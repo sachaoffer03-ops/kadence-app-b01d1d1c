@@ -18,6 +18,91 @@ const Input = z.object({
   avatar_url: z.string().url().max(1000).nullable().optional(),
 });
 
+const PrepareInput = z.object({
+  token: z.string().min(1).max(200),
+  password: z.string().min(1).max(200),
+});
+
+export const prepareActivationAccount = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) => PrepareInput.parse(i))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const normalized = data.token.replace(/[^a-fA-F0-9]/gi, "").toLowerCase();
+
+    const { data: inv, error: invError } = await supabaseAdmin
+      .from("invitations")
+      .select("id, email, first_name, last_name, app_role")
+      .eq("token", normalized)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (invError) throw new Error(invError.message);
+    if (!inv) throw new Error("Invitation introuvable");
+
+    const email = (inv.email || "").trim().toLowerCase();
+    if (!email) throw new Error("Email d'invitation invalide");
+
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email")
+      .ilike("email", email)
+      .maybeSingle();
+
+    let existingUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null } | null = null;
+    for (let page = 1; page <= 20 && !existingUser; page += 1) {
+      const { data: pageData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 1000,
+      });
+      if (listError) throw new Error(listError.message);
+      existingUser =
+        pageData.users.find((user) => (user.email || "").toLowerCase() === email) || null;
+      if (pageData.users.length < 1000) break;
+    }
+
+    const metadata = {
+      ...(existingUser?.user_metadata || {}),
+      invitation_token: normalized,
+      first_name: inv.first_name,
+      last_name: inv.last_name,
+    };
+
+    if (existingUser) {
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+        password: data.password,
+        email_confirm: true,
+        user_metadata: metadata,
+      });
+      if (updateError) throw new Error(updateError.message);
+
+      if (existingProfile && existingProfile.id !== existingUser.id) {
+        const { error: mergeError } = await supabaseAdmin.rpc("merge_profile_data", {
+          old_id: existingProfile.id,
+          new_id: existingUser.id,
+        });
+        if (mergeError) throw new Error(mergeError.message);
+
+        await supabaseAdmin.from("profiles").delete().eq("id", existingProfile.id);
+      }
+
+      return { ok: true, userId: existingUser.id, email, appRole: inv.app_role };
+    }
+
+    const createPayload: Parameters<typeof supabaseAdmin.auth.admin.createUser>[0] = {
+      email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: metadata,
+    };
+    if (existingProfile?.id) createPayload.id = existingProfile.id;
+
+    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser(createPayload);
+    if (createError) throw new Error(createError.message);
+    if (!created.user?.id) throw new Error("Compte introuvable après création");
+
+    return { ok: true, userId: created.user.id, email, appRole: inv.app_role };
+  });
+
 export const completeActivationProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => Input.parse(i))

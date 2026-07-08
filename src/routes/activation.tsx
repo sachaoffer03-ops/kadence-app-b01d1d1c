@@ -274,21 +274,19 @@ function ActivationPage() {
     if (alreadySignedIn) {
       userId = existingSession.session!.user.id;
     } else {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password,
-        options: {
+      let preparedUserId: string | undefined;
+      try {
+        const { prepareActivationAccount } = await import("@/lib/activation.functions");
+        const prepared = await prepareActivationAccount({
           data: {
-            invitation_token: normalizedToken,
-            first_name: invitation.first_name,
-            last_name: invitation.last_name,
+            token: normalizedToken,
+            password,
           },
-        },
-      });
-
-      if (signUpError) {
+        });
+        preparedUserId = prepared.userId;
+      } catch (e: any) {
         setSubmitting(false);
-        return toast.error(signUpError.message);
+        return toast.error(e?.message || "Impossible de préparer le compte");
       }
 
       await new Promise((r) => setTimeout(r, 600));
@@ -302,7 +300,7 @@ function ActivationPage() {
         setDone(true);
         return toast.error(signInError.message);
       }
-      userId = signUpData.user?.id;
+      userId = preparedUserId;
     }
 
     if (userId) {
