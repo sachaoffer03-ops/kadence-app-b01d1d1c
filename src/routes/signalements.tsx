@@ -300,6 +300,41 @@ function SignalementsPage() {
                       </div>
                     )}
 
+                    {(() => {
+                      const prev = prevShifts[s.id];
+                      if (prev === undefined) return null;
+                      if (prev === null) {
+                        return (
+                          <div className="mt-3 rounded-md px-2.5 py-2" style={{ backgroundColor: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)" }}>
+                            Aucun shift précédent identifié dans ce studio.
+                          </div>
+                        );
+                      }
+                      const prevEmp = prev.user_id ? profiles[prev.user_id] : null;
+                      const prevName = prevEmp ? `${prevEmp.first_name} ${prevEmp.last_name}` : "—";
+                      const prevInitials = prevEmp ? `${prevEmp.first_name?.[0] || ""}${prevEmp.last_name?.[0] || ""}`.toUpperCase() : "—";
+                      const dateLabel = new Date(prev.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+                      const hh = (t: string) => t.slice(0, 5);
+                      return (
+                        <div className="mt-3 rounded-md px-2.5 py-2 flex items-center gap-2.5" style={{ backgroundColor: "var(--muted)" }}>
+                          <div className="rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+                            style={{ width: 24, height: 24, backgroundColor: "var(--card)", fontSize: 10, fontWeight: 500 }}>
+                            {prevEmp?.avatar_url ? <img src={prevEmp.avatar_url} alt="" className="w-full h-full object-cover" /> : <span>{prevInitials}</span>}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.3 }}>Shift précédent</div>
+                            <div style={{ fontSize: 12, lineHeight: 1.35 }}>
+                              <span style={{ fontWeight: 500 }}>{prevName}</span>
+                              <span style={{ color: "var(--muted-foreground)" }}>
+                                {" · "}{prev.business_role}{" · "}{dateLabel} {hh(prev.start_time)}–{hh(prev.end_time)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+
                     <div className="flex items-center justify-end gap-2 mt-3">
                       <button onClick={() => setResolved(s.id, !s.resolved)}
                         disabled={!!dismissing[s.id]}
