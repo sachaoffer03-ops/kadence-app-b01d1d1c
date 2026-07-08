@@ -20,6 +20,14 @@ interface Row {
 }
 interface ProfileLite { id: string; first_name: string; last_name: string; avatar_url: string | null; }
 interface StudioLite { id: string; name: string; }
+interface PrevShift {
+  user_id: string | null;
+  business_role: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  clocked_out_at: string | null;
+}
 
 const fmtRel = (iso: string) => {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -41,6 +49,7 @@ function SignalementsPage() {
   const [catFilter, setCatFilter] = useState<Category | "toutes">("toutes");
   const [dismissing, setDismissing] = useState<Record<string, "strike" | "fade">>({});
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
+  const [prevShifts, setPrevShifts] = useState<Record<string, PrevShift | null>>({});
 
   useEffect(() => {
     if (!lightbox) return;
@@ -70,6 +79,40 @@ function SignalementsPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Charge, pour chaque signalement, le shift précédent (même studio, terminé avant le signalement, autre employé)
+  useEffect(() => {
+    const missing = items.filter((s) => s.studio_id && !(s.id in prevShifts));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(missing.map(async (s) => {
+        const createdAt = new Date(s.created_at);
+        const dayISO = createdAt.toISOString().slice(0, 10);
+        const prevDayISO = new Date(createdAt.getTime() - 86_400_000).toISOString().slice(0, 10);
+        const { data } = await supabase
+          .from("shifts")
+          .select("user_id,business_role,shift_date,start_time,end_time,clocked_out_at")
+          .eq("studio_id", s.studio_id!)
+          .in("shift_date", [prevDayISO, dayISO])
+          .not("user_id", "is", null)
+          .neq("user_id", s.author_id)
+          .order("shift_date", { ascending: false })
+          .order("end_time", { ascending: false });
+        const prev = (data as PrevShift[] | null)?.find((sh) => {
+          const endISO = sh.clocked_out_at
+            ? new Date(sh.clocked_out_at)
+            : new Date(`${sh.shift_date}T${sh.end_time}`);
+          return endISO.getTime() <= createdAt.getTime();
+        }) ?? null;
+        return [s.id, prev] as const;
+      }));
+      if (cancelled) return;
+      setPrevShifts((p) => ({ ...p, ...Object.fromEntries(results) }));
+    })();
+    return () => { cancelled = true; };
+  }, [items, prevShifts]);
+
 
   const activeCount = items.filter(s => !s.resolved).length;
   const resolvedCount = items.length - activeCount;
@@ -256,6 +299,41 @@ function SignalementsPage() {
                         ))}
                       </div>
                     )}
+
+                    {(() => {
+                      const prev = prevShifts[s.id];
+                      if (prev === undefined) return null;
+                      if (prev === null) {
+                        return (
+                          <div className="mt-3 rounded-md px-2.5 py-2" style={{ backgroundColor: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)" }}>
+                            Aucun shift précédent identifié dans ce studio.
+                          </div>
+                        );
+                      }
+                      const prevEmp = prev.user_id ? profiles[prev.user_id] : null;
+                      const prevName = prevEmp ? `${prevEmp.first_name} ${prevEmp.last_name}` : "—";
+                      const prevInitials = prevEmp ? `${prevEmp.first_name?.[0] || ""}${prevEmp.last_name?.[0] || ""}`.toUpperCase() : "—";
+                      const dateLabel = new Date(prev.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+                      const hh = (t: string) => t.slice(0, 5);
+                      return (
+                        <div className="mt-3 rounded-md px-2.5 py-2 flex items-center gap-2.5" style={{ backgroundColor: "var(--muted)" }}>
+                          <div className="rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+                            style={{ width: 24, height: 24, backgroundColor: "var(--card)", fontSize: 10, fontWeight: 500 }}>
+                            {prevEmp?.avatar_url ? <img src={prevEmp.avatar_url} alt="" className="w-full h-full object-cover" /> : <span>{prevInitials}</span>}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.3 }}>Shift précédent</div>
+                            <div style={{ fontSize: 12, lineHeight: 1.35 }}>
+                              <span style={{ fontWeight: 500 }}>{prevName}</span>
+                              <span style={{ color: "var(--muted-foreground)" }}>
+                                {" · "}{prev.business_role}{" · "}{dateLabel} {hh(prev.start_time)}–{hh(prev.end_time)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
 
                     <div className="flex items-center justify-end gap-2 mt-3">
                       <button onClick={() => setResolved(s.id, !s.resolved)}
