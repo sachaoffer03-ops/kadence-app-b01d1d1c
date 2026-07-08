@@ -49,6 +49,7 @@ function SignalementsPage() {
   const [catFilter, setCatFilter] = useState<Category | "toutes">("toutes");
   const [dismissing, setDismissing] = useState<Record<string, "strike" | "fade">>({});
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
+  const [prevShifts, setPrevShifts] = useState<Record<string, PrevShift | null>>({});
 
   useEffect(() => {
     if (!lightbox) return;
@@ -78,6 +79,40 @@ function SignalementsPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Charge, pour chaque signalement, le shift précédent (même studio, terminé avant le signalement, autre employé)
+  useEffect(() => {
+    const missing = items.filter((s) => s.studio_id && !(s.id in prevShifts));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(missing.map(async (s) => {
+        const createdAt = new Date(s.created_at);
+        const dayISO = createdAt.toISOString().slice(0, 10);
+        const prevDayISO = new Date(createdAt.getTime() - 86_400_000).toISOString().slice(0, 10);
+        const { data } = await supabase
+          .from("shifts")
+          .select("user_id,business_role,shift_date,start_time,end_time,clocked_out_at")
+          .eq("studio_id", s.studio_id!)
+          .in("shift_date", [prevDayISO, dayISO])
+          .not("user_id", "is", null)
+          .neq("user_id", s.author_id)
+          .order("shift_date", { ascending: false })
+          .order("end_time", { ascending: false });
+        const prev = (data as PrevShift[] | null)?.find((sh) => {
+          const endISO = sh.clocked_out_at
+            ? new Date(sh.clocked_out_at)
+            : new Date(`${sh.shift_date}T${sh.end_time}`);
+          return endISO.getTime() <= createdAt.getTime();
+        }) ?? null;
+        return [s.id, prev] as const;
+      }));
+      if (cancelled) return;
+      setPrevShifts((p) => ({ ...p, ...Object.fromEntries(results) }));
+    })();
+    return () => { cancelled = true; };
+  }, [items, prevShifts]);
+
 
   const activeCount = items.filter(s => !s.resolved).length;
   const resolvedCount = items.length - activeCount;
