@@ -20,6 +20,14 @@ interface Row {
 }
 interface ProfileLite { id: string; first_name: string; last_name: string; avatar_url: string | null; }
 interface StudioLite { id: string; name: string; }
+interface PrevShift {
+  user_id: string | null;
+  business_role: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  clocked_out_at: string | null;
+}
 
 const fmtRel = (iso: string) => {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
