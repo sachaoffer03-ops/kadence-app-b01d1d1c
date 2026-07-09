@@ -78,6 +78,7 @@ function DemandesPage() {
   const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({});
   const [shifts, setShifts] = useState<Record<string, ShiftLite>>({});
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [userStudios, setUserStudios] = useState<Record<string, string[]>>({});
   const [kpis, setKpis] = useState({ pending: 0, urgent: 0, treatedToday: 0, avgResolutionMs: 0 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
