@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useStudios } from "@/hooks/use-studios";
 import { sendReplacementProposals, cancelProposals } from "@/lib/proposals.functions";
 import {
   getDemandesData,
@@ -77,6 +78,7 @@ function DemandesPage() {
   const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({});
   const [shifts, setShifts] = useState<Record<string, ShiftLite>>({});
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [userStudios, setUserStudios] = useState<Record<string, string[]>>({});
   const [kpis, setKpis] = useState({ pending: 0, urgent: 0, treatedToday: 0, avgResolutionMs: 0 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
@@ -102,6 +104,13 @@ function DemandesPage() {
   const acceptUnavailFn = useServerFn(acceptUnavailabilityRequest);
   const refuseFn = useServerFn(refuseRequest);
 
+  const { studios: studiosList } = useStudios();
+  const studioName = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const s of studiosList) m[s.id] = (s.short_name || s.name || "").replace(/^Skult\s+/i, "");
+    return m;
+  }, [studiosList]);
+
   const loadAll = async () => {
     try {
       const d = await loadFn({ data: {} });
@@ -110,6 +119,13 @@ function DemandesPage() {
       setShifts(Object.fromEntries((d.shifts as ShiftLite[]).map((s) => [s.id, s])));
       setProposals(d.proposals as Proposal[]);
       setKpis(d.kpis);
+      const userIds = Array.from(new Set((d.requests as Row[]).map((r) => r.user_id)));
+      if (userIds.length > 0) {
+        const { data: us } = await supabase.from("user_studios").select("user_id, studio_id").in("user_id", userIds);
+        const map: Record<string, string[]> = {};
+        for (const r of us || []) (map[(r as any).user_id] ||= []).push((r as any).studio_id);
+        setUserStudios(map);
+      }
     } catch (e: any) {
       toast.error(e.message || "Erreur chargement");
     }
@@ -337,9 +353,22 @@ function DemandesPage() {
                       </>
                     ) : <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Sans shift</span>}
                   </div>
-                  <div className="flex items-center gap-1.5" style={{ fontSize: 12 }}>
-                    <TypeIcon size={13} style={{ color: "var(--muted-foreground)" }} />
-                    {(TYPE_META[req.type] || TYPE_META.cancel).label}
+                  <div className="flex flex-col gap-0.5" style={{ fontSize: 12 }}>
+                    <div className="flex items-center gap-1.5">
+                      <TypeIcon size={13} style={{ color: "var(--muted-foreground)" }} />
+                      {(TYPE_META[req.type] || TYPE_META.cancel).label}
+                    </div>
+                    {(() => {
+                      const names = sh?.studio_id
+                        ? [studioName[sh.studio_id]].filter(Boolean)
+                        : (userStudios[req.user_id] || []).map((id) => studioName[id]).filter(Boolean);
+                      if (names.length === 0) return null;
+                      return (
+                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }} className="truncate">
+                          {sh?.studio_id ? "Studio" : "Studios"} · {names.join(", ")}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: urg.bg, color: urg.text }}>{urg.label}</span>
@@ -419,7 +448,7 @@ function DemandesPage() {
                                     <div className="flex items-center gap-2 px-3 py-2" style={{ fontSize: 12 }}>
                                       <div className="flex-1 min-w-0">
                                         <div style={{ fontWeight: 500 }}>{formatDate(s.shift_date)} · {formatTime(s.start_time)}–{formatTime(s.end_time)}</div>
-                                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{s.business_role}</div>
+                                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{s.business_role}{s.studio_id && studioName[s.studio_id] ? ` · ${studioName[s.studio_id]}` : ""}</div>
                                       </div>
                                       {accepted ? (
                                         <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>
