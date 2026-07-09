@@ -353,9 +353,22 @@ function DemandesPage() {
                       </>
                     ) : <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Sans shift</span>}
                   </div>
-                  <div className="flex items-center gap-1.5" style={{ fontSize: 12 }}>
-                    <TypeIcon size={13} style={{ color: "var(--muted-foreground)" }} />
-                    {(TYPE_META[req.type] || TYPE_META.cancel).label}
+                  <div className="flex flex-col gap-0.5" style={{ fontSize: 12 }}>
+                    <div className="flex items-center gap-1.5">
+                      <TypeIcon size={13} style={{ color: "var(--muted-foreground)" }} />
+                      {(TYPE_META[req.type] || TYPE_META.cancel).label}
+                    </div>
+                    {(() => {
+                      const names = sh?.studio_id
+                        ? [studioName[sh.studio_id]].filter(Boolean)
+                        : (userStudios[req.user_id] || []).map((id) => studioName[id]).filter(Boolean);
+                      if (names.length === 0) return null;
+                      return (
+                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }} className="truncate">
+                          {sh?.studio_id ? "Studio" : "Studios"} · {names.join(", ")}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: urg.bg, color: urg.text }}>{urg.label}</span>
