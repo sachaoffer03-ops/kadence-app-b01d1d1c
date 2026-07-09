@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useStudios } from "@/hooks/use-studios";
 import { sendReplacementProposals, cancelProposals } from "@/lib/proposals.functions";
 import {
   getDemandesData,
