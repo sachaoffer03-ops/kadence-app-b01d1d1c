@@ -448,7 +448,7 @@ function DemandesPage() {
                                     <div className="flex items-center gap-2 px-3 py-2" style={{ fontSize: 12 }}>
                                       <div className="flex-1 min-w-0">
                                         <div style={{ fontWeight: 500 }}>{formatDate(s.shift_date)} · {formatTime(s.start_time)}–{formatTime(s.end_time)}</div>
-                                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{s.business_role}</div>
+                                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{s.business_role}{s.studio_id && studioName[s.studio_id] ? ` · ${studioName[s.studio_id]}` : ""}</div>
                                       </div>
                                       {accepted ? (
                                         <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--success-bg)", color: "var(--success-text)" }}>
