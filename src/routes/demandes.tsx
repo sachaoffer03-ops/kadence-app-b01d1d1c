@@ -104,6 +104,13 @@ function DemandesPage() {
   const acceptUnavailFn = useServerFn(acceptUnavailabilityRequest);
   const refuseFn = useServerFn(refuseRequest);
 
+  const { studios: studiosList } = useStudios();
+  const studioName = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const s of studiosList) m[s.id] = (s.short_name || s.name || "").replace(/^Skult\s+/i, "");
+    return m;
+  }, [studiosList]);
+
   const loadAll = async () => {
     try {
       const d = await loadFn({ data: {} });
@@ -112,6 +119,13 @@ function DemandesPage() {
       setShifts(Object.fromEntries((d.shifts as ShiftLite[]).map((s) => [s.id, s])));
       setProposals(d.proposals as Proposal[]);
       setKpis(d.kpis);
+      const userIds = Array.from(new Set((d.requests as Row[]).map((r) => r.user_id)));
+      if (userIds.length > 0) {
+        const { data: us } = await supabase.from("user_studios").select("user_id, studio_id").in("user_id", userIds);
+        const map: Record<string, string[]> = {};
+        for (const r of us || []) (map[(r as any).user_id] ||= []).push((r as any).studio_id);
+        setUserStudios(map);
+      }
     } catch (e: any) {
       toast.error(e.message || "Erreur chargement");
     }
