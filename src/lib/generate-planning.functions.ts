@@ -930,7 +930,7 @@ async function runEngine(ctx: EngineCtx) {
           if (s.strict_preferences) continue;
           // Pas strict : on autorise sans dispo (rare)
         }
-        for (const d of dispos.length ? dispos : [{ startMin: window.startMin, endMin: window.endMin }]) {
+        for (const d of dispos.length ? dispos : [{ startMin: window.startMin, endMin: window.endMin, studioId: null as string | null }]) {
           const lo = Math.max(window.startMin, d.startMin);
           const hi = Math.min(window.endMin, d.endMin);
           const maxH = maxShiftHFor(e, req.studio_id);
