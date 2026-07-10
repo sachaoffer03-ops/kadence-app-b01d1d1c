@@ -1486,7 +1486,7 @@ function tryExtendLeft(
   if (newDurH > maxShiftHFor(e, req.studio_id)) return false;
   const wkRemainingH = maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date);
   if ((a.startMin - newStart) / 60 > wkRemainingH) return false;
-  if (!availOn(e.id, req.date).some((r) => r.startMin <= newStart && r.endMin >= a.endMin)) return false;
+  if (!availOnFor(e.id, req.date, req.studio_id).some((r) => r.startMin <= newStart && r.endMin >= a.endMin)) return false;
   if (hasConflict(e, req.date, newStart, a.startMin)) return false;
   if (!restOk(e, req.date, newStart, a.endMin)) return false;
   cell.userId = e.id;
