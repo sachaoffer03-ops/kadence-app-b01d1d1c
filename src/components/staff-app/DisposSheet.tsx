@@ -41,6 +41,12 @@ interface Range {
   id?: string;
   start: string;
   end: string;
+  studioId: string | null;
+}
+
+interface StudioOpt {
+  id: string;
+  label: string;
 }
 
 export function disposKey(userId: string, year: number, month: number) {
