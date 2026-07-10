@@ -79,7 +79,7 @@ interface Employee {
 }
 
 
-interface AvailRange { startMin: number; endMin: number; }
+interface AvailRange { startMin: number; endMin: number; studioId: string | null; }
 
 interface Requirement {
   id: string;
