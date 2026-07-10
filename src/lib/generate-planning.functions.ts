@@ -1295,7 +1295,7 @@ async function runEngine(ctx: EngineCtx) {
       const emp = employees.get(adj.user_id);
       if (!emp) continue;
       if (newDur > maxShiftHFor(emp, adj.studio_id) * 60) continue;
-      if (!availCovers(emp, adj.shift_date, newStart, newEnd)) continue;
+      if (!availCovers(emp, adj.shift_date, newStart, newEnd, adj.studio_id)) continue;
       const addedH = (newDur - (aEnd - aStart)) / 60;
       if (weeklyHours(emp, adj.shift_date) + addedH > maxWeeklyHFor(emp, adj.studio_id)) continue;
 
