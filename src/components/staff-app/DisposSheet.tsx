@@ -78,6 +78,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [now, setNow] = useState(() => Date.now());
   const [closedDays, setClosedDays] = useState<Set<number>>(new Set());
   const [minShiftHours, setMinShiftHours] = useState<number>(3);
+  const [userStudios, setUserStudios] = useState<StudioOpt[]>([]);
 
   useEffect(() => {
     if (!open) return;
