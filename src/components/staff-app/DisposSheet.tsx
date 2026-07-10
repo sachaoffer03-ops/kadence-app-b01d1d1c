@@ -574,15 +574,21 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1.5">
-                    {dayRanges.map((r, idx) => (
+                    {dayRanges.map((r, idx) => {
+                      const studioLabel = userStudios.find(s => s.id === r.studioId)?.label ?? "—";
+                      return (
                       <div
                         key={idx}
-                        className="flex items-center gap-2 rounded-xl px-3 py-2"
+                        className="flex flex-col gap-1.5 rounded-xl px-3 py-2"
                         style={{ backgroundColor: "rgba(0,0,0,0.025)" }}
                       >
+                        <div className="flex items-center gap-2">
                         {locked ? (
                           <span style={{ fontSize: 12, color: "var(--foreground)" }}>
                             {r.start} → {r.end}
+                            {userStudios.length >= 2 && (
+                              <span style={{ marginLeft: 8, color: "var(--muted-foreground)" }}>· {studioLabel}</span>
+                            )}
                           </span>
                         ) : (
                           <>
@@ -615,8 +621,33 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
                             </button>
                           </>
                         )}
+                        </div>
+                        {!locked && userStudios.length >= 2 && (
+                          <div className="flex items-center gap-1.5 pl-3">
+                            <span style={{ fontSize: 10.5, color: "var(--muted-foreground)" }}>Studio :</span>
+                            {userStudios.map((s) => {
+                              const active = r.studioId === s.id;
+                              return (
+                                <button
+                                  key={s.id}
+                                  onClick={() => updateRange(selectedDay, idx, { studioId: s.id })}
+                                  className="rounded-full px-2.5 py-0.5"
+                                  style={{
+                                    fontSize: 10.5,
+                                    fontWeight: 500,
+                                    backgroundColor: active ? "var(--coral)" : "transparent",
+                                    color: active ? "var(--coral-text)" : "var(--foreground)",
+                                    border: active ? "1px solid var(--coral)" : "1px solid rgba(0,0,0,0.12)",
+                                  }}
+                                >
+                                  {s.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    );})}
                     {!locked && (
                       <button
                         onClick={() => addRange(selectedDay)}
