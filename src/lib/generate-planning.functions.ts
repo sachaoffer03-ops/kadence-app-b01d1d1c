@@ -688,8 +688,8 @@ async function runEngine(ctx: EngineCtx) {
   };
 
   // Vérifie qu'une plage est intégralement couverte par une dispo de l'employé
-  const availCovers = (e: Employee, date: string, sMin: number, eMin: number): boolean => {
-    for (const r of availOn(e.id, date)) if (r.startMin <= sMin && r.endMin >= eMin) return true;
+  const availCovers = (e: Employee, date: string, sMin: number, eMin: number, studioId: string): boolean => {
+    for (const r of availOnFor(e.id, date, studioId)) if (r.startMin <= sMin && r.endMin >= eMin) return true;
     return false;
   };
 
