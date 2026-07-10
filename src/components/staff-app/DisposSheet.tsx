@@ -275,9 +275,24 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       toast.error("Cette journée est déjà entièrement couverte");
       return;
     }
+    // Employé multi-studios : force le choix. Sinon : le seul studio (ou null).
+    const defaultStudio =
+      userStudios.length >= 2 ? userStudios[0].id
+      : userStudios.length === 1 ? userStudios[0].id
+      : null;
     try {
-      const res: any = await createFn({ data: { avail_date: dateISO(day), start_time: free.start, end_time: free.end } });
-      setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...free, id: res.id }] }));
+      const res: any = await createFn({
+        data: {
+          avail_date: dateISO(day),
+          start_time: free.start,
+          end_time: free.end,
+          studio_id: defaultStudio,
+        },
+      });
+      setRanges((p) => ({
+        ...p,
+        [day]: [...(p[day] ?? []), { ...free, id: res.id, studioId: defaultStudio }],
+      }));
       setValidated(true);
       try { window.localStorage?.setItem(disposKey(userId, year, month), new Date().toISOString()); } catch {}
     } catch (e: any) {
