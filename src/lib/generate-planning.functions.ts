@@ -890,7 +890,7 @@ async function runEngine(ctx: EngineCtx) {
     );
     let avail = 0;
     for (const c of cands) {
-      const has = availOn(c.id, r.date).some(
+      const has = availOnFor(c.id, r.date, r.studio_id).some(
         (a) => a.startMin < r.endMin && a.endMin > r.startMin,
       );
       if (has) avail++;
