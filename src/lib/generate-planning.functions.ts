@@ -833,6 +833,7 @@ async function runEngine(ctx: EngineCtx) {
         // Trouver le requirement (cells libres) qui chevauche cette dispo et que e couvre
         const fitReqs = requirements.filter((r) =>
           r.date === date &&
+          matchStudio(range, r.studio_id) &&
           (reqCandidates.get(r.id) ?? []).some((c) => c.id === e.id) &&
           r.startMin < range.endMin && r.endMin > range.startMin,
         ).sort((a, b) => {
