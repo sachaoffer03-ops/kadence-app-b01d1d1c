@@ -25,13 +25,55 @@ const AvailInput = z.object({
   avail_date: z.string().regex(DATE_RE),
   start_time: z.string().regex(TIME_RE),
   end_time: z.string().regex(TIME_RE),
+  studio_id: z.string().uuid().nullable().optional(),
 });
 
 const UpdateInput = z.object({
   id: z.string().uuid(),
   start_time: z.string().regex(TIME_RE),
   end_time: z.string().regex(TIME_RE),
+  studio_id: z.string().uuid().nullable().optional(),
 });
+
+/** Retourne l'ensemble des studios rattachés à l'employé (user_studios ∪ profiles.studio_id). */
+async function getUserStudioIds(supabase: any, userId: string): Promise<string[]> {
+  const [{ data: us }, { data: prof }] = await Promise.all([
+    supabase.from("user_studios").select("studio_id").eq("user_id", userId),
+    supabase.from("profiles").select("studio_id").eq("id", userId).maybeSingle(),
+  ]);
+  const set = new Set<string>();
+  (us ?? []).forEach((r: any) => r.studio_id && set.add(r.studio_id));
+  if ((prof as any)?.studio_id) set.add((prof as any).studio_id);
+  return Array.from(set);
+}
+
+/** Résout le studio effectif d'une dispo :
+ *  - 0 studio → null
+ *  - 1 studio → celui-ci (par défaut si non fourni)
+ *  - ≥2 studios → OBLIGATOIRE et doit appartenir à ceux de l'employé.
+ */
+async function resolveStudioForAvail(
+  supabase: any,
+  userId: string,
+  provided: string | null | undefined,
+): Promise<string | null> {
+  const studios = await getUserStudioIds(supabase, userId);
+  if (studios.length === 0) return null;
+  if (studios.length === 1) {
+    if (provided && !studios.includes(provided)) {
+      throw new Error("Studio invalide pour cet employé");
+    }
+    return provided ?? studios[0];
+  }
+  // multi-studios
+  if (!provided) {
+    throw new Error("Choisis le studio concerné par ce créneau");
+  }
+  if (!studios.includes(provided)) {
+    throw new Error("Studio invalide pour cet employé");
+  }
+  return provided;
+}
 
 const DEFAULT_MIN_DURATION_MIN = 4 * 60;
 const STEP_MIN = 15;
