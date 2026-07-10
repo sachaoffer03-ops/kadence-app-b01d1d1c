@@ -251,9 +251,17 @@ export const updateAvailability = createServerFn({ method: "POST" })
     const { s, e } = validateRangeShape(data.start_time, data.end_time, minDur);
     await ensureNoOverlap(supabase, existing.user_id, existing.avail_date, s, e, data.id);
 
+    const patch: Record<string, unknown> = {
+      start_time: data.start_time,
+      end_time: data.end_time,
+    };
+    if (data.studio_id !== undefined) {
+      patch.studio_id = await resolveStudioForAvail(supabase, existing.user_id, data.studio_id);
+    }
+
     const { error } = await supabase
       .from("availabilities")
-      .update({ start_time: data.start_time, end_time: data.end_time })
+      .update(patch)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
