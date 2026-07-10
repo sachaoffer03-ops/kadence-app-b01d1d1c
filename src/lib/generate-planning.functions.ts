@@ -973,7 +973,7 @@ async function runEngine(ctx: EngineCtx) {
         if (i > 0 && req.cells[i - 1].userId) {
           const eId = req.cells[i - 1].userId!;
           const e = employees.get(eId);
-          if (e && tryExtendRight(e, req, i, s, employees, hasConflict, restOk, availOn, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
+          if (e && tryExtendRight(e, req, i, s, employees, hasConflict, restOk, availOnFor, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
             improved = true;
             continue;
           }
@@ -982,7 +982,7 @@ async function runEngine(ctx: EngineCtx) {
         if (i < req.cells.length - 1 && req.cells[i + 1].userId) {
           const eId = req.cells[i + 1].userId!;
           const e = employees.get(eId);
-          if (e && tryExtendLeft(e, req, i, s, employees, hasConflict, restOk, availOn, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
+          if (e && tryExtendLeft(e, req, i, s, employees, hasConflict, restOk, availOnFor, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
             improved = true;
             continue;
           }
