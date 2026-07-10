@@ -1003,8 +1003,8 @@ async function runEngine(ctx: EngineCtx) {
   let swapCount = 0;
   const MAX_SWAPS = 200;
 
-  const findAvailRangeCovering = (e: Employee, date: string, sMin: number, eMin: number): AvailRange | null => {
-    for (const r of availOn(e.id, date)) {
+  const findAvailRangeCovering = (e: Employee, date: string, sMin: number, eMin: number, studioId: string): AvailRange | null => {
+    for (const r of availOnFor(e.id, date, studioId)) {
       if (r.startMin <= sMin && r.endMin >= eMin) return r;
     }
     return null;
