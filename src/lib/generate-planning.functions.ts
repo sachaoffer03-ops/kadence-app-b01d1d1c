@@ -792,7 +792,7 @@ async function runEngine(ctx: EngineCtx) {
     const eMin = req.endMin;
     if (hasConflict(e, req.date, sMin, eMin)) continue;
     assign(req, e, sMin, eMin);
-    if (!availCovers(e, req.date, sMin, eMin)) {
+    if (!availCovers(e, req.date, sMin, eMin, req.studio_id)) {
       alerts.push({
         type: "cdi_pinned_no_avail",
         severity: "info",
