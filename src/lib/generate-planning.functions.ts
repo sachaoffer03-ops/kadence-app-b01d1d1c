@@ -1443,7 +1443,7 @@ function tryExtendRight(
   _employees: Map<string, Employee>,
   hasConflict: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
   restOk: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
-  availOn: (uid: string, date: string) => AvailRange[],
+  availOnFor: (uid: string, date: string, studioId: string) => AvailRange[],
   maxShiftHFor: (e: Employee, sId: string) => number,
   maxWeeklyHFor: (e: Employee, sId: string) => number,
   weeklyHours: (e: Employee, date: string) => number,
@@ -1473,7 +1473,7 @@ function tryExtendLeft(
   _employees: Map<string, Employee>,
   hasConflict: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
   restOk: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
-  availOn: (uid: string, date: string) => AvailRange[],
+  availOnFor: (uid: string, date: string, studioId: string) => AvailRange[],
   maxShiftHFor: (e: Employee, sId: string) => number,
   maxWeeklyHFor: (e: Employee, sId: string) => number,
   weeklyHours: (e: Employee, date: string) => number,
@@ -1500,7 +1500,7 @@ function tryExtendLeft(
 function diagnoseReason(
   req: Requirement,
   cands: Employee[],
-  availOn: (uid: string, date: string) => AvailRange[],
+  availOnFor: (uid: string, date: string, studioId: string) => AvailRange[],
 ): string {
   if (cands.length === 0) {
     if (req.is_hybrid) {
