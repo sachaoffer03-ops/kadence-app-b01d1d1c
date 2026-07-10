@@ -329,7 +329,14 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     }
 
     try {
-      await updateFn({ data: { id: updated.id, start_time: updated.start, end_time: updated.end } });
+      await updateFn({
+        data: {
+          id: updated.id,
+          start_time: updated.start,
+          end_time: updated.end,
+          ...(patch.studioId !== undefined ? { studio_id: updated.studioId } : {}),
+        },
+      });
     } catch (err: any) {
       toast.error(err?.message ?? "Erreur");
     }
