@@ -1019,7 +1019,7 @@ async function runEngine(ctx: EngineCtx) {
     coverEnd: number,
     ignoreConflictReqId?: string,
   ): { startMin: number; endMin: number } | null => {
-    const avail = findAvailRangeCovering(e, req.date, coverStart, coverEnd);
+    const avail = findAvailRangeCovering(e, req.date, coverStart, coverEnd, req.studio_id);
     if (!avail) return null;
     const maxH = maxShiftHFor(e, req.studio_id);
     const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
