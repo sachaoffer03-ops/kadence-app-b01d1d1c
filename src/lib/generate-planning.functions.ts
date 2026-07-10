@@ -922,8 +922,8 @@ async function runEngine(ctx: EngineCtx) {
       const ranked = ranking(cands, req.date);
       let placed = false;
       for (const e of ranked) {
-        // Trouver une dispo couvrant au moins min_shift_hours dans window
-        const dispos = availOn(e.id, req.date).filter(
+        // Trouver une dispo couvrant au moins min_shift_hours dans window (filtrée par studio)
+        const dispos = availOnFor(e.id, req.date, req.studio_id).filter(
           (r) => r.startMin < window.endMin && r.endMin > window.startMin,
         );
         if (dispos.length === 0) {
