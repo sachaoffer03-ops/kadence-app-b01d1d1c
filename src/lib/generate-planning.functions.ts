@@ -445,13 +445,18 @@ async function runEngine(ctx: EngineCtx) {
     let byDate = availMap.get(a.user_id);
     if (!byDate) { byDate = new Map(); availMap.set(a.user_id, byDate); }
     const arr = byDate.get(a.avail_date) ?? [];
-    arr.push({ startMin: t2m(a.start_time), endMin: t2m(a.end_time) });
+    arr.push({ startMin: t2m(a.start_time), endMin: t2m(a.end_time), studioId: a.studio_id ?? null });
     byDate.set(a.avail_date, arr);
   }
+  // matchStudio : une dispo sans studio (legacy / mono-studio) est valable partout ;
+  // sinon elle ne matche que le studio ciblé.
+  const matchStudio = (r: AvailRange, studioId: string) => r.studioId == null || r.studioId === studioId;
   const availOn = (uid: string, date: string): AvailRange[] => {
     if (isUnavailable(uid, date)) return [];
     return availMap.get(uid)?.get(date) ?? [];
   };
+  const availOnFor = (uid: string, date: string, studioId: string): AvailRange[] =>
+    availOn(uid, date).filter((r) => matchStudio(r, studioId));
 
   // Total dispos déclarées sur le mois par employé (générosité)
   for (const e of employees.values()) {
