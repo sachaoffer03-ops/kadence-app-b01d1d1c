@@ -1348,7 +1348,7 @@ async function runEngine(ctx: EngineCtx) {
       if (req.cells[i].userId !== null || req.cells[i].blocked) { i++; continue; }
       let j = i;
       while (j < req.cells.length - 1 && req.cells[j + 1].userId === null && !req.cells[j + 1].blocked) j++;
-      const reason = diagnoseReason(req, reqCandidates.get(req.id) ?? [], availOn);
+      const reason = diagnoseReason(req, reqCandidates.get(req.id) ?? [], availOnFor);
       holes.push({
         studio_id: req.studio_id,
         studio_name: studioName.get(req.studio_id) ?? "—",
