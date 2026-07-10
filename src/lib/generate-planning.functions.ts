@@ -1458,7 +1458,7 @@ function tryExtendRight(
   const wkRemainingH = maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date);
   if ((newEnd - a.endMin) / 60 > wkRemainingH) return false;
   // dispo
-  if (!availOn(e.id, req.date).some((r) => r.startMin <= a.startMin && r.endMin >= newEnd)) return false;
+  if (!availOnFor(e.id, req.date, req.studio_id).some((r) => r.startMin <= a.startMin && r.endMin >= newEnd)) return false;
   if (hasConflict(e, req.date, a.endMin, newEnd)) return false;
   if (!restOk(e, req.date, a.endMin, newEnd)) return false;
   cell.userId = e.id;
