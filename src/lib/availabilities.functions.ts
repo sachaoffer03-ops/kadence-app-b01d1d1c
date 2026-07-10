@@ -202,6 +202,8 @@ export const createAvailability = createServerFn({ method: "POST" })
     const { s, e } = validateRangeShape(data.start_time, data.end_time, minDur);
     await ensureNoOverlap(supabase, userId, data.avail_date, s, e);
 
+    const studioId = await resolveStudioForAvail(supabase, userId, data.studio_id);
+
     const { data: row, error } = await supabase
       .from("availabilities")
       .insert({
@@ -209,6 +211,7 @@ export const createAvailability = createServerFn({ method: "POST" })
         avail_date: data.avail_date,
         start_time: data.start_time,
         end_time: data.end_time,
+        studio_id: studioId,
       })
       .select("id")
       .single();
