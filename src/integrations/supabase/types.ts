@@ -300,6 +300,7 @@ export type Database = {
           end_time: string
           id: string
           start_time: string
+          studio_id: string | null
           user_id: string
         }
         Insert: {
@@ -308,6 +309,7 @@ export type Database = {
           end_time: string
           id?: string
           start_time: string
+          studio_id?: string | null
           user_id: string
         }
         Update: {
@@ -316,9 +318,18 @@ export type Database = {
           end_time?: string
           id?: string
           start_time?: string
+          studio_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "availabilities_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       business_roles: {
         Row: {

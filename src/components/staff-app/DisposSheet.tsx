@@ -41,6 +41,12 @@ interface Range {
   id?: string;
   start: string;
   end: string;
+  studioId: string | null;
+}
+
+interface StudioOpt {
+  id: string;
+  label: string;
 }
 
 export function disposKey(userId: string, year: number, month: number) {
@@ -72,6 +78,7 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
   const [now, setNow] = useState(() => Date.now());
   const [closedDays, setClosedDays] = useState<Set<number>>(new Set());
   const [minShiftHours, setMinShiftHours] = useState<number>(3);
+  const [userStudios, setUserStudios] = useState<StudioOpt[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -121,22 +128,38 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
 
     (async () => {
       setLoading(true);
+      // Charge les studios de l'employé (user_studios ∪ profiles.studio_id)
+      const [{ data: us }, { data: prof }] = await Promise.all([
+        supabase.from("user_studios").select("studio_id, studios!inner(id, name, short_name)").eq("user_id", userId),
+        supabase.from("profiles").select("studio_id, studios:studio_id(id, name, short_name)").eq("id", userId).maybeSingle(),
+      ]);
+      const seen = new Set<string>();
+      const opts: StudioOpt[] = [];
+      for (const row of (us ?? []) as any[]) {
+        const s = row.studios;
+        if (s && !seen.has(s.id)) { seen.add(s.id); opts.push({ id: s.id, label: s.short_name || s.name }); }
+      }
+      const ps = (prof as any)?.studios;
+      if (ps && !seen.has(ps.id)) { seen.add(ps.id); opts.push({ id: ps.id, label: ps.short_name || ps.name }); }
+      setUserStudios(opts);
+
       const start = dateISO(1);
       const end = dateISO(daysInMonth);
       const { data } = await supabase
         .from("availabilities")
-        .select("id, avail_date, start_time, end_time")
+        .select("id, avail_date, start_time, end_time, studio_id")
         .eq("user_id", userId)
         .gte("avail_date", start)
         .lte("avail_date", end);
       const map: Record<number, Range[]> = {};
-      data?.forEach((r) => {
+      data?.forEach((r: any) => {
         const d = parseInt(r.avail_date.slice(8, 10), 10);
         if (!map[d]) map[d] = [];
         map[d].push({
           id: r.id,
           start: String(r.start_time).slice(0, 5),
           end: String(r.end_time).slice(0, 5),
+          studioId: r.studio_id ?? null,
         });
       });
       setRanges(map);
@@ -252,9 +275,24 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       toast.error("Cette journée est déjà entièrement couverte");
       return;
     }
+    // Employé multi-studios : force le choix. Sinon : le seul studio (ou null).
+    const defaultStudio =
+      userStudios.length >= 2 ? userStudios[0].id
+      : userStudios.length === 1 ? userStudios[0].id
+      : null;
     try {
-      const res: any = await createFn({ data: { avail_date: dateISO(day), start_time: free.start, end_time: free.end } });
-      setRanges((p) => ({ ...p, [day]: [...(p[day] ?? []), { ...free, id: res.id }] }));
+      const res: any = await createFn({
+        data: {
+          avail_date: dateISO(day),
+          start_time: free.start,
+          end_time: free.end,
+          studio_id: defaultStudio,
+        },
+      });
+      setRanges((p) => ({
+        ...p,
+        [day]: [...(p[day] ?? []), { ...free, id: res.id, studioId: defaultStudio }],
+      }));
       setValidated(true);
       try { window.localStorage?.setItem(disposKey(userId, year, month), new Date().toISOString()); } catch {}
     } catch (e: any) {
@@ -291,7 +329,14 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
     }
 
     try {
-      await updateFn({ data: { id: updated.id, start_time: updated.start, end_time: updated.end } });
+      await updateFn({
+        data: {
+          id: updated.id,
+          start_time: updated.start,
+          end_time: updated.end,
+          ...(patch.studioId !== undefined ? { studio_id: updated.studioId } : {}),
+        },
+      });
     } catch (err: any) {
       toast.error(err?.message ?? "Erreur");
     }
@@ -529,15 +574,21 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1.5">
-                    {dayRanges.map((r, idx) => (
+                    {dayRanges.map((r, idx) => {
+                      const studioLabel = userStudios.find(s => s.id === r.studioId)?.label ?? "—";
+                      return (
                       <div
                         key={idx}
-                        className="flex items-center gap-2 rounded-xl px-3 py-2"
+                        className="flex flex-col gap-1.5 rounded-xl px-3 py-2"
                         style={{ backgroundColor: "rgba(0,0,0,0.025)" }}
                       >
+                        <div className="flex items-center gap-2">
                         {locked ? (
                           <span style={{ fontSize: 12, color: "var(--foreground)" }}>
                             {r.start} → {r.end}
+                            {userStudios.length >= 2 && (
+                              <span style={{ marginLeft: 8, color: "var(--muted-foreground)" }}>· {studioLabel}</span>
+                            )}
                           </span>
                         ) : (
                           <>
@@ -570,8 +621,33 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
                             </button>
                           </>
                         )}
+                        </div>
+                        {!locked && userStudios.length >= 2 && (
+                          <div className="flex items-center gap-1.5 pl-3">
+                            <span style={{ fontSize: 10.5, color: "var(--muted-foreground)" }}>Studio :</span>
+                            {userStudios.map((s) => {
+                              const active = r.studioId === s.id;
+                              return (
+                                <button
+                                  key={s.id}
+                                  onClick={() => updateRange(selectedDay, idx, { studioId: s.id })}
+                                  className="rounded-full px-2.5 py-0.5"
+                                  style={{
+                                    fontSize: 10.5,
+                                    fontWeight: 500,
+                                    backgroundColor: active ? "var(--coral)" : "transparent",
+                                    color: active ? "var(--coral-text)" : "var(--foreground)",
+                                    border: active ? "1px solid var(--coral)" : "1px solid rgba(0,0,0,0.12)",
+                                  }}
+                                >
+                                  {s.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    );})}
                     {!locked && (
                       <button
                         onClick={() => addRange(selectedDay)}

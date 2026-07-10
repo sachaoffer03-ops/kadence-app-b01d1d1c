@@ -79,7 +79,7 @@ interface Employee {
 }
 
 
-interface AvailRange { startMin: number; endMin: number; }
+interface AvailRange { startMin: number; endMin: number; studioId: string | null; }
 
 interface Requirement {
   id: string;
@@ -330,7 +330,7 @@ async function runEngine(ctx: EngineCtx) {
     fetchAll<any>(supabase.from("user_contracts").select("user_id, contract")),
     fetchAll<any>(supabase.from("user_business_roles").select("user_id, role")),
     fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
-    fetchAll<any>(supabase.from("availabilities").select("user_id, avail_date, start_time, end_time").gte("avail_date", monthStart).lte("avail_date", monthEnd)),
+    fetchAll<any>(supabase.from("availabilities").select("user_id, avail_date, start_time, end_time, studio_id").gte("avail_date", monthStart).lte("avail_date", monthEnd)),
     fetchAll<any>(supabase.from("staffing_templates").select("*").in("studio_id", studioIds)),
     fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd).in("studio_id", studioIds)),
     fetchAll<any>(supabase.from("business_roles").select("name, is_kitchen").eq("is_kitchen", true)),
@@ -445,13 +445,18 @@ async function runEngine(ctx: EngineCtx) {
     let byDate = availMap.get(a.user_id);
     if (!byDate) { byDate = new Map(); availMap.set(a.user_id, byDate); }
     const arr = byDate.get(a.avail_date) ?? [];
-    arr.push({ startMin: t2m(a.start_time), endMin: t2m(a.end_time) });
+    arr.push({ startMin: t2m(a.start_time), endMin: t2m(a.end_time), studioId: a.studio_id ?? null });
     byDate.set(a.avail_date, arr);
   }
+  // matchStudio : une dispo sans studio (legacy / mono-studio) est valable partout ;
+  // sinon elle ne matche que le studio ciblé.
+  const matchStudio = (r: AvailRange, studioId: string) => r.studioId == null || r.studioId === studioId;
   const availOn = (uid: string, date: string): AvailRange[] => {
     if (isUnavailable(uid, date)) return [];
     return availMap.get(uid)?.get(date) ?? [];
   };
+  const availOnFor = (uid: string, date: string, studioId: string): AvailRange[] =>
+    availOn(uid, date).filter((r) => matchStudio(r, studioId));
 
   // Total dispos déclarées sur le mois par employé (générosité)
   for (const e of employees.values()) {
@@ -683,8 +688,8 @@ async function runEngine(ctx: EngineCtx) {
   };
 
   // Vérifie qu'une plage est intégralement couverte par une dispo de l'employé
-  const availCovers = (e: Employee, date: string, sMin: number, eMin: number): boolean => {
-    for (const r of availOn(e.id, date)) if (r.startMin <= sMin && r.endMin >= eMin) return true;
+  const availCovers = (e: Employee, date: string, sMin: number, eMin: number, studioId: string): boolean => {
+    for (const r of availOnFor(e.id, date, studioId)) if (r.startMin <= sMin && r.endMin >= eMin) return true;
     return false;
   };
 
@@ -787,7 +792,7 @@ async function runEngine(ctx: EngineCtx) {
     const eMin = req.endMin;
     if (hasConflict(e, req.date, sMin, eMin)) continue;
     assign(req, e, sMin, eMin);
-    if (!availCovers(e, req.date, sMin, eMin)) {
+    if (!availCovers(e, req.date, sMin, eMin, req.studio_id)) {
       alerts.push({
         type: "cdi_pinned_no_avail",
         severity: "info",
@@ -828,6 +833,7 @@ async function runEngine(ctx: EngineCtx) {
         // Trouver le requirement (cells libres) qui chevauche cette dispo et que e couvre
         const fitReqs = requirements.filter((r) =>
           r.date === date &&
+          matchStudio(range, r.studio_id) &&
           (reqCandidates.get(r.id) ?? []).some((c) => c.id === e.id) &&
           r.startMin < range.endMin && r.endMin > range.startMin,
         ).sort((a, b) => {
@@ -884,7 +890,7 @@ async function runEngine(ctx: EngineCtx) {
     );
     let avail = 0;
     for (const c of cands) {
-      const has = availOn(c.id, r.date).some(
+      const has = availOnFor(c.id, r.date, r.studio_id).some(
         (a) => a.startMin < r.endMin && a.endMin > r.startMin,
       );
       if (has) avail++;
@@ -917,15 +923,15 @@ async function runEngine(ctx: EngineCtx) {
       const ranked = ranking(cands, req.date);
       let placed = false;
       for (const e of ranked) {
-        // Trouver une dispo couvrant au moins min_shift_hours dans window
-        const dispos = availOn(e.id, req.date).filter(
+        // Trouver une dispo couvrant au moins min_shift_hours dans window (filtrée par studio)
+        const dispos = availOnFor(e.id, req.date, req.studio_id).filter(
           (r) => r.startMin < window.endMin && r.endMin > window.startMin,
         );
         if (dispos.length === 0) {
           if (s.strict_preferences) continue;
           // Pas strict : on autorise sans dispo (rare)
         }
-        for (const d of dispos.length ? dispos : [{ startMin: window.startMin, endMin: window.endMin }]) {
+        for (const d of dispos.length ? dispos : [{ startMin: window.startMin, endMin: window.endMin, studioId: null as string | null }]) {
           const lo = Math.max(window.startMin, d.startMin);
           const hi = Math.min(window.endMin, d.endMin);
           const maxH = maxShiftHFor(e, req.studio_id);
@@ -967,7 +973,7 @@ async function runEngine(ctx: EngineCtx) {
         if (i > 0 && req.cells[i - 1].userId) {
           const eId = req.cells[i - 1].userId!;
           const e = employees.get(eId);
-          if (e && tryExtendRight(e, req, i, s, employees, hasConflict, restOk, availOn, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
+          if (e && tryExtendRight(e, req, i, s, employees, hasConflict, restOk, availOnFor, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
             improved = true;
             continue;
           }
@@ -976,7 +982,7 @@ async function runEngine(ctx: EngineCtx) {
         if (i < req.cells.length - 1 && req.cells[i + 1].userId) {
           const eId = req.cells[i + 1].userId!;
           const e = employees.get(eId);
-          if (e && tryExtendLeft(e, req, i, s, employees, hasConflict, restOk, availOn, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
+          if (e && tryExtendLeft(e, req, i, s, employees, hasConflict, restOk, availOnFor, maxShiftHFor, maxWeeklyHFor, weeklyHours)) {
             improved = true;
             continue;
           }
@@ -997,8 +1003,8 @@ async function runEngine(ctx: EngineCtx) {
   let swapCount = 0;
   const MAX_SWAPS = 200;
 
-  const findAvailRangeCovering = (e: Employee, date: string, sMin: number, eMin: number): AvailRange | null => {
-    for (const r of availOn(e.id, date)) {
+  const findAvailRangeCovering = (e: Employee, date: string, sMin: number, eMin: number, studioId: string): AvailRange | null => {
+    for (const r of availOnFor(e.id, date, studioId)) {
       if (r.startMin <= sMin && r.endMin >= eMin) return r;
     }
     return null;
@@ -1013,7 +1019,7 @@ async function runEngine(ctx: EngineCtx) {
     coverEnd: number,
     ignoreConflictReqId?: string,
   ): { startMin: number; endMin: number } | null => {
-    const avail = findAvailRangeCovering(e, req.date, coverStart, coverEnd);
+    const avail = findAvailRangeCovering(e, req.date, coverStart, coverEnd, req.studio_id);
     if (!avail) return null;
     const maxH = maxShiftHFor(e, req.studio_id);
     const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
@@ -1290,7 +1296,7 @@ async function runEngine(ctx: EngineCtx) {
       const emp = employees.get(adj.user_id);
       if (!emp) continue;
       if (newDur > maxShiftHFor(emp, adj.studio_id) * 60) continue;
-      if (!availCovers(emp, adj.shift_date, newStart, newEnd)) continue;
+      if (!availCovers(emp, adj.shift_date, newStart, newEnd, adj.studio_id)) continue;
       const addedH = (newDur - (aEnd - aStart)) / 60;
       if (weeklyHours(emp, adj.shift_date) + addedH > maxWeeklyHFor(emp, adj.studio_id)) continue;
 
@@ -1342,7 +1348,7 @@ async function runEngine(ctx: EngineCtx) {
       if (req.cells[i].userId !== null || req.cells[i].blocked) { i++; continue; }
       let j = i;
       while (j < req.cells.length - 1 && req.cells[j + 1].userId === null && !req.cells[j + 1].blocked) j++;
-      const reason = diagnoseReason(req, reqCandidates.get(req.id) ?? [], availOn);
+      const reason = diagnoseReason(req, reqCandidates.get(req.id) ?? [], availOnFor);
       holes.push({
         studio_id: req.studio_id,
         studio_name: studioName.get(req.studio_id) ?? "—",
@@ -1437,7 +1443,7 @@ function tryExtendRight(
   _employees: Map<string, Employee>,
   hasConflict: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
   restOk: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
-  availOn: (uid: string, date: string) => AvailRange[],
+  availOnFor: (uid: string, date: string, studioId: string) => AvailRange[],
   maxShiftHFor: (e: Employee, sId: string) => number,
   maxWeeklyHFor: (e: Employee, sId: string) => number,
   weeklyHours: (e: Employee, date: string) => number,
@@ -1452,7 +1458,7 @@ function tryExtendRight(
   const wkRemainingH = maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date);
   if ((newEnd - a.endMin) / 60 > wkRemainingH) return false;
   // dispo
-  if (!availOn(e.id, req.date).some((r) => r.startMin <= a.startMin && r.endMin >= newEnd)) return false;
+  if (!availOnFor(e.id, req.date, req.studio_id).some((r) => r.startMin <= a.startMin && r.endMin >= newEnd)) return false;
   if (hasConflict(e, req.date, a.endMin, newEnd)) return false;
   if (!restOk(e, req.date, a.endMin, newEnd)) return false;
   cell.userId = e.id;
@@ -1467,7 +1473,7 @@ function tryExtendLeft(
   _employees: Map<string, Employee>,
   hasConflict: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
   restOk: (e: Employee, date: string, sMin: number, eMin: number) => boolean,
-  availOn: (uid: string, date: string) => AvailRange[],
+  availOnFor: (uid: string, date: string, studioId: string) => AvailRange[],
   maxShiftHFor: (e: Employee, sId: string) => number,
   maxWeeklyHFor: (e: Employee, sId: string) => number,
   weeklyHours: (e: Employee, date: string) => number,
@@ -1480,7 +1486,7 @@ function tryExtendLeft(
   if (newDurH > maxShiftHFor(e, req.studio_id)) return false;
   const wkRemainingH = maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date);
   if ((a.startMin - newStart) / 60 > wkRemainingH) return false;
-  if (!availOn(e.id, req.date).some((r) => r.startMin <= newStart && r.endMin >= a.endMin)) return false;
+  if (!availOnFor(e.id, req.date, req.studio_id).some((r) => r.startMin <= newStart && r.endMin >= a.endMin)) return false;
   if (hasConflict(e, req.date, newStart, a.startMin)) return false;
   if (!restOk(e, req.date, newStart, a.endMin)) return false;
   cell.userId = e.id;
@@ -1494,7 +1500,7 @@ function tryExtendLeft(
 function diagnoseReason(
   req: Requirement,
   cands: Employee[],
-  availOn: (uid: string, date: string) => AvailRange[],
+  availOnFor: (uid: string, date: string, studioId: string) => AvailRange[],
 ): string {
   if (cands.length === 0) {
     if (req.is_hybrid) {
@@ -1502,10 +1508,10 @@ function diagnoseReason(
     }
     return "Aucun employé qualifié (rôle/contrat/studio)";
   }
-  const withAvail = cands.filter((c) => availOn(c.id, req.date).length > 0);
+  const withAvail = cands.filter((c) => availOnFor(c.id, req.date, req.studio_id).length > 0);
   if (withAvail.length === 0) return "Aucun candidat n'a déclaré de disponibilité ce jour";
   const overlapping = withAvail.filter((c) =>
-    availOn(c.id, req.date).some((r) => r.startMin < req.endMin && r.endMin > req.startMin),
+    availOnFor(c.id, req.date, req.studio_id).some((r) => r.startMin < req.endMin && r.endMin > req.startMin),
   );
   if (overlapping.length === 0) return "Dispos déclarées hors créneau";
   return "Tous les candidats déjà saturés (quota hebdo, conflits ou repos 11h)";

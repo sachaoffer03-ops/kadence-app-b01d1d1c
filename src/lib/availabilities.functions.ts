@@ -25,13 +25,55 @@ const AvailInput = z.object({
   avail_date: z.string().regex(DATE_RE),
   start_time: z.string().regex(TIME_RE),
   end_time: z.string().regex(TIME_RE),
+  studio_id: z.string().uuid().nullable().optional(),
 });
 
 const UpdateInput = z.object({
   id: z.string().uuid(),
   start_time: z.string().regex(TIME_RE),
   end_time: z.string().regex(TIME_RE),
+  studio_id: z.string().uuid().nullable().optional(),
 });
+
+/** Retourne l'ensemble des studios rattachés à l'employé (user_studios ∪ profiles.studio_id). */
+async function getUserStudioIds(supabase: any, userId: string): Promise<string[]> {
+  const [{ data: us }, { data: prof }] = await Promise.all([
+    supabase.from("user_studios").select("studio_id").eq("user_id", userId),
+    supabase.from("profiles").select("studio_id").eq("id", userId).maybeSingle(),
+  ]);
+  const set = new Set<string>();
+  (us ?? []).forEach((r: any) => r.studio_id && set.add(r.studio_id));
+  if ((prof as any)?.studio_id) set.add((prof as any).studio_id);
+  return Array.from(set);
+}
+
+/** Résout le studio effectif d'une dispo :
+ *  - 0 studio → null
+ *  - 1 studio → celui-ci (par défaut si non fourni)
+ *  - ≥2 studios → OBLIGATOIRE et doit appartenir à ceux de l'employé.
+ */
+async function resolveStudioForAvail(
+  supabase: any,
+  userId: string,
+  provided: string | null | undefined,
+): Promise<string | null> {
+  const studios = await getUserStudioIds(supabase, userId);
+  if (studios.length === 0) return null;
+  if (studios.length === 1) {
+    if (provided && !studios.includes(provided)) {
+      throw new Error("Studio invalide pour cet employé");
+    }
+    return provided ?? studios[0];
+  }
+  // multi-studios
+  if (!provided) {
+    throw new Error("Choisis le studio concerné par ce créneau");
+  }
+  if (!studios.includes(provided)) {
+    throw new Error("Studio invalide pour cet employé");
+  }
+  return provided;
+}
 
 const DEFAULT_MIN_DURATION_MIN = 4 * 60;
 const STEP_MIN = 15;
@@ -160,6 +202,8 @@ export const createAvailability = createServerFn({ method: "POST" })
     const { s, e } = validateRangeShape(data.start_time, data.end_time, minDur);
     await ensureNoOverlap(supabase, userId, data.avail_date, s, e);
 
+    const studioId = await resolveStudioForAvail(supabase, userId, data.studio_id);
+
     const { data: row, error } = await supabase
       .from("availabilities")
       .insert({
@@ -167,6 +211,7 @@ export const createAvailability = createServerFn({ method: "POST" })
         avail_date: data.avail_date,
         start_time: data.start_time,
         end_time: data.end_time,
+        studio_id: studioId,
       })
       .select("id")
       .single();
@@ -206,9 +251,17 @@ export const updateAvailability = createServerFn({ method: "POST" })
     const { s, e } = validateRangeShape(data.start_time, data.end_time, minDur);
     await ensureNoOverlap(supabase, existing.user_id, existing.avail_date, s, e, data.id);
 
+    const patch: { start_time: string; end_time: string; studio_id?: string | null } = {
+      start_time: data.start_time,
+      end_time: data.end_time,
+    };
+    if (data.studio_id !== undefined) {
+      patch.studio_id = await resolveStudioForAvail(supabase, existing.user_id, data.studio_id);
+    }
+
     const { error } = await supabase
       .from("availabilities")
-      .update({ start_time: data.start_time, end_time: data.end_time })
+      .update(patch)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -671,7 +724,7 @@ export const getUserAvailabilitiesForMonth = createServerFn({ method: "GET" })
 
     const { data: avails } = await supabaseAdmin
       .from("availabilities")
-      .select("id, avail_date, start_time, end_time, created_at")
+      .select("id, avail_date, start_time, end_time, created_at, studio_id")
       .eq("user_id", data.userId)
       .gte("avail_date", start)
       .lte("avail_date", end)
@@ -711,7 +764,7 @@ export const getUserAvailabilitiesAll = createServerFn({ method: "GET" })
 
     const { data: avails } = await supabaseAdmin
       .from("availabilities")
-      .select("id, avail_date, start_time, end_time, created_at")
+      .select("id, avail_date, start_time, end_time, created_at, studio_id")
       .eq("user_id", data.userId)
       .order("avail_date", { ascending: true })
       .order("start_time", { ascending: true });
