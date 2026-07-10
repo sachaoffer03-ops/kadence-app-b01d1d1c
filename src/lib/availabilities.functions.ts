@@ -251,7 +251,7 @@ export const updateAvailability = createServerFn({ method: "POST" })
     const { s, e } = validateRangeShape(data.start_time, data.end_time, minDur);
     await ensureNoOverlap(supabase, existing.user_id, existing.avail_date, s, e, data.id);
 
-    const patch: Record<string, unknown> = {
+    const patch: { start_time: string; end_time: string; studio_id?: string | null } = {
       start_time: data.start_time,
       end_time: data.end_time,
     };
