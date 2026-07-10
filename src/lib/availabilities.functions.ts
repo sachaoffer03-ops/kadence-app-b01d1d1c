@@ -724,7 +724,7 @@ export const getUserAvailabilitiesForMonth = createServerFn({ method: "GET" })
 
     const { data: avails } = await supabaseAdmin
       .from("availabilities")
-      .select("id, avail_date, start_time, end_time, created_at")
+      .select("id, avail_date, start_time, end_time, created_at, studio_id")
       .eq("user_id", data.userId)
       .gte("avail_date", start)
       .lte("avail_date", end)
@@ -764,7 +764,7 @@ export const getUserAvailabilitiesAll = createServerFn({ method: "GET" })
 
     const { data: avails } = await supabaseAdmin
       .from("availabilities")
-      .select("id, avail_date, start_time, end_time, created_at")
+      .select("id, avail_date, start_time, end_time, created_at, studio_id")
       .eq("user_id", data.userId)
       .order("avail_date", { ascending: true })
       .order("start_time", { ascending: true });
