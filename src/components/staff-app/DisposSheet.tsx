@@ -130,17 +130,22 @@ export function DisposSheet({ open, onClose, userId }: { open: boolean; onClose:
       setLoading(true);
       // Charge les studios de l'employé (user_studios ∪ profiles.studio_id)
       const [{ data: us }, { data: prof }] = await Promise.all([
-        supabase.from("user_studios").select("studio_id, studios!inner(id, name, short_name)").eq("user_id", userId),
-        supabase.from("profiles").select("studio_id, studios:studio_id(id, name, short_name)").eq("id", userId).maybeSingle(),
+        supabase.from("user_studios").select("studio_id").eq("user_id", userId),
+        supabase.from("profiles").select("studio_id").eq("id", userId).maybeSingle(),
       ]);
-      const seen = new Set<string>();
+      const ids = new Set<string>();
+      for (const row of (us ?? []) as any[]) if (row.studio_id) ids.add(row.studio_id);
+      if ((prof as any)?.studio_id) ids.add((prof as any).studio_id);
       const opts: StudioOpt[] = [];
-      for (const row of (us ?? []) as any[]) {
-        const s = row.studios;
-        if (s && !seen.has(s.id)) { seen.add(s.id); opts.push({ id: s.id, label: s.short_name || s.name }); }
+      if (ids.size > 0) {
+        const { data: studiosData } = await supabase
+          .from("studios")
+          .select("id, name, short_name")
+          .in("id", Array.from(ids));
+        for (const s of (studiosData ?? []) as any[]) {
+          opts.push({ id: s.id, label: s.short_name || s.name });
+        }
       }
-      const ps = (prof as any)?.studios;
-      if (ps && !seen.has(ps.id)) { seen.add(ps.id); opts.push({ id: ps.id, label: ps.short_name || ps.name }); }
       setUserStudios(opts);
 
       const start = dateISO(1);
