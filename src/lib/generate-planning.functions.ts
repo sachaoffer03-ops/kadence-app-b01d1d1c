@@ -1508,10 +1508,10 @@ function diagnoseReason(
     }
     return "Aucun employé qualifié (rôle/contrat/studio)";
   }
-  const withAvail = cands.filter((c) => availOn(c.id, req.date).length > 0);
+  const withAvail = cands.filter((c) => availOnFor(c.id, req.date, req.studio_id).length > 0);
   if (withAvail.length === 0) return "Aucun candidat n'a déclaré de disponibilité ce jour";
   const overlapping = withAvail.filter((c) =>
-    availOn(c.id, req.date).some((r) => r.startMin < req.endMin && r.endMin > req.startMin),
+    availOnFor(c.id, req.date, req.studio_id).some((r) => r.startMin < req.endMin && r.endMin > req.startMin),
   );
   if (overlapping.length === 0) return "Dispos déclarées hors créneau";
   return "Tous les candidats déjà saturés (quota hebdo, conflits ou repos 11h)";
