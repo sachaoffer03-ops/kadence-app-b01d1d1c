@@ -268,9 +268,18 @@ function AppShell() {
       if (appRole === "manager" && !isStaffApp && !isPublic && managerPermissions) {
         const allowedPrefixes = managerPermissions;
         const alwaysOk = ["/staff/", "/profile"];
+        // Sous-pages liées à une permission "page" parente
+        const linkedIfAllowed: Record<string, string[]> = {
+          "/dispos-monitoring": ["/dispo-detail"],
+        };
         const isAllowed =
           allowedPrefixes.some((k) => currentPath === k || currentPath.startsWith(k + "/")) ||
-          alwaysOk.some((p) => currentPath.startsWith(p));
+          alwaysOk.some((p) => currentPath.startsWith(p)) ||
+          Object.entries(linkedIfAllowed).some(
+            ([parent, children]) =>
+              allowedPrefixes.includes(parent) &&
+              children.some((c) => currentPath === c || currentPath.startsWith(c + "/")),
+          );
         if (!isAllowed) {
           if (allowedPrefixes.length > 0) {
             navigate({ to: allowedPrefixes[0] as any });
