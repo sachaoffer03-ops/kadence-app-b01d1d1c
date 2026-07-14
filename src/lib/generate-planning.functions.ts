@@ -184,19 +184,27 @@ export const generatePlanning = createServerFn({ method: "POST" })
     const endD = new Date(startD.getFullYear(), startD.getMonth() + 1, 0);
     const monthEnd = isoDate(endD);
 
+    // Simulation silencieuse : dry_run forcé et aucune trace en DB
+    const silent = data.silent === true;
+    const dryRun = silent ? true : data.dry_run;
+    const excludeUserIds = new Set<string>(data.exclude_user_ids ?? []);
+
     // ── Verrou : refus si un run 'running' existe déjà sur la même période
-    const { data: lockRun } = await supabase
-      .from("planning_runs")
-      .select("id, started_at")
-      .eq("status", "running")
-      .lte("month_start_date", monthEnd)
-      .gte("month_end_date", monthStart)
-      .limit(1)
-      .maybeSingle();
-    if (lockRun) {
-      throw new Error(
-        `Une génération est déjà en cours pour cette période (run ${lockRun.id} démarré à ${lockRun.started_at}). Réessayez dans quelques minutes.`,
-      );
+    // (skippé en mode silent — la simulation ne concurrence rien)
+    if (!silent) {
+      const { data: lockRun } = await supabase
+        .from("planning_runs")
+        .select("id, started_at")
+        .eq("status", "running")
+        .lte("month_start_date", monthEnd)
+        .gte("month_end_date", monthStart)
+        .limit(1)
+        .maybeSingle();
+      if (lockRun) {
+        throw new Error(
+          `Une génération est déjà en cours pour cette période (run ${lockRun.id} démarré à ${lockRun.started_at}). Réessayez dans quelques minutes.`,
+        );
+      }
     }
 
     // ── Studios cibles
@@ -208,52 +216,60 @@ export const generatePlanning = createServerFn({ method: "POST" })
     const studioName = new Map(studiosArr.map((s) => [s.id, s.name]));
     if (studioIds.length === 0) throw new Error("Aucun studio sélectionné");
 
-    // ── Crée le run en status 'running'
-    const { data: runRow, error: runErr } = await supabase
-      .from("planning_runs")
-      .insert({
-        month_start_date: monthStart,
-        month_end_date: monthEnd,
-        studios_included: studioIds,
-        status: "running",
-        triggered_by: userId,
-        preserve_manual: data.preserve_manual,
-        preserve_locked: data.preserve_locked,
-        dry_run: data.dry_run,
-      })
-      .select("id")
-      .single();
-    if (runErr || !runRow) throw new Error(`Impossible de créer le run : ${runErr?.message}`);
-    const runId = runRow.id as string;
+    // ── Crée le run en status 'running' (sauf mode silent)
+    let runId: string | null = null;
+    if (!silent) {
+      const { data: runRow, error: runErr } = await supabase
+        .from("planning_runs")
+        .insert({
+          month_start_date: monthStart,
+          month_end_date: monthEnd,
+          studios_included: studioIds,
+          status: "running",
+          triggered_by: userId,
+          preserve_manual: data.preserve_manual,
+          preserve_locked: data.preserve_locked,
+          dry_run: dryRun,
+        })
+        .select("id")
+        .single();
+      if (runErr || !runRow) throw new Error(`Impossible de créer le run : ${runErr?.message}`);
+      runId = runRow.id as string;
+    }
 
     try {
       const result = await runEngine({
-        supabase, runId, monthStart, monthEnd, studioIds, studiosArr, studioName,
+        supabase, runId: runId ?? "silent", monthStart, monthEnd, studioIds, studiosArr, studioName,
         preserveManual: data.preserve_manual,
         preserveLocked: data.preserve_locked,
-        dryRun: data.dry_run,
+        dryRun,
+        excludeUserIds,
       });
 
       const durationMs = Date.now() - t0;
-      await supabase.from("planning_runs").update({
-        status: result.status,
-        coverage_rate: result.coverage_rate,
-        shifts_generated: result.shifts_generated,
-        shifts_with_holes: result.holes.length,
-        completed_at: new Date().toISOString(),
-        duration_ms: durationMs,
-        solver_logs: result.solver_logs,
-        alerts: result.alerts,
-      }).eq("id", runId);
+      if (runId) {
+        await supabase.from("planning_runs").update({
+          status: result.status,
+          coverage_rate: result.coverage_rate,
+          shifts_generated: result.shifts_generated,
+          shifts_with_holes: result.holes.length,
+          completed_at: new Date().toISOString(),
+          duration_ms: durationMs,
+          solver_logs: result.solver_logs,
+          alerts: result.alerts,
+        }).eq("id", runId);
+      }
 
-      return { planning_run_id: runId, duration_ms: durationMs, ...result };
+      return { planning_run_id: runId ?? null, duration_ms: durationMs, silent, ...result };
     } catch (e: any) {
-      await supabase.from("planning_runs").update({
-        status: "failed",
-        completed_at: new Date().toISOString(),
-        duration_ms: Date.now() - t0,
-        error_message: e?.message ?? String(e),
-      }).eq("id", runId);
+      if (runId) {
+        await supabase.from("planning_runs").update({
+          status: "failed",
+          completed_at: new Date().toISOString(),
+          duration_ms: Date.now() - t0,
+          error_message: e?.message ?? String(e),
+        }).eq("id", runId);
+      }
       throw e;
     }
   });
