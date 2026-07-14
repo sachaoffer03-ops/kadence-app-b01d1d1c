@@ -149,6 +149,10 @@ const GenerateInput = z.object({
   preserve_manual: z.boolean().default(true),
   preserve_locked: z.boolean().default(true),
   dry_run: z.boolean().default(false),
+  // Simulation admin : employés à ignorer complètement (dispos ignorées, non affectables)
+  exclude_user_ids: z.array(z.string().uuid()).optional(),
+  // Simulation admin : ne rien écrire dans planning_runs (implique dry_run=true)
+  silent: z.boolean().default(false),
 });
 
 // ─── Server fn : ADMIN GUARD ─────────────────────────────────────────────────
