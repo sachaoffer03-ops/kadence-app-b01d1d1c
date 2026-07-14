@@ -149,6 +149,10 @@ const GenerateInput = z.object({
   preserve_manual: z.boolean().default(true),
   preserve_locked: z.boolean().default(true),
   dry_run: z.boolean().default(false),
+  // Simulation admin : employés à ignorer complètement (dispos ignorées, non affectables)
+  exclude_user_ids: z.array(z.string().uuid()).optional(),
+  // Simulation admin : ne rien écrire dans planning_runs (implique dry_run=true)
+  silent: z.boolean().default(false),
 });
 
 // ─── Server fn : ADMIN GUARD ─────────────────────────────────────────────────
@@ -180,19 +184,27 @@ export const generatePlanning = createServerFn({ method: "POST" })
     const endD = new Date(startD.getFullYear(), startD.getMonth() + 1, 0);
     const monthEnd = isoDate(endD);
 
+    // Simulation silencieuse : dry_run forcé et aucune trace en DB
+    const silent = data.silent === true;
+    const dryRun = silent ? true : data.dry_run;
+    const excludeUserIds = new Set<string>(data.exclude_user_ids ?? []);
+
     // ── Verrou : refus si un run 'running' existe déjà sur la même période
-    const { data: lockRun } = await supabase
-      .from("planning_runs")
-      .select("id, started_at")
-      .eq("status", "running")
-      .lte("month_start_date", monthEnd)
-      .gte("month_end_date", monthStart)
-      .limit(1)
-      .maybeSingle();
-    if (lockRun) {
-      throw new Error(
-        `Une génération est déjà en cours pour cette période (run ${lockRun.id} démarré à ${lockRun.started_at}). Réessayez dans quelques minutes.`,
-      );
+    // (skippé en mode silent — la simulation ne concurrence rien)
+    if (!silent) {
+      const { data: lockRun } = await supabase
+        .from("planning_runs")
+        .select("id, started_at")
+        .eq("status", "running")
+        .lte("month_start_date", monthEnd)
+        .gte("month_end_date", monthStart)
+        .limit(1)
+        .maybeSingle();
+      if (lockRun) {
+        throw new Error(
+          `Une génération est déjà en cours pour cette période (run ${lockRun.id} démarré à ${lockRun.started_at}). Réessayez dans quelques minutes.`,
+        );
+      }
     }
 
     // ── Studios cibles
@@ -204,52 +216,60 @@ export const generatePlanning = createServerFn({ method: "POST" })
     const studioName = new Map(studiosArr.map((s) => [s.id, s.name]));
     if (studioIds.length === 0) throw new Error("Aucun studio sélectionné");
 
-    // ── Crée le run en status 'running'
-    const { data: runRow, error: runErr } = await supabase
-      .from("planning_runs")
-      .insert({
-        month_start_date: monthStart,
-        month_end_date: monthEnd,
-        studios_included: studioIds,
-        status: "running",
-        triggered_by: userId,
-        preserve_manual: data.preserve_manual,
-        preserve_locked: data.preserve_locked,
-        dry_run: data.dry_run,
-      })
-      .select("id")
-      .single();
-    if (runErr || !runRow) throw new Error(`Impossible de créer le run : ${runErr?.message}`);
-    const runId = runRow.id as string;
+    // ── Crée le run en status 'running' (sauf mode silent)
+    let runId: string | null = null;
+    if (!silent) {
+      const { data: runRow, error: runErr } = await supabase
+        .from("planning_runs")
+        .insert({
+          month_start_date: monthStart,
+          month_end_date: monthEnd,
+          studios_included: studioIds,
+          status: "running",
+          triggered_by: userId,
+          preserve_manual: data.preserve_manual,
+          preserve_locked: data.preserve_locked,
+          dry_run: dryRun,
+        })
+        .select("id")
+        .single();
+      if (runErr || !runRow) throw new Error(`Impossible de créer le run : ${runErr?.message}`);
+      runId = runRow.id as string;
+    }
 
     try {
       const result = await runEngine({
-        supabase, runId, monthStart, monthEnd, studioIds, studiosArr, studioName,
+        supabase, runId: runId ?? "silent", monthStart, monthEnd, studioIds, studiosArr, studioName,
         preserveManual: data.preserve_manual,
         preserveLocked: data.preserve_locked,
-        dryRun: data.dry_run,
+        dryRun,
+        excludeUserIds,
       });
 
       const durationMs = Date.now() - t0;
-      await supabase.from("planning_runs").update({
-        status: result.status,
-        coverage_rate: result.coverage_rate,
-        shifts_generated: result.shifts_generated,
-        shifts_with_holes: result.holes.length,
-        completed_at: new Date().toISOString(),
-        duration_ms: durationMs,
-        solver_logs: result.solver_logs,
-        alerts: result.alerts,
-      }).eq("id", runId);
+      if (runId) {
+        await supabase.from("planning_runs").update({
+          status: result.status,
+          coverage_rate: result.coverage_rate,
+          shifts_generated: result.shifts_generated,
+          shifts_with_holes: result.holes.length,
+          completed_at: new Date().toISOString(),
+          duration_ms: durationMs,
+          solver_logs: result.solver_logs,
+          alerts: result.alerts,
+        }).eq("id", runId);
+      }
 
-      return { planning_run_id: runId, duration_ms: durationMs, ...result };
+      return { planning_run_id: runId ?? null, duration_ms: durationMs, silent, ...result };
     } catch (e: any) {
-      await supabase.from("planning_runs").update({
-        status: "failed",
-        completed_at: new Date().toISOString(),
-        duration_ms: Date.now() - t0,
-        error_message: e?.message ?? String(e),
-      }).eq("id", runId);
+      if (runId) {
+        await supabase.from("planning_runs").update({
+          status: "failed",
+          completed_at: new Date().toISOString(),
+          duration_ms: Date.now() - t0,
+          error_message: e?.message ?? String(e),
+        }).eq("id", runId);
+      }
       throw e;
     }
   });
@@ -315,10 +335,12 @@ interface EngineCtx {
   preserveManual: boolean;
   preserveLocked: boolean;
   dryRun: boolean;
+  excludeUserIds?: Set<string>;
 }
 
 async function runEngine(ctx: EngineCtx) {
   const { supabase, monthStart, monthEnd, studioIds, studioName, preserveManual, preserveLocked, dryRun } = ctx;
+  const excludeUserIds = ctx.excludeUserIds ?? new Set<string>();
   const logs: any = { phases: {} };
   const alerts: Array<{ type: string; severity: "info" | "warning" | "error"; user_id?: string; user_name?: string; message: string }> = [];
 
@@ -339,6 +361,26 @@ async function runEngine(ctx: EngineCtx) {
     fetchAll<any>(supabase.from("business_roles").select("id, name")),
     fetchAll<any>(supabase.from("unavailability_periods").select("user_id, start_date, end_date").lte("start_date", monthEnd).gte("end_date", monthStart)),
   ]);
+
+  // ─── Simulation admin : retire complètement les employés exclus ────────────
+  // (dispos ignorées, contrats/rôles/studios ignorés → non affectables)
+  if (excludeUserIds.size > 0) {
+    const drop = (arr: any[], key: string) => {
+      for (let i = arr.length - 1; i >= 0; i--) if (excludeUserIds.has(arr[i][key])) arr.splice(i, 1);
+    };
+    drop(profilesRows, "id");
+    drop(contractsRows, "user_id");
+    drop(rolesRows, "user_id");
+    drop(studiosRows, "user_id");
+    drop(availsRows, "user_id");
+    drop(trainingCompletionsRows, "user_id");
+    drop(unavailRows ?? [], "user_id");
+    // Retire aussi les shifts existants de ces employés (sinon vus comme "déjà pris")
+    for (let i = existingShifts.length - 1; i >= 0; i--) {
+      if (existingShifts[i].user_id && excludeUserIds.has(existingShifts[i].user_id)) existingShifts.splice(i, 1);
+    }
+    logs.excluded_user_ids = Array.from(excludeUserIds);
+  }
 
   // Indisponibilités : Map<userId, Array<{start,end}>>
   const unavailByUser = new Map<string, Array<{ start: string; end: string }>>();
