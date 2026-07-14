@@ -1,52 +1,35 @@
-# Mobile UI — Admin Kadence
+ic## Objectif
 
-L'admin a 14 pages, 10k+ lignes. Une adaptation ciblée veut dire : corriger ce qui casse réellement sur iPhone (390×844), sans toucher au design ni à la logique métier. Je propose 3 vagues pour rester gérable et te laisser valider entre chaque.
+Lancer une génération de planning **test** pour Rhode en août 2026 en faisant comme si Anaïs n'existait pas (ses dispos ignorées), sans que la simulation n'apparaisse dans l'historique des runs ni pour les autres utilisateurs.
 
-## Patterns à corriger partout (référentiel commun)
+## Approche
 
-- **Headers de page** : titres + boutons d'action qui se chevauchent → grid `grid-cols-[minmax(0,1fr)_auto]` + `truncate` + boutons icon-only au mobile.
-- **Tables debord** : passage en cartes empilées < `md`, table conservée ≥ `md`.
-- **Filtres en ligne** : barre horizontale scrollable (`overflow-x-auto`) ou bouton « Filtres » qui ouvre une `Sheet` au mobile.
-- **Tap targets** : tous les boutons d'action passent à `min-h-11` (44px) sur mobile.
-- **Paddings** : `px-4 py-4` au mobile, `md:px-6 md:py-6` au-delà (au lieu des `px-8` desktop systématiques).
-- **Modales/Dialogs** : utilisation de `Sheet` (bottom) au lieu de `Dialog` sur mobile pour les formulaires longs.
-- **Sidebar mobile** : déjà OK (drawer existant), je vérifie juste que le `TopBar` reste lisible.
+Deux ajouts très ciblés au générateur existant, réservés admin :
 
-## Vague 1 — pages courtes & à fort impact (cette session)
+1. **Paramètre `exclude_user_ids`** dans `generatePlanning` (server fn) : filtre les employés listés avant l'appel à l'algo (dispos ignorées, non-affectables). Aucun impact BDD, purement en mémoire pendant le run.
 
-Pages simples qui se lisent vite et se corrigent vite. Effet visible immédiatement.
+2. **Paramètre `silent`** : quand `dry_run=true` et `silent=true`, on n'insère **rien** dans `planning_runs` (aujourd'hui un dry-run laisse quand même une ligne d'historique). Le résultat est renvoyé uniquement à l'appelant.
 
-- `dashboard.tsx` (237 l) — KPIs en grille 2-col mobile au lieu de 4, timeline scrollable.
-- `notifications.tsx` (177 l) — liste compacte, swipe-friendly.
-- `feedbacks.tsx` (315 l) — cards empilées.
-- `signalements.tsx` (369 l) — cards empilées + statut en chip.
-- `rapports.tsx` (308 l) — exports en menu déroulant, charts responsive.
-- `trous.tsx` (636 l) — la page la plus critique opérationnellement, cards mobile dédiées.
+## Où le déclencher
 
-## Vague 2 — pages moyennes (session suivante)
+Ajout d'un petit bloc "Simulation avancée (admin)" sur `/admin/diagnostic` (ou nouvelle page `/admin/planning-sandbox`) avec :
+- sélecteur studio (Rhode présélectionné)
+- mois (août 2026)
+- multi-select d'employés à exclure
+- bouton "Lancer simulation"
+- affichage inline du résultat (shifts générés, couverture, trous, logs)
 
-- `staff.index.tsx` (399 l) + `staff.$id.tsx` — liste équipe et fiche détaillée.
-- `demandes.tsx` (761 l) — workflow validation/refus en bottom sheet.
-- `pointage.tsx` (842 l) — table → cards par employé.
-- `reglages.tsx` (427 l) — sections collapsibles.
+Rien n'est publié, rien n'est visible ailleurs. Fermer la page = tout disparaît.
 
-## Vague 3 — les trois mastodontes (session dédiée chacun)
+## Fichiers touchés
 
-- `planning.tsx` (2075 l) — la grille planning au mobile demande une refonte d'affichage (vue jour au lieu de semaine, swipe entre jours). C'est le plus délicat, je veux le traiter seul pour pas tout casser.
-- `cloture.tsx` (1711 l) — wizard de clôture, étapes en plein écran mobile.
-- `studios.tsx` (2101 l) — config admin lourde, tabs verticales mobile.
+- `src/lib/generate-planning.functions.ts` — nouveaux champs `exclude_user_ids` (uuid[]) et `silent` (bool) dans le schéma d'input ; filtre la liste employés ; skip l'insert dans `planning_runs` si `silent && dry_run`.
+- Nouvelle page admin (ou section dans diagnostic) pour l'UI de simulation.
 
-## Ce qui ne change pas
+Aucune migration, aucune modification de RLS, aucun changement pour les employés.
 
-- Aucune logique métier touchée — purement présentation.
-- Design tokens existants conservés (coral, off-white, Inter, pas d'emoji, pas de gradients).
-- Desktop reste identique à 100 %.
-- Pas de nouvelle dépendance.
+## Alternative plus légère
 
-## Livrable de la session
+Si tu veux zéro nouvelle UI : je fais juste la modif serveur et je lance moi-même la simulation depuis un appel one-shot, puis je te colle le résultat dans le chat. Rien n'est ajouté à ton app.
 
-Vague 1 implémentée et vérifiée. Tu me dis si le ton mobile te convient avant que j'attaque la vague 2.
-
----
-
-**Tu valides ce découpage ?** Si tu préfères que j'attaque directement une page précise en priorité (par ex. planning qui est le plus utilisé sur le terrain), dis-le et je réorganise.
+Dis-moi : **UI admin réutilisable** ou **one-shot ponctuel** ?
