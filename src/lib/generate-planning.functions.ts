@@ -362,6 +362,22 @@ async function runEngine(ctx: EngineCtx) {
     fetchAll<any>(supabase.from("unavailability_periods").select("user_id, start_date, end_date").lte("start_date", monthEnd).gte("end_date", monthStart)),
   ]);
 
+  // ─── Simulation admin : retire complètement les employés exclus ────────────
+  // (dispos ignorées, contrats/rôles/studios ignorés → non affectables)
+  if (excludeUserIds.size > 0) {
+    const drop = (arr: any[], key: string) => {
+      for (let i = arr.length - 1; i >= 0; i--) if (excludeUserIds.has(arr[i][key])) arr.splice(i, 1);
+    };
+    drop(profilesRows, "id");
+    drop(contractsRows, "user_id");
+    drop(rolesRows, "user_id");
+    drop(studiosRows, "user_id");
+    drop(availsRows, "user_id");
+    drop(trainingCompletionsRows, "user_id");
+    drop(unavailRows ?? [], "user_id");
+    logs.excluded_user_ids = Array.from(excludeUserIds);
+  }
+
   // Indisponibilités : Map<userId, Array<{start,end}>>
   const unavailByUser = new Map<string, Array<{ start: string; end: string }>>();
   for (const u of unavailRows ?? []) {
