@@ -375,6 +375,10 @@ async function runEngine(ctx: EngineCtx) {
     drop(availsRows, "user_id");
     drop(trainingCompletionsRows, "user_id");
     drop(unavailRows ?? [], "user_id");
+    // Retire aussi les shifts existants de ces employés (sinon vus comme "déjà pris")
+    for (let i = existingShifts.length - 1; i >= 0; i--) {
+      if (existingShifts[i].user_id && excludeUserIds.has(existingShifts[i].user_id)) existingShifts.splice(i, 1);
+    }
     logs.excluded_user_ids = Array.from(excludeUserIds);
   }
 
