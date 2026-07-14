@@ -42,6 +42,7 @@ import { Route as FormationCourseIdRouteImport } from './routes/formation.$cours
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as DispoDetailUserIdRouteImport } from './routes/dispo-detail.$userId'
 import { Route as DisplayStudioIdRouteImport } from './routes/display.$studioId'
+import { Route as AdminPlanningSandboxRouteImport } from './routes/admin.planning-sandbox'
 import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-studios'
 import { Route as AdminEmailPreviewRouteImport } from './routes/admin.email-preview'
 import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
@@ -224,6 +225,11 @@ const DisplayStudioIdRoute = DisplayStudioIdRouteImport.update({
   path: '/display/$studioId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPlanningSandboxRoute = AdminPlanningSandboxRouteImport.update({
+  id: '/admin/planning-sandbox',
+  path: '/admin/planning-sandbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminMigrateStudiosRoute = AdminMigrateStudiosRouteImport.update({
   id: '/admin/migrate-studios',
   path: '/admin/migrate-studios',
@@ -341,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
+  '/admin/planning-sandbox': typeof AdminPlanningSandboxRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
   '/dispo-detail/$userId': typeof DispoDetailUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -391,6 +398,7 @@ export interface FileRoutesByTo {
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
+  '/admin/planning-sandbox': typeof AdminPlanningSandboxRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
   '/dispo-detail/$userId': typeof DispoDetailUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -443,6 +451,7 @@ export interface FileRoutesById {
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
   '/admin/migrate-studios': typeof AdminMigrateStudiosRoute
+  '/admin/planning-sandbox': typeof AdminPlanningSandboxRoute
   '/display/$studioId': typeof DisplayStudioIdRoute
   '/dispo-detail/$userId': typeof DispoDetailUserIdRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -496,6 +505,7 @@ export interface FileRouteTypes {
     | '/admin/diagnostic'
     | '/admin/email-preview'
     | '/admin/migrate-studios'
+    | '/admin/planning-sandbox'
     | '/display/$studioId'
     | '/dispo-detail/$userId'
     | '/email/unsubscribe'
@@ -546,6 +556,7 @@ export interface FileRouteTypes {
     | '/admin/diagnostic'
     | '/admin/email-preview'
     | '/admin/migrate-studios'
+    | '/admin/planning-sandbox'
     | '/display/$studioId'
     | '/dispo-detail/$userId'
     | '/email/unsubscribe'
@@ -597,6 +608,7 @@ export interface FileRouteTypes {
     | '/admin/diagnostic'
     | '/admin/email-preview'
     | '/admin/migrate-studios'
+    | '/admin/planning-sandbox'
     | '/display/$studioId'
     | '/dispo-detail/$userId'
     | '/email/unsubscribe'
@@ -649,6 +661,7 @@ export interface RootRouteChildren {
   AdminDiagnosticRoute: typeof AdminDiagnosticRoute
   AdminEmailPreviewRoute: typeof AdminEmailPreviewRoute
   AdminMigrateStudiosRoute: typeof AdminMigrateStudiosRoute
+  AdminPlanningSandboxRoute: typeof AdminPlanningSandboxRoute
   DisplayStudioIdRoute: typeof DisplayStudioIdRoute
   DispoDetailUserIdRoute: typeof DispoDetailUserIdRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -899,6 +912,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DisplayStudioIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/planning-sandbox': {
+      id: '/admin/planning-sandbox'
+      path: '/admin/planning-sandbox'
+      fullPath: '/admin/planning-sandbox'
+      preLoaderRoute: typeof AdminPlanningSandboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/migrate-studios': {
       id: '/admin/migrate-studios'
       path: '/admin/migrate-studios'
@@ -1082,6 +1102,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDiagnosticRoute: AdminDiagnosticRoute,
   AdminEmailPreviewRoute: AdminEmailPreviewRoute,
   AdminMigrateStudiosRoute: AdminMigrateStudiosRoute,
+  AdminPlanningSandboxRoute: AdminPlanningSandboxRoute,
   DisplayStudioIdRoute: DisplayStudioIdRoute,
   DispoDetailUserIdRoute: DispoDetailUserIdRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
