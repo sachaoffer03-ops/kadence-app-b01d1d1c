@@ -142,14 +142,24 @@ function SandboxPage() {
       <div className="grid gap-6" style={{ gridTemplateColumns: "minmax(0,320px) minmax(0,1fr)" }}>
         {/* Config */}
         <div className="space-y-4">
-          <Card title="Studio">
-            <select
-              value={studioId}
-              onChange={(e) => setStudioId(e.target.value)}
-              style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--background)", fontSize: 13 }}
-            >
-              {studios.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+          <Card title={`Studios (${studioIds.size})`} subtitle="Multi-sélection : l'algo optimise conjointement pour éviter les doubles-bookings des employés multi-studios.">
+            <div className="flex flex-col gap-1">
+              {studios.map((s) => {
+                const on = studioIds.has(s.id);
+                return (
+                  <label key={s.id} className="flex items-center gap-2 px-2 py-1.5 cursor-pointer"
+                    style={{ fontSize: 13, borderRadius: 6, background: on ? "color-mix(in oklab, var(--coral, #F0997B) 10%, transparent)" : "transparent" }}>
+                    <input type="checkbox" checked={on}
+                      onChange={() => setStudioIds((prev) => {
+                        const n = new Set(prev);
+                        if (n.has(s.id)) n.delete(s.id); else n.add(s.id);
+                        return n;
+                      })} />
+                    <span>{s.name}</span>
+                  </label>
+                );
+              })}
+            </div>
           </Card>
 
           <Card title="Mois">
