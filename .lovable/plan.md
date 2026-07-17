@@ -1,35 +1,93 @@
-ic## Objectif
+## Objectif
 
-Lancer une génération de planning **test** pour Rhode en août 2026 en faisant comme si Anaïs n'existait pas (ses dispos ignorées), sans que la simulation n'apparaisse dans l'historique des runs ni pour les autres utilisateurs.
+Rendre le générateur plus utile sans surcharger : (1) toujours voir le résultat avant que ça touche la vraie base, (2) comparer 2 essais côte à côte et publier le meilleur en 1 clic.
 
-## Approche
+Principe UX : un seul écran, gros chiffres lisibles, 2 boutons max (Publier / Refaire).
 
-Deux ajouts très ciblés au générateur existant, réservés admin :
+---
 
-1. **Paramètre `exclude_user_ids`** dans `generatePlanning` (server fn) : filtre les employés listés avant l'appel à l'algo (dispos ignorées, non-affectables). Aucun impact BDD, purement en mémoire pendant le run.
+## 1. Aperçu avant publication
 
-2. **Paramètre `silent`** : quand `dry_run=true` et `silent=true`, on n'insère **rien** dans `planning_runs` (aujourd'hui un dry-run laisse quand même une ligne d'historique). Le résultat est renvoyé uniquement à l'appelant.
+Aujourd'hui `/planning/generate` écrit directement les shifts en base. On passe à un flux en 2 temps :
 
-## Où le déclencher
+**Étape A — Simuler (par défaut)**
+- Le bouton principal devient "Prévisualiser" (au lieu de "Générer").
+- Sous le capot : appel `generatePlanning` en mode `dry_run: true, silent: true` (déjà supporté).
+- Rien n'est écrit en base, rien n'apparaît dans l'historique.
 
-Ajout d'un petit bloc "Simulation avancée (admin)" sur `/admin/diagnostic` (ou nouvelle page `/admin/planning-sandbox`) avec :
-- sélecteur studio (Rhode présélectionné)
-- mois (août 2026)
-- multi-select d'employés à exclure
-- bouton "Lancer simulation"
-- affichage inline du résultat (shifts générés, couverture, trous, logs)
+**Étape B — Écran de résultat**
+Un seul écran, 3 blocs visuels :
 
-Rien n'est publié, rien n'est visible ailleurs. Fermer la page = tout disparaît.
+```text
+┌─────────────────────────────────────────────┐
+│  Août 2026 · Rhode + Châtelain             │
+├─────────────────────────────────────────────┤
+│  ✓ 87 shifts remplis    ✕ 4 trous restants │
+│  ⚖ Équité : bonne       ⏱ 312h planifiées  │
+├─────────────────────────────────────────────┤
+│  🔴 4 trous à combler                      │
+│    • Sam 8 août 07-12  Rhode Barista       │
+│    • Dim 9 août 14-19  Châtelain Accueil   │
+│    ...                                      │
+│                                             │
+│  🟡 3 employés sous-utilisés               │
+│    • Lucas : 12h / 40h dispo               │
+│    ...                                      │
+├─────────────────────────────────────────────┤
+│  [Refaire]              [Publier ce plan]  │
+└─────────────────────────────────────────────┘
+```
 
-## Fichiers touchés
+- **Publier** = re-run en mode `dry_run: false`, écriture réelle. Toast de succès, redirection vers `/planning`.
+- **Refaire** = retour au formulaire, paramètres conservés.
 
-- `src/lib/generate-planning.functions.ts` — nouveaux champs `exclude_user_ids` (uuid[]) et `silent` (bool) dans le schéma d'input ; filtre la liste employés ; skip l'insert dans `planning_runs` si `silent && dry_run`.
-- Nouvelle page admin (ou section dans diagnostic) pour l'UI de simulation.
+**Pourquoi utile** : Sacha n'a plus jamais peur de "casser" le planning en cliquant. Le résultat est visible AVANT que ce soit publié.
 
-Aucune migration, aucune modification de RLS, aucun changement pour les employés.
+---
 
-## Alternative plus légère
+## 2. Comparer 2 scénarios
 
-Si tu veux zéro nouvelle UI : je fais juste la modif serveur et je lance moi-même la simulation depuis un appel one-shot, puis je te colle le résultat dans le chat. Rien n'est ajouté à ton app.
+Sur l'écran d'aperçu, un bouton discret : **"Comparer avec une autre config"**.
 
-Dis-moi : **UI admin réutilisable** ou **one-shot ponctuel** ?
+Ouvre un panneau latéral (droite) avec les mêmes filtres (whitelist, exclusions, studios). Le user modifie, clique "Lancer le comparatif" → 2e simulation.
+
+**Écran comparaison** :
+
+```text
+┌──────────────── Scénario A ─────┬──────────── Scénario B ────────┐
+│ Sans Anaïs                       │ Avec Anaïs + Marie prioritaire │
+├──────────────────────────────────┼─────────────────────────────────┤
+│ Trous       4  🔴                │ Trous       1  🟢              │
+│ Équité      bonne                │ Équité      moyenne            │
+│ Heures      312h                 │ Heures      328h               │
+│ Étudiants   ok (450/650)         │ Étudiants   ok (490/650)       │
+├──────────────────────────────────┼─────────────────────────────────┤
+│ [Publier A]                      │ [Publier B]  ← recommandé      │
+└──────────────────────────────────┴─────────────────────────────────┘
+```
+
+- Le "recommandé" est calculé simplement : moins de trous > meilleure équité > respect quotas.
+- Un seul clic publie le scénario choisi ; l'autre est jeté.
+
+**Pourquoi utile** : le user teste "et si..." sans risque, et voit noir sur blanc quel choix est le meilleur.
+
+---
+
+## Fichiers touchés (léger, ciblé)
+
+- `src/routes/planning.generate.tsx` — Refonte du flux : bouton "Prévisualiser" par défaut, nouvel état `previewResult`, écran résultat, panneau comparatif.
+- Réutilisation directe de ce qui existe déjà :
+  - `generatePlanning({ dry_run, silent })` — déjà en place
+  - Composants d'affichage de résultat de `/admin/planning-sandbox` (trous, sous-utilisés) — on extrait 2-3 composants partagés dans `src/components/planning/PreviewResult.tsx`.
+- Rien côté serveur, rien en BDD, aucune migration.
+
+## Ce qu'on NE fait PAS (pour rester simple)
+
+- Pas de sauvegarde des scénarios (éphémère, disparaît si on quitte la page).
+- Pas de comparaison à 3+ scénarios (A vs B suffit).
+- Pas de diff shift-par-shift entre A et B (juste les KPIs et la liste des trous).
+- L'admin sandbox (`/admin/planning-sandbox`) reste pour les cas power-user avancés, on ne fusionne pas les deux pour l'instant.
+
+## Résultat attendu
+
+Sacha ouvre `/planning/generate`, coche Rhode + Châtelain, clique **Prévisualiser**. Il voit "4 trous, équité bonne". Il clique **Comparer**, ajoute Marie en whitelist, relance. Scénario B a 1 trou et est marqué recommandé. Clic sur **Publier B**. Terminé, planning en ligne. Zéro trace des scénarios rejetés.
