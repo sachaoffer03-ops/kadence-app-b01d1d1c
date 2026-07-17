@@ -53,6 +53,7 @@ function SandboxPage() {
   const [studioId, setStudioId] = useState<string>("");
   const [employees, setEmployees] = useState<EmpRow[]>([]);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [whitelist, setWhitelist] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SimResult | null>(null);
   const [error, setError] = useState<string>("");
