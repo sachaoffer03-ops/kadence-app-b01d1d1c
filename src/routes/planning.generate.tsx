@@ -877,6 +877,12 @@ function PreviewView({
         Comparer avec une autre config →
       </button>
 
+      {/* Aperçu visuel des shifts */}
+      {r.shifts && r.shifts.length > 0 && (
+        <PreviewWeekGrid shifts={r.shifts} employees={employees} studios={studios} />
+      )}
+
+
       {/* Trous à combler */}
       {r.holes.length > 0 && (
         <Card className="p-5 mb-5 rounded-2xl">
