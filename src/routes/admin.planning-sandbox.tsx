@@ -261,7 +261,7 @@ function SandboxPage() {
                 <>
                   <div className="flex gap-2 flex-wrap">
                     <button
-                      onClick={() => downloadPlanningPDF(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      onClick={() => downloadPlanningPDF(result, employees, studios.filter((s) => studioIds.has(s.id)).map((s) => s.name).join(" + "), MONTHS_FR[month], year, excluded, employees)}
                       style={{
                         padding: "8px 12px", borderRadius: 6,
                         background: "var(--foreground)", color: "var(--background)",
@@ -272,7 +272,7 @@ function SandboxPage() {
                       <Download size={14} /> Télécharger PDF
                     </button>
                     <button
-                      onClick={() => downloadPlanningHTML(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      onClick={() => downloadPlanningHTML(result, employees, studios.filter((s) => studioIds.has(s.id)).map((s) => s.name).join(" + "), MONTHS_FR[month], year, excluded, employees)}
                       style={{
                         padding: "8px 12px", borderRadius: 6,
                         background: "transparent", color: "var(--foreground)",
