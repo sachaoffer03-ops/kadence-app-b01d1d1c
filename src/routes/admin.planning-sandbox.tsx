@@ -218,9 +218,9 @@ function SandboxPage() {
 
               {result.shifts && result.shifts.length > 0 && (
                 <>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button
-                      onClick={() => downloadPlanningHTML(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      onClick={() => downloadPlanningPDF(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
                       style={{
                         padding: "8px 12px", borderRadius: 6,
                         background: "var(--foreground)", color: "var(--background)",
@@ -228,7 +228,18 @@ function SandboxPage() {
                         cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
                       }}
                     >
-                      <Download size={14} /> Télécharger le planning (HTML)
+                      <Download size={14} /> Télécharger PDF
+                    </button>
+                    <button
+                      onClick={() => downloadPlanningHTML(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      style={{
+                        padding: "8px 12px", borderRadius: 6,
+                        background: "transparent", color: "var(--foreground)",
+                        border: "1px solid var(--border)", fontSize: 13, fontWeight: 500,
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >
+                      <Download size={14} /> HTML
                     </button>
                     <button
                       onClick={() => downloadPlanningCSV(result, employees, MONTHS_FR[month], year)}
@@ -239,7 +250,7 @@ function SandboxPage() {
                         cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
                       }}
                     >
-                      <Download size={14} /> Export CSV
+                      <Download size={14} /> CSV
                     </button>
                   </div>
                   <WeekView shifts={result.shifts} employees={employees} />
