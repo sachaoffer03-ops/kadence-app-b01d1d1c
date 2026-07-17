@@ -290,3 +290,115 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "go
     </div>
   );
 }
+
+const DAYS_FR = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+const ROLE_COLORS: Record<string, string> = {
+  Barista: "#F0997B",
+  Accueil: "#3BAFA3",
+  Host: "#A78BC7",
+  Cuisine: "#E8A0BF",
+};
+
+function isoWeekKey(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = (d.getUTCDay() + 6) % 7; // 0=Mon
+  const monday = new Date(d);
+  monday.setUTCDate(d.getUTCDate() - day);
+  return monday.toISOString().slice(0, 10);
+}
+
+function fmtTime(t: string) {
+  return t.slice(0, 5);
+}
+
+function WeekView({ shifts, employees }: { shifts: GenShift[]; employees: EmpRow[] }) {
+  const nameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of employees) m.set(e.id, `${e.first_name} ${e.last_name}`);
+    return m;
+  }, [employees]);
+
+  const weeks = useMemo(() => {
+    const byWeek = new Map<string, Map<string, GenShift[]>>();
+    for (const sh of shifts) {
+      const wk = isoWeekKey(sh.shift_date);
+      if (!byWeek.has(wk)) byWeek.set(wk, new Map());
+      const byDay = byWeek.get(wk)!;
+      if (!byDay.has(sh.shift_date)) byDay.set(sh.shift_date, []);
+      byDay.get(sh.shift_date)!.push(sh);
+    }
+    const sortedWeeks = Array.from(byWeek.entries()).sort(([a], [b]) => a.localeCompare(b));
+    return sortedWeeks.map(([wk, byDay]) => {
+      const days = Array.from(byDay.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, list]) => ({
+          date,
+          shifts: list.slice().sort((a, b) =>
+            a.start_time.localeCompare(b.start_time) ||
+            a.business_role.localeCompare(b.business_role),
+          ),
+        }));
+      return { wk, days };
+    });
+  }, [shifts]);
+
+  return (
+    <Card title={`Planning généré — ${shifts.length} shifts`} subtitle="Créneaux vides = trous non pourvus.">
+      <div className="space-y-4">
+        {weeks.map(({ wk, days }) => {
+          const wkDate = new Date(wk + "T00:00:00");
+          const end = new Date(wkDate);
+          end.setUTCDate(wkDate.getUTCDate() + 6);
+          const fmt = (d: Date) => `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+          return (
+            <div key={wk}>
+              <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 6, color: "var(--muted-foreground)" }}>
+                Semaine du {fmt(wkDate)} au {fmt(end)}
+              </div>
+              <div className="rounded-lg border" style={{ borderColor: "var(--border)", overflow: "hidden" }}>
+                {days.map(({ date, shifts: dayShifts }, di) => {
+                  const d = new Date(date + "T00:00:00");
+                  return (
+                    <div key={date} style={{ display: "grid", gridTemplateColumns: "90px 1fr", borderTop: di === 0 ? "none" : "1px solid var(--border)" }}>
+                      <div style={{ padding: "8px 10px", background: "color-mix(in oklab, var(--muted) 40%, transparent)", fontSize: 12 }}>
+                        <div style={{ fontWeight: 500 }}>{DAYS_FR[d.getUTCDay()]}</div>
+                        <div style={{ color: "var(--muted-foreground)" }}>
+                          {String(d.getUTCDate()).padStart(2, "0")}/{String(d.getUTCMonth() + 1).padStart(2, "0")}
+                        </div>
+                      </div>
+                      <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
+                        {dayShifts.map((sh, i) => {
+                          const hole = sh.user_id === null;
+                          const color = ROLE_COLORS[sh.business_role] ?? "#64748b";
+                          const name = hole
+                            ? "— TROU —"
+                            : (sh.user_id && nameById.get(sh.user_id)) || sh.user_id;
+                          return (
+                            <div key={i} style={{
+                              display: "flex", alignItems: "center", gap: 8, fontSize: 12,
+                              padding: "3px 6px", borderRadius: 4,
+                              background: hole ? "color-mix(in oklab, #dc2626 8%, transparent)" : "transparent",
+                            }}>
+                              <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                              <span style={{ fontFamily: "ui-monospace, monospace", color: "var(--muted-foreground)", minWidth: 90 }}>
+                                {fmtTime(sh.start_time)}–{fmtTime(sh.end_time)}
+                              </span>
+                              <span style={{ minWidth: 70, color: "var(--muted-foreground)" }}>{sh.business_role}</span>
+                              <span style={{ fontWeight: hole ? 500 : 400, color: hole ? "#dc2626" : "var(--foreground)" }}>
+                                {name}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
