@@ -827,7 +827,13 @@ async function runEngine(ctx: EngineCtx) {
       const eq = maxAssigned > 0 ? 1 - (e.totalAssignedMin / maxAssigned) : 1;
       return wPerf * perf + wGen * gen + wEq * eq;
     };
-    return [...cands].sort((a, b) => priority(b) - priority(a));
+    return [...cands].sort((a, b) => {
+      // Whitelist : les employés prioritaires passent toujours devant.
+      const wa = whitelistUserIds.has(a.id) ? 1 : 0;
+      const wb = whitelistUserIds.has(b.id) ? 1 : 0;
+      if (wa !== wb) return wb - wa;
+      return priority(b) - priority(a);
+    });
   };
 
 
