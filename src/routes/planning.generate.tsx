@@ -109,6 +109,10 @@ function GeneratePlanningPage() {
       }));
       setStudios(arr);
       setSelected(new Set(arr.filter((s) => s.templates > 0).map((s) => s.id)));
+      setEmployees((profs ?? []).map((p: any) => ({
+        id: p.id, first_name: p.first_name ?? "", last_name: p.last_name ?? "",
+        studio_ids: studiosByUser.get(p.id) ?? [],
+      })));
     })();
   }, []);
 
