@@ -88,13 +88,18 @@ function GeneratePlanningPage() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: studiosRaw }, { data: links }, { data: tmpls }] = await Promise.all([
+      const [{ data: studiosRaw }, { data: links }, { data: tmpls }, { data: profs }] = await Promise.all([
         supabase.from("studios").select("id, name").order("name"),
-        supabase.from("user_studios").select("studio_id"),
+        supabase.from("user_studios").select("user_id, studio_id"),
         supabase.from("staffing_templates").select("studio_id"),
+        supabase.from("profiles").select("id, first_name, last_name").eq("status", "active").order("first_name"),
       ]);
       const empCount = new Map<string, number>();
-      (links ?? []).forEach((l: any) => empCount.set(l.studio_id, (empCount.get(l.studio_id) ?? 0) + 1));
+      const studiosByUser = new Map<string, string[]>();
+      (links ?? []).forEach((l: any) => {
+        empCount.set(l.studio_id, (empCount.get(l.studio_id) ?? 0) + 1);
+        (studiosByUser.get(l.user_id) ?? studiosByUser.set(l.user_id, []).get(l.user_id)!).push(l.studio_id);
+      });
       const tmplCount = new Map<string, number>();
       (tmpls ?? []).forEach((t: any) => tmplCount.set(t.studio_id, (tmplCount.get(t.studio_id) ?? 0) + 1));
       const arr: StudioInfo[] = (studiosRaw ?? []).map((s: any) => ({
