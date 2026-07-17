@@ -812,8 +812,13 @@ function summarizeResult(r: GenerateResult) {
 }
 
 function PreviewView({
-  r, onPublish, onReset, onCompare,
-}: { r: GenerateResult; onPublish: () => void; onReset: () => void; onCompare: () => void }) {
+  r, employees, studios, onPublish, onReset, onCompare,
+}: {
+  r: GenerateResult;
+  employees: Array<{ id: string; first_name: string; last_name: string; studio_ids: string[] }>;
+  studios: StudioInfo[];
+  onPublish: () => void; onReset: () => void; onCompare: () => void;
+}) {
   const s = summarizeResult(r);
   const pctColor = s.pct >= 80 ? "var(--success-text)" : s.pct >= 50 ? "var(--warning-text)" : "var(--danger-text)";
   const [publishing, setPublishing] = useState(false);
