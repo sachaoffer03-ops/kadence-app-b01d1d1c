@@ -218,9 +218,9 @@ function SandboxPage() {
 
               {result.shifts && result.shifts.length > 0 && (
                 <>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button
-                      onClick={() => downloadPlanningHTML(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      onClick={() => downloadPlanningPDF(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
                       style={{
                         padding: "8px 12px", borderRadius: 6,
                         background: "var(--foreground)", color: "var(--background)",
@@ -228,7 +228,18 @@ function SandboxPage() {
                         cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
                       }}
                     >
-                      <Download size={14} /> Télécharger le planning (HTML)
+                      <Download size={14} /> Télécharger PDF
+                    </button>
+                    <button
+                      onClick={() => downloadPlanningHTML(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      style={{
+                        padding: "8px 12px", borderRadius: 6,
+                        background: "transparent", color: "var(--foreground)",
+                        border: "1px solid var(--border)", fontSize: 13, fontWeight: 500,
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >
+                      <Download size={14} /> HTML
                     </button>
                     <button
                       onClick={() => downloadPlanningCSV(result, employees, MONTHS_FR[month], year)}
@@ -239,7 +250,7 @@ function SandboxPage() {
                         cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
                       }}
                     >
-                      <Download size={14} /> Export CSV
+                      <Download size={14} /> CSV
                     </button>
                   </div>
                   <WeekView shifts={result.shifts} employees={employees} />
@@ -605,4 +616,177 @@ function downloadPlanningCSV(result: SimResult, employees: EmpRow[], monthLabel:
     }),
   ].join("\n");
   triggerDownload(`planning-simu-${monthLabel.toLowerCase()}-${year}.csv`, "\ufeff" + rows, "text/csv;charset=utf-8");
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
+}
+
+async function downloadPlanningPDF(
+  result: SimResult,
+  employees: EmpRow[],
+  studioName: string,
+  monthLabel: string,
+  year: number,
+  excludedSet: Set<string>,
+  allEmployees: EmpRow[],
+) {
+  try {
+    const { default: jsPDF } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 36;
+
+    // Header
+    doc.setFillColor(26, 26, 26);
+    doc.rect(0, 0, pageW, 90, "F");
+    doc.setTextColor(250, 250, 248);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("KADENCE  ·  Simulation planning", margin, 32);
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${studioName} — ${monthLabel} ${year}`, margin, 60);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(200, 200, 200);
+    doc.text(`Généré le ${new Date().toLocaleString("fr-BE")}`, margin, 78);
+
+    // Stats cards
+    let y = 110;
+    doc.setTextColor(26, 26, 26);
+    const stats = [
+      { label: "COUVERTURE", value: `${Math.round(result.coverage_rate * 100)}%` },
+      { label: "SHIFTS", value: `${result.shifts_generated}` },
+      { label: "TROUS", value: `${result.holes.length}` },
+      { label: "CRÉNEAUX", value: `${result.total_slots_covered}/${result.total_slots_needed}` },
+    ];
+    const cardW = (pageW - margin * 2 - 12 * 3) / 4;
+    stats.forEach((s, i) => {
+      const x = margin + i * (cardW + 12);
+      doc.setDrawColor(230, 230, 230);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(x, y, cardW, 54, 6, 6, "FD");
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(s.label, x + 10, y + 18);
+      doc.setFontSize(18);
+      doc.setTextColor(26, 26, 26);
+      doc.setFont("helvetica", "bold");
+      doc.text(s.value, x + 10, y + 42);
+      doc.setFont("helvetica", "normal");
+    });
+    y += 74;
+
+    // Excluded employees
+    const excludedNames = Array.from(excludedSet)
+      .map((id) => allEmployees.find((e) => e.id === id))
+      .filter(Boolean)
+      .map((e) => `${e!.first_name} ${e!.last_name}`);
+    if (excludedNames.length) {
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      const txt = `Employés ignorés : ${excludedNames.join(", ")}`;
+      const lines = doc.splitTextToSize(txt, pageW - margin * 2);
+      doc.text(lines, margin, y);
+      y += lines.length * 12 + 8;
+    }
+
+    // Group by week
+    const shifts = result.shifts ?? [];
+    const byWeek = new Map<string, Map<string, GenShift[]>>();
+    for (const sh of shifts) {
+      const wk = isoWeekKey(sh.shift_date);
+      if (!byWeek.has(wk)) byWeek.set(wk, new Map());
+      const byDay = byWeek.get(wk)!;
+      if (!byDay.has(sh.shift_date)) byDay.set(sh.shift_date, []);
+      byDay.get(sh.shift_date)!.push(sh);
+    }
+    const weeks = Array.from(byWeek.entries()).sort(([a], [b]) => a.localeCompare(b));
+    const fmtD = (d: Date) => `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+
+    for (const [wk, byDay] of weeks) {
+      const wkDate = new Date(wk + "T00:00:00");
+      const end = new Date(wkDate);
+      end.setUTCDate(wkDate.getUTCDate() + 6);
+
+      if (y > pageH - 120) { doc.addPage(); y = margin; }
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(26, 26, 26);
+      doc.text(`Semaine du ${fmtD(wkDate)} au ${fmtD(end)}`, margin, y);
+      y += 8;
+
+      const days = Array.from(byDay.entries()).sort(([a], [b]) => a.localeCompare(b));
+      const body: Array<Array<{ content: string; styles?: Record<string, unknown> }>> = [];
+      for (const [date, list] of days) {
+        const d = new Date(date + "T00:00:00");
+        body.push([
+          {
+            content: `${DAYS_FR[d.getUTCDay()]} ${fmtD(d)}`,
+            styles: { fillColor: [245, 245, 242], fontStyle: "bold", textColor: [60, 60, 60], fontSize: 9 },
+          },
+          { content: "", styles: { fillColor: [245, 245, 242] } },
+          { content: "", styles: { fillColor: [245, 245, 242] } },
+        ]);
+        const sorted = list.slice().sort((a, b) =>
+          a.start_time.localeCompare(b.start_time) || a.business_role.localeCompare(b.business_role),
+        );
+        for (const sh of sorted) {
+          const hole = sh.user_id === null;
+          const color = ROLE_COLORS[sh.business_role] ?? "#64748b";
+          const rgb = hexToRgb(color);
+          body.push([
+            { content: `${sh.start_time.slice(0, 5)}–${sh.end_time.slice(0, 5)}`, styles: { font: "courier", textColor: [90, 90, 90] } },
+            { content: sh.business_role, styles: { textColor: rgb, fontStyle: "bold" } },
+            {
+              content: hole ? "⚠  TROU À COMBLER" : nameOf(sh.user_id, employees),
+              styles: hole
+                ? { textColor: [220, 38, 38], fillColor: [254, 242, 242], fontStyle: "bold" }
+                : { textColor: [26, 26, 26] },
+            },
+          ]);
+        }
+      }
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Horaire", "Rôle", "Employé"]],
+        body: body as never,
+        margin: { left: margin, right: margin },
+        styles: { fontSize: 9, cellPadding: 5, lineColor: [235, 235, 235], lineWidth: 0.5 },
+        headStyles: { fillColor: [26, 26, 26], textColor: [250, 250, 248], fontSize: 8, fontStyle: "bold" },
+        columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 130 }, 2: { cellWidth: "auto" } },
+        theme: "grid",
+      });
+      // @ts-expect-error autoTable adds lastAutoTable to the doc instance
+      y = (doc.lastAutoTable?.finalY ?? y) + 18;
+    }
+
+    // Footer on all pages
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(160, 160, 160);
+      doc.text(
+        `Simulation Kadence — document local, non enregistré · Page ${i}/${pageCount}`,
+        margin,
+        pageH - 16,
+      );
+    }
+
+    const fname = `planning-${studioName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${monthLabel.toLowerCase()}-${year}.pdf`;
+    doc.save(fname);
+    toast.success("PDF téléchargé");
+  } catch (e) {
+    console.error(e);
+    toast.error("Erreur lors de la génération du PDF");
+  }
 }
