@@ -190,6 +190,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
     const silent = data.silent === true;
     const dryRun = silent ? true : data.dry_run;
     const excludeUserIds = new Set<string>(data.exclude_user_ids ?? []);
+    const whitelistUserIds = new Set<string>((data.whitelist_user_ids ?? []).filter((id) => !excludeUserIds.has(id)));
 
     // ── Verrou : refus si un run 'running' existe déjà sur la même période
     // (skippé en mode silent — la simulation ne concurrence rien)
