@@ -80,8 +80,10 @@ function GeneratePlanningPage() {
   const [preserveLocked, setPreserveLocked] = useState(true);
   const [dryRun, setDryRun] = useState(false);
 
-  const [state, setState] = useState<"idle" | "generating" | "done" | "error">("idle");
+  const [state, setState] = useState<"idle" | "generating" | "preview" | "published" | "error" | "comparing">("idle");
   const [result, setResult] = useState<GenerateResult | null>(null);
+  const [lastParams, setLastParams] = useState<any>(null);
+  const [scenarioA, setScenarioA] = useState<{ result: GenerateResult; params: any; label: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   const [historyOpen, setHistoryOpen] = useState(false);
