@@ -460,6 +460,27 @@ function triggerDownload(filename: string, content: string, mime: string) {
   }
 }
 
+function openHtmlExport(filename: string, html: string) {
+  const doc = window.open("", "_blank", "noopener,noreferrer");
+
+  if (!doc) {
+    triggerDownload(filename, html, "text/html;charset=utf-8");
+    return;
+  }
+
+  const escapedFilename = JSON.stringify(filename);
+  const escapedHtml = JSON.stringify(html);
+  const saveControls = `<div style="position:sticky;top:0;z-index:9999;margin:-32px -32px 24px;padding:12px 32px;background:#FAFAF8;border-bottom:1px solid #e5e5e5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;gap:10px;align-items:center;">
+    <button onclick='const blob=new Blob([${escapedHtml}],{type:"text/html;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=${escapedFilename};document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);' style="border:0;background:#1a1a1a;color:#FAFAF8;border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer;">Enregistrer le fichier</button>
+    <button onclick="window.print()" style="border:1px solid #d8d8d4;background:transparent;color:#1a1a1a;border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer;">Imprimer / PDF</button>
+  </div>`;
+
+  doc.document.open();
+  doc.document.write(html.replace("<body>", `<body>${saveControls}`));
+  doc.document.close();
+  toast.success("Planning ouvert dans un nouvel onglet");
+}
+
 function escHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
@@ -564,7 +585,7 @@ ${weekBlocks}
 </body></html>`;
 
   const fname = `planning-simu-${studioName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${monthLabel.toLowerCase()}-${year}.html`;
-  triggerDownload(fname, html, "text/html;charset=utf-8");
+  openHtmlExport(fname, html);
 }
 
 function downloadPlanningCSV(result: SimResult, employees: EmpRow[], monthLabel: string, year: number) {
