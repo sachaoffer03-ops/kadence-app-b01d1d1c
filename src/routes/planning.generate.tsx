@@ -134,29 +134,55 @@ function GeneratePlanningPage() {
   const selectAll = () => setSelected(new Set(studios.filter((s) => s.templates > 0).map((s) => s.id)));
   const selectNone = () => setSelected(new Set());
 
-  const start = async () => {
+  const runGenerate = async (opts: { real?: boolean; scenarioLabel?: string } = {}) => {
     setState("generating");
     setErrorMsg("");
     try {
       const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-      const res = await generate({
-        data: {
-          month_start_date: monthStart,
-          studio_ids: Array.from(selected),
-          preserve_manual: preserveManual,
-          preserve_locked: preserveLocked,
-          dry_run: dryRun,
-          whitelist_user_ids: Array.from(whitelist),
-        },
-      });
+      const params = {
+        month_start_date: monthStart,
+        studio_ids: Array.from(selected),
+        preserve_manual: preserveManual,
+        preserve_locked: preserveLocked,
+        dry_run: !opts.real ? true : dryRun,
+        silent: !opts.real,
+        whitelist_user_ids: Array.from(whitelist),
+      };
+      const res = await generate({ data: params });
       const r = res as GenerateResult;
       setResult(r);
-      setState("done");
-      toast.success(`${r.shifts_generated} shifts générés (${Math.round(r.coverage_rate * 100)}% de couverture)`);
+      setLastParams(params);
+      if (opts.real) {
+        setState("published");
+        toast.success(`Publié — ${r.shifts_generated} shifts créés (${Math.round(r.coverage_rate * 100)}%)`);
+      } else if (scenarioA) {
+        setState("comparing");
+      } else {
+        setState("preview");
+        toast.success(`Aperçu prêt — ${Math.round(r.coverage_rate * 100)}% de couverture`);
+      }
     } catch (e: any) {
       setErrorMsg(e?.message || "Erreur lors de la génération");
       setState("error");
     }
+  };
+
+  const publishCurrent = async () => {
+    await runGenerate({ real: true });
+  };
+
+  const startCompare = () => {
+    if (!result) return;
+    setScenarioA({ result, params: lastParams, label: describeParams(lastParams, studios, employees) });
+    setResult(null);
+    setState("idle");
+    toast.info("Modifie les paramètres pour le scénario B, puis clique sur Prévisualiser.");
+  };
+
+  const cancelCompare = () => {
+    setScenarioA(null);
+    setResult(null);
+    setState("idle");
   };
 
   // ─── Loading state ────────────────────────────────────────────────────────
