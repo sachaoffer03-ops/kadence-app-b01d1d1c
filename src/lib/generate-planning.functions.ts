@@ -1476,6 +1476,15 @@ async function runEngine(ctx: EngineCtx) {
     holes,
     alerts,
     solver_logs: logs,
+    shifts: finalShifts.map((sh) => ({
+      user_id: sh.user_id,
+      studio_id: sh.studio_id,
+      business_role: sh.business_role,
+      shift_date: sh.shift_date,
+      start_time: sh.start_time,
+      end_time: sh.end_time,
+      status: sh.status,
+    })),
   };
 }
 
