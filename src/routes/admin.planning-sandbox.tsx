@@ -461,7 +461,7 @@ function triggerDownload(filename: string, content: string, mime: string) {
 }
 
 function openHtmlExport(filename: string, html: string) {
-  const doc = window.open("", "_blank", "noopener,noreferrer");
+  const doc = window.open("", "_blank");
 
   if (!doc) {
     triggerDownload(filename, html, "text/html;charset=utf-8");
@@ -478,6 +478,7 @@ function openHtmlExport(filename: string, html: string) {
   doc.document.open();
   doc.document.write(html.replace("<body>", `<body>${saveControls}`));
   doc.document.close();
+  doc.opener = null;
   toast.success("Planning ouvert dans un nouvel onglet");
 }
 
