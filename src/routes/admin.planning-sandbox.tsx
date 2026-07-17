@@ -443,10 +443,21 @@ function triggerDownload(filename: string, content: string, mime: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.style.display = "none";
   document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+
+  try {
+    a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+    toast.success("Téléchargement lancé");
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+    toast.info("Le planning s'ouvre dans un nouvel onglet. Tu peux l'enregistrer depuis là.");
+  } finally {
+    window.setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
 }
 
 function escHtml(s: string): string {
