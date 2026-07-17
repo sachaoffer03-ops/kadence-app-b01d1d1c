@@ -50,7 +50,7 @@ function SandboxPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [studios, setStudios] = useState<StudioRow[]>([]);
-  const [studioId, setStudioId] = useState<string>("");
+  const [studioIds, setStudioIds] = useState<Set<string>>(new Set());
   const [employees, setEmployees] = useState<EmpRow[]>([]);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [whitelist, setWhitelist] = useState<Set<string>>(new Set());
