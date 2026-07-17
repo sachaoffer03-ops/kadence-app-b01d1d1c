@@ -456,7 +456,7 @@ function triggerDownload(filename: string, content: string, mime: string) {
     window.setTimeout(() => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    }, 1000);
+    }, 30000);
   }
 }
 
