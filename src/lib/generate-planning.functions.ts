@@ -347,6 +347,7 @@ interface EngineCtx {
   preserveLocked: boolean;
   dryRun: boolean;
   excludeUserIds?: Set<string>;
+  whitelistUserIds?: Set<string>;
 }
 
 async function runEngine(ctx: EngineCtx) {
