@@ -868,7 +868,13 @@ async function runEngine(ctx: EngineCtx) {
   // ─── PASSE A : CDI sur shifts longs ──────────────────────────────────────
   const t_pA = Date.now();
   const cdiList = Array.from(employees.values()).filter((e) => e.contracts.has("CDI"));
-  cdiList.sort((a, b) => b.score - a.score);
+  cdiList.sort((a, b) => {
+    // Whitelist prioritaire en tête, sinon score décroissant.
+    const wa = whitelistUserIds.has(a.id) ? 1 : 0;
+    const wb = whitelistUserIds.has(b.id) ? 1 : 0;
+    if (wa !== wb) return wb - wa;
+    return b.score - a.score;
+  });
 
   for (const e of cdiList) {
     // Pour chaque date, essayer de placer un long shift contigu sur ses dispos
