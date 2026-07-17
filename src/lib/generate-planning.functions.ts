@@ -247,6 +247,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
         preserveLocked: data.preserve_locked,
         dryRun,
         excludeUserIds,
+        whitelistUserIds,
       });
 
       const durationMs = Date.now() - t0;
