@@ -216,6 +216,10 @@ function SandboxPage() {
                 </div>
               </Card>
 
+              {result.shifts && result.shifts.length > 0 && (
+                <WeekView shifts={result.shifts} employees={employees} />
+              )}
+
               {holesByRole.length > 0 && (
                 <Card title="Trous par rôle">
                   <div className="space-y-1">
