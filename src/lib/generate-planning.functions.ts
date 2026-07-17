@@ -367,7 +367,10 @@ async function runEngine(ctx: EngineCtx) {
     fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
     fetchAll<any>(supabase.from("availabilities").select("user_id, avail_date, start_time, end_time, studio_id").gte("avail_date", monthStart).lte("avail_date", monthEnd)),
     fetchAll<any>(supabase.from("staffing_templates").select("*").in("studio_id", studioIds)),
-    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd).in("studio_id", studioIds)),
+    // ⚠️ Volontairement PAS de .in("studio_id", studioIds) : on veut aussi voir
+    // les shifts des autres studios pour éviter les doubles-bookings cross-studio
+    // (chevauchement horaire, repos 11h, cumul heures hebdo).
+    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd)),
     fetchAll<any>(supabase.from("business_roles").select("name, is_kitchen").eq("is_kitchen", true)),
     fetchAll<any>(supabase.from("training_courses").select("id, business_role_id, is_required_for_all, required_for_planning").eq("required_for_planning", true)),
     fetchAll<any>(supabase.from("training_course_completions").select("user_id, course_id")),
@@ -608,9 +611,35 @@ async function runEngine(ctx: EngineCtx) {
   logs.total_requirements = totalSlotsNeeded;
   logs.total_cells = totalCells;
 
+  // Seed les shifts déjà posés dans les AUTRES studios (hors périmètre de génération)
+  // comme contraintes dures : chevauchement horaire, repos 11h, cumul hebdo.
+  // Ces shifts ne seront jamais supprimés/modifiés par la génération courante.
+  const studioIdsSet = new Set(studioIds);
+  let externalSeeded = 0;
+  for (const sh of existingShifts) {
+    if (studioIdsSet.has(sh.studio_id)) continue;
+    if (!sh.user_id || !employees.has(sh.user_id)) continue;
+    const e = employees.get(sh.user_id)!;
+    const sStart = t2m(sh.start_time), sEnd = t2m(sh.end_time);
+    e.assigned.push({
+      date: sh.shift_date,
+      startMin: sStart,
+      endMin: sEnd,
+      studio_id: sh.studio_id,
+      role: sh.business_role,
+      reqId: `external:${sh.id}`,
+    });
+    const wk = isoWeekStart(sh.shift_date);
+    e.weeklyMin.set(wk, (e.weeklyMin.get(wk) ?? 0) + (sEnd - sStart));
+    e.totalAssignedMin += (sEnd - sStart);
+    externalSeeded++;
+  }
+  logs.external_shifts_seeded = externalSeeded;
+
   // Bloque les cellules couvertes par shifts manuels/lockés et soustrait du quota
   const preservedShifts: any[] = [];
   for (const sh of existingShifts) {
+    if (!studioIdsSet.has(sh.studio_id)) continue; // externals déjà seedés au-dessus
     const isManual = sh.is_manual && preserveManual;
     const isLocked = sh.is_locked && preserveLocked;
     if (!isManual && !isLocked) continue;
