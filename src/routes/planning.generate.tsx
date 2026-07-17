@@ -764,6 +764,254 @@ function WorkflowPanel({ runId }: { runId: string }) {
   );
 }
 
+// ─── Preview + Compare helpers ──────────────────────────────────────────────
+function describeParams(
+  params: any,
+  studios: StudioInfo[],
+  employees: Array<{ id: string; first_name: string; last_name: string }>,
+): string {
+  if (!params) return "—";
+  const studioNames = (params.studio_ids ?? [])
+    .map((id: string) => studios.find((s) => s.id === id)?.name)
+    .filter(Boolean);
+  const wl = (params.whitelist_user_ids ?? [])
+    .map((id: string) => {
+      const e = employees.find((x) => x.id === id);
+      return e ? e.first_name : null;
+    })
+    .filter(Boolean);
+  const bits: string[] = [];
+  if (studioNames.length) bits.push(studioNames.join(" + "));
+  if (wl.length) bits.push(`prioritaires : ${wl.join(", ")}`);
+  return bits.length ? bits.join(" · ") : "config par défaut";
+}
+
+function summarizeResult(r: GenerateResult) {
+  const pct = Math.round(r.coverage_rate * 100);
+  const hours = (r.solver_logs?.assignments ?? []).reduce((sum: number, a: any) => {
+    if (!a?.start_time || !a?.end_time) return sum;
+    const [sh, sm] = String(a.start_time).split(":").map(Number);
+    const [eh, em] = String(a.end_time).split(":").map(Number);
+    return sum + Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60);
+  }, 0);
+  const employees = new Set<string>();
+  (r.solver_logs?.assignments ?? []).forEach((a: any) => { if (a?.user_id) employees.add(a.user_id); });
+  return { pct, holes: r.holes.length, hours: Math.round(hours), employees: employees.size };
+}
+
+function PreviewView({
+  r, onPublish, onReset, onCompare,
+}: { r: GenerateResult; onPublish: () => void; onReset: () => void; onCompare: () => void }) {
+  const s = summarizeResult(r);
+  const pctColor = s.pct >= 80 ? "var(--success-text)" : s.pct >= 50 ? "var(--warning-text)" : "var(--danger-text)";
+  const [publishing, setPublishing] = useState(false);
+
+  return (
+    <div className="p-4 md:p-8 max-w-3xl mx-auto pb-16">
+      <button onClick={onReset} className="inline-flex items-center gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)", background: "transparent", border: "none", cursor: "pointer" }}>
+        <ArrowLeft size={12} /> Modifier la config
+      </button>
+      <div className="flex items-center gap-2 mt-4">
+        <Badge variant="outline" style={{ fontSize: 11, backgroundColor: "var(--info-bg)", color: "var(--info-text)", borderColor: "transparent" }}>
+          <Eye size={11} style={{ marginRight: 4 }} /> Aperçu
+        </Badge>
+        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Rien n'est enregistré pour l'instant</span>
+      </div>
+      <h1 style={{ fontSize: 28, fontWeight: 500, marginTop: 12, marginBottom: 24 }}>Voilà ce que ça donne</h1>
+
+      <Card className="p-8 mb-5 rounded-2xl text-center">
+        <div style={{ fontSize: 72, fontWeight: 300, color: pctColor, lineHeight: 1 }}>{s.pct}%</div>
+        <div style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 8 }}>
+          {r.shifts_generated} shift{r.shifts_generated > 1 ? "s" : ""} placés sur {r.total_slots_needed} créneaux · {s.holes} trou{s.holes > 1 ? "s" : ""} restant{s.holes > 1 ? "s" : ""}
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <MiniStat label="Employés utilisés" value={s.employees > 0 ? String(s.employees) : "—"} />
+        <MiniStat label="Heures réparties" value={s.hours > 0 ? `${s.hours}h` : "—"} />
+        <MiniStat label="Trous restants" value={String(s.holes)} />
+      </div>
+
+      {/* Primary actions */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <button
+          onClick={async () => { setPublishing(true); try { await onPublish(); } finally { setPublishing(false); } }}
+          disabled={publishing}
+          className="flex-1 rounded-2xl flex items-center justify-center gap-2"
+          style={{ height: 52, fontSize: 15, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", border: "none", cursor: publishing ? "wait" : "pointer" }}
+        >
+          {publishing ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Publier ce plan
+        </button>
+        <button
+          onClick={onReset}
+          className="flex-1 rounded-2xl"
+          style={{ height: 52, fontSize: 15, fontWeight: 500, backgroundColor: "var(--card)", color: "var(--foreground)", border: "0.5px solid var(--border)" }}
+        >
+          Refaire
+        </button>
+      </div>
+
+      {/* Compare CTA */}
+      <button
+        onClick={onCompare}
+        className="w-full rounded-xl mb-6 hover:underline"
+        style={{ fontSize: 13, color: "var(--muted-foreground)", background: "transparent", border: "0.5px dashed var(--border)", padding: "12px 16px", cursor: "pointer" }}
+      >
+        Comparer avec une autre config →
+      </button>
+
+      {/* Trous à combler */}
+      {r.holes.length > 0 && (
+        <Card className="p-5 mb-5 rounded-2xl">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle size={14} style={{ color: "var(--warning-text)" }} />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{r.holes.length} trou{r.holes.length > 1 ? "s" : ""} à combler</span>
+          </div>
+          <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto">
+            {r.holes.slice(0, 50).map((h, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 flex-wrap" style={{ backgroundColor: "var(--warning-bg)" }}>
+                <span style={{ fontSize: 12, fontWeight: 500, minWidth: 110 }}>{new Date(h.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}</span>
+                <span style={{ fontSize: 12 }}>{h.start_time}–{h.end_time}</span>
+                <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--muted)" }}>{h.business_role}</span>
+                <span style={{ fontSize: 11 }}>{h.studio_name}</span>
+                <span style={{ fontSize: 11, color: "var(--warning-text)", marginLeft: "auto" }}>{h.reason}</span>
+              </div>
+            ))}
+            {r.holes.length > 50 && <div style={{ fontSize: 11, color: "var(--muted-foreground)", padding: 8 }}>+ {r.holes.length - 50} autres</div>}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function CompareView({
+  a, b, onPublishA, onPublishB, onCancel,
+}: {
+  a: { result: GenerateResult; params: any; label: string };
+  b: { result: GenerateResult; params: any; label: string };
+  onPublishA: () => Promise<void>;
+  onPublishB: () => Promise<void>;
+  onCancel: () => void;
+}) {
+  const sa = summarizeResult(a.result);
+  const sb = summarizeResult(b.result);
+  // recommended: fewer holes wins; ties → higher coverage → more employees used
+  const scoreA = -sa.holes * 1000 + sa.pct * 10 + sa.employees;
+  const scoreB = -sb.holes * 1000 + sb.pct * 10 + sb.employees;
+  const winner: "A" | "B" | null = scoreA === scoreB ? null : scoreA > scoreB ? "A" : "B";
+
+  const [publishing, setPublishing] = useState<"A" | "B" | null>(null);
+
+  const doPublish = async (which: "A" | "B") => {
+    setPublishing(which);
+    try {
+      if (which === "A") await onPublishA(); else await onPublishB();
+    } finally {
+      setPublishing(null);
+    }
+  };
+
+  return (
+    <div className="p-4 md:p-8 max-w-5xl mx-auto pb-16">
+      <button onClick={onCancel} className="inline-flex items-center gap-1" style={{ fontSize: 12, color: "var(--muted-foreground)", background: "transparent", border: "none", cursor: "pointer" }}>
+        <ArrowLeft size={12} /> Recommencer
+      </button>
+      <h1 style={{ fontSize: 28, fontWeight: 500, marginTop: 16, marginBottom: 8 }}>Comparaison</h1>
+      <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 24 }}>
+        Choisis le scénario que tu veux publier. L'autre sera oublié.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ScenarioCard
+          title="Scénario A" label={a.label} s={sa} recommended={winner === "A"}
+          onPublish={() => doPublish("A")} publishing={publishing === "A"} disabled={publishing !== null}
+          holes={a.result.holes}
+        />
+        <ScenarioCard
+          title="Scénario B" label={b.label} s={sb} recommended={winner === "B"}
+          onPublish={() => doPublish("B")} publishing={publishing === "B"} disabled={publishing !== null}
+          holes={b.result.holes}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ScenarioCard({
+  title, label, s, recommended, onPublish, publishing, disabled, holes,
+}: {
+  title: string; label: string;
+  s: { pct: number; holes: number; hours: number; employees: number };
+  recommended: boolean; onPublish: () => void; publishing: boolean; disabled: boolean;
+  holes: Hole[];
+}) {
+  const pctColor = s.pct >= 80 ? "var(--success-text)" : s.pct >= 50 ? "var(--warning-text)" : "var(--danger-text)";
+  return (
+    <Card className="p-5 rounded-2xl" style={{ border: recommended ? "1.5px solid var(--success-text)" : "0.5px solid var(--border)" }}>
+      <div className="flex items-center justify-between mb-1">
+        <div style={{ fontSize: 14, fontWeight: 500 }}>{title}</div>
+        {recommended && (
+          <Badge style={{ fontSize: 10, backgroundColor: "var(--success-bg)", color: "var(--success-text)", borderColor: "transparent" }}>
+            ★ Recommandé
+          </Badge>
+        )}
+      </div>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16 }}>{label}</div>
+
+      <div className="text-center mb-4">
+        <div style={{ fontSize: 56, fontWeight: 300, color: pctColor, lineHeight: 1 }}>{s.pct}%</div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>de couverture</div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="text-center rounded-lg p-2" style={{ backgroundColor: "var(--muted)" }}>
+          <div style={{ fontSize: 18, fontWeight: 500, color: s.holes === 0 ? "var(--success-text)" : "var(--warning-text)" }}>{s.holes}</div>
+          <div style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Trous</div>
+        </div>
+        <div className="text-center rounded-lg p-2" style={{ backgroundColor: "var(--muted)" }}>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>{s.hours}h</div>
+          <div style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Heures</div>
+        </div>
+        <div className="text-center rounded-lg p-2" style={{ backgroundColor: "var(--muted)" }}>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>{s.employees}</div>
+          <div style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Employés</div>
+        </div>
+      </div>
+
+      {holes.length > 0 && (
+        <details style={{ marginBottom: 12 }}>
+          <summary style={{ fontSize: 12, color: "var(--muted-foreground)", cursor: "pointer" }}>Voir les {holes.length} trou{holes.length > 1 ? "s" : ""}</summary>
+          <div className="flex flex-col gap-1 mt-2 max-h-[200px] overflow-y-auto">
+            {holes.slice(0, 20).map((h, i) => (
+              <div key={i} style={{ fontSize: 11, padding: "4px 8px", backgroundColor: "var(--warning-bg)", borderRadius: 4 }}>
+                {new Date(h.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} {h.start_time}–{h.end_time} · {h.business_role} · {h.studio_name}
+              </div>
+            ))}
+            {holes.length > 20 && <div style={{ fontSize: 10, color: "var(--muted-foreground)" }}>+ {holes.length - 20} autres</div>}
+          </div>
+        </details>
+      )}
+
+      <button
+        onClick={onPublish}
+        disabled={disabled}
+        className="w-full rounded-xl flex items-center justify-center gap-2"
+        style={{
+          height: 44, fontSize: 14, fontWeight: 500,
+          backgroundColor: recommended ? "var(--success-text)" : "var(--primary)",
+          color: "#fff", border: "none",
+          cursor: disabled ? "wait" : "pointer",
+          opacity: disabled && !publishing ? 0.5 : 1,
+        }}
+      >
+        {publishing ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Publier ce scénario
+      </button>
+    </Card>
+  );
+}
+
+
 function WorkflowBadge({ status }: { status: "draft" | "review" | "published" | "unpublished" }) {
   const map = {
     draft:        { label: "Brouillon",   bg: "var(--muted)",      fg: "var(--muted-foreground)" },
