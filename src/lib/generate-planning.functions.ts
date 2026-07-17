@@ -367,7 +367,10 @@ async function runEngine(ctx: EngineCtx) {
     fetchAll<any>(supabase.from("user_studios").select("user_id, studio_id")),
     fetchAll<any>(supabase.from("availabilities").select("user_id, avail_date, start_time, end_time, studio_id").gte("avail_date", monthStart).lte("avail_date", monthEnd)),
     fetchAll<any>(supabase.from("staffing_templates").select("*").in("studio_id", studioIds)),
-    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd).in("studio_id", studioIds)),
+    // ⚠️ Volontairement PAS de .in("studio_id", studioIds) : on veut aussi voir
+    // les shifts des autres studios pour éviter les doubles-bookings cross-studio
+    // (chevauchement horaire, repos 11h, cumul heures hebdo).
+    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd)),
     fetchAll<any>(supabase.from("business_roles").select("name, is_kitchen").eq("is_kitchen", true)),
     fetchAll<any>(supabase.from("training_courses").select("id, business_role_id, is_required_for_all, required_for_planning").eq("required_for_planning", true)),
     fetchAll<any>(supabase.from("training_course_completions").select("user_id, course_id")),
