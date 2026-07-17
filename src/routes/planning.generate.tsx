@@ -295,6 +295,52 @@ function GeneratePlanningPage() {
         </div>
       </Card>
 
+      {/* Employés prioritaires (whitelist) */}
+      <Card className="p-6 mb-6 rounded-2xl">
+        <button
+          onClick={() => setWhitelistOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+          style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+        >
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>
+              Employés prioritaires {whitelist.size > 0 && <span style={{ color: "var(--muted-foreground)", fontWeight: 400 }}>· {whitelist.size} sélectionné{whitelist.size > 1 ? "s" : ""}</span>}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+              Optionnel — leurs dispos sont servies en premier, puis l'algo comble le reste.
+            </div>
+          </div>
+          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{whitelistOpen ? "Masquer" : "Configurer"}</span>
+        </button>
+        {whitelistOpen && (
+          <div style={{ marginTop: 12, maxHeight: 320, overflowY: "auto", border: "0.5px solid var(--border)", borderRadius: 8 }}>
+            {employees.length === 0 && (
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", padding: 12 }}>Aucun employé.</div>
+            )}
+            {employees
+              .filter((e) => selected.size === 0 || e.studio_ids.some((sid) => selected.has(sid)))
+              .map((e) => {
+                const on = whitelist.has(e.id);
+                return (
+                  <label key={e.id} className="flex items-center gap-2 px-3 py-2 cursor-pointer"
+                    style={{ fontSize: 13, borderBottom: "0.5px solid var(--border)", background: on ? "color-mix(in oklab, #16a34a 10%, transparent)" : "transparent" }}>
+                    <Checkbox
+                      checked={on}
+                      onCheckedChange={() => setWhitelist((prev) => {
+                        const n = new Set(prev);
+                        if (n.has(e.id)) n.delete(e.id); else n.add(e.id);
+                        return n;
+                      })}
+                    />
+                    <span>{e.first_name} {e.last_name}</span>
+                  </label>
+                );
+              })}
+          </div>
+        )}
+      </Card>
+
+
       {/* Generate button */}
       <button
         onClick={start}
