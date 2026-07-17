@@ -214,13 +214,42 @@ function GeneratePlanningPage() {
     );
   }
 
-  // ─── Done state ───────────────────────────────────────────────────────────
-  if (state === "done" && result) {
+  // ─── Preview state (dry_run silent) ──────────────────────────────────────
+  if (state === "preview" && result) {
+    return (
+      <PreviewView
+        r={result}
+        onPublish={publishCurrent}
+        onReset={() => { setState("idle"); setResult(null); setLastParams(null); }}
+        onCompare={startCompare}
+      />
+    );
+  }
+
+  // ─── Comparing state (scenario A vs scenario B) ──────────────────────────
+  if (state === "comparing" && result && scenarioA) {
+    return (
+      <CompareView
+        a={scenarioA}
+        b={{ result, params: lastParams, label: describeParams(lastParams, studios, employees) }}
+        onPublishA={async () => {
+          setResult(scenarioA.result);
+          setLastParams(scenarioA.params);
+          await runGenerate({ real: true });
+        }}
+        onPublishB={publishCurrent}
+        onCancel={cancelCompare}
+      />
+    );
+  }
+
+  // ─── Published state (real run) ──────────────────────────────────────────
+  if (state === "published" && result) {
     return (
       <ResultView
         r={result}
         navigate={navigate}
-        onReset={() => { setState("idle"); setResult(null); }}
+        onReset={() => { setState("idle"); setResult(null); setScenarioA(null); setLastParams(null); }}
       />
     );
   }
