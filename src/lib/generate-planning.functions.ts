@@ -151,6 +151,8 @@ const GenerateInput = z.object({
   dry_run: z.boolean().default(false),
   // Simulation admin : employés à ignorer complètement (dispos ignorées, non affectables)
   exclude_user_ids: z.array(z.string().uuid()).optional(),
+  // Simulation admin : employés prioritaires (leurs dispos sont servies en premier)
+  whitelist_user_ids: z.array(z.string().uuid()).optional(),
   // Simulation admin : ne rien écrire dans planning_runs (implique dry_run=true)
   silent: z.boolean().default(false),
 });
