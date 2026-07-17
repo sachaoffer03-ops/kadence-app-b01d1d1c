@@ -2,8 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Sparkles, ArrowLeft, AlertCircle, Loader2, Check, X, Eye, History,
-  Send, Globe, Undo2, ShieldAlert, AlertTriangle, Info,
+  Sparkles, ArrowLeft, ArrowRight, AlertCircle, Loader2, Check, X, Eye, History,
+  Send, Globe, Undo2, ShieldAlert, AlertTriangle, Info, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { generatePlanning, listPlanningRuns, cancelPlanningRun } from "@/lib/generate-planning.functions";
