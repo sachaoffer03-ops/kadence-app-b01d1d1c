@@ -353,6 +353,7 @@ interface EngineCtx {
 async function runEngine(ctx: EngineCtx) {
   const { supabase, monthStart, monthEnd, studioIds, studioName, preserveManual, preserveLocked, dryRun } = ctx;
   const excludeUserIds = ctx.excludeUserIds ?? new Set<string>();
+  const whitelistUserIds = ctx.whitelistUserIds ?? new Set<string>();
   const logs: any = { phases: {} };
   const alerts: Array<{ type: string; severity: "info" | "warning" | "error"; user_id?: string; user_name?: string; message: string }> = [];
 
