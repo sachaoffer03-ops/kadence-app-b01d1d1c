@@ -217,7 +217,33 @@ function SandboxPage() {
               </Card>
 
               {result.shifts && result.shifts.length > 0 && (
-                <WeekView shifts={result.shifts} employees={employees} />
+                <>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => downloadPlanningHTML(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      style={{
+                        padding: "8px 12px", borderRadius: 6,
+                        background: "var(--foreground)", color: "var(--background)",
+                        border: "none", fontSize: 13, fontWeight: 500,
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >
+                      <Download size={14} /> Télécharger le planning (HTML)
+                    </button>
+                    <button
+                      onClick={() => downloadPlanningCSV(result, employees, MONTHS_FR[month], year)}
+                      style={{
+                        padding: "8px 12px", borderRadius: 6,
+                        background: "transparent", color: "var(--foreground)",
+                        border: "1px solid var(--border)", fontSize: 13, fontWeight: 500,
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >
+                      <Download size={14} /> Export CSV
+                    </button>
+                  </div>
+                  <WeekView shifts={result.shifts} employees={employees} />
+                </>
               )}
 
               {holesByRole.length > 0 && (
