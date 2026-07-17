@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, FlaskConical, Loader2, AlertCircle, Check } from "lucide-react";
+import { ArrowLeft, FlaskConical, Loader2, AlertCircle, Check, Download } from "lucide-react";
 import { toast } from "sonner";
 import { generatePlanning } from "@/lib/generate-planning.functions";
 import { supabase } from "@/integrations/supabase/client";
