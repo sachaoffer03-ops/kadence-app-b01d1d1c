@@ -102,6 +102,7 @@ function SandboxPage() {
           dry_run: true,
           silent: true,
           exclude_user_ids: Array.from(excluded),
+          whitelist_user_ids: Array.from(whitelist).filter((id) => !excluded.has(id)),
         },
       });
       setResult(res as SimResult);
