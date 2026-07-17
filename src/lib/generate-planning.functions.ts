@@ -260,7 +260,14 @@ export const generatePlanning = createServerFn({ method: "POST" })
         }).eq("id", runId);
       }
 
-      return { planning_run_id: runId ?? null, duration_ms: durationMs, silent, ...result };
+      const { shifts: engineShifts, ...restResult } = result as any;
+      return {
+        planning_run_id: runId ?? null,
+        duration_ms: durationMs,
+        silent,
+        ...restResult,
+        ...(silent ? { shifts: engineShifts } : {}),
+      };
     } catch (e: any) {
       if (runId) {
         await supabase.from("planning_runs").update({
