@@ -229,6 +229,8 @@ function GeneratePlanningPage() {
     return (
       <PreviewView
         r={result}
+        employees={employees}
+        studios={studios}
         onPublish={publishCurrent}
         onReset={() => { setState("idle"); setResult(null); setLastParams(null); }}
         onCompare={startCompare}
