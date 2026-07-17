@@ -50,7 +50,7 @@ function SandboxPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [studios, setStudios] = useState<StudioRow[]>([]);
-  const [studioId, setStudioId] = useState<string>("");
+  const [studioIds, setStudioIds] = useState<Set<string>>(new Set());
   const [employees, setEmployees] = useState<EmpRow[]>([]);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [whitelist, setWhitelist] = useState<Set<string>>(new Set());
@@ -67,8 +67,8 @@ function SandboxPage() {
       setStudios((st ?? []) as StudioRow[]);
       setEmployees((pr ?? []) as EmpRow[]);
       const rhode = (st ?? []).find((s: any) => /rhode/i.test(s.name));
-      if (rhode) setStudioId(rhode.id);
-      else if (st?.[0]) setStudioId(st[0].id);
+      if (rhode) setStudioIds(new Set([rhode.id]));
+      else if (st?.[0]) setStudioIds(new Set([st[0].id]));
     })();
   }, []);
 
@@ -96,7 +96,7 @@ function SandboxPage() {
       const res: any = await generate({
         data: {
           month_start_date: monthStart,
-          studio_ids: studioId ? [studioId] : undefined,
+          studio_ids: studioIds.size > 0 ? Array.from(studioIds) : undefined,
           preserve_manual: false,
           preserve_locked: false,
           dry_run: true,
@@ -142,14 +142,24 @@ function SandboxPage() {
       <div className="grid gap-6" style={{ gridTemplateColumns: "minmax(0,320px) minmax(0,1fr)" }}>
         {/* Config */}
         <div className="space-y-4">
-          <Card title="Studio">
-            <select
-              value={studioId}
-              onChange={(e) => setStudioId(e.target.value)}
-              style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--background)", fontSize: 13 }}
-            >
-              {studios.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+          <Card title={`Studios (${studioIds.size})`} subtitle="Multi-sélection : l'algo optimise conjointement pour éviter les doubles-bookings des employés multi-studios.">
+            <div className="flex flex-col gap-1">
+              {studios.map((s) => {
+                const on = studioIds.has(s.id);
+                return (
+                  <label key={s.id} className="flex items-center gap-2 px-2 py-1.5 cursor-pointer"
+                    style={{ fontSize: 13, borderRadius: 6, background: on ? "color-mix(in oklab, var(--coral, #F0997B) 10%, transparent)" : "transparent" }}>
+                    <input type="checkbox" checked={on}
+                      onChange={() => setStudioIds((prev) => {
+                        const n = new Set(prev);
+                        if (n.has(s.id)) n.delete(s.id); else n.add(s.id);
+                        return n;
+                      })} />
+                    <span>{s.name}</span>
+                  </label>
+                );
+              })}
+            </div>
           </Card>
 
           <Card title="Mois">
@@ -202,12 +212,12 @@ function SandboxPage() {
 
           <button
             onClick={run}
-            disabled={running || !studioId}
+            disabled={running || studioIds.size === 0}
             style={{
               width: "100%", padding: "10px 14px", borderRadius: 8,
               background: "var(--coral, #F0997B)", color: "white", border: "none",
               fontSize: 14, fontWeight: 500, cursor: running ? "wait" : "pointer",
-              opacity: running || !studioId ? 0.6 : 1,
+              opacity: running || studioIds.size === 0 ? 0.6 : 1,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}
           >
@@ -251,7 +261,7 @@ function SandboxPage() {
                 <>
                   <div className="flex gap-2 flex-wrap">
                     <button
-                      onClick={() => downloadPlanningPDF(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      onClick={() => downloadPlanningPDF(result, employees, studios.filter((s) => studioIds.has(s.id)).map((s) => s.name).join(" + "), MONTHS_FR[month], year, excluded, employees)}
                       style={{
                         padding: "8px 12px", borderRadius: 6,
                         background: "var(--foreground)", color: "var(--background)",
@@ -262,7 +272,7 @@ function SandboxPage() {
                       <Download size={14} /> Télécharger PDF
                     </button>
                     <button
-                      onClick={() => downloadPlanningHTML(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      onClick={() => downloadPlanningHTML(result, employees, studios.filter((s) => studioIds.has(s.id)).map((s) => s.name).join(" + "), MONTHS_FR[month], year, excluded, employees)}
                       style={{
                         padding: "8px 12px", borderRadius: 6,
                         background: "transparent", color: "var(--foreground)",
