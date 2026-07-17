@@ -783,8 +783,24 @@ async function downloadPlanningPDF(
     }
 
     const fname = `planning-${studioName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${monthLabel.toLowerCase()}-${year}.pdf`;
-    doc.save(fname);
-    toast.success("PDF téléchargé");
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fname;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      // Fallback: if download was blocked (sandboxed iframe), open in new tab so user can save manually
+      window.open(url, "_blank");
+    }, 100);
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 30000);
+    toast.success("PDF prêt — si rien ne se télécharge, il s'ouvre dans un onglet");
   } catch (e) {
     console.error(e);
     toast.error("Erreur lors de la génération du PDF");
