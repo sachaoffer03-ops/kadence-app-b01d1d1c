@@ -2,8 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Sparkles, ArrowLeft, AlertCircle, Loader2, Check, X, Eye, History,
-  Send, Globe, Undo2, ShieldAlert, AlertTriangle, Info,
+  Sparkles, ArrowLeft, ArrowRight, AlertCircle, Loader2, Check, X, Eye, History,
+  Send, Globe, Undo2, ShieldAlert, AlertTriangle, Info, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { generatePlanning, listPlanningRuns, cancelPlanningRun } from "@/lib/generate-planning.functions";
@@ -41,6 +41,15 @@ interface Alert {
   type: string; severity: "info" | "warning" | "error";
   user_name?: string; message: string;
 }
+interface GenShift {
+  user_id: string | null;
+  studio_id: string;
+  business_role: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+}
 interface GenerateResult {
   planning_run_id: string;
   status: "success" | "partial" | "failed";
@@ -52,6 +61,7 @@ interface GenerateResult {
   alerts: Alert[];
   duration_ms: number;
   solver_logs?: any;
+  shifts?: GenShift[];
 }
 
 interface StudioInfo {
@@ -219,6 +229,8 @@ function GeneratePlanningPage() {
     return (
       <PreviewView
         r={result}
+        employees={employees}
+        studios={studios}
         onPublish={publishCurrent}
         onReset={() => { setState("idle"); setResult(null); setLastParams(null); }}
         onCompare={startCompare}
@@ -800,8 +812,13 @@ function summarizeResult(r: GenerateResult) {
 }
 
 function PreviewView({
-  r, onPublish, onReset, onCompare,
-}: { r: GenerateResult; onPublish: () => void; onReset: () => void; onCompare: () => void }) {
+  r, employees, studios, onPublish, onReset, onCompare,
+}: {
+  r: GenerateResult;
+  employees: Array<{ id: string; first_name: string; last_name: string; studio_ids: string[] }>;
+  studios: StudioInfo[];
+  onPublish: () => void; onReset: () => void; onCompare: () => void;
+}) {
   const s = summarizeResult(r);
   const pctColor = s.pct >= 80 ? "var(--success-text)" : s.pct >= 50 ? "var(--warning-text)" : "var(--danger-text)";
   const [publishing, setPublishing] = useState(false);
@@ -860,6 +877,12 @@ function PreviewView({
         Comparer avec une autre config →
       </button>
 
+      {/* Aperçu visuel des shifts */}
+      {r.shifts && r.shifts.length > 0 && (
+        <PreviewWeekGrid shifts={r.shifts} employees={employees} studios={studios} />
+      )}
+
+
       {/* Trous à combler */}
       {r.holes.length > 0 && (
         <Card className="p-5 mb-5 rounded-2xl">
@@ -884,6 +907,219 @@ function PreviewView({
     </div>
   );
 }
+
+const DAYS_FR = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+const ROLE_COLORS_PREVIEW: Record<string, string> = {
+  Barista: "#F0997B",
+  Accueil: "#3BAFA3",
+  Host: "#A78BC7",
+  Cuisine: "#E8A0BF",
+};
+
+function isoWeekKey(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = (d.getUTCDay() + 6) % 7;
+  const monday = new Date(d);
+  monday.setUTCDate(d.getUTCDate() - day);
+  return monday.toISOString().slice(0, 10);
+}
+
+function PreviewWeekGrid({
+  shifts, employees, studios,
+}: {
+  shifts: GenShift[];
+  employees: Array<{ id: string; first_name: string; last_name: string }>;
+  studios: StudioInfo[];
+}) {
+  const nameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of employees) m.set(e.id, `${e.first_name} ${e.last_name[0] ?? ""}.`);
+    return m;
+  }, [employees]);
+  const studioById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of studios) m.set(s.id, s.name);
+    return m;
+  }, [studios]);
+
+  const studioIds = useMemo(() => Array.from(new Set(shifts.map((s) => s.studio_id))), [shifts]);
+  const [studioFilter, setStudioFilter] = useState<string>("all");
+
+  const filtered = useMemo(
+    () => (studioFilter === "all" ? shifts : shifts.filter((s) => s.studio_id === studioFilter)),
+    [shifts, studioFilter],
+  );
+
+  const weeks = useMemo(() => {
+    const byWeek = new Map<string, Map<string, GenShift[]>>();
+    for (const sh of filtered) {
+      const wk = isoWeekKey(sh.shift_date);
+      if (!byWeek.has(wk)) byWeek.set(wk, new Map());
+      const byDay = byWeek.get(wk)!;
+      if (!byDay.has(sh.shift_date)) byDay.set(sh.shift_date, []);
+      byDay.get(sh.shift_date)!.push(sh);
+    }
+    return Array.from(byWeek.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([wk, byDay]) => ({
+        wk,
+        days: Array.from(byDay.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, list]) => ({
+            date,
+            shifts: list.slice().sort((a, b) =>
+              a.start_time.localeCompare(b.start_time) ||
+              a.business_role.localeCompare(b.business_role),
+            ),
+          })),
+      }));
+  }, [filtered]);
+
+  const [openWeeks, setOpenWeeks] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    setOpenWeeks((prev) => {
+      if (Object.keys(prev).length > 0) return prev;
+      const next: Record<string, boolean> = {};
+      weeks.slice(0, 1).forEach(({ wk }) => { next[wk] = true; });
+      return next;
+    });
+  }, [weeks.length]);
+
+  const fmtD = (d: Date) =>
+    `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+
+  return (
+    <Card className="p-5 mb-5 rounded-2xl">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Aperçu du planning</div>
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+            {filtered.length} shift{filtered.length > 1 ? "s" : ""} · vue rapide, semaine par semaine
+          </div>
+        </div>
+        <Link
+          to="/planning"
+          className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5"
+          style={{ fontSize: 12, fontWeight: 500, color: "var(--primary)", border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+        >
+          Ouvrir Planning <ArrowRight size={12} />
+        </Link>
+      </div>
+
+      {studioIds.length > 1 && (
+        <div className="flex items-center gap-1 mb-4 rounded-lg p-1 self-start" style={{ backgroundColor: "var(--muted)", width: "fit-content" }}>
+          <button
+            onClick={() => setStudioFilter("all")}
+            className="rounded-md px-3 py-1"
+            style={{
+              fontSize: 11, fontWeight: 500,
+              backgroundColor: studioFilter === "all" ? "var(--card)" : "transparent",
+              color: studioFilter === "all" ? "var(--foreground)" : "var(--muted-foreground)",
+            }}
+          >
+            Tous
+          </button>
+          {studioIds.map((sid) => (
+            <button
+              key={sid}
+              onClick={() => setStudioFilter(sid)}
+              className="rounded-md px-3 py-1"
+              style={{
+                fontSize: 11, fontWeight: 500,
+                backgroundColor: studioFilter === sid ? "var(--card)" : "transparent",
+                color: studioFilter === sid ? "var(--foreground)" : "var(--muted-foreground)",
+              }}
+            >
+              {studioById.get(sid) ?? "—"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3">
+        {weeks.map(({ wk, days }) => {
+          const wkDate = new Date(wk + "T00:00:00");
+          const end = new Date(wkDate);
+          end.setUTCDate(wkDate.getUTCDate() + 6);
+          const isOpen = !!openWeeks[wk];
+          const totalShifts = days.reduce((sum, d) => sum + d.shifts.length, 0);
+          const holes = days.reduce((sum, d) => sum + d.shifts.filter((s) => s.user_id === null).length, 0);
+          return (
+            <div key={wk} className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+              <button
+                onClick={() => setOpenWeeks((p) => ({ ...p, [wk]: !p[wk] }))}
+                className="w-full flex items-center justify-between px-4 py-2.5"
+                style={{ backgroundColor: "transparent", border: "none", cursor: "pointer", borderBottom: isOpen ? "0.5px solid var(--border)" : "none" }}
+              >
+                <div className="flex items-center gap-2">
+                  {isOpen ? <ChevronDown size={13} style={{ color: "var(--muted-foreground)" }} /> : <ChevronRight size={13} style={{ color: "var(--muted-foreground)" }} />}
+                  <span style={{ fontSize: 12, fontWeight: 500 }}>Sem. du {fmtD(wkDate)} au {fmtD(end)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{totalShifts} shifts</span>
+                  {holes > 0 && (
+                    <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
+                      {holes} trou{holes > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+              </button>
+              {isOpen && (
+                <div>
+                  {days.map(({ date, shifts: dayShifts }, di) => {
+                    const d = new Date(date + "T00:00:00");
+                    return (
+                      <div key={date} style={{ display: "grid", gridTemplateColumns: "72px 1fr", borderTop: di === 0 ? "none" : "0.5px solid var(--border)" }}>
+                        <div style={{ padding: "8px 10px", backgroundColor: "var(--background)", fontSize: 11 }}>
+                          <div style={{ fontWeight: 500 }}>{DAYS_FR[d.getUTCDay()]}</div>
+                          <div style={{ color: "var(--muted-foreground)" }}>{fmtD(d)}</div>
+                        </div>
+                        <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
+                          {dayShifts.map((sh, i) => {
+                            const hole = sh.user_id === null;
+                            const color = ROLE_COLORS_PREVIEW[sh.business_role] ?? "#64748b";
+                            const name = hole
+                              ? "Trou"
+                              : (sh.user_id && nameById.get(sh.user_id)) || "?";
+                            const studioName = studioFilter === "all" && studioIds.length > 1 ? studioById.get(sh.studio_id) : null;
+                            return (
+                              <div key={i} style={{
+                                display: "flex", alignItems: "center", gap: 8, fontSize: 12,
+                                padding: "3px 6px", borderRadius: 4,
+                                backgroundColor: hole ? "var(--warning-bg)" : "transparent",
+                              }}>
+                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                                <span style={{ fontFamily: "ui-monospace, monospace", color: "var(--muted-foreground)", minWidth: 92 }}>
+                                  {sh.start_time.slice(0, 5)}–{sh.end_time.slice(0, 5)}
+                                </span>
+                                <span style={{ minWidth: 62, color: "var(--muted-foreground)" }}>{sh.business_role}</span>
+                                <span style={{ fontWeight: hole ? 500 : 400, color: hole ? "var(--warning-text)" : "var(--foreground)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {name}
+                                </span>
+                                {studioName && (
+                                  <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>{studioName}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {dayShifts.length === 0 && (
+                            <span style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "3px 6px" }}>—</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+
 
 function CompareView({
   a, b, onPublishA, onPublishB, onCancel,
