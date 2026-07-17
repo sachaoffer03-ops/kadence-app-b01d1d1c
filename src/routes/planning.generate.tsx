@@ -144,6 +144,7 @@ function GeneratePlanningPage() {
           preserve_manual: preserveManual,
           preserve_locked: preserveLocked,
           dry_run: dryRun,
+          whitelist_user_ids: Array.from(whitelist),
         },
       });
       const r = res as GenerateResult;
