@@ -611,9 +611,35 @@ async function runEngine(ctx: EngineCtx) {
   logs.total_requirements = totalSlotsNeeded;
   logs.total_cells = totalCells;
 
+  // Seed les shifts déjà posés dans les AUTRES studios (hors périmètre de génération)
+  // comme contraintes dures : chevauchement horaire, repos 11h, cumul hebdo.
+  // Ces shifts ne seront jamais supprimés/modifiés par la génération courante.
+  const studioIdsSet = new Set(studioIds);
+  let externalSeeded = 0;
+  for (const sh of existingShifts) {
+    if (studioIdsSet.has(sh.studio_id)) continue;
+    if (!sh.user_id || !employees.has(sh.user_id)) continue;
+    const e = employees.get(sh.user_id)!;
+    const sStart = t2m(sh.start_time), sEnd = t2m(sh.end_time);
+    e.assigned.push({
+      date: sh.shift_date,
+      startMin: sStart,
+      endMin: sEnd,
+      studio_id: sh.studio_id,
+      role: sh.business_role,
+      reqId: `external:${sh.id}`,
+    });
+    const wk = isoWeekStart(sh.shift_date);
+    e.weeklyMin.set(wk, (e.weeklyMin.get(wk) ?? 0) + (sEnd - sStart));
+    e.totalAssignedMin += (sEnd - sStart);
+    externalSeeded++;
+  }
+  logs.external_shifts_seeded = externalSeeded;
+
   // Bloque les cellules couvertes par shifts manuels/lockés et soustrait du quota
   const preservedShifts: any[] = [];
   for (const sh of existingShifts) {
+    if (!studioIdsSet.has(sh.studio_id)) continue; // externals déjà seedés au-dessus
     const isManual = sh.is_manual && preserveManual;
     const isLocked = sh.is_locked && preserveLocked;
     if (!isManual && !isLocked) continue;
