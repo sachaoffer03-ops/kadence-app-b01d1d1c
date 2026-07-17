@@ -79,6 +79,13 @@ function SandboxPage() {
       return n;
     });
 
+  const toggleWhitelist = (id: string) =>
+    setWhitelist((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+
   const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
 
   const run = async () => {
