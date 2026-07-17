@@ -53,6 +53,7 @@ function SandboxPage() {
   const [studioId, setStudioId] = useState<string>("");
   const [employees, setEmployees] = useState<EmpRow[]>([]);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [whitelist, setWhitelist] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SimResult | null>(null);
   const [error, setError] = useState<string>("");
@@ -78,6 +79,13 @@ function SandboxPage() {
       return n;
     });
 
+  const toggleWhitelist = (id: string) =>
+    setWhitelist((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+
   const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
 
   const run = async () => {
@@ -94,6 +102,7 @@ function SandboxPage() {
           dry_run: true,
           silent: true,
           exclude_user_ids: Array.from(excluded),
+          whitelist_user_ids: Array.from(whitelist).filter((id) => !excluded.has(id)),
         },
       });
       setResult(res as SimResult);
@@ -154,8 +163,30 @@ function SandboxPage() {
             </div>
           </Card>
 
+          <Card title={`Employés prioritaires (${whitelist.size})`} subtitle="Leurs dispos sont servies en premier, le reste est comblé ensuite.">
+            <div style={{ maxHeight: 240, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 6 }}>
+              {employees.map((e) => {
+                const isExcl = excluded.has(e.id);
+                const on = whitelist.has(e.id);
+                return (
+                  <label key={e.id} className="flex items-center gap-2 px-2 py-1.5"
+                    style={{
+                      fontSize: 13, borderBottom: "1px solid var(--border)",
+                      background: on ? "color-mix(in oklab, #16a34a 10%, transparent)" : "transparent",
+                      opacity: isExcl ? 0.4 : 1,
+                      cursor: isExcl ? "not-allowed" : "pointer",
+                    }}>
+                    <input type="checkbox" checked={on} disabled={isExcl} onChange={() => toggleWhitelist(e.id)} />
+                    <span>{e.first_name} {e.last_name}</span>
+                    {isExcl && <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginLeft: "auto" }}>ignoré</span>}
+                  </label>
+                );
+              })}
+            </div>
+          </Card>
+
           <Card title={`Employés à ignorer (${excluded.size})`} subtitle="Comme s'ils n'existaient pas.">
-            <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 6 }}>
+            <div style={{ maxHeight: 240, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 6 }}>
               {employees.map((e) => {
                 const on = excluded.has(e.id);
                 return (

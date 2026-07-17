@@ -151,6 +151,8 @@ const GenerateInput = z.object({
   dry_run: z.boolean().default(false),
   // Simulation admin : employés à ignorer complètement (dispos ignorées, non affectables)
   exclude_user_ids: z.array(z.string().uuid()).optional(),
+  // Simulation admin : employés prioritaires (leurs dispos sont servies en premier)
+  whitelist_user_ids: z.array(z.string().uuid()).optional(),
   // Simulation admin : ne rien écrire dans planning_runs (implique dry_run=true)
   silent: z.boolean().default(false),
 });
@@ -188,6 +190,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
     const silent = data.silent === true;
     const dryRun = silent ? true : data.dry_run;
     const excludeUserIds = new Set<string>(data.exclude_user_ids ?? []);
+    const whitelistUserIds = new Set<string>((data.whitelist_user_ids ?? []).filter((id) => !excludeUserIds.has(id)));
 
     // ── Verrou : refus si un run 'running' existe déjà sur la même période
     // (skippé en mode silent — la simulation ne concurrence rien)
@@ -244,6 +247,7 @@ export const generatePlanning = createServerFn({ method: "POST" })
         preserveLocked: data.preserve_locked,
         dryRun,
         excludeUserIds,
+        whitelistUserIds,
       });
 
       const durationMs = Date.now() - t0;
@@ -343,11 +347,13 @@ interface EngineCtx {
   preserveLocked: boolean;
   dryRun: boolean;
   excludeUserIds?: Set<string>;
+  whitelistUserIds?: Set<string>;
 }
 
 async function runEngine(ctx: EngineCtx) {
   const { supabase, monthStart, monthEnd, studioIds, studioName, preserveManual, preserveLocked, dryRun } = ctx;
   const excludeUserIds = ctx.excludeUserIds ?? new Set<string>();
+  const whitelistUserIds = ctx.whitelistUserIds ?? new Set<string>();
   const logs: any = { phases: {} };
   const alerts: Array<{ type: string; severity: "info" | "warning" | "error"; user_id?: string; user_name?: string; message: string }> = [];
 
@@ -821,7 +827,13 @@ async function runEngine(ctx: EngineCtx) {
       const eq = maxAssigned > 0 ? 1 - (e.totalAssignedMin / maxAssigned) : 1;
       return wPerf * perf + wGen * gen + wEq * eq;
     };
-    return [...cands].sort((a, b) => priority(b) - priority(a));
+    return [...cands].sort((a, b) => {
+      // Whitelist : les employés prioritaires passent toujours devant.
+      const wa = whitelistUserIds.has(a.id) ? 1 : 0;
+      const wb = whitelistUserIds.has(b.id) ? 1 : 0;
+      if (wa !== wb) return wb - wa;
+      return priority(b) - priority(a);
+    });
   };
 
 
@@ -856,7 +868,13 @@ async function runEngine(ctx: EngineCtx) {
   // ─── PASSE A : CDI sur shifts longs ──────────────────────────────────────
   const t_pA = Date.now();
   const cdiList = Array.from(employees.values()).filter((e) => e.contracts.has("CDI"));
-  cdiList.sort((a, b) => b.score - a.score);
+  cdiList.sort((a, b) => {
+    // Whitelist prioritaire en tête, sinon score décroissant.
+    const wa = whitelistUserIds.has(a.id) ? 1 : 0;
+    const wb = whitelistUserIds.has(b.id) ? 1 : 0;
+    if (wa !== wb) return wb - wa;
+    return b.score - a.score;
+  });
 
   for (const e of cdiList) {
     // Pour chaque date, essayer de placer un long shift contigu sur ses dispos
