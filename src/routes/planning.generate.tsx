@@ -41,6 +41,15 @@ interface Alert {
   type: string; severity: "info" | "warning" | "error";
   user_name?: string; message: string;
 }
+interface GenShift {
+  user_id: string | null;
+  studio_id: string;
+  business_role: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+}
 interface GenerateResult {
   planning_run_id: string;
   status: "success" | "partial" | "failed";
@@ -52,6 +61,7 @@ interface GenerateResult {
   alerts: Alert[];
   duration_ms: number;
   solver_logs?: any;
+  shifts?: GenShift[];
 }
 
 interface StudioInfo {
