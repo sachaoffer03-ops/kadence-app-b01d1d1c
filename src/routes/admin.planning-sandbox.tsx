@@ -212,12 +212,12 @@ function SandboxPage() {
 
           <button
             onClick={run}
-            disabled={running || !studioId}
+            disabled={running || studioIds.size === 0}
             style={{
               width: "100%", padding: "10px 14px", borderRadius: 8,
               background: "var(--coral, #F0997B)", color: "white", border: "none",
               fontSize: 14, fontWeight: 500, cursor: running ? "wait" : "pointer",
-              opacity: running || !studioId ? 0.6 : 1,
+              opacity: running || studioIds.size === 0 ? 0.6 : 1,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}
           >
