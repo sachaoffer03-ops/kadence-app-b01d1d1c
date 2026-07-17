@@ -398,9 +398,22 @@ function GeneratePlanningPage() {
       </Card>
 
 
-      {/* Generate button */}
+      {/* Banner when building scenario B */}
+      {scenarioA && (
+        <div className="rounded-xl p-4 mb-4 flex items-center justify-between gap-3" style={{ backgroundColor: "var(--info-bg)", color: "var(--info-text)" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Scénario B en préparation</div>
+            <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>Scénario A : {scenarioA.label}</div>
+          </div>
+          <button onClick={cancelCompare} className="rounded-md px-3 py-1.5" style={{ fontSize: 12, backgroundColor: "var(--card)", color: "var(--foreground)", border: "0.5px solid var(--border)" }}>
+            Annuler
+          </button>
+        </div>
+      )}
+
+      {/* Preview button */}
       <button
-        onClick={start}
+        onClick={() => runGenerate()}
         disabled={!canGenerate}
         className="w-full rounded-2xl flex items-center justify-center gap-2 transition"
         style={{
@@ -411,8 +424,11 @@ function GeneratePlanningPage() {
           cursor: canGenerate ? "pointer" : "not-allowed",
         }}
       >
-        <Sparkles size={18} /> Générer le planning
+        <Eye size={18} /> {scenarioA ? "Prévisualiser le scénario B" : "Prévisualiser"}
       </button>
+      <p style={{ fontSize: 12, color: "var(--muted-foreground)", textAlign: "center", marginTop: 10 }}>
+        Aucun shift n'est écrit tant que tu n'as pas cliqué sur « Publier ».
+      </p>
 
       {/* Footer ghost links */}
       <div className="flex items-center justify-center gap-6 mt-8">
