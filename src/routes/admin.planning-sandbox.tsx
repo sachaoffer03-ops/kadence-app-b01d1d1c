@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, FlaskConical, Loader2, AlertCircle, Check } from "lucide-react";
+import { ArrowLeft, FlaskConical, Loader2, AlertCircle, Check, Download } from "lucide-react";
 import { toast } from "sonner";
 import { generatePlanning } from "@/lib/generate-planning.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -217,7 +217,33 @@ function SandboxPage() {
               </Card>
 
               {result.shifts && result.shifts.length > 0 && (
-                <WeekView shifts={result.shifts} employees={employees} />
+                <>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => downloadPlanningHTML(result, employees, studios.find((s) => s.id === studioId)?.name ?? "", MONTHS_FR[month], year, excluded, employees)}
+                      style={{
+                        padding: "8px 12px", borderRadius: 6,
+                        background: "var(--foreground)", color: "var(--background)",
+                        border: "none", fontSize: 13, fontWeight: 500,
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >
+                      <Download size={14} /> Télécharger le planning (HTML)
+                    </button>
+                    <button
+                      onClick={() => downloadPlanningCSV(result, employees, MONTHS_FR[month], year)}
+                      style={{
+                        padding: "8px 12px", borderRadius: 6,
+                        background: "transparent", color: "var(--foreground)",
+                        border: "1px solid var(--border)", fontSize: 13, fontWeight: 500,
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >
+                      <Download size={14} /> Export CSV
+                    </button>
+                  </div>
+                  <WeekView shifts={result.shifts} employees={employees} />
+                </>
               )}
 
               {holesByRole.length > 0 && (
@@ -401,4 +427,149 @@ function WeekView({ shifts, employees }: { shifts: GenShift[]; employees: EmpRow
       </div>
     </Card>
   );
+}
+
+// ─── Exports ────────────────────────────────────────────────────────────────
+
+function nameOf(id: string | null, employees: EmpRow[]): string {
+  if (!id) return "— TROU —";
+  const e = employees.find((x) => x.id === id);
+  return e ? `${e.first_name} ${e.last_name}` : id;
+}
+
+function triggerDownload(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function escHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
+function downloadPlanningHTML(
+  result: SimResult,
+  employees: EmpRow[],
+  studioName: string,
+  monthLabel: string,
+  year: number,
+  excludedSet: Set<string>,
+  allEmployees: EmpRow[],
+) {
+  const shifts = result.shifts ?? [];
+  // Group by ISO week → date
+  const byWeek = new Map<string, Map<string, GenShift[]>>();
+  for (const sh of shifts) {
+    const wk = isoWeekKey(sh.shift_date);
+    if (!byWeek.has(wk)) byWeek.set(wk, new Map());
+    const byDay = byWeek.get(wk)!;
+    if (!byDay.has(sh.shift_date)) byDay.set(sh.shift_date, []);
+    byDay.get(sh.shift_date)!.push(sh);
+  }
+  const weeks = Array.from(byWeek.entries()).sort(([a], [b]) => a.localeCompare(b));
+  const excludedNames = Array.from(excludedSet)
+    .map((id) => allEmployees.find((e) => e.id === id))
+    .filter(Boolean)
+    .map((e) => `${e!.first_name} ${e!.last_name}`);
+
+  const roleColor = (r: string) => ROLE_COLORS[r] ?? "#64748b";
+
+  const weekBlocks = weeks.map(([wk, byDay]) => {
+    const wkDate = new Date(wk + "T00:00:00");
+    const end = new Date(wkDate);
+    end.setUTCDate(wkDate.getUTCDate() + 6);
+    const fmtD = (d: Date) => `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const days = Array.from(byDay.entries()).sort(([a], [b]) => a.localeCompare(b));
+    const rows = days.map(([date, list]) => {
+      const d = new Date(date + "T00:00:00");
+      const sorted = list.slice().sort((a, b) =>
+        a.start_time.localeCompare(b.start_time) || a.business_role.localeCompare(b.business_role),
+      );
+      const items = sorted.map((sh) => {
+        const hole = sh.user_id === null;
+        const name = escHtml(nameOf(sh.user_id, employees));
+        return `<tr class="${hole ? "hole" : ""}">
+          <td class="tm">${sh.start_time.slice(0, 5)}–${sh.end_time.slice(0, 5)}</td>
+          <td><span class="dot" style="background:${roleColor(sh.business_role)}"></span>${escHtml(sh.business_role)}</td>
+          <td class="nm">${name}</td>
+        </tr>`;
+      }).join("");
+      return `<tr class="day-head"><td colspan="3">${DAYS_FR[d.getUTCDay()]} ${fmtD(d)}</td></tr>${items}`;
+    }).join("");
+    return `<section class="week">
+      <h3>Semaine du ${fmtD(wkDate)} au ${fmtD(end)}</h3>
+      <table><tbody>${rows}</tbody></table>
+    </section>`;
+  }).join("");
+
+  const html = `<!doctype html>
+<html lang="fr"><head><meta charset="utf-8" />
+<title>Simulation planning — ${escHtml(studioName)} — ${escHtml(monthLabel)} ${year}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; margin: 32px; color: #1a1a1a; background: #FAFAF8; }
+  h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 20px; }
+  .stats { display: flex; gap: 16px; margin: 16px 0 24px; }
+  .stat { border: 1px solid #e5e5e5; border-radius: 8px; padding: 10px 14px; background: white; min-width: 120px; }
+  .stat b { display: block; font-size: 20px; font-weight: 500; }
+  .stat span { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+  .meta { font-size: 12px; color: #666; margin-bottom: 24px; }
+  .meta b { color: #1a1a1a; }
+  section.week { margin-bottom: 22px; page-break-inside: avoid; }
+  section.week h3 { font-size: 13px; font-weight: 500; color: #666; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  table { width: 100%; border-collapse: collapse; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; background: white; font-size: 13px; }
+  td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr.day-head td { background: #f5f5f2; font-weight: 500; font-size: 12px; padding: 6px 10px; }
+  td.tm { font-family: ui-monospace, Menlo, monospace; color: #555; width: 110px; }
+  td .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+  tr.hole td.nm { color: #dc2626; font-weight: 500; }
+  tr.hole { background: #fef2f2; }
+  .foot { margin-top: 32px; font-size: 11px; color: #999; border-top: 1px solid #e5e5e5; padding-top: 12px; }
+  @media print { body { margin: 16mm; background: white; } .stat, table { break-inside: avoid; } }
+</style>
+</head><body>
+<h1>Simulation planning — ${escHtml(studioName)}</h1>
+<div class="sub">${escHtml(monthLabel)} ${year} · Généré le ${new Date().toLocaleString("fr-BE")}</div>
+
+<div class="stats">
+  <div class="stat"><span>Couverture</span><b>${Math.round(result.coverage_rate * 100)}%</b></div>
+  <div class="stat"><span>Shifts</span><b>${result.shifts_generated}</b></div>
+  <div class="stat"><span>Trous</span><b>${result.holes.length}</b></div>
+  <div class="stat"><span>Créneaux</span><b>${result.total_slots_covered}/${result.total_slots_needed}</b></div>
+</div>
+
+${excludedNames.length ? `<div class="meta"><b>Employés ignorés dans la simulation :</b> ${escHtml(excludedNames.join(", "))}</div>` : ""}
+
+${weekBlocks}
+
+<div class="foot">Simulation — ce document n'a jamais été enregistré dans Kadence. Fichier généré localement.</div>
+</body></html>`;
+
+  const fname = `planning-simu-${studioName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${monthLabel.toLowerCase()}-${year}.html`;
+  triggerDownload(fname, html, "text/html;charset=utf-8");
+}
+
+function downloadPlanningCSV(result: SimResult, employees: EmpRow[], monthLabel: string, year: number) {
+  const shifts = (result.shifts ?? []).slice().sort((a, b) =>
+    a.shift_date.localeCompare(b.shift_date) ||
+    a.start_time.localeCompare(b.start_time) ||
+    a.business_role.localeCompare(b.business_role),
+  );
+  const rows = [
+    ["Date", "Jour", "Début", "Fin", "Rôle", "Employé", "Statut"].join(","),
+    ...shifts.map((sh) => {
+      const d = new Date(sh.shift_date + "T00:00:00");
+      const jour = DAYS_FR[d.getUTCDay()];
+      const emp = sh.user_id === null ? "TROU" : nameOf(sh.user_id, employees);
+      return [sh.shift_date, jour, sh.start_time.slice(0, 5), sh.end_time.slice(0, 5), sh.business_role, `"${emp.replace(/"/g, '""')}"`, sh.status].join(",");
+    }),
+  ].join("\n");
+  triggerDownload(`planning-simu-${monthLabel.toLowerCase()}-${year}.csv`, "\ufeff" + rows, "text/csv;charset=utf-8");
 }
