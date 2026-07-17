@@ -67,8 +67,8 @@ function SandboxPage() {
       setStudios((st ?? []) as StudioRow[]);
       setEmployees((pr ?? []) as EmpRow[]);
       const rhode = (st ?? []).find((s: any) => /rhode/i.test(s.name));
-      if (rhode) setStudioId(rhode.id);
-      else if (st?.[0]) setStudioId(st[0].id);
+      if (rhode) setStudioIds(new Set([rhode.id]));
+      else if (st?.[0]) setStudioIds(new Set([st[0].id]));
     })();
   }, []);
 
