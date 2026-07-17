@@ -18,8 +18,17 @@ const MONTHS_FR = [
 
 interface StudioRow { id: string; name: string; }
 interface EmpRow { id: string; first_name: string; last_name: string; }
-interface Hole { studio_name: string; date: string; start_time: string; end_time: string; business_role: string; reason: string; }
+interface Hole { studio_name?: string; date: string; start_time: string; end_time: string; business_role: string; reason: string; }
 interface Alert { severity: "info"|"warning"|"error"; user_name?: string; message: string; }
+interface GenShift {
+  user_id: string | null;
+  studio_id: string;
+  business_role: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+}
 interface SimResult {
   planning_run_id: string | null;
   silent: boolean;
@@ -31,6 +40,7 @@ interface SimResult {
   duration_ms: number;
   holes: Hole[];
   alerts: Alert[];
+  shifts?: GenShift[];
   solver_logs?: any;
 }
 
