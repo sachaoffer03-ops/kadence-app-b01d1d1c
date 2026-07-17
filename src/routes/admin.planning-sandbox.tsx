@@ -96,7 +96,7 @@ function SandboxPage() {
       const res: any = await generate({
         data: {
           month_start_date: monthStart,
-          studio_ids: studioId ? [studioId] : undefined,
+          studio_ids: studioIds.size > 0 ? Array.from(studioIds) : undefined,
           preserve_manual: false,
           preserve_locked: false,
           dry_run: true,
