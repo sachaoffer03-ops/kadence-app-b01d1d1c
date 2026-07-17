@@ -260,7 +260,14 @@ export const generatePlanning = createServerFn({ method: "POST" })
         }).eq("id", runId);
       }
 
-      return { planning_run_id: runId ?? null, duration_ms: durationMs, silent, ...result };
+      const { shifts: engineShifts, ...restResult } = result as any;
+      return {
+        planning_run_id: runId ?? null,
+        duration_ms: durationMs,
+        silent,
+        ...restResult,
+        ...(silent ? { shifts: engineShifts } : {}),
+      };
     } catch (e: any) {
       if (runId) {
         await supabase.from("planning_runs").update({
@@ -1476,6 +1483,15 @@ async function runEngine(ctx: EngineCtx) {
     holes,
     alerts,
     solver_logs: logs,
+    shifts: finalShifts.map((sh) => ({
+      user_id: sh.user_id,
+      studio_id: sh.studio_id,
+      business_role: sh.business_role,
+      shift_date: sh.shift_date,
+      start_time: sh.start_time,
+      end_time: sh.end_time,
+      status: sh.status,
+    })),
   };
 }
 
