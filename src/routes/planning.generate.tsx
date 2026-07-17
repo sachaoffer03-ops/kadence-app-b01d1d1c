@@ -70,6 +70,9 @@ function GeneratePlanningPage() {
   const [month, setMonth] = useState(today.getMonth());
   const [studios, setStudios] = useState<StudioInfo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [employees, setEmployees] = useState<Array<{ id: string; first_name: string; last_name: string; studio_ids: string[] }>>([]);
+  const [whitelist, setWhitelist] = useState<Set<string>>(new Set());
+  const [whitelistOpen, setWhitelistOpen] = useState(false);
 
   // advanced
   const [advOpen, setAdvOpen] = useState(false);
