@@ -83,6 +83,8 @@ function GeneratePlanningPage() {
   const [employees, setEmployees] = useState<Array<{ id: string; first_name: string; last_name: string; studio_ids: string[] }>>([]);
   const [whitelist, setWhitelist] = useState<Set<string>>(new Set());
   const [whitelistOpen, setWhitelistOpen] = useState(false);
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [excludedOpen, setExcludedOpen] = useState(false);
 
   // advanced
   const [advOpen, setAdvOpen] = useState(false);
