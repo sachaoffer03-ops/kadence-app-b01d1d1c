@@ -1306,6 +1306,7 @@ async function runEngine(ctx: EngineCtx) {
 
   // Reconstruire les "shifts finaux" à partir des cellules
   const finalShifts: Array<{
+    req_id: string;
     user_id: string | null; studio_id: string; business_role: string;
     shift_date: string; start_time: string; end_time: string;
     status: string; is_locked: boolean; is_manual: boolean;
@@ -1328,6 +1329,7 @@ async function runEngine(ctx: EngineCtx) {
         // Préserver role_segments uniquement si le trou couvre l'intégralité du besoin
         const holeFull = req.cells[i].startMin === req.startMin && req.cells[j].endMin === req.endMin;
         finalShifts.push({
+          req_id: req.id,
           user_id: null,
           studio_id: req.studio_id,
           business_role: req.role,
@@ -1363,6 +1365,7 @@ async function runEngine(ctx: EngineCtx) {
         ? req.role_segments
         : null;
       finalShifts.push({
+        req_id: req.id,
         user_id: uid,
         studio_id: req.studio_id,
         business_role: req.role,
@@ -1379,64 +1382,40 @@ async function runEngine(ctx: EngineCtx) {
     }
   }
 
-  // ─── PASS F — Fusion des résidus dans le shift voisin ──────────────────
-  // Tout shift "open" plus court que min_shift_hours est par essence non pourvu
-  // (aucun employé ne prendra 15 min isolées). On tente d'étendre un shift
-  // assigné adjacent (même date / rôle / studio) pour absorber le résidu,
-  // si la dispo de l'employé + ses caps le permettent.
-  for (let k = finalShifts.length - 1; k >= 0; k--) {
-    const open = finalShifts[k];
-    if (open.user_id !== null || open.status !== "open") continue;
-    const oStart = t2m(open.start_time);
-    const oEnd = t2m(open.end_time);
-    const oDur = oEnd - oStart;
-    if (oDur >= minShiftMin) continue; // vrai trou actionnable, on garde
-
-    let absorbed = false;
-    for (let m = 0; m < finalShifts.length; m++) {
-      if (m === k) continue;
-      const adj = finalShifts[m];
-      if (!adj.user_id) continue;
-      if (adj.shift_date !== open.shift_date) continue;
-      if (adj.business_role !== open.business_role) continue;
-      if (adj.studio_id !== open.studio_id) continue;
-      // Ne pas fusionner si l'un des deux est hybride (role_segments deviendrait invalide)
-      if (adj.role_segments || open.role_segments) continue;
-      const aStart = t2m(adj.start_time);
-      const aEnd = t2m(adj.end_time);
-      const before = aEnd === oStart;
-      const after = aStart === oEnd;
-      if (!before && !after) continue;
-
-      const newStart = before ? aStart : oStart;
-      const newEnd = before ? oEnd : aEnd;
-      const newDur = newEnd - newStart;
-      const emp = employees.get(adj.user_id);
-      if (!emp) continue;
-      if (newDur > maxShiftHFor(emp, adj.studio_id) * 60) continue;
-      if (!availCovers(emp, adj.shift_date, newStart, newEnd, adj.studio_id)) continue;
-      const addedH = (newDur - (aEnd - aStart)) / 60;
-      if (weeklyHours(emp, adj.shift_date) + addedH > maxWeeklyHFor(emp, adj.studio_id)) continue;
-
-      adj.start_time = `${m2t(newStart)}:00`;
-      adj.end_time = `${m2t(newEnd)}:00`;
-      finalShifts.splice(k, 1);
-      absorbed = true;
-      break;
-    }
-    if (!absorbed) finalShifts.splice(k, 1); // impossible à pourvoir
-  }
-
-
-
+  // Les trous, même courts (15/30/45 min), doivent rester visibles. Avant,
+  // une passe de "nettoyage" supprimait les petits trous impossibles à proposer,
+  // ce qui donnait l'impression qu'un besoin était couvert alors qu'il manquait
+  // la fin du template (ex : Rhode mardi 16:30-21:00 affiché 16:30-20:30).
+  // Désormais la règle business prime : chaque cellule de besoin devient soit
+  // un shift assigné, soit un shift open dans /trous.
 
   // Validation : pas de shift < min, sauf si le besoin lui-même est plus court
   // (ex: Accueil PM 2h45 ou Barista 13h30-15h). Ces shifts sont voulus.
   const validation: string[] = [];
   const knownRoleNames = (businessRolesRows ?? []).map((r: any) => r.name);
+  const reqById = new Map(requirements.map((r) => [r.id, r]));
   for (const sh of finalShifts) {
+    const req = reqById.get(sh.req_id);
+    const shStart = t2m(sh.start_time);
+    const shEnd = t2m(sh.end_time);
+    if (!req) {
+      validation.push(`Shift sans besoin source: ${sh.shift_date} ${sh.start_time}-${sh.end_time} ${sh.business_role}`);
+      continue;
+    }
+    if (
+      sh.shift_date !== req.date ||
+      sh.studio_id !== req.studio_id ||
+      sh.business_role !== req.role ||
+      shStart < req.startMin ||
+      shEnd > req.endMin
+    ) {
+      validation.push(
+        `Shift hors besoin: ${sh.shift_date} ${sh.start_time}-${sh.end_time} ${sh.business_role} ` +
+        `(template ${req.date} ${m2t(req.startMin)}-${m2t(req.endMin)} ${req.role})`,
+      );
+    }
     const dur = t2m(sh.end_time) - t2m(sh.start_time);
-    if (dur < minShiftMin) {
+    if (sh.user_id !== null && dur < minShiftMin) {
       validation.push(`Shift < min: ${sh.user_id} ${sh.shift_date} ${sh.start_time}-${sh.end_time}`);
     }
     if (sh.role_segments) {
@@ -1452,6 +1431,39 @@ async function runEngine(ctx: EngineCtx) {
         }
       }
     }
+  }
+  for (const req of requirements) {
+    const reqShifts = finalShifts.filter((sh) => sh.req_id === req.id);
+    for (const c of req.cells) {
+      if (c.blocked) continue;
+      const covering = reqShifts.filter((sh) => {
+        const sMin = t2m(sh.start_time);
+        const eMin = t2m(sh.end_time);
+        return sMin <= c.startMin && eMin >= c.endMin;
+      });
+      if (covering.length !== 1) {
+        validation.push(
+          `Cellule besoin non exacte: ${req.date} ${m2t(c.startMin)}-${m2t(c.endMin)} ${req.role} ` +
+          `${studioName.get(req.studio_id) ?? req.studio_id} (${covering.length} shift)`,
+        );
+        continue;
+      }
+      const sh = covering[0];
+      if ((c.userId ?? null) !== (sh.user_id ?? null)) {
+        validation.push(
+          `Cellule/user incohérent: ${req.date} ${m2t(c.startMin)}-${m2t(c.endMin)} ${req.role}`,
+        );
+      }
+    }
+  }
+  const hardValidationErrors = validation.filter((v) =>
+    v.startsWith("Shift sans besoin source") ||
+    v.startsWith("Shift hors besoin") ||
+    v.startsWith("Cellule besoin non exacte") ||
+    v.startsWith("Cellule/user incohérent"),
+  );
+  if (hardValidationErrors.length > 0) {
+    throw new Error(`Validation besoins staffing échouée : ${hardValidationErrors.slice(0, 5).join(" | ")}`);
   }
 
   // Trous = besoins non couverts (cellule par cellule, agrégées par requirement)
@@ -1495,7 +1507,7 @@ async function runEngine(ctx: EngineCtx) {
     // Batch insert
     const BATCH = 500;
     for (let k = 0; k < finalShifts.length; k += BATCH) {
-      const slice = finalShifts.slice(k, k + BATCH);
+      const slice = finalShifts.slice(k, k + BATCH).map(({ req_id: _reqId, ...dbShift }) => dbShift);
       const { error } = await supabase.from("shifts").insert(slice);
       if (error) throw new Error(`Erreur insertion : ${error.message}`);
       inserted += slice.length;
