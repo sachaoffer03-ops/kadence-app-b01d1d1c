@@ -88,8 +88,8 @@ function GeneratePlanningPage() {
 
   // advanced
   const [advOpen, setAdvOpen] = useState(false);
-  const [preserveManual, setPreserveManual] = useState(true);
-  const [preserveLocked, setPreserveLocked] = useState(true);
+  const [preserveManual, setPreserveManual] = useState(false);
+  const [preserveLocked, setPreserveLocked] = useState(false);
   const [dryRun, setDryRun] = useState(false);
 
   const [state, setState] = useState<"idle" | "generating" | "preview" | "published" | "error" | "comparing">("idle");
@@ -476,6 +476,30 @@ function GeneratePlanningPage() {
         </div>
       )}
 
+      {/* Advanced settings — visible inline */}
+      <Card className="mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Paramètres avancés</div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+              Désactivés par défaut — active-les uniquement si tu veux protéger des shifts existants.
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-4">
+          <AdvancedToggle
+            label="Préserver les shifts créés à la main"
+            desc="Les shifts créés manuellement ne seront pas écrasés."
+            checked={preserveManual} onChange={setPreserveManual}
+          />
+          <AdvancedToggle
+            label="Préserver les shifts publiés"
+            desc="Les shifts déjà envoyés aux employés ne seront pas modifiés."
+            checked={preserveLocked} onChange={setPreserveLocked}
+          />
+        </div>
+      </Card>
+
       {/* Preview button */}
       <button
         onClick={() => runGenerate()}
@@ -492,7 +516,7 @@ function GeneratePlanningPage() {
         <Eye size={18} /> {scenarioA ? "Prévisualiser le scénario B" : "Prévisualiser"}
       </button>
       <p style={{ fontSize: 12, color: "var(--muted-foreground)", textAlign: "center", marginTop: 10 }}>
-        Aucun shift n'est écrit tant que tu n'as pas cliqué sur « Publier ».
+        Aucun shift n'est enregistré tant que tu n'as pas cliqué sur « Enregistrer dans le planning ». Les employés ne sont notifiés qu'à la publication semaine par semaine.
       </p>
 
       {/* Footer ghost links */}
@@ -507,28 +531,19 @@ function GeneratePlanningPage() {
         </Link>
         <button onClick={() => setAdvOpen(true)} className="hover:underline"
           style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-          Paramètres avancés
+          Mode simulation
         </button>
       </div>
+
 
       {/* Advanced settings dialog */}
       <Dialog open={advOpen} onOpenChange={setAdvOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Paramètres avancés</DialogTitle>
-            <DialogDescription>À ne toucher que si tu sais ce que tu fais.</DialogDescription>
+            <DialogTitle>Mode simulation</DialogTitle>
+            <DialogDescription>Affiche le résultat sans rien écrire en base.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-5 py-2">
-            <AdvancedToggle
-              label="Préserver les shifts créés à la main"
-              desc="Les shifts créés manuellement ne seront pas écrasés."
-              checked={preserveManual} onChange={setPreserveManual}
-            />
-            <AdvancedToggle
-              label="Préserver les shifts publiés"
-              desc="Les shifts déjà envoyés aux employés ne seront pas modifiés."
-              checked={preserveLocked} onChange={setPreserveLocked}
-            />
             <AdvancedToggle
               label="Mode simulation (dry-run)"
               desc="Affiche le résultat sans rien enregistrer en base."
@@ -910,7 +925,7 @@ function PreviewView({
           className="flex-1 rounded-2xl flex items-center justify-center gap-2"
           style={{ height: 52, fontSize: 15, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", border: "none", cursor: publishing ? "wait" : "pointer" }}
         >
-          {publishing ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Publier ce plan
+          {publishing ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Enregistrer dans le planning
         </button>
         <button
           onClick={onReset}
@@ -1294,7 +1309,7 @@ function ScenarioCard({
           opacity: disabled && !publishing ? 0.5 : 1,
         }}
       >
-        {publishing ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Publier ce scénario
+        {publishing ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Enregistrer ce scénario
       </button>
     </Card>
   );
