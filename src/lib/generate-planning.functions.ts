@@ -779,26 +779,38 @@ async function runEngine(ctx: EngineCtx) {
 
   // Construit un vrai shift d'au moins min_shift_hours qui couvre le besoin.
   // Exemple : besoin Accueil 17h30-20h15 (2h45) → shift 17h15-20h15 si la dispo le permet.
+  // IMPORTANT : la fenêtre finale doit rester dans [reqStartMin, reqEndMin] (bornes du staffing template)
+  // pour ne JAMAIS créer un shift en dehors des besoins de staff définis.
   const buildAssignableWindow = (
     coverStart: number,
     coverEnd: number,
     availability: AvailRange,
     maxMin: number,
+    reqStartMin: number,
+    reqEndMin: number,
   ): { startMin: number; endMin: number } | null => {
     const coverLen = coverEnd - coverStart;
     if (coverLen <= 0) return null;
     const targetLen = Math.max(minShiftMin, coverLen);
     if (targetLen > maxMin) return null;
 
-    const latestStart = Math.min(coverStart, availability.endMin - targetLen);
-    const earliestStart = Math.max(availability.startMin, coverEnd - targetLen);
+    // Bornes dures : dispo employé ET fenêtre du template (jamais en dehors du besoin)
+    const lowerBound = Math.max(availability.startMin, reqStartMin);
+    const upperBound = Math.min(availability.endMin, reqEndMin);
+    if (upperBound - lowerBound < targetLen) return null;
+
+    const latestStart = Math.min(coverStart, upperBound - targetLen);
+    const earliestStart = Math.max(lowerBound, coverEnd - targetLen);
     if (latestStart < earliestStart) return null;
 
     const startMin = Math.max(earliestStart, latestStart);
     const endMin = startMin + targetLen;
     if (startMin > coverStart || endMin < coverEnd) return null;
+    // Garde-fou défensif : ne jamais dépasser la fenêtre du template
+    if (startMin < reqStartMin || endMin > reqEndMin) return null;
     return { startMin, endMin };
   };
+
 
   // Trouve la plage de cellules contiguës non-attribuées d'un requirement contenant l'index i
   const contiguousFreeWindow = (req: Requirement, i: number): { startMin: number; endMin: number } | null => {
@@ -1034,7 +1046,7 @@ async function runEngine(ctx: EngineCtx) {
           // Plafond hebdo restant
           const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
           const maxAssignableMin = Math.min(maxH * 60, wkRemainingH * 60);
-          const shiftWindow = buildAssignableWindow(lo, hi, d, maxAssignableMin);
+          const shiftWindow = buildAssignableWindow(lo, hi, d, maxAssignableMin, window.startMin, window.endMin);
           if (!shiftWindow) continue;
           const { startMin: sMin, endMin: eMin } = shiftWindow;
           const eMinAligned = Math.floor(eMin / CELL_MIN) * CELL_MIN;
@@ -1120,7 +1132,7 @@ async function runEngine(ctx: EngineCtx) {
     const maxH = maxShiftHFor(e, req.studio_id);
     const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
     const maxMin = Math.min(maxH * 60, wkRemainingH * 60);
-    const w = buildAssignableWindow(coverStart, coverEnd, avail, maxMin);
+    const w = buildAssignableWindow(coverStart, coverEnd, avail, maxMin, req.startMin, req.endMin);
     if (!w) return null;
     // Conflit (en ignorant éventuellement un shift qu'on vient de retirer)
     for (const a of e.assigned) {
