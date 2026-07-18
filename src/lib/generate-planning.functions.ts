@@ -1132,7 +1132,7 @@ async function runEngine(ctx: EngineCtx) {
     const maxH = maxShiftHFor(e, req.studio_id);
     const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
     const maxMin = Math.min(maxH * 60, wkRemainingH * 60);
-    const w = buildAssignableWindow(coverStart, coverEnd, avail, maxMin);
+    const w = buildAssignableWindow(coverStart, coverEnd, avail, maxMin, req.startMin, req.endMin);
     if (!w) return null;
     // Conflit (en ignorant éventuellement un shift qu'on vient de retirer)
     for (const a of e.assigned) {
