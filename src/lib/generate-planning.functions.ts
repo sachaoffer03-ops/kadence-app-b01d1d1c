@@ -821,16 +821,21 @@ async function runEngine(ctx: EngineCtx) {
     return { startMin: req.cells[lo].startMin, endMin: req.cells[hi].endMin };
   };
 
-  // Applique l'assignation : coche les cellules + met à jour quotas
+  // Applique l'assignation : coche les cellules + met à jour quotas.
+  // On n'écrase JAMAIS une cellule déjà assignée à un autre employé : ça
+  // provoquerait des shifts qui se chevauchent sur un slot à required_count=1.
   const assign = (req: Requirement, e: Employee, sMin: number, eMin: number) => {
     for (const c of req.cells) {
-      if (c.startMin >= sMin && c.endMin <= eMin) c.userId = e.id;
+      if (c.startMin >= sMin && c.endMin <= eMin && c.userId === null && !c.blocked) {
+        c.userId = e.id;
+      }
     }
     e.assigned.push({ date: req.date, startMin: sMin, endMin: eMin, studio_id: req.studio_id, role: req.role, reqId: req.id });
     const wk = isoWeekStart(req.date);
     e.weeklyMin.set(wk, (e.weeklyMin.get(wk) ?? 0) + (eMin - sMin));
     e.totalAssignedMin += (eMin - sMin);
   };
+
 
   // Annule une assignation précédente (utilisé par la Passe E swap-repair)
   const unassign = (req: Requirement, e: Employee, sMin: number, eMin: number) => {
@@ -1132,7 +1137,11 @@ async function runEngine(ctx: EngineCtx) {
     const maxH = maxShiftHFor(e, req.studio_id);
     const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
     const maxMin = Math.min(maxH * 60, wkRemainingH * 60);
-    const w = buildAssignableWindow(coverStart, coverEnd, avail, maxMin, req.startMin, req.endMin);
+    // IMPORTANT : borner l'extension sur [coverStart, coverEnd] (la fenêtre libre),
+    // pas sur [req.startMin, req.endMin]. Sinon buildAssignableWindow peut étendre
+    // le shift dans des cellules déjà assignées à un autre employé et créer un
+    // chevauchement sur un slot à required_count=1.
+    const w = buildAssignableWindow(coverStart, coverEnd, avail, maxMin, coverStart, coverEnd);
     if (!w) return null;
     // Conflit (en ignorant éventuellement un shift qu'on vient de retirer)
     for (const a of e.assigned) {
@@ -1143,6 +1152,7 @@ async function runEngine(ctx: EngineCtx) {
     if (!restOk(e, req.date, w.startMin, w.endMin)) return null;
     return w;
   };
+
 
   outer: for (let pass = 0; pass < 3; pass++) {
     let madeChange = false;
