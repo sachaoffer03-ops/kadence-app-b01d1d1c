@@ -88,8 +88,8 @@ function GeneratePlanningPage() {
 
   // advanced
   const [advOpen, setAdvOpen] = useState(false);
-  const [preserveManual, setPreserveManual] = useState(true);
-  const [preserveLocked, setPreserveLocked] = useState(true);
+  const [preserveManual, setPreserveManual] = useState(false);
+  const [preserveLocked, setPreserveLocked] = useState(false);
   const [dryRun, setDryRun] = useState(false);
 
   const [state, setState] = useState<"idle" | "generating" | "preview" | "published" | "error" | "comparing">("idle");
