@@ -492,7 +492,7 @@ function GeneratePlanningPage() {
         <Eye size={18} /> {scenarioA ? "Prévisualiser le scénario B" : "Prévisualiser"}
       </button>
       <p style={{ fontSize: 12, color: "var(--muted-foreground)", textAlign: "center", marginTop: 10 }}>
-        Aucun shift n'est écrit tant que tu n'as pas cliqué sur « Publier ».
+        Aucun shift n'est enregistré tant que tu n'as pas cliqué sur « Enregistrer dans le planning ». Les employés ne sont notifiés qu'à la publication semaine par semaine.
       </p>
 
       {/* Footer ghost links */}
