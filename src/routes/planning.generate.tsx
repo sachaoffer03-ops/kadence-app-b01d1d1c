@@ -476,6 +476,30 @@ function GeneratePlanningPage() {
         </div>
       )}
 
+      {/* Advanced settings — visible inline */}
+      <Card className="mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Paramètres avancés</div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+              Désactivés par défaut — active-les uniquement si tu veux protéger des shifts existants.
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-4">
+          <AdvancedToggle
+            label="Préserver les shifts créés à la main"
+            desc="Les shifts créés manuellement ne seront pas écrasés."
+            checked={preserveManual} onChange={setPreserveManual}
+          />
+          <AdvancedToggle
+            label="Préserver les shifts publiés"
+            desc="Les shifts déjà envoyés aux employés ne seront pas modifiés."
+            checked={preserveLocked} onChange={setPreserveLocked}
+          />
+        </div>
+      </Card>
+
       {/* Preview button */}
       <button
         onClick={() => runGenerate()}
@@ -507,9 +531,10 @@ function GeneratePlanningPage() {
         </Link>
         <button onClick={() => setAdvOpen(true)} className="hover:underline"
           style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-          Paramètres avancés
+          Mode simulation
         </button>
       </div>
+
 
       {/* Advanced settings dialog */}
       <Dialog open={advOpen} onOpenChange={setAdvOpen}>
