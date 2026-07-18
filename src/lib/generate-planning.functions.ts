@@ -825,8 +825,11 @@ async function runEngine(ctx: EngineCtx) {
   // On n'écrase JAMAIS une cellule déjà assignée à un autre employé : ça
   // provoquerait des shifts qui se chevauchent sur un slot à required_count=1.
   const assign = (req: Requirement, e: Employee, sMin: number, eMin: number) => {
+    const targetCells = req.cells.filter((c) => c.startMin >= sMin && c.endMin <= eMin);
+    if (targetCells.length === 0) return false;
+    if (targetCells.some((c) => c.userId !== null || c.blocked)) return false;
     for (const c of req.cells) {
-      if (c.startMin >= sMin && c.endMin <= eMin && c.userId === null && !c.blocked) {
+      if (c.startMin >= sMin && c.endMin <= eMin) {
         c.userId = e.id;
       }
     }
@@ -834,6 +837,7 @@ async function runEngine(ctx: EngineCtx) {
     const wk = isoWeekStart(req.date);
     e.weeklyMin.set(wk, (e.weeklyMin.get(wk) ?? 0) + (eMin - sMin));
     e.totalAssignedMin += (eMin - sMin);
+    return true;
   };
 
 
