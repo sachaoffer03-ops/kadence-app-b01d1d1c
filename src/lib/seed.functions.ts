@@ -165,14 +165,24 @@ async function ensureStaffingTemplates(rhodeId: string, chatelainId: string, log
 
   // RHODE — Accueil
   if (!studiosWithTemplates.has(rhodeId)) {
-    for (let d = 0; d <= 4; d++) {
-      const morningEnd = d === 0 || d === 1 ? "13:00:00" : "14:00:00";
-      const eveningEnd = d === 1 ? "21:00:00" : "20:00:00";
-      templates.push({ studio_id: rhodeId, day_of_week: d, start_time: "07:30:00", end_time: morningEnd,
+    templates.push({ studio_id: rhodeId, day_of_week: 0, start_time: "08:30:00", end_time: "14:00:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: rhodeId, day_of_week: 0, start_time: "16:30:00", end_time: "20:00:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: rhodeId, day_of_week: 1, start_time: "07:30:00", end_time: "13:00:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: rhodeId, day_of_week: 1, start_time: "16:30:00", end_time: "21:00:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    for (const d of [2, 3]) {
+      templates.push({ studio_id: rhodeId, day_of_week: d, start_time: "07:30:00", end_time: "14:00:00",
         business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
-      templates.push({ studio_id: rhodeId, day_of_week: d, start_time: "16:30:00", end_time: eveningEnd,
+      templates.push({ studio_id: rhodeId, day_of_week: d, start_time: "16:30:00", end_time: "20:00:00",
         business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
     }
+    templates.push({ studio_id: rhodeId, day_of_week: 4, start_time: "07:30:00", end_time: "14:00:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: rhodeId, day_of_week: 4, start_time: "15:30:00", end_time: "18:30:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
     templates.push({ studio_id: rhodeId, day_of_week: 5, start_time: "08:30:00", end_time: "12:00:00",
       business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
     templates.push({ studio_id: rhodeId, day_of_week: 5, start_time: "12:00:00", end_time: "15:00:00",
@@ -185,54 +195,54 @@ async function ensureStaffingTemplates(rhodeId: string, chatelainId: string, log
 
   // CHÂTELAIN
   if (!studiosWithTemplates.has(chatelainId)) {
-    // Accueil
-    for (let d = 0; d <= 4; d++) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "06:30:00", end_time: "13:00:00",
-        business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "16:30:00", end_time: "21:30:00",
+    for (const d of [0, 1, 2, 3]) {
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "08:30:00", end_time: "13:15:00",
         business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
     }
-    for (const d of [5, 6]) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "08:30:00", end_time: "17:00:00",
-        business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 4, start_time: "07:30:00", end_time: "15:30:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 4, start_time: "08:30:00", end_time: "13:15:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 4, start_time: "15:30:00", end_time: "19:15:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 4, start_time: "17:15:00", end_time: "20:15:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 5, start_time: "08:30:00", end_time: "12:15:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 5, start_time: "12:15:00", end_time: "15:15:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 6, start_time: "08:30:00", end_time: "13:30:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 6, start_time: "13:30:00", end_time: "17:15:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+
+    for (const d of [0, 1]) {
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "07:30:00", end_time: "15:30:00",
+        business_role: "Barista", allowed_roles: ["Barista"] });
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "15:30:00", end_time: "19:15:00",
+        business_role: "Barista", allowed_roles: ["Barista"] });
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "17:30:00", end_time: "21:15:00",
+        business_role: "Barista", allowed_roles: ["Barista"] });
     }
-    // Bar principal
-    for (let d = 0; d <= 4; d++) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "07:45:00", end_time: "20:15:00",
+    templates.push({ studio_id: chatelainId, day_of_week: 2, start_time: "07:30:00", end_time: "15:30:00",
+      business_role: "Barista", allowed_roles: ["Barista"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 2, start_time: "15:30:00", end_time: "19:30:00",
+      business_role: "Barista", allowed_roles: ["Barista"] });
+    templates.push({ studio_id: chatelainId, day_of_week: 2, start_time: "17:15:00", end_time: "20:15:00",
+      business_role: "Barista", allowed_roles: ["Barista"] });
+    for (const d of [3, 4]) {
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "07:30:00", end_time: "15:30:00",
+        business_role: "Barista", allowed_roles: ["Barista"] });
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "15:30:00", end_time: "19:15:00",
+        business_role: "Barista", allowed_roles: ["Barista"] });
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "17:15:00", end_time: "20:15:00",
         business_role: "Barista", allowed_roles: ["Barista"] });
     }
     for (const d of [5, 6]) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "08:30:00", end_time: "18:30:00",
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "08:45:00", end_time: "13:30:00",
         business_role: "Barista", allowed_roles: ["Barista"] });
-    }
-    // Renfort/Shake (optionnel, tous les jours)
-    for (let d = 0; d <= 6; d++) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "10:00:00", end_time: "14:00:00",
-        business_role: "Barista", allowed_roles: ["Barista"], is_optional: true });
-    }
-    // Host/Service
-    for (let d = 0; d <= 4; d++) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "10:30:00", end_time: "14:00:00",
-        business_role: "Host", allowed_roles: ["Host", "Accueil"] });
-    }
-    for (const d of [5, 6]) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "10:00:00", end_time: "15:00:00",
-        business_role: "Host", allowed_roles: ["Host", "Accueil"] });
-    }
-    // Cuisine — Lundi 7h-15h30 (8h30) | Mar/Mer/Jeu 7h-14h30 (7h30) | Ven 7h-16h30 (9h30) — CDI uniquement
-    templates.push({ studio_id: chatelainId, day_of_week: 0, start_time: "07:00:00", end_time: "15:30:00",
-      business_role: "Cuisine", allowed_roles: ["Cuisine"], required_contract: "CDI" });
-    for (const d of [1, 2, 3]) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "07:00:00", end_time: "14:30:00",
-        business_role: "Cuisine", allowed_roles: ["Cuisine"], required_contract: "CDI" });
-    }
-    templates.push({ studio_id: chatelainId, day_of_week: 4, start_time: "07:00:00", end_time: "16:30:00",
-      business_role: "Cuisine", allowed_roles: ["Cuisine"], required_contract: "CDI" });
-    // Sam/Dim 8h30-15h30 (7h chacun) — ouvert à CDI / Étudiant / Flexi
-    for (const d of [5, 6]) {
-      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "08:30:00", end_time: "15:30:00",
-        business_role: "Cuisine", allowed_roles: ["Cuisine"],
-        allowed_contracts: ["CDI", "Étudiant", "Flexi"] });
+      templates.push({ studio_id: chatelainId, day_of_week: d, start_time: "13:30:00", end_time: "18:15:00",
+        business_role: "Barista", allowed_roles: ["Barista"] });
     }
   }
 
