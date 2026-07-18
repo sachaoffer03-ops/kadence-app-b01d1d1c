@@ -158,7 +158,8 @@ function GeneratePlanningPage() {
         preserve_locked: preserveLocked,
         dry_run: !opts.real ? true : dryRun,
         silent: !opts.real,
-        whitelist_user_ids: Array.from(whitelist),
+        whitelist_user_ids: Array.from(whitelist).filter((id) => !excluded.has(id)),
+        exclude_user_ids: Array.from(excluded),
       };
       const res = await generate({ data: params });
       const r = res as GenerateResult;
