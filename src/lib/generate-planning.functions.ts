@@ -821,16 +821,21 @@ async function runEngine(ctx: EngineCtx) {
     return { startMin: req.cells[lo].startMin, endMin: req.cells[hi].endMin };
   };
 
-  // Applique l'assignation : coche les cellules + met à jour quotas
+  // Applique l'assignation : coche les cellules + met à jour quotas.
+  // On n'écrase JAMAIS une cellule déjà assignée à un autre employé : ça
+  // provoquerait des shifts qui se chevauchent sur un slot à required_count=1.
   const assign = (req: Requirement, e: Employee, sMin: number, eMin: number) => {
     for (const c of req.cells) {
-      if (c.startMin >= sMin && c.endMin <= eMin) c.userId = e.id;
+      if (c.startMin >= sMin && c.endMin <= eMin && c.userId === null && !c.blocked) {
+        c.userId = e.id;
+      }
     }
     e.assigned.push({ date: req.date, startMin: sMin, endMin: eMin, studio_id: req.studio_id, role: req.role, reqId: req.id });
     const wk = isoWeekStart(req.date);
     e.weeklyMin.set(wk, (e.weeklyMin.get(wk) ?? 0) + (eMin - sMin));
     e.totalAssignedMin += (eMin - sMin);
   };
+
 
   // Annule une assignation précédente (utilisé par la Passe E swap-repair)
   const unassign = (req: Requirement, e: Employee, sMin: number, eMin: number) => {
