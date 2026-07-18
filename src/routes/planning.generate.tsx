@@ -540,20 +540,10 @@ function GeneratePlanningPage() {
       <Dialog open={advOpen} onOpenChange={setAdvOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Paramètres avancés</DialogTitle>
-            <DialogDescription>À ne toucher que si tu sais ce que tu fais.</DialogDescription>
+            <DialogTitle>Mode simulation</DialogTitle>
+            <DialogDescription>Affiche le résultat sans rien écrire en base.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-5 py-2">
-            <AdvancedToggle
-              label="Préserver les shifts créés à la main"
-              desc="Les shifts créés manuellement ne seront pas écrasés."
-              checked={preserveManual} onChange={setPreserveManual}
-            />
-            <AdvancedToggle
-              label="Préserver les shifts publiés"
-              desc="Les shifts déjà envoyés aux employés ne seront pas modifiés."
-              checked={preserveLocked} onChange={setPreserveLocked}
-            />
             <AdvancedToggle
               label="Mode simulation (dry-run)"
               desc="Affiche le résultat sans rien enregistrer en base."
