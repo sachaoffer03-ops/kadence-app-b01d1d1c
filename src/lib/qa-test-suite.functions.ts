@@ -217,7 +217,7 @@ function buildStaffingTemplates(alphaId: string, betaId: string) {
     tpl.push({ studio_id: betaId, day_of_week: d, start_time: "07:30:00", end_time: "14:30:00",
       business_role: "Accueil", allowed_roles: ["Accueil","Barista","Host"], allowed_contracts: [],
       required_contract: null, required_count: 1, is_optional: false });
-    tpl.push({ studio_id: betaId, day_of_week: d, start_time: "16:30:00", end_time: "20:30:00",
+    tpl.push({ studio_id: betaId, day_of_week: d, start_time: "16:30:00", end_time: "21:00:00",
       business_role: "Accueil", allowed_roles: ["Accueil","Barista","Host"], allowed_contracts: [],
       required_contract: null, required_count: 1, is_optional: false });
   }
