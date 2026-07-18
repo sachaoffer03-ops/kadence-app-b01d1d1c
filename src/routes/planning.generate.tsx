@@ -1294,7 +1294,7 @@ function ScenarioCard({
           opacity: disabled && !publishing ? 0.5 : 1,
         }}
       >
-        {publishing ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Publier ce scénario
+        {publishing ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Enregistrer ce scénario
       </button>
     </Card>
   );
