@@ -910,7 +910,7 @@ function PreviewView({
           className="flex-1 rounded-2xl flex items-center justify-center gap-2"
           style={{ height: 52, fontSize: 15, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", border: "none", cursor: publishing ? "wait" : "pointer" }}
         >
-          {publishing ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Publier ce plan
+          {publishing ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Enregistrer dans le planning
         </button>
         <button
           onClick={onReset}
