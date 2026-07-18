@@ -1046,7 +1046,7 @@ async function runEngine(ctx: EngineCtx) {
           // Plafond hebdo restant
           const wkRemainingH = Math.max(0, maxWeeklyHFor(e, req.studio_id) - weeklyHours(e, req.date));
           const maxAssignableMin = Math.min(maxH * 60, wkRemainingH * 60);
-          const shiftWindow = buildAssignableWindow(lo, hi, d, maxAssignableMin);
+          const shiftWindow = buildAssignableWindow(lo, hi, d, maxAssignableMin, window.startMin, window.endMin);
           if (!shiftWindow) continue;
           const { startMin: sMin, endMin: eMin } = shiftWindow;
           const eMinAligned = Math.floor(eMin / CELL_MIN) * CELL_MIN;
