@@ -166,14 +166,20 @@ async function ensureStaffingTemplates(rhodeId: string, chatelainId: string, log
   // RHODE — Accueil
   if (!studiosWithTemplates.has(rhodeId)) {
     for (let d = 0; d <= 4; d++) {
-      templates.push({ studio_id: rhodeId, day_of_week: d, start_time: "07:30:00", end_time: "14:30:00",
+      const morningEnd = d === 0 || d === 1 ? "13:00:00" : "14:00:00";
+      const eveningEnd = d === 1 ? "21:00:00" : "20:00:00";
+      templates.push({ studio_id: rhodeId, day_of_week: d, start_time: "07:30:00", end_time: morningEnd,
         business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
-      templates.push({ studio_id: rhodeId, day_of_week: d, start_time: "16:30:00", end_time: "20:30:00",
+      templates.push({ studio_id: rhodeId, day_of_week: d, start_time: "16:30:00", end_time: eveningEnd,
         business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
     }
-    templates.push({ studio_id: rhodeId, day_of_week: 5, start_time: "08:30:00", end_time: "15:30:00",
+    templates.push({ studio_id: rhodeId, day_of_week: 5, start_time: "08:30:00", end_time: "12:00:00",
       business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
-    templates.push({ studio_id: rhodeId, day_of_week: 6, start_time: "08:30:00", end_time: "18:30:00",
+    templates.push({ studio_id: rhodeId, day_of_week: 5, start_time: "12:00:00", end_time: "15:00:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: rhodeId, day_of_week: 6, start_time: "08:30:00", end_time: "13:30:00",
+      business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
+    templates.push({ studio_id: rhodeId, day_of_week: 6, start_time: "13:30:00", end_time: "18:00:00",
       business_role: "Accueil", allowed_roles: ["Accueil", "Barista", "Host"] });
   }
 
