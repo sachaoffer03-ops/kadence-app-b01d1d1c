@@ -605,6 +605,39 @@ function AdvancedToggle({
   );
 }
 
+function ProtectionRow({
+  icon, label, desc, checked, onChange,
+}: { icon: React.ReactNode; label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label
+      className="flex items-center gap-3 px-5 py-3.5 cursor-pointer transition-colors"
+      style={{ backgroundColor: checked ? "var(--coral-light)" : "transparent" }}
+    >
+      <div
+        className="rounded-md flex items-center justify-center shrink-0"
+        style={{
+          width: 28, height: 28,
+          backgroundColor: checked ? "var(--card)" : "var(--muted)",
+          color: checked ? "var(--coral-dark)" : "var(--muted-foreground)",
+          border: "0.5px solid var(--border)",
+        }}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div style={{ fontSize: 13, fontWeight: 500, color: checked ? "var(--coral-text)" : "var(--foreground)" }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 1, lineHeight: 1.4 }}>
+          {desc}
+        </div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </label>
+  );
+}
+
+
 // ─── Result view ────────────────────────────────────────────────────────────
 function ResultView({ r, navigate, onReset }: { r: GenerateResult; navigate: any; onReset: () => void }) {
   const cancel = useServerFn(cancelPlanningRun);
