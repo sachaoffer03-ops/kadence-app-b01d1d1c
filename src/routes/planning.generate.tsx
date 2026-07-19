@@ -478,28 +478,47 @@ function GeneratePlanningPage() {
       )}
 
       {/* Advanced settings — visible inline */}
-      <Card className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Paramètres avancés</div>
-            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
-              Désactivés par défaut — active-les uniquement si tu veux protéger des shifts existants.
-            </div>
+      <div
+        className="mb-4 rounded-xl overflow-hidden"
+        style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+      >
+        <div
+          className="flex items-center gap-2 px-5 py-3"
+          style={{ borderBottom: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}
+        >
+          <div
+            className="rounded-md flex items-center justify-center"
+            style={{ width: 22, height: 22, backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+          >
+            <Lock size={11} style={{ color: "var(--muted-foreground)" }} />
           </div>
+          <div className="flex-1">
+            <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: 0.2 }}>Protection des shifts existants</div>
+          </div>
+          <span
+            className="rounded-full px-2 py-0.5"
+            style={{ fontSize: 10, color: "var(--muted-foreground)", border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+          >
+            Optionnel
+          </span>
         </div>
-        <div className="flex flex-col gap-4">
-          <AdvancedToggle
-            label="Préserver les shifts créés à la main"
-            desc="Les shifts créés manuellement ne seront pas écrasés."
-            checked={preserveManual} onChange={setPreserveManual}
-          />
-          <AdvancedToggle
-            label="Préserver les shifts publiés"
-            desc="Les shifts déjà envoyés aux employés ne seront pas modifiés."
-            checked={preserveLocked} onChange={setPreserveLocked}
-          />
-        </div>
-      </Card>
+        <ProtectionRow
+          icon={<PencilLine size={13} />}
+          label="Shifts créés à la main"
+          desc="Ne pas écraser les shifts ajoutés manuellement."
+          checked={preserveManual}
+          onChange={setPreserveManual}
+        />
+        <div style={{ height: "0.5px", backgroundColor: "var(--border)" }} />
+        <ProtectionRow
+          icon={<Send size={13} />}
+          label="Shifts déjà publiés"
+          desc="Ne pas modifier les shifts envoyés aux employés."
+          checked={preserveLocked}
+          onChange={setPreserveLocked}
+        />
+      </div>
+
 
       {/* Preview button */}
       <button
