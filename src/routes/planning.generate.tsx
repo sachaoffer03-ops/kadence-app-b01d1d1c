@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Sparkles, ArrowLeft, ArrowRight, AlertCircle, Loader2, Check, X, Eye, History,
   Send, Globe, Undo2, ShieldAlert, AlertTriangle, Info, ChevronDown, ChevronRight,
+  Lock, PencilLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import { generatePlanning, listPlanningRuns, cancelPlanningRun } from "@/lib/generate-planning.functions";
@@ -477,28 +478,47 @@ function GeneratePlanningPage() {
       )}
 
       {/* Advanced settings — visible inline */}
-      <Card className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Paramètres avancés</div>
-            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
-              Désactivés par défaut — active-les uniquement si tu veux protéger des shifts existants.
-            </div>
+      <div
+        className="mb-4 rounded-xl overflow-hidden"
+        style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+      >
+        <div
+          className="flex items-center gap-2 px-5 py-3"
+          style={{ borderBottom: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}
+        >
+          <div
+            className="rounded-md flex items-center justify-center"
+            style={{ width: 22, height: 22, backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+          >
+            <Lock size={11} style={{ color: "var(--muted-foreground)" }} />
           </div>
+          <div className="flex-1">
+            <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: 0.2 }}>Protection des shifts existants</div>
+          </div>
+          <span
+            className="rounded-full px-2 py-0.5"
+            style={{ fontSize: 10, color: "var(--muted-foreground)", border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+          >
+            Optionnel
+          </span>
         </div>
-        <div className="flex flex-col gap-4">
-          <AdvancedToggle
-            label="Préserver les shifts créés à la main"
-            desc="Les shifts créés manuellement ne seront pas écrasés."
-            checked={preserveManual} onChange={setPreserveManual}
-          />
-          <AdvancedToggle
-            label="Préserver les shifts publiés"
-            desc="Les shifts déjà envoyés aux employés ne seront pas modifiés."
-            checked={preserveLocked} onChange={setPreserveLocked}
-          />
-        </div>
-      </Card>
+        <ProtectionRow
+          icon={<PencilLine size={13} />}
+          label="Shifts créés à la main"
+          desc="Ne pas écraser les shifts ajoutés manuellement."
+          checked={preserveManual}
+          onChange={setPreserveManual}
+        />
+        <div style={{ height: "0.5px", backgroundColor: "var(--border)" }} />
+        <ProtectionRow
+          icon={<Send size={13} />}
+          label="Shifts déjà publiés"
+          desc="Ne pas modifier les shifts envoyés aux employés."
+          checked={preserveLocked}
+          onChange={setPreserveLocked}
+        />
+      </div>
+
 
       {/* Preview button */}
       <button
@@ -584,6 +604,39 @@ function AdvancedToggle({
     </div>
   );
 }
+
+function ProtectionRow({
+  icon, label, desc, checked, onChange,
+}: { icon: React.ReactNode; label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label
+      className="flex items-center gap-3 px-5 py-3.5 cursor-pointer transition-colors"
+      style={{ backgroundColor: checked ? "var(--coral-light)" : "transparent" }}
+    >
+      <div
+        className="rounded-md flex items-center justify-center shrink-0"
+        style={{
+          width: 28, height: 28,
+          backgroundColor: checked ? "var(--card)" : "var(--muted)",
+          color: checked ? "var(--coral-dark)" : "var(--muted-foreground)",
+          border: "0.5px solid var(--border)",
+        }}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div style={{ fontSize: 13, fontWeight: 500, color: checked ? "var(--coral-text)" : "var(--foreground)" }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 1, lineHeight: 1.4 }}>
+          {desc}
+        </div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </label>
+  );
+}
+
 
 // ─── Result view ────────────────────────────────────────────────────────────
 function ResultView({ r, navigate, onReset }: { r: GenerateResult; navigate: any; onReset: () => void }) {
