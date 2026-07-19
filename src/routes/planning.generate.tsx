@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Sparkles, ArrowLeft, ArrowRight, AlertCircle, Loader2, Check, X, Eye, History,
   Send, Globe, Undo2, ShieldAlert, AlertTriangle, Info, ChevronDown, ChevronRight,
+  Lock, PencilLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import { generatePlanning, listPlanningRuns, cancelPlanningRun } from "@/lib/generate-planning.functions";
