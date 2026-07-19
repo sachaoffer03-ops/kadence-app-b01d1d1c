@@ -475,17 +475,28 @@ export const getMonthlyDispoMonitoring = createServerFn({ method: "GET" })
     const start = monthStartISO(data.year, data.month);
     const end = monthEndISO(data.year, data.month);
 
-    const { data: adminIds } = await supabaseAdmin
+    // On veut la liste des employés qui saisissent des dispos.
+    // Un utilisateur qui a le rôle "employee" doit apparaître, même s'il est
+    // aussi manager. On exclut donc uniquement les comptes sans rôle employee
+    // (admins purs, managers purs qui ne bossent pas en shift).
+    const { data: allRoles } = await supabaseAdmin
       .from("user_roles")
-      .select("user_id")
-      .in("role", ["admin", "manager"]);
-    const adminSet = new Set((adminIds ?? []).map((r: any) => r.user_id));
+      .select("user_id, role");
+    const rolesByUser = new Map<string, Set<string>>();
+    for (const r of allRoles ?? []) {
+      const set = rolesByUser.get(r.user_id) ?? new Set<string>();
+      set.add(r.role);
+      rolesByUser.set(r.user_id, set);
+    }
 
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
       .select("id, first_name, last_name, contract, studio_id")
       .eq("status", "active");
-    const employees = (profiles ?? []).filter((p: any) => !adminSet.has(p.id));
+    const employees = (profiles ?? []).filter((p: any) => {
+      const roles = rolesByUser.get(p.id);
+      return roles?.has("employee") ?? false;
+    });
 
     const { data: avails } = await supabaseAdmin
       .from("availabilities")
