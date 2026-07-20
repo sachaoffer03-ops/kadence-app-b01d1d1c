@@ -232,7 +232,8 @@ export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
     // Best-effort : ne casse pas la clôture si la notif échoue
   }
 
-  return { alreadyCompleted: false, completedAt };
+  const points = await computeShiftPoints(input.shiftId, input.submissionId);
+  return { alreadyCompleted: false, completedAt, points };
 }
 
 // ─────────────────────────── CLOCK IN ───────────────────────────
