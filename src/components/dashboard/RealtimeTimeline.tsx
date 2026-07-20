@@ -202,15 +202,15 @@ export function RealtimeTimeline() {
       style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
     >
       <div
-        className="flex items-center justify-between gap-3 px-5 py-4"
+        className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
         style={{ borderBottom: "0.5px solid var(--border)" }}
       >
-        <div className="flex items-center gap-2">
-          <Timer size={16} style={{ color: "var(--coral-dark)" }} />
-          <h2 style={{ fontSize: 14, fontWeight: 500 }}>
+        <div className="flex items-center gap-2 min-w-0">
+          <Timer size={16} style={{ color: "var(--coral-dark)" }} className="shrink-0" />
+          <h2 style={{ fontSize: 14, fontWeight: 500 }} className="truncate">
             Timeline temps réel · aujourd'hui
           </h2>
-          <span className="flex items-center gap-1.5 ml-2" title="Mise à jour en direct">
+          <span className="flex items-center gap-1.5 ml-2 shrink-0" title="Mise à jour en direct">
             <span
               className="animate-pulse-dot rounded-full"
               style={{ width: 6, height: 6, backgroundColor: "var(--success-text)" }}
@@ -220,7 +220,10 @@ export function RealtimeTimeline() {
         </div>
 
         {showStudioTabs && (
-          <div className="flex items-center gap-1">
+          <div
+            className="flex items-center gap-1 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 sm:overflow-visible sm:flex-wrap sm:justify-end"
+            style={{ scrollbarWidth: "none" }}
+          >
             <StudioPill
               label="Tous"
               active={activeStudio === "all"}
