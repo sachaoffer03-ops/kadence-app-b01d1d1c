@@ -183,7 +183,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void } = {}) {
           </div>
           <div className="flex-1 min-w-0">
             <div style={{ fontSize: 15, fontWeight: 500, color: "var(--foreground)" }}>Kadence Assistant</div>
-            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Pose-moi tes questions sur tes shifts, ton score, tes formations…</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Pose-moi tes questions sur tes shifts, tes formations…</div>
           </div>
           {onClose && (
             <button
