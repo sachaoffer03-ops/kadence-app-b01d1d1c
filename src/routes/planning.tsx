@@ -20,6 +20,7 @@ import { getRoleStyle } from "@/lib/staff-helpers";
 import { isHybridShift, getSegmentLayout } from "@/lib/role-segments";
 import { RatingInput } from "@/components/RatingInput";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
@@ -753,7 +754,10 @@ function PlanningCalendarPage() {
   const [published, setPublished] = useState(false);
   const search = Route.useSearch();
   const [showAdd, setShowAdd] = useState(!!search.add);
-  const [viewMode, setViewMode] = useState<ViewMode>("semaine");
+  const isMobile = useIsMobile();
+  const [viewModeRaw, setViewMode] = useState<ViewMode>("semaine");
+  // Sur mobile, on force la vue "jour" — une seule journée à la fois est lisible sur un écran étroit.
+  const viewMode: ViewMode = isMobile ? "jour" : viewModeRaw;
   const [dayIdxJour, setDayIdxJour] = useState<number>(() => {
     const t = new Date();
     const idx = weekDays.findIndex((d) => d.toDateString() === t.toDateString());
@@ -1067,29 +1071,31 @@ function PlanningCalendarPage() {
           );
         })()}
 
-        {/* View mode toggle */}
-        <div className="flex rounded-full p-1" style={{ backgroundColor: "var(--muted)" }}>
-          {(["semaine", "jour"] as const).map((m) => {
-            const active = viewMode === m;
-            return (
-              <button
-                key={m}
-                onClick={() => setViewMode(m)}
-                className="rounded-full px-4 py-1.5 transition-colors"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  backgroundColor: active ? "#fff" : "transparent",
-                  color: active ? "var(--foreground)" : "var(--muted-foreground)",
-                  boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  textTransform: "capitalize",
-                }}
-              >
-                {m === "semaine" ? "Semaine" : "Jour"}
-              </button>
-            );
-          })}
-        </div>
+        {/* View mode toggle (masqué sur mobile — la vue Jour est forcée) */}
+        {!isMobile && (
+          <div className="flex rounded-full p-1" style={{ backgroundColor: "var(--muted)" }}>
+            {(["semaine", "jour"] as const).map((m) => {
+              const active = viewMode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setViewMode(m)}
+                  className="rounded-full px-4 py-1.5 transition-colors"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    backgroundColor: active ? "#fff" : "transparent",
+                    color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                    boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {m === "semaine" ? "Semaine" : "Jour"}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-md" style={{ border: "0.5px solid var(--border)" }}>
@@ -1186,6 +1192,74 @@ function PlanningCalendarPage() {
         </button>
       </div>
 
+
+      {/* Sélecteur de jour horizontal — mobile uniquement */}
+      {isMobile && (
+        <div
+          className="flex gap-1.5 mb-3 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+        >
+          {weekDays.map((d, idx) => {
+            const active = idx === dayIdxJour;
+            const isToday = idx === todayIdx;
+            const dayShifts = studioShifts.filter((s) => s.day === idx);
+            const holesCount = dayShifts.filter((s) => s.hole).length;
+            return (
+              <button
+                key={idx}
+                onClick={() => setDayIdxJour(idx)}
+                className="rounded-xl flex flex-col items-center justify-center shrink-0 transition-colors"
+                style={{
+                  minWidth: 52,
+                  padding: "8px 6px",
+                  backgroundColor: active
+                    ? "var(--foreground)"
+                    : isToday
+                      ? "var(--coral-light)"
+                      : "var(--card)",
+                  color: active
+                    ? "var(--background)"
+                    : "var(--foreground)",
+                  border: `0.5px solid ${active ? "var(--foreground)" : "var(--border)"}`,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 9,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    opacity: active ? 0.7 : 0.55,
+                  }}
+                >
+                  {dayNamesShort[d.getDay()]}
+                </span>
+                <span style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.1, marginTop: 2 }}>
+                  {d.getDate()}
+                </span>
+                <div className="flex items-center gap-1 mt-1" style={{ height: 6 }}>
+                  {dayShifts.length > 0 && (
+                    <span
+                      className="rounded-full"
+                      style={{
+                        width: 4,
+                        height: 4,
+                        backgroundColor: active ? "var(--background)" : "var(--muted-foreground)",
+                        opacity: 0.7,
+                      }}
+                    />
+                  )}
+                  {holesCount > 0 && (
+                    <span
+                      className="rounded-full"
+                      style={{ width: 4, height: 4, backgroundColor: "var(--coral)" }}
+                    />
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Zoom slider (vue calendrier) */}
       <PlanningCalendar
