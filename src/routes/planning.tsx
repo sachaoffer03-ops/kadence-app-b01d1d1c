@@ -20,6 +20,7 @@ import { getRoleStyle } from "@/lib/staff-helpers";
 import { isHybridShift, getSegmentLayout } from "@/lib/role-segments";
 import { RatingInput } from "@/components/RatingInput";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/planning")({
   component: PlanningPage,
