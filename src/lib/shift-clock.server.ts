@@ -1,4 +1,42 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { loadScoringSettings } from "./scoring-rules.server";
+import { scorePunctuality, scoreChecklist } from "./scoring-shared";
+
+async function computeShiftPoints(shiftId: string, submissionId?: string | null): Promise<{
+  punctuality: number; checklist: number | null; total: number; outOf: number;
+} | null> {
+  try {
+    const { data: sh } = await supabaseAdmin
+      .from("shifts").select("minutes_late").eq("id", shiftId).maybeSingle();
+    const rules: any = await loadScoringSettings(supabaseAdmin);
+    const ml = sh?.minutes_late == null ? 0 : Number(sh.minutes_late);
+    const pPts = scorePunctuality(rules, ml);
+    let cPts: number | null = null;
+    if (submissionId) {
+      const { data: items } = await supabaseAdmin
+        .from("checklist_submission_items")
+        .select("checked").eq("submission_id", submissionId);
+      const arr = items ?? [];
+      if (arr.length > 0) {
+        const done = arr.filter((i: any) => i.checked).length;
+        const missed = arr.length - done;
+        cPts = scoreChecklist(rules, done / arr.length, missed);
+      }
+    }
+    const wp = rules.weight_punctuality, wc = rules.weight_checklist;
+    const total = cPts !== null
+      ? (pPts * wp + cPts * wc) / (wp + wc || 1)
+      : pPts;
+    return {
+      punctuality: Math.round(pPts * 10) / 10,
+      checklist: cPts !== null ? Math.round(cPts * 10) / 10 : null,
+      total: Math.round(total * 10) / 10,
+      outOf: 10,
+    };
+  } catch {
+    return null;
+  }
+}
 
 type CompleteShiftClockOutInput = {
   shiftId: string;
