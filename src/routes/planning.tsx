@@ -1039,29 +1039,33 @@ function PlanningCalendarPage() {
           <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{weekRangeLabel}</div>
         </div>
 
-        {/* Studio toggle */}
-        <div className="flex rounded-full p-1" style={{ backgroundColor: "var(--muted)" }}>
-          {studios.map((s) => {
-            const active = selectedStudios.has(s);
-            return (
-              <button
-                key={s}
-                onClick={() => toggleStudio(s)}
-                title={active ? "Cliquer pour masquer ce studio" : "Cliquer pour afficher ce studio"}
-                className="rounded-full px-5 py-1.5 transition-colors"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  backgroundColor: active ? "#fff" : "transparent",
-                  color: active ? "var(--foreground)" : "var(--muted-foreground)",
-                  boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                }}
-              >
-                {s.replace("Skult ", "")}
-              </button>
-            );
-          })}
-        </div>
+        {/* Studio filter */}
+        {studios.length > 0 && (() => {
+          const ALL = "Tous les studios";
+          const labelOf = (s: Studio) => s.replace(/^Skult\s+/i, "");
+          const options = [ALL, ...studios.map(labelOf)];
+          const isAll = selectedStudios.size === studios.length;
+          const current = isAll
+            ? ALL
+            : selectedStudios.size === 1
+              ? labelOf(Array.from(selectedStudios)[0])
+              : `${selectedStudios.size} studios`;
+          return (
+            <Dropdown
+              value={current}
+              options={options}
+              minWidth={180}
+              onChange={(v) => {
+                if (v === ALL) {
+                  setSelectedStudios(new Set(studios));
+                } else {
+                  const match = studios.find((s) => labelOf(s) === v);
+                  if (match) setSelectedStudios(new Set([match]));
+                }
+              }}
+            />
+          );
+        })()}
 
         {/* View mode toggle */}
         <div className="flex rounded-full p-1" style={{ backgroundColor: "var(--muted)" }}>
