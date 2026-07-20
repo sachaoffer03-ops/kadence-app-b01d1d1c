@@ -1193,6 +1193,74 @@ function PlanningCalendarPage() {
       </div>
 
 
+      {/* Sélecteur de jour horizontal — mobile uniquement */}
+      {isMobile && (
+        <div
+          className="flex gap-1.5 mb-3 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+        >
+          {weekDays.map((d, idx) => {
+            const active = idx === dayIdxJour;
+            const isToday = idx === todayIdx;
+            const dayShifts = studioShifts.filter((s) => s.day === idx);
+            const holesCount = dayShifts.filter((s) => s.hole).length;
+            return (
+              <button
+                key={idx}
+                onClick={() => setDayIdxJour(idx)}
+                className="rounded-xl flex flex-col items-center justify-center shrink-0 transition-colors"
+                style={{
+                  minWidth: 52,
+                  padding: "8px 6px",
+                  backgroundColor: active
+                    ? "var(--foreground)"
+                    : isToday
+                      ? "var(--coral-light)"
+                      : "var(--card)",
+                  color: active
+                    ? "var(--background)"
+                    : "var(--foreground)",
+                  border: `0.5px solid ${active ? "var(--foreground)" : "var(--border)"}`,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 9,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    opacity: active ? 0.7 : 0.55,
+                  }}
+                >
+                  {dayNamesShort[d.getDay()]}
+                </span>
+                <span style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.1, marginTop: 2 }}>
+                  {d.getDate()}
+                </span>
+                <div className="flex items-center gap-1 mt-1" style={{ height: 6 }}>
+                  {dayShifts.length > 0 && (
+                    <span
+                      className="rounded-full"
+                      style={{
+                        width: 4,
+                        height: 4,
+                        backgroundColor: active ? "var(--background)" : "var(--muted-foreground)",
+                        opacity: 0.7,
+                      }}
+                    />
+                  )}
+                  {holesCount > 0 && (
+                    <span
+                      className="rounded-full"
+                      style={{ width: 4, height: 4, backgroundColor: "var(--coral)" }}
+                    />
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Zoom slider (vue calendrier) */}
       <PlanningCalendar
         weekDays={weekDays}
