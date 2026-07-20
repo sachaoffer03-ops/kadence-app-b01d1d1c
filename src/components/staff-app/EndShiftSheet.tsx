@@ -111,7 +111,7 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
       } else {
         toast.success("Shift terminé");
       }
-
+      setEarnedPoints((result as any).points ?? null);
       clearDraft(shift.id);
       setStep("done");
       onCompleted?.();
