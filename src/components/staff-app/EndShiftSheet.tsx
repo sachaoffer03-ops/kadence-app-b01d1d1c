@@ -53,6 +53,7 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
   const [reportMsg, setReportMsg] = useState("");
   const [handoffMsg, setHandoffMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState<{ punctuality: number; checklist: number | null; total: number; outOf: number } | null>(null);
 
   const saveDraft = (patch: Draft) => {
     if (!shift || typeof window === "undefined") return;
@@ -110,7 +111,7 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
       } else {
         toast.success("Shift terminé");
       }
-
+      setEarnedPoints((result as any).points ?? null);
       clearDraft(shift.id);
       setStep("done");
       onCompleted?.();
@@ -221,9 +222,34 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
             <Check size={36} color="var(--coral-dark)" strokeWidth={1.8} />
           </div>
           <div style={{ fontSize: 20, fontWeight: 500, marginBottom: 6 }}>Shift terminé</div>
-          <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 24, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 20, lineHeight: 1.5 }}>
             Bonne soirée. Tes infos ont été transmises.
           </div>
+
+          {earnedPoints && (
+            <div
+              className="w-full rounded-xl px-4 py-4 mb-5"
+              style={{
+                backgroundColor: "var(--coral-light)",
+                border: "0.5px solid var(--coral)",
+              }}
+            >
+              <div style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--coral-dark)", marginBottom: 6 }}>
+                Points gagnés sur ce shift
+              </div>
+              <div style={{ fontSize: 34, fontWeight: 500, lineHeight: 1, color: "var(--coral-dark)" }}>
+                +{earnedPoints.total.toFixed(1)}
+                <span style={{ fontSize: 14, color: "var(--muted-foreground)", fontWeight: 400 }}> / {earnedPoints.outOf}</span>
+              </div>
+              <div className="flex justify-center gap-4 mt-3" style={{ fontSize: 12, color: "var(--foreground)" }}>
+                <span>Ponctualité <b style={{ fontWeight: 500 }}>{earnedPoints.punctuality.toFixed(1)}</b></span>
+                {earnedPoints.checklist !== null && (
+                  <span>Checklist <b style={{ fontWeight: 500 }}>{earnedPoints.checklist.toFixed(1)}</b></span>
+                )}
+              </div>
+            </div>
+          )}
+
           <PrimaryButton onClick={onClose}>Fermer</PrimaryButton>
         </div>
       )}
