@@ -754,7 +754,10 @@ function PlanningCalendarPage() {
   const [published, setPublished] = useState(false);
   const search = Route.useSearch();
   const [showAdd, setShowAdd] = useState(!!search.add);
-  const [viewMode, setViewMode] = useState<ViewMode>("semaine");
+  const isMobile = useIsMobile();
+  const [viewModeRaw, setViewMode] = useState<ViewMode>("semaine");
+  // Sur mobile, on force la vue "jour" — une seule journée à la fois est lisible sur un écran étroit.
+  const viewMode: ViewMode = isMobile ? "jour" : viewModeRaw;
   const [dayIdxJour, setDayIdxJour] = useState<number>(() => {
     const t = new Date();
     const idx = weekDays.findIndex((d) => d.toDateString() === t.toDateString());
