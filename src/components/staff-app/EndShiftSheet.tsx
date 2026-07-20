@@ -53,6 +53,7 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
   const [reportMsg, setReportMsg] = useState("");
   const [handoffMsg, setHandoffMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState<{ punctuality: number; checklist: number | null; total: number; outOf: number } | null>(null);
 
   const saveDraft = (patch: Draft) => {
     if (!shift || typeof window === "undefined") return;
