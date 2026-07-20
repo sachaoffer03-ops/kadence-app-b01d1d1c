@@ -950,7 +950,7 @@ function ProfilRecap({ userId: _userId }: { userId: string }) {
         textTransform: "capitalize",
       }}
     >
-      {monthLabel} · {stats.career.totalShiftsCompleted} shifts · {hours}h · score {score}
+      {monthLabel} · {stats.career.totalShiftsCompleted} shifts · {hours}h
     </div>
   );
 }
