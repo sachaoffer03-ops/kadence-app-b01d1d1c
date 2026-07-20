@@ -939,7 +939,6 @@ function ProfilRecap({ userId: _userId }: { userId: string }) {
   if (!stats) return null;
   const monthLabel = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
   const hours = Math.round(stats.career.totalHoursWorked);
-  const score = Math.round((stats.score.current ?? 0) * 10) / 10;
   return (
     <div
       style={{
