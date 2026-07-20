@@ -1071,29 +1071,31 @@ function PlanningCalendarPage() {
           );
         })()}
 
-        {/* View mode toggle */}
-        <div className="flex rounded-full p-1" style={{ backgroundColor: "var(--muted)" }}>
-          {(["semaine", "jour"] as const).map((m) => {
-            const active = viewMode === m;
-            return (
-              <button
-                key={m}
-                onClick={() => setViewMode(m)}
-                className="rounded-full px-4 py-1.5 transition-colors"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  backgroundColor: active ? "#fff" : "transparent",
-                  color: active ? "var(--foreground)" : "var(--muted-foreground)",
-                  boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  textTransform: "capitalize",
-                }}
-              >
-                {m === "semaine" ? "Semaine" : "Jour"}
-              </button>
-            );
-          })}
-        </div>
+        {/* View mode toggle (masqué sur mobile — la vue Jour est forcée) */}
+        {!isMobile && (
+          <div className="flex rounded-full p-1" style={{ backgroundColor: "var(--muted)" }}>
+            {(["semaine", "jour"] as const).map((m) => {
+              const active = viewMode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setViewMode(m)}
+                  className="rounded-full px-4 py-1.5 transition-colors"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    backgroundColor: active ? "#fff" : "transparent",
+                    color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                    boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {m === "semaine" ? "Semaine" : "Jour"}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-md" style={{ border: "0.5px solid var(--border)" }}>
