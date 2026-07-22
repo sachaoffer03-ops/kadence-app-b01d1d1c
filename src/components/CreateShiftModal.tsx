@@ -11,6 +11,7 @@ import { sendProposalsToShifts } from "@/lib/proposals.functions";
 import { assignShiftsDirect } from "@/lib/shifts.functions";
 import { RoleSegmentsEditor } from "@/components/admin/RoleSegmentsEditor";
 import { validateRoleSegments, type RoleSegment } from "@/lib/role-segments";
+import { TimePicker24 } from "@/components/ui/time-picker-24";
 
 
 interface Studio { id: string; name: string }
