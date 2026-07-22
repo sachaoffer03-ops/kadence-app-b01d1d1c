@@ -526,14 +526,14 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={handleClose} className="rounded-md border px-4 py-2"
-                style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)" }}>Annuler</button>
-              <button type="submit" disabled={submitting || (isMulti && !segValidation.ok)} className="rounded-md px-4 py-2 disabled:opacity-50"
-                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+              <button type="button" onClick={handleClose} className="rounded-md border px-4 py-2 transition-colors hover:bg-[var(--muted)]"
+                style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)", color: "var(--foreground)" }}>Annuler</button>
+              <button type="submit" disabled={submitting || (isMulti && !segValidation.ok)} className="rounded-md px-4 py-2 disabled:opacity-50 transition-opacity"
+                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
                 {submitting ? "Création..." : "Suivant : choisir les destinataires"}
               </button>
-
             </div>
+
           </form>
         )}
 
