@@ -58,8 +58,9 @@ const initials = (f: string, l: string) => `${(f?.[0] || "").toUpperCase()}${(l?
 function EmployeeDetailPage() {
   const { id } = Route.useParams();
   const { edit } = Route.useSearch();
-  const { user, appRole } = useAuth();
+  const { user, appRole, managerPermissions } = useAuth();
   const canRate = appRole === "admin" || appRole === "manager";
+
   const [emp, setEmp] = useState<Profile | null>(null);
   const [businessRoles, setBusinessRoles] = useState<Role[]>([]);
   const [studios, setStudios] = useState<Record<string, string>>({});
