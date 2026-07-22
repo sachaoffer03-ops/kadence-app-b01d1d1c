@@ -608,8 +608,8 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
                   onClick={assignNow}
                   disabled={selected.size !== 1 || submitting}
                   title={selected.size !== 1 ? "Sélectionnez exactement 1 employé pour l'assigner directement" : "Assigner directement sans envoyer de proposition"}
-                  className="rounded-md border px-4 py-2 flex items-center gap-1.5 disabled:opacity-40"
-                  style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--foreground)", color: "var(--foreground)" }}>
+                  className="rounded-md border px-4 py-2 flex items-center gap-1.5 disabled:opacity-40 transition-colors hover:bg-[var(--muted)]"
+                  style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)", color: "var(--foreground)" }}>
                   <UserCheck size={14} />
                   {submitting ? "…" : "Assigner directement"}
                 </button>
