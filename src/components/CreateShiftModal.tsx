@@ -53,9 +53,9 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const [role, setRole] = useState<string>("");
   const [isMulti, setIsMulti] = useState(false);
   const [segments, setSegments] = useState<RoleSegment[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [startTime, setStartTime] = useState("10:00");
-  const [endTime, setEndTime] = useState("15:00");
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
   const [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly" | "monthly">("none");
   const [until, setUntil] = useState("");
