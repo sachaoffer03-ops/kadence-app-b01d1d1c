@@ -188,6 +188,9 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
 
   const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!studioId) return toast.error("Choisis un studio");
+    if (!date) return toast.error("Choisis une date");
+    if (!startTime || !endTime) return toast.error("Renseigne les heures");
     if (endTime <= startTime) return toast.error("L'heure de fin doit être après le début");
     if (recurrence !== "none" && !until) return toast.error("Indiquez une date de fin de répétition");
     if (isMulti && !segValidation.ok) return toast.error("Segments invalides", { description: segValidation.errors[0] });
