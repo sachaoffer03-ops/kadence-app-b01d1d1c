@@ -53,9 +53,9 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const [role, setRole] = useState<string>("");
   const [isMulti, setIsMulti] = useState(false);
   const [segments, setSegments] = useState<RoleSegment[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [startTime, setStartTime] = useState("10:00");
-  const [endTime, setEndTime] = useState("15:00");
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
   const [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly" | "monthly">("none");
   const [until, setUntil] = useState("");
@@ -75,22 +75,20 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   useEffect(() => {
     if (!open) return;
     supabase.from("studios").select("id, name").then(({ data }) => {
-      if (data) {
-        setStudios(data);
-        if (data.length && !studioId) setStudioId(data[0].id);
-      }
+      if (data) setStudios(data);
     });
   }, [open]);
 
-  // Aligne le rôle sélectionné avec les rôles du studio courant
+  // Ne pré-sélectionne pas le rôle : on garde vide tant que l'utilisateur ne choisit pas
   useEffect(() => {
     if (BUSINESS_ROLES.length === 0) { setRole(""); return; }
-    if (!role || !BUSINESS_ROLES.includes(role)) setRole(BUSINESS_ROLES[0]);
+    if (role && !BUSINESS_ROLES.includes(role)) setRole("");
   }, [BUSINESS_ROLES.join("|")]);
 
   const resetAll = () => {
     setStep("form");
-    setNotes(""); setStartTime("10:00"); setEndTime("15:00");
+    setStudioId(""); setRole(""); setDate("");
+    setNotes(""); setStartTime(""); setEndTime("");
     setRecurrence("none"); setUntil(""); setExtraWeekdays(new Set());
     setShiftIds([]); setCreatedCount(0);
     setEligible([]); setPartial([]); setSelected(new Set()); setShowPartial(false);
@@ -101,6 +99,7 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   // on snap les bornes des segments.
   useEffect(() => {
     if (!isMulti) return;
+    if (!startTime || !endTime) return;
     if (segments.length < 2) {
       const [sh, sm] = startTime.split(":").map(Number);
       const [eh, em] = endTime.split(":").map(Number);
@@ -189,6 +188,9 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
 
   const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!studioId) return toast.error("Choisis un studio");
+    if (!date) return toast.error("Choisis une date");
+    if (!startTime || !endTime) return toast.error("Renseigne les heures");
     if (endTime <= startTime) return toast.error("L'heure de fin doit être après le début");
     if (recurrence !== "none" && !until) return toast.error("Indiquez une date de fin de répétition");
     if (isMulti && !segValidation.ok) return toast.error("Segments invalides", { description: segValidation.errors[0] });
@@ -352,9 +354,10 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const chip = (active: boolean) => ({
     fontSize: 12,
     fontWeight: active ? 500 as const : 400 as const,
-    backgroundColor: active ? "var(--foreground)" : "transparent",
-    color: active ? "var(--card)" : "var(--muted-foreground)",
+    backgroundColor: active ? "var(--coral)" : "transparent",
+    color: active ? "#fff" : "var(--muted-foreground)",
     border: active ? "none" : "0.5px solid var(--border)",
+    transition: "all 120ms ease",
   });
 
   const studioName = studios.find((s) => s.id === studioId)?.name || "—";
@@ -523,14 +526,14 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={handleClose} className="rounded-md border px-4 py-2"
-                style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)" }}>Annuler</button>
-              <button type="submit" disabled={submitting || (isMulti && !segValidation.ok)} className="rounded-md px-4 py-2 disabled:opacity-50"
-                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+              <button type="button" onClick={handleClose} className="rounded-md border px-4 py-2 transition-colors hover:bg-[var(--muted)]"
+                style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)", color: "var(--foreground)" }}>Annuler</button>
+              <button type="submit" disabled={submitting || (isMulti && !segValidation.ok)} className="rounded-md px-4 py-2 disabled:opacity-50 transition-opacity"
+                style={{ fontSize: 13, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
                 {submitting ? "Création..." : "Suivant : choisir les destinataires"}
               </button>
-
             </div>
+
           </form>
         )}
 
@@ -605,8 +608,8 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
                   onClick={assignNow}
                   disabled={selected.size !== 1 || submitting}
                   title={selected.size !== 1 ? "Sélectionnez exactement 1 employé pour l'assigner directement" : "Assigner directement sans envoyer de proposition"}
-                  className="rounded-md border px-4 py-2 flex items-center gap-1.5 disabled:opacity-40"
-                  style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--foreground)", color: "var(--foreground)" }}>
+                  className="rounded-md border px-4 py-2 flex items-center gap-1.5 disabled:opacity-40 transition-colors hover:bg-[var(--muted)]"
+                  style={{ fontSize: 13, fontWeight: 500, borderColor: "var(--border)", color: "var(--foreground)" }}>
                   <UserCheck size={14} />
                   {submitting ? "…" : "Assigner directement"}
                 </button>
