@@ -55,8 +55,7 @@ function fmtMinutes(min: number): string {
   return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 function nowHHMM(): string {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return formatBrusselsTime(new Date());
 }
 
 function PointagePage() {
