@@ -75,17 +75,14 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   useEffect(() => {
     if (!open) return;
     supabase.from("studios").select("id, name").then(({ data }) => {
-      if (data) {
-        setStudios(data);
-        if (data.length && !studioId) setStudioId(data[0].id);
-      }
+      if (data) setStudios(data);
     });
   }, [open]);
 
-  // Aligne le rôle sélectionné avec les rôles du studio courant
+  // Ne pré-sélectionne pas le rôle : on garde vide tant que l'utilisateur ne choisit pas
   useEffect(() => {
     if (BUSINESS_ROLES.length === 0) { setRole(""); return; }
-    if (!role || !BUSINESS_ROLES.includes(role)) setRole(BUSINESS_ROLES[0]);
+    if (role && !BUSINESS_ROLES.includes(role)) setRole("");
   }, [BUSINESS_ROLES.join("|")]);
 
   const resetAll = () => {
