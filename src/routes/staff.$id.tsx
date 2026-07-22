@@ -417,8 +417,8 @@ function EmployeeDetailPage() {
                   const shiftFbs = fbsByShift[s.id] || [];
                   const isRating = rateShiftId === s.id;
                   const isEditingClock = editClockShiftId === s.id;
-                  const inHHMM = s.clocked_in_at ? new Date(s.clocked_in_at).toTimeString().slice(0, 5) : "";
-                  const outHHMM = s.clocked_out_at ? new Date(s.clocked_out_at).toTimeString().slice(0, 5) : "";
+                  const inHHMM = s.clocked_in_at ? formatBrusselsTime(s.clocked_in_at) : "";
+                  const outHHMM = s.clocked_out_at ? formatBrusselsTime(s.clocked_out_at) : "";
                   return (
                     <div key={s.id} className="rounded-lg px-3 py-2" style={{ backgroundColor: "var(--background)" }}>
                       <div className="flex items-center gap-3">
