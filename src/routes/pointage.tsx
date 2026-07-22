@@ -579,7 +579,7 @@ function ClockDialog({ shift, mode, onDone }: { shift: PointageShift; mode: "in"
       <DialogHeader><DialogTitle>{mode === "in" ? "Pointer l'arrivée" : "Pointer la sortie"}</DialogTitle></DialogHeader>
       <div className="flex flex-col gap-3 py-2">
         <FormField label="Heure">
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-md border px-2.5 py-1.5" style={inputStyle} />
+          <TimePicker24 value={time} onChange={setTime} />
         </FormField>
         <FormField label="Raison (obligatoire)">
           <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="rounded-md border px-2.5 py-1.5" style={inputStyle} placeholder="Ex: badge oublié…" />
