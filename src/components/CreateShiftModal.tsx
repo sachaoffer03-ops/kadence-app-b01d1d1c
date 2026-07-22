@@ -354,9 +354,10 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   const chip = (active: boolean) => ({
     fontSize: 12,
     fontWeight: active ? 500 as const : 400 as const,
-    backgroundColor: active ? "var(--foreground)" : "transparent",
-    color: active ? "var(--card)" : "var(--muted-foreground)",
+    backgroundColor: active ? "var(--coral)" : "transparent",
+    color: active ? "#fff" : "var(--muted-foreground)",
     border: active ? "none" : "0.5px solid var(--border)",
+    transition: "all 120ms ease",
   });
 
   const studioName = studios.find((s) => s.id === studioId)?.name || "—";
