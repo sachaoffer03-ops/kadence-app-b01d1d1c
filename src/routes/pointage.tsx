@@ -579,7 +579,7 @@ function ClockDialog({ shift, mode, onDone }: { shift: PointageShift; mode: "in"
       <DialogHeader><DialogTitle>{mode === "in" ? "Pointer l'arrivée" : "Pointer la sortie"}</DialogTitle></DialogHeader>
       <div className="flex flex-col gap-3 py-2">
         <FormField label="Heure">
-          <TimePicker24 value={time} onChange={setTime} />
+          <TimePicker24 value={time} onChange={setTime} step={5} />
         </FormField>
         <FormField label="Raison (obligatoire)">
           <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="rounded-md border px-2.5 py-1.5" style={inputStyle} placeholder="Ex: badge oublié…" />
@@ -674,11 +674,11 @@ function EditTimesDialog({ shift, onDone }: { shift: PointageShift; onDone: () =
         </div>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Heure d'arrivée">
-            <TimePicker24 value={inTime} onChange={onInChange} />
+            <TimePicker24 value={inTime} onChange={onInChange} step={5} />
           </FormField>
           <FormField label="Heure de sortie">
             <div style={{ opacity: inTime ? 1 : 0.5, pointerEvents: inTime ? "auto" : "none" }}>
-              <TimePicker24 value={outTime} onChange={setOutTime} />
+              <TimePicker24 value={outTime} onChange={setOutTime} step={5} />
             </div>
           </FormField>
         </div>
