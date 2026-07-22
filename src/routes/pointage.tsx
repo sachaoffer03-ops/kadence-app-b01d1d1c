@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { formatBrusselsTime } from "@/lib/brussels-time";
 
 
 export const Route = createFileRoute("/pointage")({
