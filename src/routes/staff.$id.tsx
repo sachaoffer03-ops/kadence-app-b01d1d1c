@@ -810,16 +810,14 @@ function EditClockInline({
   return (
     <div className="mt-2 pt-2 flex flex-col gap-2" style={{ borderTop: "0.5px solid var(--border)" }}>
       <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+        <div className="flex flex-col gap-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
           Arrivée
-          <input type="time" value={inT} onChange={e => { setInT(e.target.value); if (!e.target.value) setOutT(""); }}
-            className="rounded-md border px-2 py-1.5 outline-none" style={inputStyle} />
-        </label>
-        <label className="flex flex-col gap-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+          <TimePicker24 value={inT} onChange={(v) => { setInT(v); if (!v) setOutT(""); }} step={5} />
+        </div>
+        <div className="flex flex-col gap-1" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
           Sortie
-          <input type="time" value={outT} onChange={e => setOutT(e.target.value)} disabled={!inT}
-            className="rounded-md border px-2 py-1.5 outline-none disabled:opacity-50" style={inputStyle} />
-        </label>
+          <TimePicker24 value={outT} onChange={setOutT} step={5} />
+        </div>
       </div>
       <label className="flex items-center gap-2" style={{ fontSize: 11 }}>
         <input type="checkbox" checked={recompute} onChange={e => setRecompute(e.target.checked)} />
