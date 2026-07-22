@@ -83,7 +83,7 @@ function EmployeeDetailPage() {
   const fetchBreakdown = useServerFn(getScoreBreakdown);
   const fetchUnviewed = useServerFn(countUnviewedDocuments);
   const editClockTimes = useServerFn(editClockTimesFn);
-  const canEditProfile = appRole === "admin";
+  const canEditProfile = appRole === "admin" || (appRole === "manager" && (managerPermissions ?? []).includes("/staff:write"));
   const canEditClock = appRole === "admin" || appRole === "manager";
 
   const load = async () => {
