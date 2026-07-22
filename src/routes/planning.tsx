@@ -1676,7 +1676,7 @@ function PlanningCalendar({
                 borderBottom: "0.5px solid var(--border)",
                 borderRight: "0.5px solid var(--border)",
                 backgroundColor: "var(--muted)",
-                height: 56,
+                minHeight: 56,
               }}
             />
             {visibleDayIndices.map((dayIdx) => {
@@ -1700,16 +1700,17 @@ function PlanningCalendar({
                     borderRight: "0.5px solid var(--border)",
                     padding: "8px 10px",
                     backgroundColor: isToday ? "var(--coral-light)" : "var(--muted)",
-                    height: 56,
+                    minHeight: 56,
+                    minWidth: 0,
                   }}
                 >
-                  <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", overflowWrap: "anywhere" }}>
                     {dayNamesShort[d.getDay()]}
                   </div>
-                  <div className="flex items-center gap-1.5" style={{ fontSize: 13, fontWeight: 500, marginTop: 1 }}>
-                    {d.getDate()} {monthNames[d.getMonth()].toLowerCase()}
-                    {isToday && <span className="rounded-full" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />}
-                    <span style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 400, marginLeft: "auto" }}>
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5" style={{ fontSize: 13, fontWeight: 500, marginTop: 1, minWidth: 0 }}>
+                    <span style={{ overflowWrap: "anywhere" }}>{d.getDate()} {monthNames[d.getMonth()].toLowerCase()}</span>
+                    {isToday && <span className="rounded-full shrink-0" style={{ width: 6, height: 6, backgroundColor: "var(--coral)" }} />}
+                    <span style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 400, marginLeft: "auto", whiteSpace: "nowrap" }}>
                       {dayShifts.length} · {totalH}h
                     </span>
                   </div>
