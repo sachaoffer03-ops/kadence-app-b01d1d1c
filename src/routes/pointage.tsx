@@ -828,13 +828,14 @@ function DialogButton({ children, onClick, busy, primary, danger }: { children: 
     <button
       onClick={onClick}
       disabled={busy}
-      className="rounded-md px-3 py-1.5 flex items-center gap-2"
+      className="rounded-md px-4 py-2 flex items-center gap-2 transition-colors"
       style={{
-        fontSize: 12, fontWeight: 500,
-        backgroundColor: danger ? "#EF4444" : primary ? "var(--foreground)" : "transparent",
-        color: danger || primary ? "var(--card)" : "var(--foreground)",
+        fontSize: 13, fontWeight: 500,
+        backgroundColor: danger ? "#EF4444" : primary ? "#F0997B" : "transparent",
+        color: danger || primary ? "#FFFFFF" : "var(--foreground)",
         border: primary || danger ? "none" : "0.5px solid var(--border)",
         opacity: busy ? 0.6 : 1,
+        cursor: busy ? "not-allowed" : "pointer",
       }}
     >
       {busy && <Loader2 size={12} className="animate-spin" />}
