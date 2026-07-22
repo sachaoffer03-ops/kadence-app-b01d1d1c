@@ -18,6 +18,7 @@ import { EmployeeDocumentsTab } from "@/components/staff/EmployeeDocumentsTab";
 import { EmployeeProposalsCard } from "@/components/staff/EmployeeProposalsCard";
 import { AdminEditEmployeeSheet } from "@/components/staff/AdminEditEmployeeSheet";
 import { countUnviewedDocuments } from "@/lib/documents.functions";
+import { formatBrusselsTime } from "@/lib/brussels-time";
 import { RatingInput, RatingBadge } from "@/components/RatingInput";
 import { ExtendedHoursCard } from "@/components/staff/ExtendedHoursCard";
 import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHistoryTab";
