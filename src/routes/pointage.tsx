@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { formatBrusselsTime } from "@/lib/brussels-time";
 
 
 export const Route = createFileRoute("/pointage")({
@@ -54,8 +55,7 @@ function fmtMinutes(min: number): string {
   return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 function nowHHMM(): string {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return formatBrusselsTime(new Date());
 }
 
 function PointagePage() {
@@ -626,8 +626,7 @@ function EditLateDialog({ shift, onDone }: { shift: PointageShift; onDone: () =>
 
 function isoToHHMM(iso: string | null): string {
   if (!iso) return "";
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return formatBrusselsTime(iso);
 }
 
 function EditTimesDialog({ shift, onDone }: { shift: PointageShift; onDone: () => void }) {
