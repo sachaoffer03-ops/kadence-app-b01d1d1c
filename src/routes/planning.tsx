@@ -1146,7 +1146,7 @@ function PlanningCalendarPage() {
           <Link
             to="/planning/generate"
             className="rounded-xl flex items-center gap-2 transition-colors"
-            style={{ height: 40, padding: "0 20px", fontSize: 13, fontWeight: 500, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", textDecoration: "none" }}
+            style={{ height: 40, padding: "0 20px", fontSize: 13, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff", textDecoration: "none" }}
           >
             <Sparkles size={16} /> Générer un planning
           </Link>
