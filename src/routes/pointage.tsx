@@ -18,6 +18,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { TimePicker24 } from "@/components/ui/time-picker-24";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -578,7 +579,7 @@ function ClockDialog({ shift, mode, onDone }: { shift: PointageShift; mode: "in"
       <DialogHeader><DialogTitle>{mode === "in" ? "Pointer l'arrivée" : "Pointer la sortie"}</DialogTitle></DialogHeader>
       <div className="flex flex-col gap-3 py-2">
         <FormField label="Heure">
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-md border px-2.5 py-1.5" style={inputStyle} />
+          <TimePicker24 value={time} onChange={setTime} />
         </FormField>
         <FormField label="Raison (obligatoire)">
           <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="rounded-md border px-2.5 py-1.5" style={inputStyle} placeholder="Ex: badge oublié…" />
@@ -673,10 +674,12 @@ function EditTimesDialog({ shift, onDone }: { shift: PointageShift; onDone: () =
         </div>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Heure d'arrivée">
-            <input type="time" value={inTime} onChange={(e) => onInChange(e.target.value)} className="rounded-md border px-2.5 py-1.5" style={inputStyle} />
+            <TimePicker24 value={inTime} onChange={onInChange} />
           </FormField>
           <FormField label="Heure de sortie">
-            <input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} disabled={!inTime} className="rounded-md border px-2.5 py-1.5 disabled:opacity-50" style={inputStyle} />
+            <div style={{ opacity: inTime ? 1 : 0.5, pointerEvents: inTime ? "auto" : "none" }}>
+              <TimePicker24 value={outTime} onChange={setOutTime} />
+            </div>
           </FormField>
         </div>
         <label className="flex items-center gap-2" style={{ fontSize: 12 }}>
