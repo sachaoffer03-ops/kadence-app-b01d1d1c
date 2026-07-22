@@ -271,11 +271,11 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
         {currentPath.startsWith("/planning") && (
           <>
             <button onClick={openNewShift} className="hidden md:flex items-center gap-1.5 rounded-md px-3 transition-colors"
-              style={{ height: 32, fontSize: 12, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+              style={{ height: 32, fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}>
               <Plus size={14} /> Nouveau shift
             </button>
             <button onClick={openNewShift} className="flex md:hidden items-center justify-center rounded-md"
-              style={{ width: 32, height: 32, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+              style={{ width: 32, height: 32, backgroundColor: "var(--coral)", color: "#fff" }}>
               <Plus size={16} />
             </button>
           </>
