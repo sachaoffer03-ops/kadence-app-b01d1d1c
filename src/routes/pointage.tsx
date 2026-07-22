@@ -674,10 +674,10 @@ function EditTimesDialog({ shift, onDone }: { shift: PointageShift; onDone: () =
         </div>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Heure d'arrivée">
-            <input type="time" value={inTime} onChange={(e) => onInChange(e.target.value)} className="rounded-md border px-2.5 py-1.5" style={inputStyle} />
+            <TimePicker24 value={inTime} onChange={onInChange} />
           </FormField>
           <FormField label="Heure de sortie">
-            <input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} disabled={!inTime} className="rounded-md border px-2.5 py-1.5 disabled:opacity-50" style={inputStyle} />
+            <TimePicker24 value={outTime} onChange={setOutTime} disabled={!inTime} />
           </FormField>
         </div>
         <label className="flex items-center gap-2" style={{ fontSize: 12 }}>
