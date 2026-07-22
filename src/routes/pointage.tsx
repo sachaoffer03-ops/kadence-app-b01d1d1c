@@ -677,7 +677,9 @@ function EditTimesDialog({ shift, onDone }: { shift: PointageShift; onDone: () =
             <TimePicker24 value={inTime} onChange={onInChange} />
           </FormField>
           <FormField label="Heure de sortie">
-            <TimePicker24 value={outTime} onChange={setOutTime} disabled={!inTime} />
+            <div style={{ opacity: inTime ? 1 : 0.5, pointerEvents: inTime ? "auto" : "none" }}>
+              <TimePicker24 value={outTime} onChange={setOutTime} />
+            </div>
           </FormField>
         </div>
         <label className="flex items-center gap-2" style={{ fontSize: 12 }}>
