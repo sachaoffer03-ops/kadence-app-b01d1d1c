@@ -440,9 +440,9 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
               <div><label style={labelStyle}>Date *</label>
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} required /></div>
               <div><label style={labelStyle}>Début *</label>
-                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} required /></div>
+                <TimePicker24 value={startTime} onChange={setStartTime} step={15} required style={inputStyle} /></div>
               <div><label style={labelStyle}>Fin *</label>
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} style={inputStyle} required /></div>
+                <TimePicker24 value={endTime} onChange={setEndTime} step={15} required style={inputStyle} /></div>
             </div>
 
             <div>
