@@ -87,7 +87,8 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
 
   const resetAll = () => {
     setStep("form");
-    setNotes(""); setStartTime("10:00"); setEndTime("15:00");
+    setStudioId(""); setRole(""); setDate("");
+    setNotes(""); setStartTime(""); setEndTime("");
     setRecurrence("none"); setUntil(""); setExtraWeekdays(new Set());
     setShiftIds([]); setCreatedCount(0);
     setEligible([]); setPartial([]); setSelected(new Set()); setShowPartial(false);
