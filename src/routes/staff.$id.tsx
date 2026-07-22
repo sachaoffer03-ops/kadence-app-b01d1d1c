@@ -58,8 +58,9 @@ const initials = (f: string, l: string) => `${(f?.[0] || "").toUpperCase()}${(l?
 function EmployeeDetailPage() {
   const { id } = Route.useParams();
   const { edit } = Route.useSearch();
-  const { user, appRole } = useAuth();
+  const { user, appRole, managerPermissions } = useAuth();
   const canRate = appRole === "admin" || appRole === "manager";
+
   const [emp, setEmp] = useState<Profile | null>(null);
   const [businessRoles, setBusinessRoles] = useState<Role[]>([]);
   const [studios, setStudios] = useState<Record<string, string>>({});
@@ -82,7 +83,7 @@ function EmployeeDetailPage() {
   const fetchBreakdown = useServerFn(getScoreBreakdown);
   const fetchUnviewed = useServerFn(countUnviewedDocuments);
   const editClockTimes = useServerFn(editClockTimesFn);
-  const canEditProfile = appRole === "admin";
+  const canEditProfile = appRole === "admin" || (appRole === "manager" && (managerPermissions ?? []).includes("/staff:write"));
   const canEditClock = appRole === "admin" || appRole === "manager";
 
   const load = async () => {
