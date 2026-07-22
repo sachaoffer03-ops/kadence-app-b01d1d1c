@@ -99,6 +99,7 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
   // on snap les bornes des segments.
   useEffect(() => {
     if (!isMulti) return;
+    if (!startTime || !endTime) return;
     if (segments.length < 2) {
       const [sh, sm] = startTime.split(":").map(Number);
       const [eh, em] = endTime.split(":").map(Number);
