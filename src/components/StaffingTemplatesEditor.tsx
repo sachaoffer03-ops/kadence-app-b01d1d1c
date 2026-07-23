@@ -403,6 +403,38 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   const filtered = templates.filter((t) => t.studio_id === studioId);
   const totalShifts = filtered.reduce((sum, t) => sum + t.required_count, 0);
 
+  const summary = useMemo(() => {
+    let totalMinutes = 0;
+    const byRole = new Map<string, number>(); // minutes per role
+    const byDay = new Array(7).fill(0) as number[]; // staff-slots per day
+    for (const t of filtered) {
+      const [sh, sm] = t.start_time.slice(0, 5).split(":").map(Number);
+      const [eh, em] = t.end_time.slice(0, 5).split(":").map(Number);
+      const dur = Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+      const mins = dur * t.required_count;
+      totalMinutes += mins;
+      byDay[t.day_of_week] += t.required_count;
+      if (t.role_segments && t.role_segments.length > 0) {
+        for (const seg of t.role_segments) {
+          const [ssh, ssm] = seg.start_time.slice(0, 5).split(":").map(Number);
+          const [seh, sem] = seg.end_time.slice(0, 5).split(":").map(Number);
+          const segMins = Math.max(0, (seh * 60 + sem) - (ssh * 60 + ssm)) * t.required_count;
+          byRole.set(seg.role, (byRole.get(seg.role) ?? 0) + segMins);
+        }
+      } else {
+        byRole.set(t.business_role, (byRole.get(t.business_role) ?? 0) + mins);
+      }
+    }
+    const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
+    const roles = Array.from(byRole.entries())
+      .map(([role, m]) => ({ role, hours: Math.round((m / 60) * 10) / 10 }))
+      .sort((a, b) => b.hours - a.hours);
+    const totalStaffDays = byDay.reduce((a, b) => a + b, 0);
+    return { totalHours, roles, byDay, totalStaffDays };
+  }, [filtered]);
+
+  const [historyOpen, setHistoryOpen] = useState(false);
+
   return (
     <div className="flex flex-col gap-4">
       {!hideHint && (
@@ -413,6 +445,58 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
           </div>
         </div>
       )}
+
+      {studioId && filtered.length > 0 && (
+        <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+          <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Clock size={14} style={{ color: "var(--coral)" }} />
+              <div style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)" }}>
+                Résumé hebdomadaire
+              </div>
+            </div>
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="rounded-md px-3 py-1.5 flex items-center gap-1.5 transition-colors"
+              style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
+            >
+              <History size={12} /> Historique
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 500 }}>Heures/semaine</div>
+              <div style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>{summary.totalHours.toString().replace(".", ",")}h</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 500 }}>Créneaux/semaine</div>
+              <div style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>{totalShifts}</div>
+            </div>
+            <div className="col-span-2">
+              <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 500, marginBottom: 4 }}>Employés/jour</div>
+              <div className="flex gap-1">
+                {summary.byDay.map((n, i) => (
+                  <div key={i} className="flex-1 text-center rounded-md py-1" style={{ backgroundColor: "var(--muted)", fontSize: 10 }}>
+                    <div style={{ color: "var(--muted-foreground)" }}>{DAYS[i].slice(0, 3)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>{n}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          {summary.roles.length > 0 && (
+            <div className="mt-3 pt-3 flex flex-wrap gap-2" style={{ borderTop: "0.5px solid var(--border)" }}>
+              {summary.roles.map((r) => (
+                <div key={r.role} className="rounded-full px-2.5 py-1" style={{ fontSize: 11, backgroundColor: "var(--muted)" }}>
+                  <span style={{ color: "var(--muted-foreground)" }}>{r.role} · </span>
+                  <span style={{ fontWeight: 500 }}>{r.hours.toString().replace(".", ",")}h</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
         <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
           <div>
@@ -431,6 +515,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
         <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 12 }}>
           {filtered.length} créneau{filtered.length > 1 ? "x" : ""} · {totalShifts} shift{totalShifts > 1 ? "s" : ""}/semaine
         </div>
+
 
         {ROLES.length === 0 && studioId && (
           <div className="rounded-lg p-3 mb-3" style={{ backgroundColor: "var(--warn-bg, var(--muted))", border: "0.5px solid var(--border)" }}>
