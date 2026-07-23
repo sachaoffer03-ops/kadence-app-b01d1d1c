@@ -724,6 +724,96 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
           <Plus size={13} /> Ajouter un besoin
         </button>
       </div>
+      {historyOpen && studioId && (
+        <HistoryModal
+          studioId={studioId}
+          studioName={studios.find((s) => s.id === studioId)?.name ?? ""}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
     </div>
   );
 }
+
+function HistoryModal({ studioId, studioName, onClose }: { studioId: string; studioName: string; onClose: () => void }) {
+  const fetchHistory = useServerFn(getStaffingHistory);
+  const [rows, setRows] = useState<StaffingHistoryRow[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancel = false;
+    setRows(null); setErr(null);
+    fetchHistory({ data: { studioId } })
+      .then((r) => { if (!cancel) setRows(r); })
+      .catch((e) => { if (!cancel) setErr(e?.message ?? "Erreur"); });
+    return () => { cancel = true; };
+  }, [fetchHistory, studioId]);
+
+  const fmtMonth = (m: string) => {
+    const [y, mm] = m.split("-");
+    const d = new Date(Number(y), Number(mm) - 1, 1);
+    return d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+      onClick={onClose}
+    >
+      <div
+        className="rounded-xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+        style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4" style={{ borderBottom: "0.5px solid var(--border)" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Historique des besoins de staff</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{studioName} · basé sur les shifts publiés</div>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1.5" style={{ color: "var(--muted-foreground)" }}>
+            <X size={16} />
+          </button>
+        </div>
+        <div className="overflow-auto p-4">
+          {err && (
+            <div className="rounded-md p-3" style={{ backgroundColor: "var(--danger-bg, var(--muted))", fontSize: 12, color: "var(--danger-text)" }}>
+              {err}
+            </div>
+          )}
+          {!rows && !err && (
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
+          )}
+          {rows && rows.length === 0 && (
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift publié pour ce studio.</div>
+          )}
+          {rows && rows.length > 0 && (
+            <table className="w-full" style={{ fontSize: 12, borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ color: "var(--muted-foreground)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <th className="text-left px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Mois</th>
+                  <th className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Heures/sem.</th>
+                  <th className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Total heures</th>
+                  <th className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Empl./jour</th>
+                  <th className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Jours actifs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.month}>
+                    <td className="px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", textTransform: "capitalize" }}>{fmtMonth(r.month)}</td>
+                    <td className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", fontWeight: 500 }}>{r.hoursPerWeek.toString().replace(".", ",")}h</td>
+                    <td className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", color: "var(--muted-foreground)" }}>{r.totalHours.toString().replace(".", ",")}h</td>
+                    <td className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", fontWeight: 500 }}>{r.avgEmpPerDay.toString().replace(".", ",")}</td>
+                    <td className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", color: "var(--muted-foreground)" }}>{r.activeDays}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
