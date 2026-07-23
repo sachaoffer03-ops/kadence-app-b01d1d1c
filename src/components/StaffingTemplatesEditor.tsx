@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Info, ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Trash2, Info, ChevronDown, ChevronRight, Layers, Clock, History, X } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dropdown } from "@/components/Dropdown";
@@ -10,6 +11,7 @@ import {
   validateRoleSegments,
   type RoleSegment,
 } from "@/lib/role-segments";
+import { getStaffingHistory, type StaffingHistoryRow } from "@/lib/staffing-history.functions";
 
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
