@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Info, ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Trash2, Info, ChevronDown, ChevronRight, Layers, Clock, History, X } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dropdown } from "@/components/Dropdown";
@@ -10,6 +11,7 @@ import {
   validateRoleSegments,
   type RoleSegment,
 } from "@/lib/role-segments";
+import { getStaffingHistory, type StaffingHistoryRow } from "@/lib/staffing-history.functions";
 
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -401,6 +403,38 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   const filtered = templates.filter((t) => t.studio_id === studioId);
   const totalShifts = filtered.reduce((sum, t) => sum + t.required_count, 0);
 
+  const summary = useMemo(() => {
+    let totalMinutes = 0;
+    const byRole = new Map<string, number>(); // minutes per role
+    const byDay = new Array(7).fill(0) as number[]; // staff-slots per day
+    for (const t of filtered) {
+      const [sh, sm] = t.start_time.slice(0, 5).split(":").map(Number);
+      const [eh, em] = t.end_time.slice(0, 5).split(":").map(Number);
+      const dur = Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+      const mins = dur * t.required_count;
+      totalMinutes += mins;
+      byDay[t.day_of_week] += t.required_count;
+      if (t.role_segments && t.role_segments.length > 0) {
+        for (const seg of t.role_segments) {
+          const [ssh, ssm] = seg.start_time.slice(0, 5).split(":").map(Number);
+          const [seh, sem] = seg.end_time.slice(0, 5).split(":").map(Number);
+          const segMins = Math.max(0, (seh * 60 + sem) - (ssh * 60 + ssm)) * t.required_count;
+          byRole.set(seg.role, (byRole.get(seg.role) ?? 0) + segMins);
+        }
+      } else {
+        byRole.set(t.business_role, (byRole.get(t.business_role) ?? 0) + mins);
+      }
+    }
+    const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
+    const roles = Array.from(byRole.entries())
+      .map(([role, m]) => ({ role, hours: Math.round((m / 60) * 10) / 10 }))
+      .sort((a, b) => b.hours - a.hours);
+    const totalStaffDays = byDay.reduce((a, b) => a + b, 0);
+    return { totalHours, roles, byDay, totalStaffDays };
+  }, [filtered]);
+
+  const [historyOpen, setHistoryOpen] = useState(false);
+
   return (
     <div className="flex flex-col gap-4">
       {!hideHint && (
@@ -411,6 +445,58 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
           </div>
         </div>
       )}
+
+      {studioId && filtered.length > 0 && (
+        <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+          <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Clock size={14} style={{ color: "var(--coral)" }} />
+              <div style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)" }}>
+                Résumé hebdomadaire
+              </div>
+            </div>
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="rounded-md px-3 py-1.5 flex items-center gap-1.5 transition-colors"
+              style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}
+            >
+              <History size={12} /> Historique
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 500 }}>Heures/semaine</div>
+              <div style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>{summary.totalHours.toString().replace(".", ",")}h</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 500 }}>Créneaux/semaine</div>
+              <div style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>{totalShifts}</div>
+            </div>
+            <div className="col-span-2">
+              <div style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 500, marginBottom: 4 }}>Employés/jour</div>
+              <div className="flex gap-1">
+                {summary.byDay.map((n, i) => (
+                  <div key={i} className="flex-1 text-center rounded-md py-1" style={{ backgroundColor: "var(--muted)", fontSize: 10 }}>
+                    <div style={{ color: "var(--muted-foreground)" }}>{DAYS[i].slice(0, 3)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>{n}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          {summary.roles.length > 0 && (
+            <div className="mt-3 pt-3 flex flex-wrap gap-2" style={{ borderTop: "0.5px solid var(--border)" }}>
+              {summary.roles.map((r) => (
+                <div key={r.role} className="rounded-full px-2.5 py-1" style={{ fontSize: 11, backgroundColor: "var(--muted)" }}>
+                  <span style={{ color: "var(--muted-foreground)" }}>{r.role} · </span>
+                  <span style={{ fontWeight: 500 }}>{r.hours.toString().replace(".", ",")}h</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
         <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
           <div>
@@ -429,6 +515,7 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
         <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 12 }}>
           {filtered.length} créneau{filtered.length > 1 ? "x" : ""} · {totalShifts} shift{totalShifts > 1 ? "s" : ""}/semaine
         </div>
+
 
         {ROLES.length === 0 && studioId && (
           <div className="rounded-lg p-3 mb-3" style={{ backgroundColor: "var(--warn-bg, var(--muted))", border: "0.5px solid var(--border)" }}>
@@ -637,6 +724,96 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
           <Plus size={13} /> Ajouter un besoin
         </button>
       </div>
+      {historyOpen && studioId && (
+        <HistoryModal
+          studioId={studioId}
+          studioName={studios.find((s) => s.id === studioId)?.name ?? ""}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
     </div>
   );
 }
+
+function HistoryModal({ studioId, studioName, onClose }: { studioId: string; studioName: string; onClose: () => void }) {
+  const fetchHistory = useServerFn(getStaffingHistory);
+  const [rows, setRows] = useState<StaffingHistoryRow[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancel = false;
+    setRows(null); setErr(null);
+    fetchHistory({ data: { studioId } })
+      .then((r) => { if (!cancel) setRows(r); })
+      .catch((e) => { if (!cancel) setErr(e?.message ?? "Erreur"); });
+    return () => { cancel = true; };
+  }, [fetchHistory, studioId]);
+
+  const fmtMonth = (m: string) => {
+    const [y, mm] = m.split("-");
+    const d = new Date(Number(y), Number(mm) - 1, 1);
+    return d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+      onClick={onClose}
+    >
+      <div
+        className="rounded-xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+        style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4" style={{ borderBottom: "0.5px solid var(--border)" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Historique des besoins de staff</div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{studioName} · basé sur les shifts publiés</div>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1.5" style={{ color: "var(--muted-foreground)" }}>
+            <X size={16} />
+          </button>
+        </div>
+        <div className="overflow-auto p-4">
+          {err && (
+            <div className="rounded-md p-3" style={{ backgroundColor: "var(--danger-bg, var(--muted))", fontSize: 12, color: "var(--danger-text)" }}>
+              {err}
+            </div>
+          )}
+          {!rows && !err && (
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
+          )}
+          {rows && rows.length === 0 && (
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift publié pour ce studio.</div>
+          )}
+          {rows && rows.length > 0 && (
+            <table className="w-full" style={{ fontSize: 12, borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ color: "var(--muted-foreground)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <th className="text-left px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Mois</th>
+                  <th className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Heures/sem.</th>
+                  <th className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Total heures</th>
+                  <th className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Empl./jour</th>
+                  <th className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)" }}>Jours actifs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.month}>
+                    <td className="px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", textTransform: "capitalize" }}>{fmtMonth(r.month)}</td>
+                    <td className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", fontWeight: 500 }}>{r.hoursPerWeek.toString().replace(".", ",")}h</td>
+                    <td className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", color: "var(--muted-foreground)" }}>{r.totalHours.toString().replace(".", ",")}h</td>
+                    <td className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", fontWeight: 500 }}>{r.avgEmpPerDay.toString().replace(".", ",")}</td>
+                    <td className="text-right px-2 py-2" style={{ borderBottom: "0.5px solid var(--border)", color: "var(--muted-foreground)" }}>{r.activeDays}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
