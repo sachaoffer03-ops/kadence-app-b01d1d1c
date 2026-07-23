@@ -391,16 +391,10 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
     await updateRow(t.id, { [field]: next } as Partial<Template>);
   };
 
-  if (loading) return <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>;
-  if (studios.length === 0) {
-    return (
-      <div className="rounded-xl border p-8 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-        <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Créez d'abord des studios pour configurer les besoins.</div>
-      </div>
-    );
-  }
-
-  const filtered = templates.filter((t) => t.studio_id === studioId);
+  const filtered = useMemo(
+    () => templates.filter((t) => t.studio_id === studioId),
+    [templates, studioId],
+  );
   const totalShifts = filtered.reduce((sum, t) => sum + t.required_count, 0);
 
   const summary = useMemo(() => {
@@ -434,6 +428,17 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
   }, [filtered]);
 
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  if (loading) return <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>;
+  if (studios.length === 0) {
+    return (
+      <div className="rounded-xl border p-8 text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+        <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Créez d'abord des studios pour configurer les besoins.</div>
+      </div>
+    );
+  }
+
+
 
   return (
     <div className="flex flex-col gap-4">
