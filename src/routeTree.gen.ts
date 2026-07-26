@@ -47,6 +47,7 @@ import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as StaffAppPropositionsRouteImport } from './routes/staff-app_.propositions'
 import { Route as SecteursRestaurantsRouteImport } from './routes/secteurs.restaurants'
+import { Route as SecteursHotelsRouteImport } from './routes/secteurs.hotels'
 import { Route as SecteursCommercesRouteImport } from './routes/secteurs.commerces'
 import { Route as SecteursCafesRouteImport } from './routes/secteurs.cafes'
 import { Route as SecteursBarsRouteImport } from './routes/secteurs.bars'
@@ -266,6 +267,11 @@ const SecteursRestaurantsRoute = SecteursRestaurantsRouteImport.update({
   path: '/restaurants',
   getParentRoute: () => SecteursRoute,
 } as any)
+const SecteursHotelsRoute = SecteursHotelsRouteImport.update({
+  id: '/hotels',
+  path: '/hotels',
+  getParentRoute: () => SecteursRoute,
+} as any)
 const SecteursCommercesRoute = SecteursCommercesRouteImport.update({
   id: '/commerces',
   path: '/commerces',
@@ -466,6 +472,7 @@ export interface FileRoutesByFullPath {
   '/secteurs/bars': typeof SecteursBarsRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
   '/secteurs/commerces': typeof SecteursCommercesRoute
+  '/secteurs/hotels': typeof SecteursHotelsRoute
   '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
@@ -533,6 +540,7 @@ export interface FileRoutesByTo {
   '/secteurs/bars': typeof SecteursBarsRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
   '/secteurs/commerces': typeof SecteursCommercesRoute
+  '/secteurs/hotels': typeof SecteursHotelsRoute
   '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
@@ -602,6 +610,7 @@ export interface FileRoutesById {
   '/secteurs/bars': typeof SecteursBarsRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
   '/secteurs/commerces': typeof SecteursCommercesRoute
+  '/secteurs/hotels': typeof SecteursHotelsRoute
   '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app_/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
@@ -672,6 +681,7 @@ export interface FileRouteTypes {
     | '/secteurs/bars'
     | '/secteurs/cafes'
     | '/secteurs/commerces'
+    | '/secteurs/hotels'
     | '/secteurs/restaurants'
     | '/staff-app/propositions'
     | '/staff/$id'
@@ -739,6 +749,7 @@ export interface FileRouteTypes {
     | '/secteurs/bars'
     | '/secteurs/cafes'
     | '/secteurs/commerces'
+    | '/secteurs/hotels'
     | '/secteurs/restaurants'
     | '/staff-app/propositions'
     | '/staff/$id'
@@ -807,6 +818,7 @@ export interface FileRouteTypes {
     | '/secteurs/bars'
     | '/secteurs/cafes'
     | '/secteurs/commerces'
+    | '/secteurs/hotels'
     | '/secteurs/restaurants'
     | '/staff-app_/propositions'
     | '/staff/$id'
@@ -1154,6 +1166,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SecteursRestaurantsRouteImport
       parentRoute: typeof SecteursRoute
     }
+    '/secteurs/hotels': {
+      id: '/secteurs/hotels'
+      path: '/hotels'
+      fullPath: '/secteurs/hotels'
+      preLoaderRoute: typeof SecteursHotelsRouteImport
+      parentRoute: typeof SecteursRoute
+    }
     '/secteurs/commerces': {
       id: '/secteurs/commerces'
       path: '/commerces'
@@ -1381,6 +1400,7 @@ interface SecteursRouteChildren {
   SecteursBarsRoute: typeof SecteursBarsRoute
   SecteursCafesRoute: typeof SecteursCafesRoute
   SecteursCommercesRoute: typeof SecteursCommercesRoute
+  SecteursHotelsRoute: typeof SecteursHotelsRoute
   SecteursRestaurantsRoute: typeof SecteursRestaurantsRoute
 }
 
@@ -1388,6 +1408,7 @@ const SecteursRouteChildren: SecteursRouteChildren = {
   SecteursBarsRoute: SecteursBarsRoute,
   SecteursCafesRoute: SecteursCafesRoute,
   SecteursCommercesRoute: SecteursCommercesRoute,
+  SecteursHotelsRoute: SecteursHotelsRoute,
   SecteursRestaurantsRoute: SecteursRestaurantsRoute,
 }
 
