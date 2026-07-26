@@ -21,7 +21,9 @@ import { toast } from "sonner";
 
 import appCss from "../styles.css?url";
 
-const PUBLIC_ROUTES = ["/login", "/activation", "/reset-password"];
+const PUBLIC_ROUTES = ["/login", "/activation", "/reset-password", "/confidentialite", "/compte-supprime"];
+const STANDALONE_ROUTES = ["/confidentialite", "/compte-supprime"];
+
 
 function NotFoundComponent() {
   return (
@@ -197,10 +199,21 @@ function AppShell() {
   const isPublic = currentPath === "/" || PUBLIC_ROUTES.some((p) => currentPath.startsWith(p));
   const isStaffApp = currentPath.startsWith("/staff-app") || currentPath.startsWith("/staff/checklist");
   const isDisplay = currentPath.startsWith("/display");
+  // Pages légales : accessibles sans authentification ET sans redirection
+  const isStandalone = STANDALONE_ROUTES.some((p) => currentPath.startsWith(p));
 
   if (isDisplay) {
     return <Outlet />;
   }
+  if (isStandalone) {
+    return (
+      <>
+        <Outlet />
+        <Toaster position="top-center" />
+      </>
+    );
+  }
+
   // Allow admins to view the activation page in preview mode (?preview=...)
   const isActivationPreview =
     currentPath.startsWith("/activation") &&

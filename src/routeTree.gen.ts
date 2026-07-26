@@ -29,6 +29,8 @@ import { Route as DimonaRouteImport } from './routes/dimona'
 import { Route as DemandesRouteImport } from './routes/demandes'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContingentsRouteImport } from './routes/contingents'
+import { Route as ConfidentialiteRouteImport } from './routes/confidentialite'
+import { Route as CompteSupprimeRouteImport } from './routes/compte-supprime'
 import { Route as ClotureRouteImport } from './routes/cloture'
 import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as AssistantIaRouteImport } from './routes/assistant-ia'
@@ -47,10 +49,13 @@ import { Route as AdminMigrateStudiosRouteImport } from './routes/admin.migrate-
 import { Route as AdminEmailPreviewRouteImport } from './routes/admin.email-preview'
 import { Route as AdminDiagnosticRouteImport } from './routes/admin.diagnostic'
 import { Route as AdminDemoToolsRouteImport } from './routes/admin.demo-tools'
+import { Route as DotwellKnownAssetlinksDotjsonRouteImport } from './routes/[.]well-known/assetlinks[.]json'
+import { Route as DotwellKnownAppleAppSiteAssociationRouteImport } from './routes/[.]well-known/apple-app-site-association'
 import { Route as StaffChecklistShiftIdRouteImport } from './routes/staff.checklist.$shiftId'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicRoleTransitionsTickRouteImport } from './routes/api/public/role-transitions-tick'
 import { Route as ApiPublicAvailRemindersTickRouteImport } from './routes/api/public/avail-reminders-tick'
+import { Route as ApiPublicAccountPurgeTickRouteImport } from './routes/api/public/account-purge-tick'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -160,6 +165,16 @@ const ContingentsRoute = ContingentsRouteImport.update({
   path: '/contingents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfidentialiteRoute = ConfidentialiteRouteImport.update({
+  id: '/confidentialite',
+  path: '/confidentialite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompteSupprimeRoute = CompteSupprimeRouteImport.update({
+  id: '/compte-supprime',
+  path: '/compte-supprime',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClotureRoute = ClotureRouteImport.update({
   id: '/cloture',
   path: '/cloture',
@@ -250,6 +265,18 @@ const AdminDemoToolsRoute = AdminDemoToolsRouteImport.update({
   path: '/admin/demo-tools',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownAssetlinksDotjsonRoute =
+  DotwellKnownAssetlinksDotjsonRouteImport.update({
+    id: '/.well-known/assetlinks.json',
+    path: '/.well-known/assetlinks.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotwellKnownAppleAppSiteAssociationRoute =
+  DotwellKnownAppleAppSiteAssociationRouteImport.update({
+    id: '/.well-known/apple-app-site-association',
+    path: '/.well-known/apple-app-site-association',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const StaffChecklistShiftIdRoute = StaffChecklistShiftIdRouteImport.update({
   id: '/checklist/$shiftId',
   path: '/checklist/$shiftId',
@@ -270,6 +297,12 @@ const ApiPublicAvailRemindersTickRoute =
   ApiPublicAvailRemindersTickRouteImport.update({
     id: '/api/public/avail-reminders-tick',
     path: '/api/public/avail-reminders-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicAccountPurgeTickRoute =
+  ApiPublicAccountPurgeTickRouteImport.update({
+    id: '/api/public/account-purge-tick',
+    path: '/api/public/account-purge-tick',
     getParentRoute: () => rootRouteImport,
   } as any)
 const LovableEmailTransactionalSendRoute =
@@ -323,6 +356,8 @@ export interface FileRoutesByFullPath {
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
+  '/compte-supprime': typeof CompteSupprimeRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
@@ -343,6 +378,8 @@ export interface FileRoutesByFullPath {
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
+  '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/admin/demo-tools': typeof AdminDemoToolsRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
@@ -356,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
+  '/api/public/account-purge-tick': typeof ApiPublicAccountPurgeTickRoute
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
   '/api/public/role-transitions-tick': typeof ApiPublicRoleTransitionsTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -375,6 +413,8 @@ export interface FileRoutesByTo {
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
+  '/compte-supprime': typeof CompteSupprimeRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
@@ -394,6 +434,8 @@ export interface FileRoutesByTo {
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
+  '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/admin/demo-tools': typeof AdminDemoToolsRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
@@ -407,6 +449,7 @@ export interface FileRoutesByTo {
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
+  '/api/public/account-purge-tick': typeof ApiPublicAccountPurgeTickRoute
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
   '/api/public/role-transitions-tick': typeof ApiPublicRoleTransitionsTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -427,6 +470,8 @@ export interface FileRoutesById {
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
+  '/compte-supprime': typeof CompteSupprimeRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
@@ -447,6 +492,8 @@ export interface FileRoutesById {
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/trous': typeof TrousRoute
+  '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/admin/demo-tools': typeof AdminDemoToolsRoute
   '/admin/diagnostic': typeof AdminDiagnosticRoute
   '/admin/email-preview': typeof AdminEmailPreviewRoute
@@ -460,6 +507,7 @@ export interface FileRoutesById {
   '/staff-app_/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
+  '/api/public/account-purge-tick': typeof ApiPublicAccountPurgeTickRoute
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
   '/api/public/role-transitions-tick': typeof ApiPublicRoleTransitionsTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -481,6 +529,8 @@ export interface FileRouteTypes {
     | '/assistant-ia'
     | '/checklists'
     | '/cloture'
+    | '/compte-supprime'
+    | '/confidentialite'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
@@ -501,6 +551,8 @@ export interface FileRouteTypes {
     | '/staff-app'
     | '/studios'
     | '/trous'
+    | '/.well-known/apple-app-site-association'
+    | '/.well-known/assetlinks.json'
     | '/admin/demo-tools'
     | '/admin/diagnostic'
     | '/admin/email-preview'
@@ -514,6 +566,7 @@ export interface FileRouteTypes {
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff/'
+    | '/api/public/account-purge-tick'
     | '/api/public/avail-reminders-tick'
     | '/api/public/role-transitions-tick'
     | '/lovable/email/suppression'
@@ -533,6 +586,8 @@ export interface FileRouteTypes {
     | '/assistant-ia'
     | '/checklists'
     | '/cloture'
+    | '/compte-supprime'
+    | '/confidentialite'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
@@ -552,6 +607,8 @@ export interface FileRouteTypes {
     | '/staff-app'
     | '/studios'
     | '/trous'
+    | '/.well-known/apple-app-site-association'
+    | '/.well-known/assetlinks.json'
     | '/admin/demo-tools'
     | '/admin/diagnostic'
     | '/admin/email-preview'
@@ -565,6 +622,7 @@ export interface FileRouteTypes {
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff'
+    | '/api/public/account-purge-tick'
     | '/api/public/avail-reminders-tick'
     | '/api/public/role-transitions-tick'
     | '/lovable/email/suppression'
@@ -584,6 +642,8 @@ export interface FileRouteTypes {
     | '/assistant-ia'
     | '/checklists'
     | '/cloture'
+    | '/compte-supprime'
+    | '/confidentialite'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
@@ -604,6 +664,8 @@ export interface FileRouteTypes {
     | '/staff-app'
     | '/studios'
     | '/trous'
+    | '/.well-known/apple-app-site-association'
+    | '/.well-known/assetlinks.json'
     | '/admin/demo-tools'
     | '/admin/diagnostic'
     | '/admin/email-preview'
@@ -617,6 +679,7 @@ export interface FileRouteTypes {
     | '/staff-app_/propositions'
     | '/staff/$id'
     | '/staff/'
+    | '/api/public/account-purge-tick'
     | '/api/public/avail-reminders-tick'
     | '/api/public/role-transitions-tick'
     | '/lovable/email/suppression'
@@ -637,6 +700,8 @@ export interface RootRouteChildren {
   AssistantIaRoute: typeof AssistantIaRoute
   ChecklistsRoute: typeof ChecklistsRoute
   ClotureRoute: typeof ClotureRoute
+  CompteSupprimeRoute: typeof CompteSupprimeRoute
+  ConfidentialiteRoute: typeof ConfidentialiteRoute
   ContingentsRoute: typeof ContingentsRoute
   DashboardRoute: typeof DashboardRoute
   DemandesRoute: typeof DemandesRoute
@@ -657,6 +722,8 @@ export interface RootRouteChildren {
   StaffAppRoute: typeof StaffAppRoute
   StudiosRoute: typeof StudiosRoute
   TrousRoute: typeof TrousRoute
+  DotwellKnownAppleAppSiteAssociationRoute: typeof DotwellKnownAppleAppSiteAssociationRoute
+  DotwellKnownAssetlinksDotjsonRoute: typeof DotwellKnownAssetlinksDotjsonRoute
   AdminDemoToolsRoute: typeof AdminDemoToolsRoute
   AdminDiagnosticRoute: typeof AdminDiagnosticRoute
   AdminEmailPreviewRoute: typeof AdminEmailPreviewRoute
@@ -666,6 +733,7 @@ export interface RootRouteChildren {
   DispoDetailUserIdRoute: typeof DispoDetailUserIdRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   StaffAppPropositionsRoute: typeof StaffAppPropositionsRoute
+  ApiPublicAccountPurgeTickRoute: typeof ApiPublicAccountPurgeTickRoute
   ApiPublicAvailRemindersTickRoute: typeof ApiPublicAvailRemindersTickRoute
   ApiPublicRoleTransitionsTickRoute: typeof ApiPublicRoleTransitionsTickRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -821,6 +889,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContingentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/confidentialite': {
+      id: '/confidentialite'
+      path: '/confidentialite'
+      fullPath: '/confidentialite'
+      preLoaderRoute: typeof ConfidentialiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compte-supprime': {
+      id: '/compte-supprime'
+      path: '/compte-supprime'
+      fullPath: '/compte-supprime'
+      preLoaderRoute: typeof CompteSupprimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cloture': {
       id: '/cloture'
       path: '/cloture'
@@ -947,6 +1029,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDemoToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/assetlinks.json': {
+      id: '/.well-known/assetlinks.json'
+      path: '/.well-known/assetlinks.json'
+      fullPath: '/.well-known/assetlinks.json'
+      preLoaderRoute: typeof DotwellKnownAssetlinksDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/apple-app-site-association': {
+      id: '/.well-known/apple-app-site-association'
+      path: '/.well-known/apple-app-site-association'
+      fullPath: '/.well-known/apple-app-site-association'
+      preLoaderRoute: typeof DotwellKnownAppleAppSiteAssociationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/staff/checklist/$shiftId': {
       id: '/staff/checklist/$shiftId'
       path: '/checklist/$shiftId'
@@ -973,6 +1069,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/avail-reminders-tick'
       fullPath: '/api/public/avail-reminders-tick'
       preLoaderRoute: typeof ApiPublicAvailRemindersTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/account-purge-tick': {
+      id: '/api/public/account-purge-tick'
+      path: '/api/public/account-purge-tick'
+      fullPath: '/api/public/account-purge-tick'
+      preLoaderRoute: typeof ApiPublicAccountPurgeTickRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/transactional/send': {
@@ -1078,6 +1181,8 @@ const rootRouteChildren: RootRouteChildren = {
   AssistantIaRoute: AssistantIaRoute,
   ChecklistsRoute: ChecklistsRoute,
   ClotureRoute: ClotureRoute,
+  CompteSupprimeRoute: CompteSupprimeRoute,
+  ConfidentialiteRoute: ConfidentialiteRoute,
   ContingentsRoute: ContingentsRoute,
   DashboardRoute: DashboardRoute,
   DemandesRoute: DemandesRoute,
@@ -1098,6 +1203,9 @@ const rootRouteChildren: RootRouteChildren = {
   StaffAppRoute: StaffAppRoute,
   StudiosRoute: StudiosRoute,
   TrousRoute: TrousRoute,
+  DotwellKnownAppleAppSiteAssociationRoute:
+    DotwellKnownAppleAppSiteAssociationRoute,
+  DotwellKnownAssetlinksDotjsonRoute: DotwellKnownAssetlinksDotjsonRoute,
   AdminDemoToolsRoute: AdminDemoToolsRoute,
   AdminDiagnosticRoute: AdminDiagnosticRoute,
   AdminEmailPreviewRoute: AdminEmailPreviewRoute,
@@ -1107,6 +1215,7 @@ const rootRouteChildren: RootRouteChildren = {
   DispoDetailUserIdRoute: DispoDetailUserIdRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   StaffAppPropositionsRoute: StaffAppPropositionsRoute,
+  ApiPublicAccountPurgeTickRoute: ApiPublicAccountPurgeTickRoute,
   ApiPublicAvailRemindersTickRoute: ApiPublicAvailRemindersTickRoute,
   ApiPublicRoleTransitionsTickRoute: ApiPublicRoleTransitionsTickRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
