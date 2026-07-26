@@ -1,93 +1,58 @@
 ## Objectif
 
-Rendre le générateur plus utile sans surcharger : (1) toujours voir le résultat avant que ça touche la vraie base, (2) comparer 2 essais côte à côte et publier le meilleur en 1 clic.
+Créer le site vitrine Kadence sur **kadence.be** (et www.kadence.be), positionné SaaS multi-clients, sans tarifs affichés (page Tarifs = "sur devis / nous contacter"). Zéro impact sur `app.kadence.be` (employé) et `admin.kadence.be` (admin).
 
-Principe UX : un seul écran, gros chiffres lisibles, 2 boutons max (Publier / Refaire).
+## Routing / domaines
 
----
+- `kadence.be` et `www.kadence.be` → nouveau mode `"marketing"` dans `src/lib/app-mode.ts` (aujourd'hui ces hôtes tombent en `admin` par défaut).
+- `src/routes/index.tsx` : si mode marketing → afficher la landing au lieu de rediriger vers `/login` / `/dashboard`. Le comportement actuel reste identique sur app./admin.
+- Les pages vitrine sont des routes réelles (SSR + SEO), pas des ancres :
+  - `/` (accueil, uniquement en mode marketing)
+  - `/fonctionnalites`
+  - `/tarifs`
+  - `/a-propos`
+  - `/contact`
+- Ces routes utilisent un layout vitrine autonome (header + footer propres), sans sidebar app : ajout à la liste des routes publiques/standalone dans `__root.tsx`.
+- Bouton **Connexion** en haut à droite → `https://app.kadence.be` (et lien discret "Espace admin" en footer).
 
-## 1. Aperçu avant publication
+## Contenu (français, ton Kadence)
 
-Aujourd'hui `/planning/generate` écrit directement les shifts en base. On passe à un flux en 2 temps :
+**Accueil**
+- Hero : titre net + sous-titre ("La gestion d'équipe pensée pour les commerces de proximité"), CTA "Demander une démo" + "Se connecter".
+- Bandeau de valeur : planning intelligent, pointage géolocalisé, dispos, clôtures, formation.
+- 5–6 blocs fonctionnalités avec captures/mockups de l'app.
+- Section "Comment ça marche" en 3 étapes.
+- Section preuve : Skult Studios, 2 studios à Bruxelles.
+- CTA final vers le formulaire de démo.
 
-**Étape A — Simuler (par défaut)**
-- Le bouton principal devient "Prévisualiser" (au lieu de "Générer").
-- Sous le capot : appel `generatePlanning` en mode `dry_run: true, silent: true` (déjà supporté).
-- Rien n'est écrit en base, rien n'apparaît dans l'historique.
+**Fonctionnalités** — détail par module : Planning & génération automatique, Disponibilités par studio, Pointage géolocalisé, Clôtures & checklists photo, Formation interne, Rapports & scoring, Notifications & emails, App mobile employé.
 
-**Étape B — Écran de résultat**
-Un seul écran, 3 blocs visuels :
+**Tarifs** — pas de grille. Trois profils indicatifs (1 établissement / multi-établissements / sur-mesure) avec "Tarif sur demande" et CTA unique vers `/contact`. Mention transparente : offre en cours de définition, accompagnement personnalisé.
 
-```text
-┌─────────────────────────────────────────────┐
-│  Août 2026 · Rhode + Châtelain             │
-├─────────────────────────────────────────────┤
-│  ✓ 87 shifts remplis    ✕ 4 trous restants │
-│  ⚖ Équité : bonne       ⏱ 312h planifiées  │
-├─────────────────────────────────────────────┤
-│  🔴 4 trous à combler                      │
-│    • Sam 8 août 07-12  Rhode Barista       │
-│    • Dim 9 août 14-19  Châtelain Accueil   │
-│    ...                                      │
-│                                             │
-│  🟡 3 employés sous-utilisés               │
-│    • Lucas : 12h / 40h dispo               │
-│    ...                                      │
-├─────────────────────────────────────────────┤
-│  [Refaire]              [Publier ce plan]  │
-└─────────────────────────────────────────────┘
-```
+**À propos** — origine du produit (né chez Skult Studios), philosophie, Bruxelles.
 
-- **Publier** = re-run en mode `dry_run: false`, écriture réelle. Toast de succès, redirection vers `/planning`.
-- **Refaire** = retour au formulaire, paramètres conservés.
+**Contact / démo** — formulaire : nom, email, entreprise, nb d'employés, message.
 
-**Pourquoi utile** : Sacha n'a plus jamais peur de "casser" le planning en cliquant. Le résultat est visible AVANT que ce soit publié.
+## Formulaire de démo (backend)
 
----
+- Nouvelle table `public.demo_requests` (nom, email, entreprise, taille équipe, message, source, created_at) + GRANT `INSERT` à `anon`, `SELECT/UPDATE` à `authenticated` admin, `ALL` à `service_role`. RLS : insertion publique, lecture réservée aux admins via `has_role`.
+- Envoi via une server function `src/lib/demo-requests.functions.ts` (validation zod : longueurs max, email valide) qui insère puis envoie un email de notification interne avec le système Resend déjà en place (`enqueueTemplateEmail`), plus un accusé de réception au prospect.
+- Anti-abus simple : rate limit par IP/email côté server function.
 
-## 2. Comparer 2 scénarios
+## Design
 
-Sur l'écran d'aperçu, un bouton discret : **"Comparer avec une autre config"**.
+Palette Kadence actuelle : fond `#FAFAF8`, surfaces `#F0EBE3`, accent coral `#F0997B`, texte `#1A1A1A`, Inter 400/500, pas d'emoji, pas de gradient, coins arrondis doux, beaucoup d'air. Mockups d'écrans générés en visuels. Entièrement responsive mobile.
 
-Ouvre un panneau latéral (droite) avec les mêmes filtres (whitelist, exclusions, studios). Le user modifie, clique "Lancer le comparatif" → 2e simulation.
+## SEO
 
-**Écran comparaison** :
+`head()` propre par route (title, description, og:title/description, og:type, canonical auto-référent sur `https://kadence.be/...`), H1 unique par page, JSON-LD `Organization` + `SoftwareApplication` sur l'accueil, `sitemap.xml` et `robots.txt` mis à jour.
 
-```text
-┌──────────────── Scénario A ─────┬──────────── Scénario B ────────┐
-│ Sans Anaïs                       │ Avec Anaïs + Marie prioritaire │
-├──────────────────────────────────┼─────────────────────────────────┤
-│ Trous       4  🔴                │ Trous       1  🟢              │
-│ Équité      bonne                │ Équité      moyenne            │
-│ Heures      312h                 │ Heures      328h               │
-│ Étudiants   ok (450/650)         │ Étudiants   ok (490/650)       │
-├──────────────────────────────────┼─────────────────────────────────┤
-│ [Publier A]                      │ [Publier B]  ← recommandé      │
-└──────────────────────────────────┴─────────────────────────────────┘
-```
+## Détails techniques
 
-- Le "recommandé" est calculé simplement : moins de trous > meilleure équité > respect quotas.
-- Un seul clic publie le scénario choisi ; l'autre est jeté.
+- `getAppMode()` retourne désormais `"admin" | "employee" | "marketing"` ; tous les appelants existants sont audités pour que la logique admin/employé reste inchangée (fallback preview = `admin`, `?mode=marketing` pour prévisualiser).
+- Le layout vitrine est un composant partagé `src/components/marketing/MarketingLayout.tsx` (header sticky, nav, footer) utilisé par les 5 routes.
+- Aucun contenu app (auth, données, sidebar) n'est chargé sur les routes vitrine.
 
-**Pourquoi utile** : le user teste "et si..." sans risque, et voit noir sur blanc quel choix est le meilleur.
+## Action manuelle requise
 
----
-
-## Fichiers touchés (léger, ciblé)
-
-- `src/routes/planning.generate.tsx` — Refonte du flux : bouton "Prévisualiser" par défaut, nouvel état `previewResult`, écran résultat, panneau comparatif.
-- Réutilisation directe de ce qui existe déjà :
-  - `generatePlanning({ dry_run, silent })` — déjà en place
-  - Composants d'affichage de résultat de `/admin/planning-sandbox` (trous, sous-utilisés) — on extrait 2-3 composants partagés dans `src/components/planning/PreviewResult.tsx`.
-- Rien côté serveur, rien en BDD, aucune migration.
-
-## Ce qu'on NE fait PAS (pour rester simple)
-
-- Pas de sauvegarde des scénarios (éphémère, disparaît si on quitte la page).
-- Pas de comparaison à 3+ scénarios (A vs B suffit).
-- Pas de diff shift-par-shift entre A et B (juste les KPIs et la liste des trous).
-- L'admin sandbox (`/admin/planning-sandbox`) reste pour les cas power-user avancés, on ne fusionne pas les deux pour l'instant.
-
-## Résultat attendu
-
-Sacha ouvre `/planning/generate`, coche Rhode + Châtelain, clique **Prévisualiser**. Il voit "4 trous, équité bonne". Il clique **Comparer**, ajoute Marie en whitelist, relance. Scénario B a 1 trou et est marqué recommandé. Clic sur **Publier B**. Terminé, planning en ligne. Zéro trace des scénarios rejetés.
+Dans **Réglages du projet → Domaines**, `kadence.be` et `www.kadence.be` doivent déjà pointer sur ce projet (c'est le cas). Rien à changer côté DNS.
