@@ -46,6 +46,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as StaffAppPropositionsRouteImport } from './routes/staff-app_.propositions'
+import { Route as SecteursCafesRouteImport } from './routes/secteurs.cafes'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
@@ -257,6 +258,11 @@ const StaffAppPropositionsRoute = StaffAppPropositionsRouteImport.update({
   path: '/staff-app/propositions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SecteursCafesRoute = SecteursCafesRouteImport.update({
+  id: '/cafes',
+  path: '/cafes',
+  getParentRoute: () => SecteursRoute,
+} as any)
 const PlanningGenerateRoute = PlanningGenerateRouteImport.update({
   id: '/generate',
   path: '/generate',
@@ -419,7 +425,7 @@ export interface FileRoutesByFullPath {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/secteurs': typeof SecteursRoute
+  '/secteurs': typeof SecteursRouteWithChildren
   '/signalements': typeof SignalementsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
@@ -439,6 +445,7 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
+  '/secteurs/cafes': typeof SecteursCafesRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
@@ -483,7 +490,7 @@ export interface FileRoutesByTo {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/secteurs': typeof SecteursRoute
+  '/secteurs': typeof SecteursRouteWithChildren
   '/signalements': typeof SignalementsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff-app': typeof StaffAppRoute
@@ -502,6 +509,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
+  '/secteurs/cafes': typeof SecteursCafesRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
@@ -547,7 +555,7 @@ export interface FileRoutesById {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/secteurs': typeof SecteursRoute
+  '/secteurs': typeof SecteursRouteWithChildren
   '/signalements': typeof SignalementsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
@@ -567,6 +575,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
+  '/secteurs/cafes': typeof SecteursCafesRoute
   '/staff-app_/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
@@ -633,6 +642,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
+    | '/secteurs/cafes'
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff/'
@@ -696,6 +706,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
+    | '/secteurs/cafes'
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff'
@@ -760,6 +771,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
+    | '/secteurs/cafes'
     | '/staff-app_/propositions'
     | '/staff/$id'
     | '/staff/'
@@ -805,7 +817,7 @@ export interface RootRouteChildren {
   ReglagesRoute: typeof ReglagesRoute
   ReglesScoringRoute: typeof ReglesScoringRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  SecteursRoute: typeof SecteursRoute
+  SecteursRoute: typeof SecteursRouteWithChildren
   SignalementsRoute: typeof SignalementsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaffRoute: typeof StaffRouteWithChildren
@@ -1099,6 +1111,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffAppPropositionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/secteurs/cafes': {
+      id: '/secteurs/cafes'
+      path: '/cafes'
+      fullPath: '/secteurs/cafes'
+      preLoaderRoute: typeof SecteursCafesRouteImport
+      parentRoute: typeof SecteursRoute
+    }
     '/planning/generate': {
       id: '/planning/generate'
       path: '/generate'
@@ -1301,6 +1320,18 @@ const PlanningRouteWithChildren = PlanningRoute._addFileChildren(
   PlanningRouteChildren,
 )
 
+interface SecteursRouteChildren {
+  SecteursCafesRoute: typeof SecteursCafesRoute
+}
+
+const SecteursRouteChildren: SecteursRouteChildren = {
+  SecteursCafesRoute: SecteursCafesRoute,
+}
+
+const SecteursRouteWithChildren = SecteursRoute._addFileChildren(
+  SecteursRouteChildren,
+)
+
 interface StaffRouteChildren {
   StaffIdRoute: typeof StaffIdRoute
   StaffIndexRoute: typeof StaffIndexRoute
@@ -1342,7 +1373,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReglagesRoute: ReglagesRoute,
   ReglesScoringRoute: ReglesScoringRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  SecteursRoute: SecteursRoute,
+  SecteursRoute: SecteursRouteWithChildren,
   SignalementsRoute: SignalementsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaffRoute: StaffRouteWithChildren,
