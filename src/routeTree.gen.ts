@@ -23,6 +23,7 @@ import { Route as RapportsRouteImport } from './routes/rapports'
 import { Route as PointageRouteImport } from './routes/pointage'
 import { Route as PlanningRouteImport } from './routes/planning'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as MentionsLegalesRouteImport } from './routes/mentions-legales'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FormationRouteImport } from './routes/formation'
 import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
@@ -138,6 +139,11 @@ const PlanningRoute = PlanningRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MentionsLegalesRoute = MentionsLegalesRouteImport.update({
+  id: '/mentions-legales',
+  path: '/mentions-legales',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -399,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
+  '/mentions-legales': typeof MentionsLegalesRoute
   '/notifications': typeof NotificationsRoute
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
@@ -461,6 +468,7 @@ export interface FileRoutesByTo {
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
+  '/mentions-legales': typeof MentionsLegalesRoute
   '/notifications': typeof NotificationsRoute
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
@@ -523,6 +531,7 @@ export interface FileRoutesById {
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
+  '/mentions-legales': typeof MentionsLegalesRoute
   '/notifications': typeof NotificationsRoute
   '/planning': typeof PlanningRouteWithChildren
   '/pointage': typeof PointageRoute
@@ -587,6 +596,7 @@ export interface FileRouteTypes {
     | '/fonctionnalites'
     | '/formation'
     | '/login'
+    | '/mentions-legales'
     | '/notifications'
     | '/planning'
     | '/pointage'
@@ -649,6 +659,7 @@ export interface FileRouteTypes {
     | '/fonctionnalites'
     | '/formation'
     | '/login'
+    | '/mentions-legales'
     | '/notifications'
     | '/planning'
     | '/pointage'
@@ -710,6 +721,7 @@ export interface FileRouteTypes {
     | '/fonctionnalites'
     | '/formation'
     | '/login'
+    | '/mentions-legales'
     | '/notifications'
     | '/planning'
     | '/pointage'
@@ -773,6 +785,7 @@ export interface RootRouteChildren {
   FonctionnalitesRoute: typeof FonctionnalitesRoute
   FormationRoute: typeof FormationRouteWithChildren
   LoginRoute: typeof LoginRoute
+  MentionsLegalesRoute: typeof MentionsLegalesRoute
   NotificationsRoute: typeof NotificationsRoute
   PlanningRoute: typeof PlanningRouteWithChildren
   PointageRoute: typeof PointageRoute
@@ -910,6 +923,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mentions-legales': {
+      id: '/mentions-legales'
+      path: '/mentions-legales'
+      fullPath: '/mentions-legales'
+      preLoaderRoute: typeof MentionsLegalesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -1294,6 +1314,7 @@ const rootRouteChildren: RootRouteChildren = {
   FonctionnalitesRoute: FonctionnalitesRoute,
   FormationRoute: FormationRouteWithChildren,
   LoginRoute: LoginRoute,
+  MentionsLegalesRoute: MentionsLegalesRoute,
   NotificationsRoute: NotificationsRoute,
   PlanningRoute: PlanningRouteWithChildren,
   PointageRoute: PointageRoute,
