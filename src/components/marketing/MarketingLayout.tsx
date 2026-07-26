@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import logo from "@/assets/kadence-logo.png";
+import { SECTORS } from "@/components/marketing/sectors";
 
 const APP_URL = "https://app.kadence.be";
 const ADMIN_URL = "https://admin.kadence.be";
@@ -9,9 +10,9 @@ const ADMIN_URL = "https://admin.kadence.be";
 const NAV = [
   { to: "/fonctionnalites", label: "Fonctionnalités" },
   { to: "/tarifs", label: "Tarifs" },
-  { to: "/a-propos", label: "À propos" },
   { to: "/contact", label: "Contact" },
 ] as const;
+
 
 export function MarketingLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
