@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_requests: {
+        Row: {
+          anon_id: string
+          created_at: string
+          email_hash: string | null
+          id: string
+          purge_auth_at: string
+          purged_at: string | null
+          requested_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          anon_id: string
+          created_at?: string
+          email_hash?: string | null
+          id?: string
+          purge_auth_at?: string
+          purged_at?: string | null
+          requested_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          anon_id?: string
+          created_at?: string
+          email_hash?: string | null
+          id?: string
+          purge_auth_at?: string
+          purged_at?: string | null
+          requested_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_chat_messages: {
         Row: {
           content: string
@@ -1446,12 +1482,14 @@ export type Database = {
           address: string | null
           ai_contributor: boolean
           allow_extended_hours: boolean
+          anon_id: string | null
           avatar_url: string | null
           birth_date: string | null
           calendar_token: string | null
           city: string | null
           contract: Database["public"]["Enums"]["contract_type"] | null
           created_at: string
+          deleted_at: string | null
           email: string
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
@@ -1480,12 +1518,14 @@ export type Database = {
           address?: string | null
           ai_contributor?: boolean
           allow_extended_hours?: boolean
+          anon_id?: string | null
           avatar_url?: string | null
           birth_date?: string | null
           calendar_token?: string | null
           city?: string | null
           contract?: Database["public"]["Enums"]["contract_type"] | null
           created_at?: string
+          deleted_at?: string | null
           email: string
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -1514,12 +1554,14 @@ export type Database = {
           address?: string | null
           ai_contributor?: boolean
           allow_extended_hours?: boolean
+          anon_id?: string | null
           avatar_url?: string | null
           birth_date?: string | null
           calendar_token?: string | null
           city?: string | null
           contract?: Database["public"]["Enums"]["contract_type"] | null
           created_at?: string
+          deleted_at?: string | null
           email?: string
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -2933,7 +2975,7 @@ export type Database = {
       modification_status: "pending" | "accepted" | "refused"
       modification_type: "swap" | "cancel" | "time_change" | "unavailable"
       modification_urgency: "normal" | "urgent" | "critique"
-      profile_status: "invited" | "active" | "suspended"
+      profile_status: "invited" | "active" | "suspended" | "deleted"
       shift_status: "scheduled" | "completed" | "cancelled" | "open" | "draft"
       signalement_category: "stock" | "materiel" | "hygiene" | "autre"
     }
@@ -3071,7 +3113,7 @@ export const Constants = {
       modification_status: ["pending", "accepted", "refused"],
       modification_type: ["swap", "cancel", "time_change", "unavailable"],
       modification_urgency: ["normal", "urgent", "critique"],
-      profile_status: ["invited", "active", "suspended"],
+      profile_status: ["invited", "active", "suspended", "deleted"],
       shift_status: ["scheduled", "completed", "cancelled", "open", "draft"],
       signalement_category: ["stock", "materiel", "hygiene", "autre"],
     },
