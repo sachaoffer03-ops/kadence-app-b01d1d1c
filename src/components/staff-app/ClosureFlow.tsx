@@ -7,6 +7,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, notifyTransitionIncoming, type ChecklistPhase } from "@/lib/checklists.helpers";
 import { validateClockOutFn, finalizeClosureFn, analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
+import { getCurrentPositionSafe } from "@/lib/geolocation";
+import { GeolocationDeniedScreen } from "@/components/employee/GeolocationDeniedScreen";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -104,6 +106,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   const [recap, setRecap] = useState<Recap | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [clockOutLoading, setClockOutLoading] = useState(false);
+  const [geoDenied, setGeoDenied] = useState(false);
   const [clockedOutAt, setClockedOutAt] = useState<string | null>(null);
 
   const validateClockOut = useServerFn(validateClockOutFn);
@@ -327,14 +330,13 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
     setClockOutLoading(true);
     try {
       let lat: number | null = null, lng: number | null = null;
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          if (!navigator.geolocation) return reject(new Error("Géolocalisation indisponible"));
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, enableHighAccuracy: true });
-        });
-        lat = pos.coords.latitude; lng = pos.coords.longitude;
-      } catch {
-        // non-bloquant si pas de geofencing requis — serveur tranchera
+      const geo = await getCurrentPositionSafe();
+      if (geo.ok) {
+        lat = geo.lat; lng = geo.lng;
+      } else if (geo.reason === "denied") {
+        setGeoDenied(true);
+        setClockOutLoading(false);
+        return;
       }
       const r = await validateClockOut({ data: { shiftId: shift.id, qrCode: code, lat, lng } });
       setClockedOutAt(r.completedAt ?? new Date().toISOString());
@@ -452,7 +454,9 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         {step === 1 && <Step1 shift={shift} studioName={studioName} now={now} />}
         {step === 2 && <Step2 role={shift.business_role} items={items} photos={photos} itemStates={itemStates} onToggle={toggleItem} onJumpPhoto={() => setStep(3)} hasTemplate={!!template} />}
         {step === 3 && <Step3 role={shift.business_role} photos={photos} states={photoStates} onUpload={handlePhotoUpload} template={template} hasTemplate={!!template} />}
-        {step === 4 && <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />}
+        {step === 4 && (geoDenied
+          ? <div className="px-5 py-5"><GeolocationDeniedScreen onRetrySuccess={() => setGeoDenied(false)} /></div>
+          : <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />)}
         {step === 5 && <Step5
           questions={closureQuestions}
           responses={questionResponses}

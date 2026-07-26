@@ -27,6 +27,7 @@ import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
 import { expandShiftToCards, type RoleSegment } from "@/lib/role-segments";
 import { registerMedianBackButton } from "@/lib/median-bridge";
+import { initPushNotifications } from "@/lib/push-notifications";
 
 
 import { AssistantFab } from "@/components/staff-app/AssistantFab";
@@ -198,6 +199,7 @@ function StaffAppPage() {
 
   // Bouton retour physique Android dans l'app Median (no-op sur navigateur web)
   useEffect(() => registerMedianBackButton((delta) => window.history.go(delta)), []);
+  useEffect(() => initPushNotifications(), []);
 
 
 
