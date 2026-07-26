@@ -7,6 +7,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, notifyTransitionIncoming, type ChecklistPhase } from "@/lib/checklists.helpers";
 import { validateClockOutFn, finalizeClosureFn, analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
+import { getCurrentPositionSafe } from "@/lib/geolocation";
+import { GeolocationDeniedScreen } from "@/components/employee/GeolocationDeniedScreen";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -104,6 +106,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   const [recap, setRecap] = useState<Recap | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [clockOutLoading, setClockOutLoading] = useState(false);
+  const [geoDenied, setGeoDenied] = useState(false);
   const [clockedOutAt, setClockedOutAt] = useState<string | null>(null);
 
   const validateClockOut = useServerFn(validateClockOutFn);
