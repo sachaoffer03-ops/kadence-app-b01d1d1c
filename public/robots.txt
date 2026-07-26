@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /staff-app
+Disallow: /admin
+Disallow: /lovable/
+Disallow: /api/
+
+Sitemap: https://kadence.be/sitemap.xml

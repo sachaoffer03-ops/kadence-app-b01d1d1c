@@ -14,6 +14,7 @@ import { Route as TarifsRouteImport } from './routes/tarifs'
 import { Route as StudiosRouteImport } from './routes/studios'
 import { Route as StaffAppRouteImport } from './routes/staff-app'
 import { Route as StaffRouteImport } from './routes/staff'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignalementsRouteImport } from './routes/signalements'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReglesScoringRouteImport } from './routes/regles-scoring'
@@ -92,6 +93,11 @@ const StaffAppRoute = StaffAppRouteImport.update({
 const StaffRoute = StaffRouteImport.update({
   id: '/staff',
   path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignalementsRoute = SignalementsRouteImport.update({
@@ -401,6 +407,7 @@ export interface FileRoutesByFullPath {
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
@@ -462,6 +469,7 @@ export interface FileRoutesByTo {
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
   '/tarifs': typeof TarifsRoute
@@ -523,6 +531,7 @@ export interface FileRoutesById {
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
@@ -586,6 +595,7 @@ export interface FileRouteTypes {
     | '/regles-scoring'
     | '/reset-password'
     | '/signalements'
+    | '/sitemap.xml'
     | '/staff'
     | '/staff-app'
     | '/studios'
@@ -647,6 +657,7 @@ export interface FileRouteTypes {
     | '/regles-scoring'
     | '/reset-password'
     | '/signalements'
+    | '/sitemap.xml'
     | '/staff-app'
     | '/studios'
     | '/tarifs'
@@ -707,6 +718,7 @@ export interface FileRouteTypes {
     | '/regles-scoring'
     | '/reset-password'
     | '/signalements'
+    | '/sitemap.xml'
     | '/staff'
     | '/staff-app'
     | '/studios'
@@ -769,6 +781,7 @@ export interface RootRouteChildren {
   ReglesScoringRoute: typeof ReglesScoringRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignalementsRoute: typeof SignalementsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaffRoute: typeof StaffRouteWithChildren
   StaffAppRoute: typeof StaffAppRoute
   StudiosRoute: typeof StudiosRoute
@@ -834,6 +847,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/staff'
       preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signalements': {
@@ -1282,6 +1302,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReglesScoringRoute: ReglesScoringRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignalementsRoute: SignalementsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaffRoute: StaffRouteWithChildren,
   StaffAppRoute: StaffAppRoute,
   StudiosRoute: StudiosRoute,
