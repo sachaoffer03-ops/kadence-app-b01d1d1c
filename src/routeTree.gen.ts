@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrousRouteImport } from './routes/trous'
+import { Route as TarifsRouteImport } from './routes/tarifs'
 import { Route as StudiosRouteImport } from './routes/studios'
 import { Route as StaffAppRouteImport } from './routes/staff-app'
 import { Route as StaffRouteImport } from './routes/staff'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignalementsRouteImport } from './routes/signalements'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReglesScoringRouteImport } from './routes/regles-scoring'
@@ -23,18 +25,21 @@ import { Route as PlanningRouteImport } from './routes/planning'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FormationRouteImport } from './routes/formation'
+import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
 import { Route as FeedbacksRouteImport } from './routes/feedbacks'
 import { Route as DisposMonitoringRouteImport } from './routes/dispos-monitoring'
 import { Route as DimonaRouteImport } from './routes/dimona'
 import { Route as DemandesRouteImport } from './routes/demandes'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContingentsRouteImport } from './routes/contingents'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ConfidentialiteRouteImport } from './routes/confidentialite'
 import { Route as CompteSupprimeRouteImport } from './routes/compte-supprime'
 import { Route as ClotureRouteImport } from './routes/cloture'
 import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as AssistantIaRouteImport } from './routes/assistant-ia'
 import { Route as ActivationRouteImport } from './routes/activation'
+import { Route as AProposRouteImport } from './routes/a-propos'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
@@ -70,6 +75,11 @@ const TrousRoute = TrousRouteImport.update({
   path: '/trous',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TarifsRoute = TarifsRouteImport.update({
+  id: '/tarifs',
+  path: '/tarifs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StudiosRoute = StudiosRouteImport.update({
   id: '/studios',
   path: '/studios',
@@ -83,6 +93,11 @@ const StaffAppRoute = StaffAppRouteImport.update({
 const StaffRoute = StaffRouteImport.update({
   id: '/staff',
   path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignalementsRoute = SignalementsRouteImport.update({
@@ -135,6 +150,11 @@ const FormationRoute = FormationRouteImport.update({
   path: '/formation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FonctionnalitesRoute = FonctionnalitesRouteImport.update({
+  id: '/fonctionnalites',
+  path: '/fonctionnalites',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FeedbacksRoute = FeedbacksRouteImport.update({
   id: '/feedbacks',
   path: '/feedbacks',
@@ -165,6 +185,11 @@ const ContingentsRoute = ContingentsRouteImport.update({
   path: '/contingents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConfidentialiteRoute = ConfidentialiteRouteImport.update({
   id: '/confidentialite',
   path: '/confidentialite',
@@ -193,6 +218,11 @@ const AssistantIaRoute = AssistantIaRouteImport.update({
 const ActivationRoute = ActivationRouteImport.update({
   id: '/activation',
   path: '/activation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AProposRoute = AProposRouteImport.update({
+  id: '/a-propos',
+  path: '/a-propos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -352,18 +382,21 @@ const ApiPublicCalendarTokenRoute = ApiPublicCalendarTokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/a-propos': typeof AProposRoute
   '/activation': typeof ActivationRoute
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
   '/compte-supprime': typeof CompteSupprimeRoute
   '/confidentialite': typeof ConfidentialiteRoute
+  '/contact': typeof ContactRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
   '/dispos-monitoring': typeof DisposMonitoringRoute
   '/feedbacks': typeof FeedbacksRoute
+  '/fonctionnalites': typeof FonctionnalitesRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
@@ -374,9 +407,11 @@ export interface FileRoutesByFullPath {
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
+  '/tarifs': typeof TarifsRoute
   '/trous': typeof TrousRoute
   '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
   '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
@@ -409,18 +444,21 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/a-propos': typeof AProposRoute
   '/activation': typeof ActivationRoute
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
   '/compte-supprime': typeof CompteSupprimeRoute
   '/confidentialite': typeof ConfidentialiteRoute
+  '/contact': typeof ContactRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
   '/dispos-monitoring': typeof DisposMonitoringRoute
   '/feedbacks': typeof FeedbacksRoute
+  '/fonctionnalites': typeof FonctionnalitesRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
@@ -431,8 +469,10 @@ export interface FileRoutesByTo {
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
+  '/tarifs': typeof TarifsRoute
   '/trous': typeof TrousRoute
   '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
   '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
@@ -466,18 +506,21 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/a-propos': typeof AProposRoute
   '/activation': typeof ActivationRoute
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
   '/compte-supprime': typeof CompteSupprimeRoute
   '/confidentialite': typeof ConfidentialiteRoute
+  '/contact': typeof ContactRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
   '/dimona': typeof DimonaRoute
   '/dispos-monitoring': typeof DisposMonitoringRoute
   '/feedbacks': typeof FeedbacksRoute
+  '/fonctionnalites': typeof FonctionnalitesRoute
   '/formation': typeof FormationRouteWithChildren
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
@@ -488,9 +531,11 @@ export interface FileRoutesById {
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signalements': typeof SignalementsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
   '/staff-app': typeof StaffAppRoute
   '/studios': typeof StudiosRoute
+  '/tarifs': typeof TarifsRoute
   '/trous': typeof TrousRoute
   '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
   '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
@@ -525,18 +570,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/a-propos'
     | '/activation'
     | '/assistant-ia'
     | '/checklists'
     | '/cloture'
     | '/compte-supprime'
     | '/confidentialite'
+    | '/contact'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
     | '/dimona'
     | '/dispos-monitoring'
     | '/feedbacks'
+    | '/fonctionnalites'
     | '/formation'
     | '/login'
     | '/notifications'
@@ -547,9 +595,11 @@ export interface FileRouteTypes {
     | '/regles-scoring'
     | '/reset-password'
     | '/signalements'
+    | '/sitemap.xml'
     | '/staff'
     | '/staff-app'
     | '/studios'
+    | '/tarifs'
     | '/trous'
     | '/.well-known/apple-app-site-association'
     | '/.well-known/assetlinks.json'
@@ -582,18 +632,21 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/a-propos'
     | '/activation'
     | '/assistant-ia'
     | '/checklists'
     | '/cloture'
     | '/compte-supprime'
     | '/confidentialite'
+    | '/contact'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
     | '/dimona'
     | '/dispos-monitoring'
     | '/feedbacks'
+    | '/fonctionnalites'
     | '/formation'
     | '/login'
     | '/notifications'
@@ -604,8 +657,10 @@ export interface FileRouteTypes {
     | '/regles-scoring'
     | '/reset-password'
     | '/signalements'
+    | '/sitemap.xml'
     | '/staff-app'
     | '/studios'
+    | '/tarifs'
     | '/trous'
     | '/.well-known/apple-app-site-association'
     | '/.well-known/assetlinks.json'
@@ -638,18 +693,21 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/a-propos'
     | '/activation'
     | '/assistant-ia'
     | '/checklists'
     | '/cloture'
     | '/compte-supprime'
     | '/confidentialite'
+    | '/contact'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
     | '/dimona'
     | '/dispos-monitoring'
     | '/feedbacks'
+    | '/fonctionnalites'
     | '/formation'
     | '/login'
     | '/notifications'
@@ -660,9 +718,11 @@ export interface FileRouteTypes {
     | '/regles-scoring'
     | '/reset-password'
     | '/signalements'
+    | '/sitemap.xml'
     | '/staff'
     | '/staff-app'
     | '/studios'
+    | '/tarifs'
     | '/trous'
     | '/.well-known/apple-app-site-association'
     | '/.well-known/assetlinks.json'
@@ -696,18 +756,21 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AProposRoute: typeof AProposRoute
   ActivationRoute: typeof ActivationRoute
   AssistantIaRoute: typeof AssistantIaRoute
   ChecklistsRoute: typeof ChecklistsRoute
   ClotureRoute: typeof ClotureRoute
   CompteSupprimeRoute: typeof CompteSupprimeRoute
   ConfidentialiteRoute: typeof ConfidentialiteRoute
+  ContactRoute: typeof ContactRoute
   ContingentsRoute: typeof ContingentsRoute
   DashboardRoute: typeof DashboardRoute
   DemandesRoute: typeof DemandesRoute
   DimonaRoute: typeof DimonaRoute
   DisposMonitoringRoute: typeof DisposMonitoringRoute
   FeedbacksRoute: typeof FeedbacksRoute
+  FonctionnalitesRoute: typeof FonctionnalitesRoute
   FormationRoute: typeof FormationRouteWithChildren
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -718,9 +781,11 @@ export interface RootRouteChildren {
   ReglesScoringRoute: typeof ReglesScoringRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignalementsRoute: typeof SignalementsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaffRoute: typeof StaffRouteWithChildren
   StaffAppRoute: typeof StaffAppRoute
   StudiosRoute: typeof StudiosRoute
+  TarifsRoute: typeof TarifsRoute
   TrousRoute: typeof TrousRoute
   DotwellKnownAppleAppSiteAssociationRoute: typeof DotwellKnownAppleAppSiteAssociationRoute
   DotwellKnownAssetlinksDotjsonRoute: typeof DotwellKnownAssetlinksDotjsonRoute
@@ -756,6 +821,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrousRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tarifs': {
+      id: '/tarifs'
+      path: '/tarifs'
+      fullPath: '/tarifs'
+      preLoaderRoute: typeof TarifsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/studios': {
       id: '/studios'
       path: '/studios'
@@ -775,6 +847,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/staff'
       preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signalements': {
@@ -847,6 +926,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FormationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/fonctionnalites': {
+      id: '/fonctionnalites'
+      path: '/fonctionnalites'
+      fullPath: '/fonctionnalites'
+      preLoaderRoute: typeof FonctionnalitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/feedbacks': {
       id: '/feedbacks'
       path: '/feedbacks'
@@ -889,6 +975,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContingentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/confidentialite': {
       id: '/confidentialite'
       path: '/confidentialite'
@@ -929,6 +1022,13 @@ declare module '@tanstack/react-router' {
       path: '/activation'
       fullPath: '/activation'
       preLoaderRoute: typeof ActivationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/a-propos': {
+      id: '/a-propos'
+      path: '/a-propos'
+      fullPath: '/a-propos'
+      preLoaderRoute: typeof AProposRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -1177,18 +1277,21 @@ const StaffRouteWithChildren = StaffRoute._addFileChildren(StaffRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AProposRoute: AProposRoute,
   ActivationRoute: ActivationRoute,
   AssistantIaRoute: AssistantIaRoute,
   ChecklistsRoute: ChecklistsRoute,
   ClotureRoute: ClotureRoute,
   CompteSupprimeRoute: CompteSupprimeRoute,
   ConfidentialiteRoute: ConfidentialiteRoute,
+  ContactRoute: ContactRoute,
   ContingentsRoute: ContingentsRoute,
   DashboardRoute: DashboardRoute,
   DemandesRoute: DemandesRoute,
   DimonaRoute: DimonaRoute,
   DisposMonitoringRoute: DisposMonitoringRoute,
   FeedbacksRoute: FeedbacksRoute,
+  FonctionnalitesRoute: FonctionnalitesRoute,
   FormationRoute: FormationRouteWithChildren,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
@@ -1199,9 +1302,11 @@ const rootRouteChildren: RootRouteChildren = {
   ReglesScoringRoute: ReglesScoringRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignalementsRoute: SignalementsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaffRoute: StaffRouteWithChildren,
   StaffAppRoute: StaffAppRoute,
   StudiosRoute: StudiosRoute,
+  TarifsRoute: TarifsRoute,
   TrousRoute: TrousRoute,
   DotwellKnownAppleAppSiteAssociationRoute:
     DotwellKnownAppleAppSiteAssociationRoute,
@@ -1231,13 +1336,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

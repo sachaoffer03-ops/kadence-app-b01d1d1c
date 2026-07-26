@@ -2,17 +2,31 @@
 // Fallback en preview/dev: ?mode=admin ou ?mode=employee dans l'URL,
 // sinon on tombe sur "admin" par défaut côté preview Lovable.
 
-export type AppMode = "admin" | "employee";
+export type AppMode = "admin" | "employee" | "marketing";
 
 const ADMIN_HOST = "admin.kadence.be";
 const EMPLOYEE_HOST = "app.kadence.be";
+const MARKETING_HOSTS = ["kadence.be", "www.kadence.be"];
+
+export function isMarketingHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  if (MARKETING_HOSTS.includes(host)) return true;
+  try {
+    return new URLSearchParams(window.location.search).get("mode") === "marketing";
+  } catch {
+    return false;
+  }
+}
 
 export function getAppMode(): AppMode {
   if (typeof window === "undefined") return "admin";
   const host = window.location.hostname.toLowerCase();
 
+  if (MARKETING_HOSTS.includes(host)) return "marketing";
   if (host === ADMIN_HOST || host.startsWith("admin.")) return "admin";
   if (host === EMPLOYEE_HOST || host.startsWith("app.")) return "employee";
+
 
   // Preview / dev fallback
   try {
@@ -26,9 +40,14 @@ export function getAppMode(): AppMode {
       window.localStorage.setItem("kadence_preview_mode", "admin");
       return "admin";
     }
+    if (m === "marketing") {
+      window.localStorage.setItem("kadence_preview_mode", "marketing");
+      return "marketing";
+    }
     // Persist le choix entre navigations preview
     const stored = window.localStorage.getItem("kadence_preview_mode");
-    if (stored === "employee" || stored === "admin") return stored;
+    if (stored === "employee" || stored === "admin" || stored === "marketing") return stored;
+
   } catch {
     // ignore
   }

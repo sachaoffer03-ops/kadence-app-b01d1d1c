@@ -21,8 +21,10 @@ import { toast } from "sonner";
 
 import appCss from "../styles.css?url";
 
-const PUBLIC_ROUTES = ["/login", "/activation", "/reset-password", "/confidentialite", "/compte-supprime"];
-const STANDALONE_ROUTES = ["/confidentialite", "/compte-supprime"];
+const MARKETING_ROUTES = ["/fonctionnalites", "/tarifs", "/a-propos", "/contact"];
+const PUBLIC_ROUTES = ["/login", "/activation", "/reset-password", "/confidentialite", "/compte-supprime", ...MARKETING_ROUTES];
+const STANDALONE_ROUTES = ["/confidentialite", "/compte-supprime", ...MARKETING_ROUTES];
+
 
 
 function NotFoundComponent() {
@@ -224,6 +226,9 @@ function AppShell() {
   useEffect(() => {
     if (loading) return;
     const appMode = getAppMode();
+    // Site vitrine (kadence.be) : aucune redirection, aucune logique app
+    if (appMode === "marketing") return;
+
     const host = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
     // En preview Lovable / dev, on autorise l'admin à voir l'espace employé
     // (sinon impossible de prévisualiser /staff-app depuis le compte admin).
