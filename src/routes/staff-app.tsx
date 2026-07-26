@@ -5,8 +5,10 @@ import { toast } from "sonner";
 import {
   Home, Calendar, User, ChevronRight, ChevronLeft, Clock, GraduationCap, ArrowLeft, CheckSquare,
   AlertCircle, Replace, Inbox, MessageCircle, CalendarCheck, CheckCircle2, Phone,
-  MapPin, Cake, CreditCard, Hash, Mail, Bell, Sparkles, QrCode, CalendarDays
+  MapPin, Cake, CreditCard, Hash, Mail, Bell, Sparkles, QrCode, CalendarDays, Shield
 } from "lucide-react";
+import { DeleteAccountSection } from "@/components/staff-app/DeleteAccountSection";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
