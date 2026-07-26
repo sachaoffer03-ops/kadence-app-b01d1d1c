@@ -40,9 +40,14 @@ export function getAppMode(): AppMode {
       window.localStorage.setItem("kadence_preview_mode", "admin");
       return "admin";
     }
+    if (m === "marketing") {
+      window.localStorage.setItem("kadence_preview_mode", "marketing");
+      return "marketing";
+    }
     // Persist le choix entre navigations preview
     const stored = window.localStorage.getItem("kadence_preview_mode");
-    if (stored === "employee" || stored === "admin") return stored;
+    if (stored === "employee" || stored === "admin" || stored === "marketing") return stored;
+
   } catch {
     // ignore
   }
