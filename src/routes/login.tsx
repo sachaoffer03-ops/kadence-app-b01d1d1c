@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import logo from "@/assets/kadence-logo.png";
 import { getAppMode, getOtherSpaceUrl, setPreviewMode, type AppMode } from "@/lib/app-mode";
 import { requestPasswordReset } from "@/lib/auth-email.functions";
+import { isMedianApp } from "@/lib/is-median-app";
+
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -281,9 +283,9 @@ function EmployeeLogin(p: FormProps) {
                 type="password"
                 value={p.password}
                 onChange={p.setPassword}
-                large
-              />
-            )}
+            {p.mode === "login" && <StayConnected />}
+
+
 
             <button
               type="submit"
