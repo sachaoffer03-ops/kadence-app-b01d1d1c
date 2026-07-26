@@ -96,7 +96,7 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
               <img
                 src={logo}
                 alt="Kadence"
-                style={{ height: 52, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                style={{ height: 76, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }}
               />
               <p style={{ fontSize: 13.5, color: "rgba(250,250,248,0.6)", marginTop: 16, lineHeight: 1.8 }}>
                 La gestion d'équipe pensée pour les cafés, restaurants et commerces à plusieurs établissements. Conçu à
