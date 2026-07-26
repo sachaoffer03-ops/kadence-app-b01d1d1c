@@ -268,7 +268,7 @@ export function Section({
   const bg = tone === "surface" ? "#F3F1EC" : tone === "ink" ? "#1A1A1A" : undefined;
   return (
     <section
-      className={`px-5 md:px-8 py-20 md:py-28 ${className}`}
+      className={`px-5 md:px-8 py-14 md:py-28 ${className}`}
       style={bg ? { backgroundColor: bg, color: tone === "ink" ? "#FAFAF8" : undefined } : undefined}
     >
       <div className="mx-auto" style={{ maxWidth: 1180 }}>
@@ -316,7 +316,7 @@ export function CtaBand() {
   return (
     <Section>
       <div
-        className="rounded-[28px] px-7 py-16 md:px-20 md:py-24"
+        className="rounded-[28px] px-6 py-12 sm:px-7 sm:py-16 md:px-20 md:py-24"
         style={{ backgroundColor: "#1A1A1A" }}
       >
         <div style={{ maxWidth: 640 }}>
