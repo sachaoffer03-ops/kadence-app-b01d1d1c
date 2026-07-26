@@ -24,6 +24,8 @@ import { checkUserDispoStatus, getAvailabilityLockInfo } from "@/lib/availabilit
 import { FormationPanel } from "@/components/staff-app/FormationPanel";
 import { FormationNotifBanner } from "@/components/staff-app/formation/FormationNotifBanner";
 import { expandShiftToCards, type RoleSegment } from "@/lib/role-segments";
+import { registerMedianBackButton } from "@/lib/median-bridge";
+
 
 import { AssistantFab } from "@/components/staff-app/AssistantFab";
 
@@ -191,6 +193,11 @@ function StaffAppPage() {
     window.addEventListener("kadence:chat-action", onAction as EventListener);
     return () => window.removeEventListener("kadence:chat-action", onAction as EventListener);
   }, [navigate]);
+
+  // Bouton retour physique Android dans l'app Median (no-op sur navigateur web)
+  useEffect(() => registerMedianBackButton((delta) => window.history.go(delta)), []);
+
+
 
 
   if (loading || !user) return <div className="p-8" style={{ fontSize: 13 }}>Chargement…</div>;
@@ -1462,7 +1469,7 @@ function BellButton({ userId, onOpen }: { userId: string; onOpen: () => void }) 
   return (
     <button onClick={onOpen} aria-label="Notifications"
       className="rounded-full flex items-center justify-center"
-      style={{ position: "fixed", top: 14, right: 14, zIndex: 50, width: 38, height: 38, backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
+      style={{ position: "fixed", top: "calc(14px + env(safe-area-inset-top))", right: 14, zIndex: 50, width: 38, height: 38, backgroundColor: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
       <Bell size={16} strokeWidth={1.6} style={{ color: "var(--foreground)" }} />
       {unread > 0 && (
         <span style={{

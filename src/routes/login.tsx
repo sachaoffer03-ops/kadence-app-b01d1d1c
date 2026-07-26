@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import logo from "@/assets/kadence-logo.png";
 import { getAppMode, getOtherSpaceUrl, setPreviewMode, type AppMode } from "@/lib/app-mode";
 import { requestPasswordReset } from "@/lib/auth-email.functions";
+import { isMedianApp } from "@/lib/is-median-app";
+
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -187,15 +189,18 @@ function AdminLogin(p: AdminFormProps) {
           </form>
         </div>
 
-        <div className="mt-5 text-center">
-          <a
-            href="https://app.kadence.be/login"
-            style={{ fontSize: 12, color: "var(--muted-foreground)" }}
-            className="hover:underline"
-          >
-            Vous êtes employé ? Espace employé →
-          </a>
-        </div>
+        {!isMedianApp() && (
+          <div className="mt-5 text-center">
+            <a
+              href="https://app.kadence.be/login"
+              style={{ fontSize: 12, color: "var(--muted-foreground)" }}
+              className="hover:underline"
+            >
+              Vous êtes employé ? Espace employé →
+            </a>
+          </div>
+        )}
+
 
       </div>
     </div>
@@ -281,6 +286,11 @@ function EmployeeLogin(p: FormProps) {
                 large
               />
             )}
+            {p.mode === "login" && <StayConnected />}
+
+
+
+
 
             <button
               type="submit"
@@ -327,9 +337,26 @@ function EmployeeLogin(p: FormProps) {
   );
 }
 
+function StayConnected() {
+  const [checked, setChecked] = useState(true);
+  return (
+    <label className="flex items-center gap-2 pt-1" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => setChecked(e.target.checked)}
+        style={{ width: 16, height: 16, accentColor: "#F0997B" }}
+      />
+      Rester connecté
+    </label>
+  );
+}
+
 function Field({ label, type, value, onChange, large }: {
   label: string; type: string; value: string; onChange: (v: string) => void; large?: boolean;
 }) {
+
+  const isEmail = type === "email";
   return (
     <div>
       <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>{label}</label>
@@ -338,6 +365,10 @@ function Field({ label, type, value, onChange, large }: {
         required
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        inputMode={isEmail ? "email" : undefined}
+        autoComplete={isEmail ? "username" : type === "password" ? "current-password" : undefined}
+        autoCapitalize={isEmail ? "none" : undefined}
+        autoCorrect={isEmail ? "off" : undefined}
         className="mt-1.5 w-full rounded-md border outline-none transition-colors focus:border-[var(--foreground)]"
         style={{
           fontSize: large ? 16 : 14,
@@ -349,3 +380,4 @@ function Field({ label, type, value, onChange, large }: {
     </div>
   );
 }
+

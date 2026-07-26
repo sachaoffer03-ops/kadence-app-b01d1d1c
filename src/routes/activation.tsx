@@ -969,6 +969,9 @@ function PasswordStep({
         <label style={labelStyle}>Email (déjà associé à votre invitation)</label>
         <input
           type="email"
+          inputMode="email"
+          autoComplete="username"
+
           disabled
           value={email}
           className={inputCls}
@@ -1044,8 +1047,11 @@ function Identity({
         <label style={labelStyle}>Téléphone</label>
         <input
           type="tel"
+          inputMode="tel"
+          autoComplete="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
+
           placeholder="+32 4XX XX XX XX"
           className={inputCls}
           style={inputStyle}
@@ -1286,8 +1292,10 @@ function Emergency({
           <label style={labelStyle}>Téléphone</label>
           <input
             type="tel"
+            inputMode="tel"
             value={emPhone}
             onChange={(e) => setEmPhone(e.target.value)}
+
             placeholder="+32 4XX XX XX XX"
             className={inputCls}
             style={inputStyle}
