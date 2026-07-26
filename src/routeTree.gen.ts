@@ -46,6 +46,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as StaffAppPropositionsRouteImport } from './routes/staff-app_.propositions'
+import { Route as SecteursRestaurantsRouteImport } from './routes/secteurs.restaurants'
 import { Route as SecteursCafesRouteImport } from './routes/secteurs.cafes'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
@@ -258,6 +259,11 @@ const StaffAppPropositionsRoute = StaffAppPropositionsRouteImport.update({
   path: '/staff-app/propositions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SecteursRestaurantsRoute = SecteursRestaurantsRouteImport.update({
+  id: '/restaurants',
+  path: '/restaurants',
+  getParentRoute: () => SecteursRoute,
+} as any)
 const SecteursCafesRoute = SecteursCafesRouteImport.update({
   id: '/cafes',
   path: '/cafes',
@@ -446,6 +452,7 @@ export interface FileRoutesByFullPath {
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
+  '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
@@ -510,6 +517,7 @@ export interface FileRoutesByTo {
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
+  '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff': typeof StaffIndexRoute
@@ -576,6 +584,7 @@ export interface FileRoutesById {
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
+  '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app_/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
   '/staff/': typeof StaffIndexRoute
@@ -643,6 +652,7 @@ export interface FileRouteTypes {
     | '/formation/$courseId'
     | '/planning/generate'
     | '/secteurs/cafes'
+    | '/secteurs/restaurants'
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff/'
@@ -707,6 +717,7 @@ export interface FileRouteTypes {
     | '/formation/$courseId'
     | '/planning/generate'
     | '/secteurs/cafes'
+    | '/secteurs/restaurants'
     | '/staff-app/propositions'
     | '/staff/$id'
     | '/staff'
@@ -772,6 +783,7 @@ export interface FileRouteTypes {
     | '/formation/$courseId'
     | '/planning/generate'
     | '/secteurs/cafes'
+    | '/secteurs/restaurants'
     | '/staff-app_/propositions'
     | '/staff/$id'
     | '/staff/'
@@ -1111,6 +1123,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffAppPropositionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/secteurs/restaurants': {
+      id: '/secteurs/restaurants'
+      path: '/restaurants'
+      fullPath: '/secteurs/restaurants'
+      preLoaderRoute: typeof SecteursRestaurantsRouteImport
+      parentRoute: typeof SecteursRoute
+    }
     '/secteurs/cafes': {
       id: '/secteurs/cafes'
       path: '/cafes'
@@ -1322,10 +1341,12 @@ const PlanningRouteWithChildren = PlanningRoute._addFileChildren(
 
 interface SecteursRouteChildren {
   SecteursCafesRoute: typeof SecteursCafesRoute
+  SecteursRestaurantsRoute: typeof SecteursRestaurantsRoute
 }
 
 const SecteursRouteChildren: SecteursRouteChildren = {
   SecteursCafesRoute: SecteursCafesRoute,
+  SecteursRestaurantsRoute: SecteursRestaurantsRoute,
 }
 
 const SecteursRouteWithChildren = SecteursRoute._addFileChildren(
