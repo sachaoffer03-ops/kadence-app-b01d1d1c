@@ -53,10 +53,11 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexPage() {
-  const { isMarketing } = Route.useLoaderData();
-  if (isMarketing) return <MarketingHome />;
+  const data = Route.useLoaderData() as { isMarketing?: boolean } | undefined;
+  if (data?.isMarketing) return <MarketingHome />;
   return <IndexRedirect />;
 }
+
 
 function IndexRedirect() {
   const { session, appRole, loading } = useAuth();
