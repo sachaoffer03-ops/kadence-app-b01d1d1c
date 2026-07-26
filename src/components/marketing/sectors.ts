@@ -1,0 +1,51 @@
+export const SECTORS = [
+  {
+    slug: "/secteurs/cafes",
+    kicker: "Cafés & coffeeshops",
+    title: "Cafés & coffeeshops",
+    teaser:
+      "Équipes d'étudiants, rotations serrées, plusieurs adresses à couvrir avec les mêmes visages. Le terrain d'origine de Kadence.",
+    tint: "var(--coral-light)",
+    ink: "var(--coral-dark)",
+  },
+  {
+    slug: "/secteurs/restaurants",
+    kicker: "Restaurants",
+    title: "Restaurants",
+    teaser: "Services midi et soir, coupures, salle et cuisine à équilibrer. Un planning qui tient debout le vendredi.",
+    tint: "#FCE7E4",
+    ink: "#A2453A",
+  },
+  {
+    slug: "/secteurs/bars",
+    kicker: "Bars & clubs",
+    title: "Bars & clubs",
+    teaser: "Nuits, week-ends, extras de dernière minute. Pointage horodaté et repos entre services respectés.",
+    tint: "#E4E4F0",
+    ink: "#3E3A6B",
+  },
+  {
+    slug: "/secteurs/commerces",
+    kicker: "Commerces & retail",
+    title: "Commerces & retail",
+    teaser: "Amplitudes d'ouverture fixes, pics de fréquentation, boutiques multiples et personnel tournant.",
+    tint: "#DFEDEA",
+    ink: "#2C5D55",
+  },
+  {
+    slug: "/secteurs/hotels",
+    kicker: "Hôtels",
+    title: "Hôtels",
+    teaser: "Réception 24h, nuits, housekeeping. Trois métiers, un seul planning, zéro trou toléré.",
+    tint: "#E7E4DC",
+    ink: "#4A4335",
+  },
+  {
+    slug: "/secteurs/boulangeries",
+    kicker: "Boulangeries & traiteurs",
+    title: "Boulangeries & traiteurs",
+    teaser: "Fournée à 4h, vente en journée, production et comptoir séparés. Des horaires qui ne pardonnent pas.",
+    tint: "#F6E9D8",
+    ink: "#7A5320",
+  },
+] as const;

@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import logo from "@/assets/kadence-logo.png";
+import { SECTORS } from "@/components/marketing/sectors";
 
 const APP_URL = "https://app.kadence.be";
 const ADMIN_URL = "https://admin.kadence.be";
@@ -9,12 +10,14 @@ const ADMIN_URL = "https://admin.kadence.be";
 const NAV = [
   { to: "/fonctionnalites", label: "Fonctionnalités" },
   { to: "/tarifs", label: "Tarifs" },
-  { to: "/a-propos", label: "À propos" },
   { to: "/contact", label: "Contact" },
 ] as const;
 
+
 export function MarketingLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [sectors, setSectors] = useState(false);
+
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
@@ -32,6 +35,55 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
+            <div className="relative" onMouseEnter={() => setSectors(true)} onMouseLeave={() => setSectors(false)}>
+              <Link
+                to="/secteurs"
+                className="flex items-center gap-1.5 transition-colors hover:opacity-70"
+                style={{ fontSize: 14.5, color: "var(--muted-foreground)" }}
+                activeProps={{ style: { fontSize: 14.5, color: "var(--foreground)", fontWeight: 500 } }}
+              >
+                Secteurs
+                <ChevronDown size={14} />
+              </Link>
+              {sectors && (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 top-full pt-4"
+                  style={{ width: 460 }}
+                >
+                  <div
+                    className="rounded-2xl p-3 grid grid-cols-2 gap-1"
+                    style={{
+                      backgroundColor: "var(--background)",
+                      border: "1px solid var(--border)",
+                      boxShadow: "0 18px 50px -20px rgba(26,26,26,0.28)",
+                    }}
+                  >
+                    {SECTORS.map((s) => (
+                      <Link
+                        key={s.slug}
+                        to={s.slug}
+                        onClick={() => setSectors(false)}
+                        className="rounded-xl px-3.5 py-3 transition-colors"
+                        style={{ display: "block" }}
+                      >
+                        <span
+                          className="block"
+                          style={{ fontSize: 14, fontWeight: 500, color: "var(--foreground)" }}
+                        >
+                          {s.kicker}
+                        </span>
+                        <span
+                          className="block"
+                          style={{ fontSize: 12.5, color: "var(--muted-foreground)", marginTop: 2 }}
+                        >
+                          {s.teaser.split(".")[0]}.
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             {NAV.map((n) => (
               <Link
                 key={n.to}
@@ -44,6 +96,7 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
           </nav>
+
 
           <div className="hidden md:flex items-center gap-4">
             <a href={APP_URL} style={{ fontSize: 14.5, color: "var(--foreground)" }} className="hover:opacity-70">
@@ -74,11 +127,29 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
             style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}
           >
             <div className="flex flex-col gap-4">
+              <div style={{ fontSize: 16 }}>
+                <Link to="/secteurs" onClick={() => setOpen(false)}>
+                  Secteurs
+                </Link>
+                <div className="flex flex-col gap-3 mt-3 pl-3" style={{ borderLeft: "1px solid var(--border)" }}>
+                  {SECTORS.map((s) => (
+                    <Link
+                      key={s.slug}
+                      to={s.slug}
+                      onClick={() => setOpen(false)}
+                      style={{ fontSize: 14.5, color: "var(--muted-foreground)" }}
+                    >
+                      {s.kicker}
+                    </Link>
+                  ))}
+                </div>
+              </div>
               {NAV.map((n) => (
                 <Link key={n.to} to={n.to} onClick={() => setOpen(false)} style={{ fontSize: 16 }}>
                   {n.label}
                 </Link>
               ))}
+
               <a href={APP_URL} style={{ fontSize: 16 }}>
                 Connexion
               </a>
@@ -111,7 +182,7 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
                 <Link to="/contact">Demander une démo</Link>
               </FooterCol>
               <FooterCol title="Société">
-                <Link to="/a-propos">À propos</Link>
+                <Link to="/secteurs">Secteurs</Link>
                 <Link to="/contact">Contact</Link>
                 <Link to="/mentions-legales">Mentions légales</Link>
                 <Link to="/confidentialite">Confidentialité</Link>
