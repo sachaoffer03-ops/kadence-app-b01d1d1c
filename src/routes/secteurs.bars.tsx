@@ -33,7 +33,7 @@ function BarsPage() {
   return (
     <MarketingLayout>
       {/* Hero nuit, centré */}
-      <section style={{ backgroundColor: "#16162A", color: "#FAFAF8" }} className="px-5 md:px-8 py-24 md:py-32">
+      <section style={{ backgroundColor: "#16162A", color: "#FAFAF8" }} className="px-5 md:px-8 py-16 md:py-32">
         <div className="mx-auto text-center" style={{ maxWidth: 860 }}>
           <div
             className="inline-flex rounded-full px-3.5 py-1.5 mb-8"
@@ -65,7 +65,7 @@ function BarsPage() {
           </p>
 
           {/* Ligne de nuit */}
-          <div className="mt-14 grid grid-cols-5 gap-2">
+          <div className="mt-10 md:mt-14 grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-2 text-left sm:text-center">
             {NIGHT.map(([h, l], i) => (
               <div key={h}>
                 <div
@@ -92,7 +92,7 @@ function BarsPage() {
       </section>
 
       {/* Bento */}
-      <section className="px-5 md:px-8 py-20 md:py-28">
+      <section className="px-5 md:px-8 py-14 md:py-28">
         <div className="mx-auto grid gap-5 md:grid-cols-3" style={{ maxWidth: 1180 }}>
           <div className="md:col-span-2 rounded-[24px] p-9 md:p-12" style={{ backgroundColor: "#F3F1EC" }}>
             <h2 style={{ fontSize: "clamp(24px, 3.2vw, 34px)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.15 }}>

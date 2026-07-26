@@ -27,7 +27,7 @@ function CommercesPage() {
   return (
     <MarketingLayout>
       {/* Hero surface, aligné à droite */}
-      <section style={{ backgroundColor: "#DFEDEA" }} className="px-5 md:px-8 py-20 md:py-28">
+      <section style={{ backgroundColor: "#DFEDEA" }} className="px-5 md:px-8 py-14 md:py-28">
         <div className="mx-auto" style={{ maxWidth: 1180 }}>
           <div className="md:ml-auto" style={{ maxWidth: 720 }}>
             <div
@@ -61,7 +61,7 @@ function CommercesPage() {
       </section>
 
       {/* Graphe de charge */}
-      <section className="px-5 md:px-8 py-20 md:py-24">
+      <section className="px-5 md:px-8 py-14 md:py-24">
         <div className="mx-auto grid gap-14 md:grid-cols-[1fr_1fr] md:items-end" style={{ maxWidth: 1180 }}>
           <div>
             <h2 style={{ fontSize: "clamp(26px, 3.6vw, 40px)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.15 }}>

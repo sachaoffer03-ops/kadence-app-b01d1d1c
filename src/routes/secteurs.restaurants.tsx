@@ -33,7 +33,7 @@ function RestaurantsPage() {
   return (
     <MarketingLayout>
       {/* Hero sombre pleine largeur */}
-      <section style={{ backgroundColor: "#1A1A1A", color: "#FAFAF8" }} className="px-5 md:px-8 py-20 md:py-28">
+      <section style={{ backgroundColor: "#1A1A1A", color: "#FAFAF8" }} className="px-5 md:px-8 py-14 md:py-28">
         <div className="mx-auto" style={{ maxWidth: 1180 }}>
           <div
             className="inline-flex rounded-full px-3.5 py-1.5 mb-7"
@@ -76,7 +76,7 @@ function RestaurantsPage() {
       </section>
 
       {/* Journée type — timeline verticale */}
-      <section className="px-5 md:px-8 py-20 md:py-28">
+      <section className="px-5 md:px-8 py-14 md:py-28">
         <div className="mx-auto grid gap-14 md:grid-cols-[0.85fr_1.15fr]" style={{ maxWidth: 1180 }}>
           <div>
             <h2 style={{ fontSize: "clamp(26px, 3.6vw, 40px)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.15 }}>
@@ -116,7 +116,7 @@ function RestaurantsPage() {
         </div>
       </section>
 
-      <section className="px-5 md:px-8 py-20 md:py-24">
+      <section className="px-5 md:px-8 py-14 md:py-24">
         <div className="mx-auto flex flex-col gap-14" style={{ maxWidth: 900 }}>
           {[
             ["Les coupures gérées correctement", "Un service midi puis soir n'est pas un shift de dix heures. Kadence découpe, respecte le repos minimum et compte les heures réelles."],
