@@ -127,11 +127,29 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
             style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}
           >
             <div className="flex flex-col gap-4">
+              <div style={{ fontSize: 16 }}>
+                <Link to="/secteurs" onClick={() => setOpen(false)}>
+                  Secteurs
+                </Link>
+                <div className="flex flex-col gap-3 mt-3 pl-3" style={{ borderLeft: "1px solid var(--border)" }}>
+                  {SECTORS.map((s) => (
+                    <Link
+                      key={s.slug}
+                      to={s.slug}
+                      onClick={() => setOpen(false)}
+                      style={{ fontSize: 14.5, color: "var(--muted-foreground)" }}
+                    >
+                      {s.kicker}
+                    </Link>
+                  ))}
+                </div>
+              </div>
               {NAV.map((n) => (
                 <Link key={n.to} to={n.to} onClick={() => setOpen(false)} style={{ fontSize: 16 }}>
                   {n.label}
                 </Link>
               ))}
+
               <a href={APP_URL} style={{ fontSize: 16 }}>
                 Connexion
               </a>
