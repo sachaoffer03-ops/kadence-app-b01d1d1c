@@ -337,9 +337,25 @@ function EmployeeLogin(p: FormProps) {
   );
 }
 
+function StayConnected() {
+  const [checked, setChecked] = useState(true);
+  return (
+    <label className="flex items-center gap-2 pt-1" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => setChecked(e.target.checked)}
+        style={{ width: 16, height: 16, accentColor: "#F0997B" }}
+      />
+      Rester connecté
+    </label>
+  );
+}
+
 function Field({ label, type, value, onChange, large }: {
   label: string; type: string; value: string; onChange: (v: string) => void; large?: boolean;
 }) {
+
   const isEmail = type === "email";
   return (
     <div>
