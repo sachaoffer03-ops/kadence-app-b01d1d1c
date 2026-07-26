@@ -50,6 +50,7 @@ import { Route as SecteursRestaurantsRouteImport } from './routes/secteurs.resta
 import { Route as SecteursHotelsRouteImport } from './routes/secteurs.hotels'
 import { Route as SecteursCommercesRouteImport } from './routes/secteurs.commerces'
 import { Route as SecteursCafesRouteImport } from './routes/secteurs.cafes'
+import { Route as SecteursBoulangeriesRouteImport } from './routes/secteurs.boulangeries'
 import { Route as SecteursBarsRouteImport } from './routes/secteurs.bars'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
@@ -282,6 +283,11 @@ const SecteursCafesRoute = SecteursCafesRouteImport.update({
   path: '/cafes',
   getParentRoute: () => SecteursRoute,
 } as any)
+const SecteursBoulangeriesRoute = SecteursBoulangeriesRouteImport.update({
+  id: '/boulangeries',
+  path: '/boulangeries',
+  getParentRoute: () => SecteursRoute,
+} as any)
 const SecteursBarsRoute = SecteursBarsRouteImport.update({
   id: '/bars',
   path: '/bars',
@@ -470,6 +476,7 @@ export interface FileRoutesByFullPath {
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/secteurs/bars': typeof SecteursBarsRoute
+  '/secteurs/boulangeries': typeof SecteursBoulangeriesRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
   '/secteurs/commerces': typeof SecteursCommercesRoute
   '/secteurs/hotels': typeof SecteursHotelsRoute
@@ -538,6 +545,7 @@ export interface FileRoutesByTo {
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/secteurs/bars': typeof SecteursBarsRoute
+  '/secteurs/boulangeries': typeof SecteursBoulangeriesRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
   '/secteurs/commerces': typeof SecteursCommercesRoute
   '/secteurs/hotels': typeof SecteursHotelsRoute
@@ -608,6 +616,7 @@ export interface FileRoutesById {
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
   '/secteurs/bars': typeof SecteursBarsRoute
+  '/secteurs/boulangeries': typeof SecteursBoulangeriesRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
   '/secteurs/commerces': typeof SecteursCommercesRoute
   '/secteurs/hotels': typeof SecteursHotelsRoute
@@ -679,6 +688,7 @@ export interface FileRouteTypes {
     | '/formation/$courseId'
     | '/planning/generate'
     | '/secteurs/bars'
+    | '/secteurs/boulangeries'
     | '/secteurs/cafes'
     | '/secteurs/commerces'
     | '/secteurs/hotels'
@@ -747,6 +757,7 @@ export interface FileRouteTypes {
     | '/formation/$courseId'
     | '/planning/generate'
     | '/secteurs/bars'
+    | '/secteurs/boulangeries'
     | '/secteurs/cafes'
     | '/secteurs/commerces'
     | '/secteurs/hotels'
@@ -816,6 +827,7 @@ export interface FileRouteTypes {
     | '/formation/$courseId'
     | '/planning/generate'
     | '/secteurs/bars'
+    | '/secteurs/boulangeries'
     | '/secteurs/cafes'
     | '/secteurs/commerces'
     | '/secteurs/hotels'
@@ -1187,6 +1199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SecteursCafesRouteImport
       parentRoute: typeof SecteursRoute
     }
+    '/secteurs/boulangeries': {
+      id: '/secteurs/boulangeries'
+      path: '/boulangeries'
+      fullPath: '/secteurs/boulangeries'
+      preLoaderRoute: typeof SecteursBoulangeriesRouteImport
+      parentRoute: typeof SecteursRoute
+    }
     '/secteurs/bars': {
       id: '/secteurs/bars'
       path: '/bars'
@@ -1398,6 +1417,7 @@ const PlanningRouteWithChildren = PlanningRoute._addFileChildren(
 
 interface SecteursRouteChildren {
   SecteursBarsRoute: typeof SecteursBarsRoute
+  SecteursBoulangeriesRoute: typeof SecteursBoulangeriesRoute
   SecteursCafesRoute: typeof SecteursCafesRoute
   SecteursCommercesRoute: typeof SecteursCommercesRoute
   SecteursHotelsRoute: typeof SecteursHotelsRoute
@@ -1406,6 +1426,7 @@ interface SecteursRouteChildren {
 
 const SecteursRouteChildren: SecteursRouteChildren = {
   SecteursBarsRoute: SecteursBarsRoute,
+  SecteursBoulangeriesRoute: SecteursBoulangeriesRoute,
   SecteursCafesRoute: SecteursCafesRoute,
   SecteursCommercesRoute: SecteursCommercesRoute,
   SecteursHotelsRoute: SecteursHotelsRoute,

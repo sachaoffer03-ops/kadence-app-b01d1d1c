@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { MarketingLayout, Section, Eyebrow, CtaBand } from "@/components/marketing/MarketingLayout";
 import { SECTORS } from "@/components/marketing/sectors";
 
-export const Route = createFileRoute("/secteurs")({
+export const Route = createFileRoute("/secteurs/")({
   component: SectorsIndex,
   head: () => ({
     meta: [
