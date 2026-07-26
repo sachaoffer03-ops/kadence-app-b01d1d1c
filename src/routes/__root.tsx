@@ -21,8 +21,10 @@ import { toast } from "sonner";
 
 import appCss from "../styles.css?url";
 
-const PUBLIC_ROUTES = ["/login", "/activation", "/reset-password", "/confidentialite", "/compte-supprime"];
-const STANDALONE_ROUTES = ["/confidentialite", "/compte-supprime"];
+const MARKETING_ROUTES = ["/fonctionnalites", "/tarifs", "/a-propos", "/contact"];
+const PUBLIC_ROUTES = ["/login", "/activation", "/reset-password", "/confidentialite", "/compte-supprime", ...MARKETING_ROUTES];
+const STANDALONE_ROUTES = ["/confidentialite", "/compte-supprime", ...MARKETING_ROUTES];
+
 
 
 function NotFoundComponent() {
