@@ -182,7 +182,7 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
                 <Link to="/contact">Demander une démo</Link>
               </FooterCol>
               <FooterCol title="Société">
-                <Link to="/a-propos">À propos</Link>
+                <Link to="/secteurs">Secteurs</Link>
                 <Link to="/contact">Contact</Link>
                 <Link to="/mentions-legales">Mentions légales</Link>
                 <Link to="/confidentialite">Confidentialité</Link>
