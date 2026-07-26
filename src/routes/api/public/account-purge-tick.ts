@@ -7,13 +7,16 @@ import { createFileRoute } from "@tanstack/react-router";
  */
 async function handle(request: Request) {
   const key = request.headers.get("apikey") ?? "";
-  const expected = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
-  if (!expected || key !== expected) {
+  const allowed = [process.env.SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_ANON_KEY].filter(
+    (k): k is string => typeof k === "string" && k.length > 0,
+  );
+  if (allowed.length === 0 || !allowed.includes(key)) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
+
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin.rpc("list_pending_auth_purges");
