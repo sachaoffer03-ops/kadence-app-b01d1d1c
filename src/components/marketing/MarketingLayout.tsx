@@ -131,36 +131,59 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
 
         {open && (
           <div
-            className="md:hidden border-t px-5 py-5"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+            className="md:hidden border-t px-5 py-5 overflow-y-auto"
+            style={{
+              borderColor: "var(--border)",
+              backgroundColor: "var(--background)",
+              maxHeight: "calc(100dvh - 68px)",
+            }}
           >
-            <div className="flex flex-col gap-4">
-              <div style={{ fontSize: 16 }}>
-                <Link to="/secteurs" onClick={() => setOpen(false)}>
-                  Secteurs
-                </Link>
-                <div className="flex flex-col gap-3 mt-3 pl-3" style={{ borderLeft: "1px solid var(--border)" }}>
-                  {SECTORS.map((s) => (
-                    <Link
-                      key={s.slug}
-                      to={s.slug}
-                      onClick={() => setOpen(false)}
-                      style={{ fontSize: 14.5, color: "var(--muted-foreground)" }}
-                    >
-                      {s.kicker}
-                    </Link>
-                  ))}
-                </div>
+            <div className="flex flex-col gap-1">
+              <Link
+                to="/secteurs"
+                onClick={() => setOpen(false)}
+                className="py-3"
+                style={{ fontSize: 16.5, fontWeight: 500 }}
+              >
+                Secteurs
+              </Link>
+              <div className="flex flex-col mb-1 pl-4" style={{ borderLeft: "1px solid var(--border)" }}>
+                {SECTORS.map((s) => (
+                  <Link
+                    key={s.slug}
+                    to={s.slug}
+                    onClick={() => setOpen(false)}
+                    className="py-2.5"
+                    style={{ fontSize: 15, color: "var(--muted-foreground)" }}
+                  >
+                    {s.kicker}
+                  </Link>
+                ))}
               </div>
               {NAV.map((n) => (
-                <Link key={n.to} to={n.to} onClick={() => setOpen(false)} style={{ fontSize: 16 }}>
+                <Link
+                  key={n.to}
+                  to={n.to}
+                  onClick={() => setOpen(false)}
+                  className="py-3"
+                  style={{ fontSize: 16.5, fontWeight: 500 }}
+                >
                   {n.label}
                 </Link>
               ))}
 
-              <a href={APP_URL} style={{ fontSize: 16 }}>
+              <a href={APP_URL} className="py-3" style={{ fontSize: 16.5, color: "var(--muted-foreground)" }}>
                 Connexion
               </a>
+
+              <Link
+                to="/contact"
+                onClick={() => setOpen(false)}
+                className="rounded-full px-6 py-3.5 text-center mt-3"
+                style={{ fontSize: 15.5, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}
+              >
+                Demander une démo
+              </Link>
             </div>
           </div>
         )}
