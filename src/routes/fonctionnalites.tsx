@@ -108,7 +108,7 @@ function FeaturesPage() {
   return (
     <MarketingLayout>
       {/* Hero */}
-      <section className="px-5 md:px-8 pt-16 md:pt-24 pb-12">
+      <section className="px-5 md:px-8 pt-12 md:pt-24 pb-10 md:pb-12">
         <div className="mx-auto" style={{ maxWidth: 1180 }}>
           <Eyebrow>Fonctionnalités</Eyebrow>
           <div className="grid gap-10 md:grid-cols-[1.15fr_0.85fr] md:items-end">
@@ -140,7 +140,7 @@ function FeaturesPage() {
               ["Multi-sites", "dispos et postes par établissement"],
               ["iOS · Android", "application employé incluse"],
             ].map(([big, small]) => (
-              <div key={big} className="px-6 py-7" style={{ backgroundColor: "var(--card)" }}>
+              <div key={big} className="px-5 py-6 sm:px-6 sm:py-7" style={{ backgroundColor: "var(--card)" }}>
                 <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em" }}>{big}</div>
                 <div style={{ fontSize: 13.5, color: "var(--muted-foreground)", marginTop: 6, lineHeight: 1.6 }}>
                   {small}
@@ -155,7 +155,7 @@ function FeaturesPage() {
       {CHAPTERS.map((c, i) => (
         <section
           key={c.n}
-          className="px-5 md:px-8 py-16 md:py-24"
+          className="px-5 md:px-8 py-14 md:py-24"
           style={c.tone === "surface" ? { backgroundColor: "#F3F1EC" } : undefined}
         >
           <div
@@ -213,7 +213,7 @@ function FeaturesPage() {
                 ))}
               </ul>
             </div>
-            <div className="flex justify-center">{c.mock}</div>
+            <div className="flex min-w-0 justify-center">{c.mock}</div>
           </div>
         </section>
       ))}
@@ -228,7 +228,7 @@ function FeaturesPage() {
         </div>
         <div className="mt-12 grid gap-px overflow-hidden rounded-2xl sm:grid-cols-2 lg:grid-cols-3" style={{ backgroundColor: "rgba(250,250,248,0.12)" }}>
           {MODULES.map((m) => (
-            <div key={m.title} className="px-7 py-8" style={{ backgroundColor: "#1A1A1A" }}>
+            <div key={m.title} className="px-6 py-7 sm:px-7 sm:py-8" style={{ backgroundColor: "#1A1A1A" }}>
               <m.icon size={18} style={{ color: "var(--coral)" }} />
               <h3 style={{ fontSize: 15.5, fontWeight: 500, color: "#FAFAF8", marginTop: 14 }}>{m.title}</h3>
               <p style={{ fontSize: 13.5, color: "rgba(250,250,248,0.6)", lineHeight: 1.75, marginTop: 8 }}>{m.text}</p>
@@ -252,7 +252,7 @@ function FeaturesPage() {
             </div>
           </div>
           <div
-            className="rounded-2xl border p-8"
+            className="rounded-2xl border p-6 sm:p-8"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
           >
             {[
@@ -263,11 +263,11 @@ function FeaturesPage() {
             ].map(([t, d], i, arr) => (
               <div
                 key={t}
-                className="flex items-baseline justify-between gap-6 py-4"
+                className="flex flex-col gap-1 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
                 style={{ borderBottom: i === arr.length - 1 ? undefined : "1px solid var(--border)" }}
               >
                 <span style={{ fontSize: 14.5, fontWeight: 500 }}>{t}</span>
-                <span style={{ fontSize: 13.5, color: "var(--muted-foreground)", textAlign: "right" }}>{d}</span>
+                <span className="sm:text-right" style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>{d}</span>
               </div>
             ))}
           </div>

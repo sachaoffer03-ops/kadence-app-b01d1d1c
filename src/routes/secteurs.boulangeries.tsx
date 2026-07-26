@@ -34,7 +34,7 @@ function BoulangeriesPage() {
   return (
     <MarketingLayout>
       {/* Hero crème chaud, typo massive */}
-      <section style={{ backgroundColor: "#F6E9D8" }} className="px-5 md:px-8 py-20 md:py-28">
+      <section style={{ backgroundColor: "#F6E9D8" }} className="px-5 md:px-8 py-14 md:py-28">
         <div className="mx-auto" style={{ maxWidth: 1180 }}>
           <div
             className="inline-flex rounded-full px-3.5 py-1.5 mb-7"
@@ -77,7 +77,7 @@ function BoulangeriesPage() {
       </section>
 
       {/* Horloge de la journée */}
-      <section className="px-5 md:px-8 py-20 md:py-24">
+      <section className="px-5 md:px-8 py-14 md:py-24">
         <div className="mx-auto" style={{ maxWidth: 1180 }}>
           <h2 style={{ fontSize: "clamp(24px, 3.2vw, 36px)", fontWeight: 500, letterSpacing: "-0.03em", maxWidth: 560, lineHeight: 1.15 }}>
             Une journée type, décrite une fois pour toutes
@@ -97,7 +97,7 @@ function BoulangeriesPage() {
       </section>
 
       {/* Split arguments + mockup clôture */}
-      <section className="px-5 md:px-8 py-20 md:py-24" style={{ backgroundColor: "#F3F1EC" }}>
+      <section className="px-5 md:px-8 py-14 md:py-24" style={{ backgroundColor: "#F3F1EC" }}>
         <div className="mx-auto grid gap-14 md:grid-cols-2 md:items-center" style={{ maxWidth: 1180 }}>
           <div className="flex flex-col gap-9">
             {[

@@ -63,7 +63,7 @@ function HotelsPage() {
       </section>
 
       {/* Bandes de rotation */}
-      <section className="px-5 md:px-8 py-16" style={{ backgroundColor: "#F3F1EC" }}>
+      <section className="px-5 md:px-8 py-12 md:py-16" style={{ backgroundColor: "#F3F1EC" }}>
         <div className="mx-auto" style={{ maxWidth: 1180 }}>
           <h2 style={{ fontSize: "clamp(24px, 3.2vw, 34px)", fontWeight: 500, letterSpacing: "-0.03em" }}>
             Les quatre rotations, couvertes sans angle mort
@@ -86,7 +86,7 @@ function HotelsPage() {
       </section>
 
       {/* Deux colonnes texte + image portrait */}
-      <section className="px-5 md:px-8 py-20 md:py-28">
+      <section className="px-5 md:px-8 py-14 md:py-28">
         <div className="mx-auto grid gap-14 md:grid-cols-[1fr_0.8fr] md:items-start" style={{ maxWidth: 1180 }}>
           <div className="flex flex-col gap-11">
             {[

@@ -88,7 +88,7 @@ function CafesPage() {
         <div className="mx-auto grid gap-8 sm:grid-cols-3" style={{ maxWidth: 1180 }}>
           {STATS.map(([n, l]) => (
             <div key={l} style={{ borderTop: "2px solid var(--coral)", paddingTop: 18 }}>
-              <div style={{ fontSize: 40, fontWeight: 500, letterSpacing: "-0.03em" }}>{n}</div>
+              <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: "-0.03em" }}>{n}</div>
               <div style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 6, lineHeight: 1.7 }}>{l}</div>
             </div>
           ))}
@@ -96,7 +96,7 @@ function CafesPage() {
       </section>
 
       {/* Mockup */}
-      <section className="px-5 md:px-8 py-16 md:py-24" style={{ backgroundColor: "#F3F1EC" }}>
+      <section className="px-5 md:px-8 py-14 md:py-24" style={{ backgroundColor: "#F3F1EC" }}>
         <div className="mx-auto" style={{ maxWidth: 1180 }}>
           <h2 style={{ fontSize: "clamp(26px, 3.6vw, 40px)", fontWeight: 500, letterSpacing: "-0.03em", maxWidth: 620, lineHeight: 1.15 }}>
             Le mois entier, poste par poste, avant le 25
@@ -112,7 +112,7 @@ function CafesPage() {
       </section>
 
       {/* Arguments en colonnes serrées */}
-      <section className="px-5 md:px-8 py-20 md:py-24">
+      <section className="px-5 md:px-8 py-14 md:py-24">
         <div className="mx-auto grid gap-x-14 gap-y-12 md:grid-cols-3" style={{ maxWidth: 1180 }}>
           {[
             ["Contrats étudiants sous contrôle", "Le quota trimestriel est suivi automatiquement. Un dépassement est bloqué avant la publication, pas découvert à la paie."],

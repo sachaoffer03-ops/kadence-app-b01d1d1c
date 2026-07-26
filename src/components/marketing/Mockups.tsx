@@ -9,7 +9,7 @@ const LINE = "rgba(26,26,26,0.10)";
 function Chrome({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
-      className="rounded-2xl overflow-hidden"
+      className="rounded-2xl overflow-hidden w-full min-w-0 max-w-full"
       style={{ backgroundColor: "#fff", border: `1px solid ${LINE}`, boxShadow: "0 24px 60px -30px rgba(26,26,26,0.35)" }}
     >
       <div className="flex items-center gap-2 px-4" style={{ height: 40, borderBottom: `1px solid ${LINE}`, backgroundColor: "#FBFAF7" }}>
@@ -92,7 +92,7 @@ export function PlanningMock() {
         </div>
 
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 640 }}>
+          <div style={{ minWidth: 560 }}>
             <div className="grid" style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
               {WEEK.map((w) => (
                 <div key={w.n} className="text-center pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
@@ -131,8 +131,8 @@ export function PlanningMock() {
 export function PhoneMock() {
   return (
     <div
-      className="rounded-[36px] p-2.5 mx-auto"
-      style={{ width: 268, backgroundColor: "#1A1A1A", boxShadow: "0 30px 60px -25px rgba(26,26,26,0.5)" }}
+      className="rounded-[36px] p-2.5 mx-auto w-full max-w-[268px]"
+      style={{ backgroundColor: "#1A1A1A", boxShadow: "0 30px 60px -25px rgba(26,26,26,0.5)" }}
     >
       <div className="rounded-[28px] overflow-hidden" style={{ backgroundColor: "#FAFAF8" }}>
         <div className="flex items-center justify-between px-5 pt-3 pb-1" style={{ fontSize: 10, color: "rgba(26,26,26,0.5)" }}>
@@ -198,7 +198,7 @@ export function ClotureMock() {
 
   return (
     <Chrome title="Kadence · Clôture du soir">
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <div className="flex items-center justify-between">
           <div style={{ fontSize: 13, fontWeight: 500, color: INK }}>Checklist de fermeture</div>
           <span className="rounded-full px-2.5 py-1" style={{ fontSize: 10, backgroundColor: "#E4F0EE", color: "#1F5B54" }}>
@@ -250,8 +250,8 @@ export function PointageMock() {
   ];
   return (
     <Chrome title="Kadence · Pointage du jour">
-      <div className="p-5">
-        <div className="grid" style={{ gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr", gap: 8 }}>
+      <div className="p-4 sm:p-5">
+        <div className="grid" style={{ gridTemplateColumns: "1.3fr 0.8fr 0.8fr 1.1fr", gap: 6 }}>
           {["Employé", "Arrivée", "Départ", "Statut"].map((h) => (
             <div key={h} style={{ fontSize: 10, letterSpacing: "0.06em", color: "rgba(26,26,26,0.45)" }}>
               {h.toUpperCase()}
@@ -263,7 +263,7 @@ export function PointageMock() {
             <div
               key={n}
               className="grid items-center py-3"
-              style={{ gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr", gap: 8, borderTop: `1px solid ${LINE}` }}
+              style={{ gridTemplateColumns: "1.3fr 0.8fr 0.8fr 1.1fr", gap: 6, borderTop: `1px solid ${LINE}` }}
             >
               <span style={{ fontSize: 12, color: INK }}>{n}</span>
               <span style={{ fontSize: 12, color: "rgba(26,26,26,0.65)" }}>{a}</span>

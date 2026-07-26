@@ -124,7 +124,7 @@ export function MarketingHome() {
                   UN MOIS DE PLANNING
                 </div>
                 <div>
-                  <div style={{ fontSize: 52, fontWeight: 500, color: "#FAFAF8", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                  <div style={{ fontSize: 42, fontWeight: 500, color: "#FAFAF8", letterSpacing: "-0.04em", lineHeight: 1 }}>
                     ~4 min
                   </div>
                   <p style={{ fontSize: 13.5, color: "rgba(250,250,248,0.6)", marginTop: 10, lineHeight: 1.7 }}>

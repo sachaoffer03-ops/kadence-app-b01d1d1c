@@ -29,9 +29,17 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
           backdropFilter: "blur(10px)",
         }}
       >
-        <div className="mx-auto flex items-center justify-between px-5 md:px-8" style={{ maxWidth: 1180, height: 96 }}>
-          <Link to="/" className="flex items-center" onClick={() => setOpen(false)} aria-label="Kadence — accueil">
-            <img src={logo} alt="Kadence" style={{ height: 68, width: "auto", objectFit: "contain" }} />
+        <div
+          className="mx-auto flex items-center justify-between gap-3 px-5 md:px-8 h-[68px] md:h-24"
+          style={{ maxWidth: 1180 }}
+        >
+          <Link to="/" className="flex items-center min-w-0" onClick={() => setOpen(false)} aria-label="Kadence — accueil">
+            <img
+              src={logo}
+              alt="Kadence"
+              className="h-11 md:h-[68px]"
+              style={{ width: "auto", objectFit: "contain" }}
+            />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -123,36 +131,59 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
 
         {open && (
           <div
-            className="md:hidden border-t px-5 py-5"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+            className="md:hidden border-t px-5 py-5 overflow-y-auto"
+            style={{
+              borderColor: "var(--border)",
+              backgroundColor: "var(--background)",
+              maxHeight: "calc(100dvh - 68px)",
+            }}
           >
-            <div className="flex flex-col gap-4">
-              <div style={{ fontSize: 16 }}>
-                <Link to="/secteurs" onClick={() => setOpen(false)}>
-                  Secteurs
-                </Link>
-                <div className="flex flex-col gap-3 mt-3 pl-3" style={{ borderLeft: "1px solid var(--border)" }}>
-                  {SECTORS.map((s) => (
-                    <Link
-                      key={s.slug}
-                      to={s.slug}
-                      onClick={() => setOpen(false)}
-                      style={{ fontSize: 14.5, color: "var(--muted-foreground)" }}
-                    >
-                      {s.kicker}
-                    </Link>
-                  ))}
-                </div>
+            <div className="flex flex-col gap-1">
+              <Link
+                to="/secteurs"
+                onClick={() => setOpen(false)}
+                className="py-3"
+                style={{ fontSize: 16.5, fontWeight: 500 }}
+              >
+                Secteurs
+              </Link>
+              <div className="flex flex-col mb-1 pl-4" style={{ borderLeft: "1px solid var(--border)" }}>
+                {SECTORS.map((s) => (
+                  <Link
+                    key={s.slug}
+                    to={s.slug}
+                    onClick={() => setOpen(false)}
+                    className="py-2.5"
+                    style={{ fontSize: 15, color: "var(--muted-foreground)" }}
+                  >
+                    {s.kicker}
+                  </Link>
+                ))}
               </div>
               {NAV.map((n) => (
-                <Link key={n.to} to={n.to} onClick={() => setOpen(false)} style={{ fontSize: 16 }}>
+                <Link
+                  key={n.to}
+                  to={n.to}
+                  onClick={() => setOpen(false)}
+                  className="py-3"
+                  style={{ fontSize: 16.5, fontWeight: 500 }}
+                >
                   {n.label}
                 </Link>
               ))}
 
-              <a href={APP_URL} style={{ fontSize: 16 }}>
+              <a href={APP_URL} className="py-3" style={{ fontSize: 16.5, color: "var(--muted-foreground)" }}>
                 Connexion
               </a>
+
+              <Link
+                to="/contact"
+                onClick={() => setOpen(false)}
+                className="rounded-full px-6 py-3.5 text-center mt-3"
+                style={{ fontSize: 15.5, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}
+              >
+                Demander une démo
+              </Link>
             </div>
           </div>
         )}
@@ -161,13 +192,14 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1">{children}</main>
 
       <footer style={{ backgroundColor: "#1A1A1A" }}>
-        <div className="mx-auto px-5 md:px-8 py-16" style={{ maxWidth: 1180 }}>
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-12">
+        <div className="mx-auto px-5 md:px-8 py-12 md:py-16" style={{ maxWidth: 1180 }}>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-10 md:gap-12">
             <div style={{ maxWidth: 320 }}>
               <img
                 src={logo}
                 alt="Kadence"
-                style={{ height: 76, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                className="h-14 md:h-[76px]"
+                style={{ width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }}
               />
               <p style={{ fontSize: 13.5, color: "rgba(250,250,248,0.6)", marginTop: 16, lineHeight: 1.8 }}>
                 La gestion d'équipe pensée pour les cafés, restaurants et commerces à plusieurs établissements. Conçu à
@@ -175,7 +207,8 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-12 md:gap-16">
+            <div className="grid grid-cols-2 gap-10 sm:flex sm:flex-wrap sm:gap-12 md:gap-16">
+
               <FooterCol title="Produit">
                 <Link to="/fonctionnalites">Fonctionnalités</Link>
                 <Link to="/tarifs">Tarifs</Link>
@@ -235,7 +268,7 @@ export function Section({
   const bg = tone === "surface" ? "#F3F1EC" : tone === "ink" ? "#1A1A1A" : undefined;
   return (
     <section
-      className={`px-5 md:px-8 py-20 md:py-28 ${className}`}
+      className={`px-5 md:px-8 py-14 md:py-28 ${className}`}
       style={bg ? { backgroundColor: bg, color: tone === "ink" ? "#FAFAF8" : undefined } : undefined}
     >
       <div className="mx-auto" style={{ maxWidth: 1180 }}>
@@ -283,7 +316,7 @@ export function CtaBand() {
   return (
     <Section>
       <div
-        className="rounded-[28px] px-7 py-16 md:px-20 md:py-24"
+        className="rounded-[28px] px-6 py-12 sm:px-7 sm:py-16 md:px-20 md:py-24"
         style={{ backgroundColor: "#1A1A1A" }}
       >
         <div style={{ maxWidth: 640 }}>
