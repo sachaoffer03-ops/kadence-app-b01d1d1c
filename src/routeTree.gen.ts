@@ -29,6 +29,8 @@ import { Route as DimonaRouteImport } from './routes/dimona'
 import { Route as DemandesRouteImport } from './routes/demandes'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContingentsRouteImport } from './routes/contingents'
+import { Route as ConfidentialiteRouteImport } from './routes/confidentialite'
+import { Route as CompteSupprimeRouteImport } from './routes/compte-supprime'
 import { Route as ClotureRouteImport } from './routes/cloture'
 import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as AssistantIaRouteImport } from './routes/assistant-ia'
@@ -161,6 +163,16 @@ const DashboardRoute = DashboardRouteImport.update({
 const ContingentsRoute = ContingentsRouteImport.update({
   id: '/contingents',
   path: '/contingents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfidentialiteRoute = ConfidentialiteRouteImport.update({
+  id: '/confidentialite',
+  path: '/confidentialite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompteSupprimeRoute = CompteSupprimeRouteImport.update({
+  id: '/compte-supprime',
+  path: '/compte-supprime',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClotureRoute = ClotureRouteImport.update({
@@ -344,6 +356,8 @@ export interface FileRoutesByFullPath {
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
+  '/compte-supprime': typeof CompteSupprimeRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
@@ -399,6 +413,8 @@ export interface FileRoutesByTo {
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
+  '/compte-supprime': typeof CompteSupprimeRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
@@ -454,6 +470,8 @@ export interface FileRoutesById {
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
   '/cloture': typeof ClotureRoute
+  '/compte-supprime': typeof CompteSupprimeRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/contingents': typeof ContingentsRoute
   '/dashboard': typeof DashboardRoute
   '/demandes': typeof DemandesRoute
@@ -511,6 +529,8 @@ export interface FileRouteTypes {
     | '/assistant-ia'
     | '/checklists'
     | '/cloture'
+    | '/compte-supprime'
+    | '/confidentialite'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
@@ -566,6 +586,8 @@ export interface FileRouteTypes {
     | '/assistant-ia'
     | '/checklists'
     | '/cloture'
+    | '/compte-supprime'
+    | '/confidentialite'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
@@ -620,6 +642,8 @@ export interface FileRouteTypes {
     | '/assistant-ia'
     | '/checklists'
     | '/cloture'
+    | '/compte-supprime'
+    | '/confidentialite'
     | '/contingents'
     | '/dashboard'
     | '/demandes'
@@ -676,6 +700,8 @@ export interface RootRouteChildren {
   AssistantIaRoute: typeof AssistantIaRoute
   ChecklistsRoute: typeof ChecklistsRoute
   ClotureRoute: typeof ClotureRoute
+  CompteSupprimeRoute: typeof CompteSupprimeRoute
+  ConfidentialiteRoute: typeof ConfidentialiteRoute
   ContingentsRoute: typeof ContingentsRoute
   DashboardRoute: typeof DashboardRoute
   DemandesRoute: typeof DemandesRoute
@@ -861,6 +887,20 @@ declare module '@tanstack/react-router' {
       path: '/contingents'
       fullPath: '/contingents'
       preLoaderRoute: typeof ContingentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confidentialite': {
+      id: '/confidentialite'
+      path: '/confidentialite'
+      fullPath: '/confidentialite'
+      preLoaderRoute: typeof ConfidentialiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compte-supprime': {
+      id: '/compte-supprime'
+      path: '/compte-supprime'
+      fullPath: '/compte-supprime'
+      preLoaderRoute: typeof CompteSupprimeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cloture': {
@@ -1141,6 +1181,8 @@ const rootRouteChildren: RootRouteChildren = {
   AssistantIaRoute: AssistantIaRoute,
   ChecklistsRoute: ChecklistsRoute,
   ClotureRoute: ClotureRoute,
+  CompteSupprimeRoute: CompteSupprimeRoute,
+  ConfidentialiteRoute: ConfidentialiteRoute,
   ContingentsRoute: ContingentsRoute,
   DashboardRoute: DashboardRoute,
   DemandesRoute: DemandesRoute,
