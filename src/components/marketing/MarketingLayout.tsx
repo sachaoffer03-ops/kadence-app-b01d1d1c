@@ -23,21 +23,21 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
         style={{
           borderColor: "var(--border)",
           backgroundColor: "color-mix(in oklab, var(--background) 88%, transparent)",
-          backdropFilter: "blur(8px)",
+          backdropFilter: "blur(10px)",
         }}
       >
-        <div className="mx-auto flex items-center justify-between px-5 md:px-8" style={{ maxWidth: 1120, height: 68 }}>
-          <Link to="/" className="flex items-center" onClick={() => setOpen(false)}>
-            <img src={logo} alt="Kadence" style={{ height: 34, width: "auto", objectFit: "contain" }} />
+        <div className="mx-auto flex items-center justify-between px-5 md:px-8" style={{ maxWidth: 1180, height: 96 }}>
+          <Link to="/" className="flex items-center" onClick={() => setOpen(false)} aria-label="Kadence — accueil">
+            <img src={logo} alt="Kadence" style={{ height: 68, width: "auto", objectFit: "contain" }} />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-7">
+          <nav className="hidden md:flex items-center gap-8">
             {NAV.map((n) => (
               <Link
                 key={n.to}
                 to={n.to}
-                style={{ fontSize: 14, color: "var(--muted-foreground)" }}
-                activeProps={{ style: { fontSize: 14, color: "var(--foreground)", fontWeight: 500 } }}
+                style={{ fontSize: 14.5, color: "var(--muted-foreground)" }}
+                activeProps={{ style: { fontSize: 14.5, color: "var(--foreground)", fontWeight: 500 } }}
                 className="transition-colors hover:opacity-70"
               >
                 {n.label}
@@ -45,14 +45,14 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          <div className="hidden md:flex items-center gap-3">
-            <a href={APP_URL} style={{ fontSize: 14, color: "var(--foreground)" }} className="hover:opacity-70">
+          <div className="hidden md:flex items-center gap-4">
+            <a href={APP_URL} style={{ fontSize: 14.5, color: "var(--foreground)" }} className="hover:opacity-70">
               Connexion
             </a>
             <Link
               to="/contact"
-              className="rounded-full px-4 py-2 transition-opacity hover:opacity-90"
-              style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}
+              className="rounded-full px-5 py-2.5 transition-opacity hover:opacity-90"
+              style={{ fontSize: 14.5, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}
             >
               Demander une démo
             </Link>
@@ -64,19 +64,22 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
             onClick={() => setOpen((v) => !v)}
             style={{ color: "var(--foreground)" }}
           >
-            {open ? <X size={20} /> : <Menu size={20} />}
+            {open ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
 
         {open && (
-          <div className="md:hidden border-t px-5 py-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}>
+          <div
+            className="md:hidden border-t px-5 py-5"
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+          >
             <div className="flex flex-col gap-4">
               {NAV.map((n) => (
-                <Link key={n.to} to={n.to} onClick={() => setOpen(false)} style={{ fontSize: 15 }}>
+                <Link key={n.to} to={n.to} onClick={() => setOpen(false)} style={{ fontSize: 16 }}>
                   {n.label}
                 </Link>
               ))}
-              <a href={APP_URL} style={{ fontSize: 15 }}>
+              <a href={APP_URL} style={{ fontSize: 16 }}>
                 Connexion
               </a>
             </div>
@@ -86,17 +89,22 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-t mt-24" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto px-5 md:px-8 py-12" style={{ maxWidth: 1120 }}>
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-10">
-            <div style={{ maxWidth: 300 }}>
-              <img src={logo} alt="Kadence" style={{ height: 30, width: "auto", objectFit: "contain" }} />
-              <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 12, lineHeight: 1.7 }}>
-                La gestion d'équipe pensée pour les commerces de proximité. Conçu à Bruxelles.
+      <footer style={{ backgroundColor: "#1A1A1A" }}>
+        <div className="mx-auto px-5 md:px-8 py-16" style={{ maxWidth: 1180 }}>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-12">
+            <div style={{ maxWidth: 320 }}>
+              <img
+                src={logo}
+                alt="Kadence"
+                style={{ height: 76, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+              />
+              <p style={{ fontSize: 13.5, color: "rgba(250,250,248,0.6)", marginTop: 16, lineHeight: 1.8 }}>
+                La gestion d'équipe pensée pour les cafés, restaurants et commerces à plusieurs établissements. Conçu à
+                Bruxelles.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-14">
+            <div className="flex flex-wrap gap-12 md:gap-16">
               <FooterCol title="Produit">
                 <Link to="/fonctionnalites">Fonctionnalités</Link>
                 <Link to="/tarifs">Tarifs</Link>
@@ -105,6 +113,7 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
               <FooterCol title="Société">
                 <Link to="/a-propos">À propos</Link>
                 <Link to="/contact">Contact</Link>
+                <Link to="/mentions-legales">Mentions légales</Link>
                 <Link to="/confidentialite">Confidentialité</Link>
               </FooterCol>
               <FooterCol title="Accès">
@@ -115,13 +124,13 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div
-            className="mt-10 pt-6 border-t flex flex-col md:flex-row md:items-center md:justify-between gap-2"
-            style={{ borderColor: "var(--border)" }}
+            className="mt-14 pt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+            style={{ borderTop: "1px solid rgba(250,250,248,0.12)" }}
           >
-            <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            <p style={{ fontSize: 12, color: "rgba(250,250,248,0.45)" }}>
               © {new Date().getFullYear()} Kadence — Bruxelles, Belgique
             </p>
-            <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>kadence.be</p>
+            <p style={{ fontSize: 12, color: "rgba(250,250,248,0.45)" }}>kadence.be</p>
           </div>
         </div>
       </footer>
@@ -131,11 +140,11 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
 
 function FooterCol({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2.5">
-      <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.04em", color: "var(--foreground)" }}>{title}</div>
+    <div className="flex flex-col gap-3">
+      <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", color: "#FAFAF8" }}>{title}</div>
       <div
-        className="flex flex-col gap-2.5 [&_a]:transition-opacity hover:[&_a]:opacity-70"
-        style={{ fontSize: 13, color: "var(--muted-foreground)" }}
+        className="flex flex-col gap-3 [&_a]:transition-opacity hover:[&_a]:opacity-100"
+        style={{ fontSize: 13.5, color: "rgba(250,250,248,0.6)" }}
       >
         {children}
       </div>
@@ -149,26 +158,34 @@ export function Section({
   className = "",
 }: {
   children: React.ReactNode;
-  tone?: "default" | "surface";
+  tone?: "default" | "surface" | "ink";
   className?: string;
 }) {
+  const bg = tone === "surface" ? "#F3F1EC" : tone === "ink" ? "#1A1A1A" : undefined;
   return (
     <section
-      className={`px-5 md:px-8 py-16 md:py-24 ${className}`}
-      style={tone === "surface" ? { backgroundColor: "#F3F1EC" } : undefined}
+      className={`px-5 md:px-8 py-20 md:py-28 ${className}`}
+      style={bg ? { backgroundColor: bg, color: tone === "ink" ? "#FAFAF8" : undefined } : undefined}
     >
-      <div className="mx-auto" style={{ maxWidth: 1120 }}>
+      <div className="mx-auto" style={{ maxWidth: 1180 }}>
         {children}
       </div>
     </section>
   );
 }
 
-export function Eyebrow({ children }: { children: React.ReactNode }) {
+export function Eyebrow({ children, tone = "coral" }: { children: React.ReactNode; tone?: "coral" | "light" }) {
   return (
     <div
-      className="inline-flex rounded-full px-3 py-1 mb-5"
-      style={{ fontSize: 11, letterSpacing: "0.06em", backgroundColor: "var(--coral-light)", color: "var(--coral-dark)", fontWeight: 500 }}
+      className="inline-flex rounded-full px-3.5 py-1.5 mb-6"
+      style={{
+        fontSize: 11.5,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        backgroundColor: tone === "coral" ? "var(--coral-light)" : "rgba(250,250,248,0.1)",
+        color: tone === "coral" ? "var(--coral-dark)" : "rgba(250,250,248,0.8)",
+        fontWeight: 500,
+      }}
     >
       {children}
     </div>
@@ -177,7 +194,7 @@ export function Eyebrow({ children }: { children: React.ReactNode }) {
 
 export function H2({ children }: { children: React.ReactNode }) {
   return (
-    <h2 style={{ fontSize: "clamp(24px, 3.2vw, 34px)", fontWeight: 500, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+    <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.12 }}>
       {children}
     </h2>
   );
@@ -185,7 +202,7 @@ export function H2({ children }: { children: React.ReactNode }) {
 
 export function Lead({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontSize: 16, color: "var(--muted-foreground)", lineHeight: 1.75, marginTop: 14, maxWidth: 620 }}>
+    <p style={{ fontSize: 17, color: "var(--muted-foreground)", lineHeight: 1.8, marginTop: 18, maxWidth: 640 }}>
       {children}
     </p>
   );
@@ -195,30 +212,42 @@ export function CtaBand() {
   return (
     <Section>
       <div
-        className="rounded-3xl px-7 py-14 md:px-16 text-center"
+        className="rounded-[28px] px-7 py-16 md:px-20 md:py-24"
         style={{ backgroundColor: "#1A1A1A" }}
       >
-        <h2 style={{ fontSize: "clamp(24px, 3.2vw, 32px)", fontWeight: 500, color: "#FAFAF8", letterSpacing: "-0.02em" }}>
-          Voir Kadence sur votre propre planning
-        </h2>
-        <p style={{ fontSize: 15, color: "rgba(250,250,248,0.7)", marginTop: 12, lineHeight: 1.7 }}>
-          On vous montre l'outil en 20 minutes, avec vos horaires et vos postes.
-        </p>
-        <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
-          <Link
-            to="/contact"
-            className="rounded-full px-6 py-3 transition-opacity hover:opacity-90"
-            style={{ fontSize: 15, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}
+        <div style={{ maxWidth: 640 }}>
+          <Eyebrow tone="light">Démo · 20 minutes</Eyebrow>
+          <h2
+            style={{
+              fontSize: "clamp(28px, 4vw, 42px)",
+              fontWeight: 500,
+              color: "#FAFAF8",
+              letterSpacing: "-0.03em",
+              lineHeight: 1.12,
+            }}
           >
-            Demander une démo
-          </Link>
-          <a
-            href={APP_URL}
-            className="rounded-full px-6 py-3 border transition-opacity hover:opacity-80"
-            style={{ fontSize: 15, fontWeight: 500, borderColor: "rgba(250,250,248,0.25)", color: "#FAFAF8" }}
-          >
-            Se connecter
-          </a>
+            Voyez Kadence tourner sur votre propre planning
+          </h2>
+          <p style={{ fontSize: 16, color: "rgba(250,250,248,0.65)", marginTop: 16, lineHeight: 1.8 }}>
+            On reprend vos horaires d'ouverture, vos postes et vos contrats, et on vous montre le planning du mois
+            généré en direct.
+          </p>
+          <div className="mt-10 flex flex-col sm:flex-row gap-3">
+            <Link
+              to="/contact"
+              className="rounded-full px-7 py-3.5 text-center transition-opacity hover:opacity-90"
+              style={{ fontSize: 15, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff" }}
+            >
+              Demander une démo
+            </Link>
+            <a
+              href={APP_URL}
+              className="rounded-full px-7 py-3.5 text-center border transition-opacity hover:opacity-80"
+              style={{ fontSize: 15, fontWeight: 500, borderColor: "rgba(250,250,248,0.25)", color: "#FAFAF8" }}
+            >
+              Se connecter
+            </a>
+          </div>
         </div>
       </div>
     </Section>

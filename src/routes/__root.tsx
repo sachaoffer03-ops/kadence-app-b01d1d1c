@@ -21,7 +21,7 @@ import { toast } from "sonner";
 
 import appCss from "../styles.css?url";
 
-const MARKETING_ROUTES = ["/fonctionnalites", "/tarifs", "/a-propos", "/contact"];
+const MARKETING_ROUTES = ["/fonctionnalites", "/tarifs", "/a-propos", "/contact", "/mentions-legales"];
 const PUBLIC_ROUTES = ["/login", "/activation", "/reset-password", "/confidentialite", "/compte-supprime", ...MARKETING_ROUTES];
 const STANDALONE_ROUTES = ["/confidentialite", "/compte-supprime", ...MARKETING_ROUTES];
 

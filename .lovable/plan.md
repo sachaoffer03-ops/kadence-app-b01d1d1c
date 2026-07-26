@@ -1,58 +1,79 @@
 ## Objectif
 
-Créer le site vitrine Kadence sur **kadence.be** (et www.kadence.be), positionné SaaS multi-clients, sans tarifs affichés (page Tarifs = "sur devis / nous contacter"). Zéro impact sur `app.kadence.be` (employé) et `admin.kadence.be` (admin).
+Refaire entièrement le site vitrine `kadence.be` : aujourd'hui il est trop plat, trop textuel, trop répétitif, et le logo est illisible. On vise un site de présentation qui impressionne dès la première seconde, porté par le visuel plutôt que par les paragraphes.
 
-## Routing / domaines
+Aucun impact sur `app.kadence.be` ni `admin.kadence.be` — le site vitrine reste isolé sur son domaine.
 
-- `kadence.be` et `www.kadence.be` → nouveau mode `"marketing"` dans `src/lib/app-mode.ts` (aujourd'hui ces hôtes tombent en `admin` par défaut).
-- `src/routes/index.tsx` : si mode marketing → afficher la landing au lieu de rediriger vers `/login` / `/dashboard`. Le comportement actuel reste identique sur app./admin.
-- Les pages vitrine sont des routes réelles (SSR + SEO), pas des ancres :
-  - `/` (accueil, uniquement en mode marketing)
-  - `/fonctionnalites`
-  - `/tarifs`
-  - `/a-propos`
-  - `/contact`
-- Ces routes utilisent un layout vitrine autonome (header + footer propres), sans sidebar app : ajout à la liste des routes publiques/standalone dans `__root.tsx`.
-- Bouton **Connexion** en haut à droite → `https://app.kadence.be` (et lien discret "Espace admin" en footer).
+## Direction visuelle retenue
 
-## Contenu (français, ton Kadence)
+Coral éditorial poussé à fond : fond off-white `#FAFAF8`, surfaces crème `#F3F1EC`, accent coral `#F0997B`, noir profond `#1A1A1A` pour les blocs de rupture.
 
-**Accueil**
-- Hero : titre net + sous-titre ("La gestion d'équipe pensée pour les commerces de proximité"), CTA "Demander une démo" + "Se connecter".
-- Bandeau de valeur : planning intelligent, pointage géolocalisé, dispos, clôtures, formation.
-- 5–6 blocs fonctionnalités avec captures/mockups de l'app.
-- Section "Comment ça marche" en 3 étapes.
-- Section preuve : Skult Studios, 2 studios à Bruxelles.
-- CTA final vers le formulaire de démo.
+Ce qui change concrètement par rapport à l'existant :
+- Typographie hero beaucoup plus grande (jusqu'à ~88px sur desktop), respiration doublée entre les sections.
+- Alternance de fonds : crème → blanc → noir → coral, pour casser la monotonie actuelle.
+- Fin des grilles de 6 cartes identiques : chaque fonctionnalité a son propre traitement (pleine largeur, split, superposition, bande sombre).
+- Micro-animations à l'apparition (fade + translation douce au scroll), effets de survol sur les visuels.
 
-**Fonctionnalités** — détail par module : Planning & génération automatique, Disponibilités par studio, Pointage géolocalisé, Clôtures & checklists photo, Formation interne, Rapports & scoring, Notifications & emails, App mobile employé.
+## Logo
 
-**Tarifs** — pas de grille. Trois profils indicatifs (1 établissement / multi-établissements / sur-mesure) avec "Tarif sur demande" et CTA unique vers `/contact`. Mention transparente : offre en cours de définition, accompagnement personnalisé.
+- Header : hauteur 34px → 46px, plus de padding vertical, version compacte sur mobile.
+- Footer : hauteur 30px → 44px.
+- Si le PNG actuel manque de netteté à cette taille, je régénère une version haute résolution du même logo (mêmes formes, mêmes couleurs).
 
-**À propos** — origine du produit (né chez Skult Studios), philosophie, Bruxelles.
+## Visuels : mockups produit reconstitués
 
-**Contact / démo** — formulaire : nom, email, entreprise, nb d'employés, message.
+Plutôt que des captures d'écran, je recrée des interfaces Kadence en HTML/CSS directement dans le site — nettes à tous les écrans, animables, et sans aucune donnée réelle.
 
-## Formulaire de démo (backend)
+Mockups prévus :
+1. **Planning semaine** — grille de shifts colorés par rôle, animation de remplissage automatique.
+2. **Génération de planning** — barre de progression + compteur de couverture qui monte à 100%.
+3. **Pointage géolocalisé** — écran mobile avec carte, rayon de validation, bouton de pointage.
+4. **Clôture avec photos** — checklist qui se coche, vignettes photo.
+5. **Rapports** — cartes de KPI et mini-graphiques.
+6. **Disponibilités** — calendrier mensuel avec sélection de créneaux.
 
-- Nouvelle table `public.demo_requests` (nom, email, entreprise, taille équipe, message, source, created_at) + GRANT `INSERT` à `anon`, `SELECT/UPDATE` à `authenticated` admin, `ALL` à `service_role`. RLS : insertion publique, lecture réservée aux admins via `has_role`.
-- Envoi via une server function `src/lib/demo-requests.functions.ts` (validation zod : longueurs max, email valide) qui insère puis envoie un email de notification interne avec le système Resend déjà en place (`enqueueTemplateEmail`), plus un accusé de réception au prospect.
-- Anti-abus simple : rate limit par IP/email côté server function.
+Données 100% fictives : établissements « Le Comptoir Nord » / « Atelier Sablon », prénoms inventés. Zéro donnée Skult, et aucune modification des données réelles de l'app.
 
-## Design
+En complément, 3–4 images d'ambiance générées (comptoir de café, équipe en service, salle en fin de journée) pour les respirations émotionnelles entre les sections produit.
 
-Palette Kadence actuelle : fond `#FAFAF8`, surfaces `#F0EBE3`, accent coral `#F0997B`, texte `#1A1A1A`, Inter 400/500, pas d'emoji, pas de gradient, coins arrondis doux, beaucoup d'air. Mockups d'écrans générés en visuels. Entièrement responsive mobile.
+## Vidéo de démonstration
 
-## SEO
+Vidéo motion de ~25 secondes, produite en code (Remotion), livrée en même temps :
+- Ouverture logo Kadence sur fond crème.
+- Séquence 1 : besoins en staff qui se remplissent.
+- Séquence 2 : génération du planning, couverture qui atteint 100%.
+- Séquence 3 : côté employé — shift du jour, pointage.
+- Séquence 4 : clôture photo + rapport.
+- Fermeture : logo + « kadence.be ».
 
-`head()` propre par route (title, description, og:title/description, og:type, canonical auto-référent sur `https://kadence.be/...`), H1 unique par page, JSON-LD `Organization` + `SoftwareApplication` sur l'accueil, `sitemap.xml` et `robots.txt` mis à jour.
+Même palette, mêmes données fictives. Intégrée en autoplay muet et en boucle dans le hero de la page d'accueil, avec fallback image si la lecture échoue.
+
+## Pages
+
+- `/` — refonte totale : hero avec vidéo, preuve de valeur, parcours produit en 5 blocs alternés, section mobile, bande CTA sombre.
+- `/fonctionnalites` — une section illustrée par fonctionnalité, plus de liste de cartes.
+- `/tarifs` — mise en page repensée, toujours sur devis.
+- `/a-propos` — histoire du projet, ancrage bruxellois. **Skult n'est pas mentionné.**
+- `/contact` — formulaire de démo conservé, habillage refait.
+- `/confidentialite` — conservée, harmonisée au nouveau design.
+- `/mentions-legales` — **nouvelle page** avec le texte fourni :
+
+  KOL INVEST, SRL dont le siège est établi Avenue d'Orbaix 23/A Boîte 4, 1180 Uccle, enregistrée à la Banque Carrefour des Entreprises sous le numéro 0776.362.165, responsable du traitement des données. Contact : privacy@skult-studios.com
+
+  Ce texte légal est reproduit tel quel (obligation légale), mais aucune page éditoriale ne parle de Skult.
+
+  Ajout au footer et au sitemap.
 
 ## Détails techniques
 
-- `getAppMode()` retourne désormais `"admin" | "employee" | "marketing"` ; tous les appelants existants sont audités pour que la logique admin/employé reste inchangée (fallback preview = `admin`, `?mode=marketing` pour prévisualiser).
-- Le layout vitrine est un composant partagé `src/components/marketing/MarketingLayout.tsx` (header sticky, nav, footer) utilisé par les 5 routes.
-- Aucun contenu app (auth, données, sidebar) n'est chargé sur les routes vitrine.
+- Refonte de `MarketingLayout.tsx` (header, footer, primitives de section) et de `MarketingHome.tsx`.
+- Nouveaux composants sous `src/components/marketing/mockups/` (un fichier par mockup produit) et `src/components/marketing/motion.tsx` (révélation au scroll via IntersectionObserver, sans dépendance ajoutée).
+- Nouvelle route `src/routes/mentions-legales.tsx`, ajoutée aux routes publiques/standalone de `__root.tsx` et à `sitemap.xml`.
+- Vidéo produite dans un projet `remotion/` versionné, rendue en MP4 puis hébergée via le CDN d'assets.
+- `head()` propre par route : titre, description, og:title, og:description, canonical.
+- Vérification responsive mobile/desktop après implémentation.
 
-## Action manuelle requise
+## Hors périmètre
 
-Dans **Réglages du projet → Domaines**, `kadence.be` et `www.kadence.be` doivent déjà pointer sur ce projet (c'est le cas). Rien à changer côté DNS.
+- Aucune modification de l'app employé ni de la console admin.
+- Aucune modification des données Skult existantes.
