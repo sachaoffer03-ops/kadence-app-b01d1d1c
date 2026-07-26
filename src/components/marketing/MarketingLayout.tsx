@@ -29,9 +29,17 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
           backdropFilter: "blur(10px)",
         }}
       >
-        <div className="mx-auto flex items-center justify-between px-5 md:px-8" style={{ maxWidth: 1180, height: 96 }}>
-          <Link to="/" className="flex items-center" onClick={() => setOpen(false)} aria-label="Kadence — accueil">
-            <img src={logo} alt="Kadence" style={{ height: 68, width: "auto", objectFit: "contain" }} />
+        <div
+          className="mx-auto flex items-center justify-between gap-3 px-5 md:px-8 h-[68px] md:h-24"
+          style={{ maxWidth: 1180 }}
+        >
+          <Link to="/" className="flex items-center min-w-0" onClick={() => setOpen(false)} aria-label="Kadence — accueil">
+            <img
+              src={logo}
+              alt="Kadence"
+              className="h-11 md:h-[68px]"
+              style={{ width: "auto", objectFit: "contain" }}
+            />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
