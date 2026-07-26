@@ -283,7 +283,12 @@ function EmployeeLogin(p: FormProps) {
                 type="password"
                 value={p.password}
                 onChange={p.setPassword}
+                large
+              />
+            )}
             {p.mode === "login" && <StayConnected />}
+
+
 
 
 
