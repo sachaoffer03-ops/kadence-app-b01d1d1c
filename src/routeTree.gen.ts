@@ -16,6 +16,7 @@ import { Route as StaffAppRouteImport } from './routes/staff-app'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignalementsRouteImport } from './routes/signalements'
+import { Route as SecteursRouteImport } from './routes/secteurs'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReglesScoringRouteImport } from './routes/regles-scoring'
 import { Route as ReglagesRouteImport } from './routes/reglages'
@@ -104,6 +105,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const SignalementsRoute = SignalementsRouteImport.update({
   id: '/signalements',
   path: '/signalements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecteursRoute = SecteursRouteImport.update({
+  id: '/secteurs',
+  path: '/secteurs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -413,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/secteurs': typeof SecteursRoute
   '/signalements': typeof SignalementsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
@@ -476,6 +483,7 @@ export interface FileRoutesByTo {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/secteurs': typeof SecteursRoute
   '/signalements': typeof SignalementsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff-app': typeof StaffAppRoute
@@ -539,6 +547,7 @@ export interface FileRoutesById {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/secteurs': typeof SecteursRoute
   '/signalements': typeof SignalementsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
@@ -604,6 +613,7 @@ export interface FileRouteTypes {
     | '/reglages'
     | '/regles-scoring'
     | '/reset-password'
+    | '/secteurs'
     | '/signalements'
     | '/sitemap.xml'
     | '/staff'
@@ -667,6 +677,7 @@ export interface FileRouteTypes {
     | '/reglages'
     | '/regles-scoring'
     | '/reset-password'
+    | '/secteurs'
     | '/signalements'
     | '/sitemap.xml'
     | '/staff-app'
@@ -729,6 +740,7 @@ export interface FileRouteTypes {
     | '/reglages'
     | '/regles-scoring'
     | '/reset-password'
+    | '/secteurs'
     | '/signalements'
     | '/sitemap.xml'
     | '/staff'
@@ -793,6 +805,7 @@ export interface RootRouteChildren {
   ReglagesRoute: typeof ReglagesRoute
   ReglesScoringRoute: typeof ReglesScoringRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SecteursRoute: typeof SecteursRoute
   SignalementsRoute: typeof SignalementsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaffRoute: typeof StaffRouteWithChildren
@@ -874,6 +887,13 @@ declare module '@tanstack/react-router' {
       path: '/signalements'
       fullPath: '/signalements'
       preLoaderRoute: typeof SignalementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/secteurs': {
+      id: '/secteurs'
+      path: '/secteurs'
+      fullPath: '/secteurs'
+      preLoaderRoute: typeof SecteursRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1322,6 +1342,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReglagesRoute: ReglagesRoute,
   ReglesScoringRoute: ReglesScoringRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SecteursRoute: SecteursRoute,
   SignalementsRoute: SignalementsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaffRoute: StaffRouteWithChildren,
@@ -1357,13 +1378,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
