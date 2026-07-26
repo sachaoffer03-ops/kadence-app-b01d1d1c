@@ -323,6 +323,13 @@ function EmployeeLogin(p: FormProps) {
         </div>
       </div>
 
+      <div className="relative text-center pb-3">
+        <a href="/confidentialite" style={{ fontSize: 12, color: "var(--muted-foreground)" }} className="hover:underline">
+          Politique de confidentialité
+        </a>
+      </div>
+
+
       <p
         className="relative text-center pb-6"
         style={{
