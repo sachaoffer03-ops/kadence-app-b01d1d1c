@@ -327,14 +327,13 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
     setClockOutLoading(true);
     try {
       let lat: number | null = null, lng: number | null = null;
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          if (!navigator.geolocation) return reject(new Error("Géolocalisation indisponible"));
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, enableHighAccuracy: true });
-        });
-        lat = pos.coords.latitude; lng = pos.coords.longitude;
-      } catch {
-        // non-bloquant si pas de geofencing requis — serveur tranchera
+      const geo = await getCurrentPositionSafe();
+      if (geo.ok) {
+        lat = geo.lat; lng = geo.lng;
+      } else if (geo.reason === "denied") {
+        setGeoDenied(true);
+        setClockOutLoading(false);
+        return;
       }
       const r = await validateClockOut({ data: { shiftId: shift.id, qrCode: code, lat, lng } });
       setClockedOutAt(r.completedAt ?? new Date().toISOString());

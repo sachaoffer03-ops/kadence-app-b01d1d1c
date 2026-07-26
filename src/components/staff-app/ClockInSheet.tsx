@@ -5,6 +5,8 @@ import { Scanner } from "@yudiel/react-qr-scanner";
 import { useServerFn } from "@tanstack/react-start";
 import { validateClockInFn } from "@/lib/shift-clock.functions";
 import { OpeningFlow } from "./OpeningFlow";
+import { getCurrentPositionSafe } from "@/lib/geolocation";
+import { GeolocationDeniedScreen } from "@/components/employee/GeolocationDeniedScreen";
 
 export interface ClockInShiftRow {
   id: string;
@@ -56,14 +58,13 @@ export function ClockInSheet({ open, onClose, shift, studios, userId, firstName,
     setLoading(true);
     try {
       let lat: number | null = null, lng: number | null = null;
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          if (!navigator.geolocation) return reject(new Error("Géolocalisation indisponible"));
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, enableHighAccuracy: true });
-        });
-        lat = pos.coords.latitude; lng = pos.coords.longitude;
-      } catch {
-        // non-bloquant
+      const geo = await getCurrentPositionSafe();
+      if (geo.ok) {
+        lat = geo.lat; lng = geo.lng;
+      } else if (geo.reason === "denied") {
+        setGeoDenied(true);
+        setLoading(false);
+        return;
       }
       const r = await validateClockIn({ data: { shiftId: shift.id, qrCode: clean, lat, lng } });
       const minutesLate = (r as any).minutesLate ?? 0;
