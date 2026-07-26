@@ -16,7 +16,6 @@ import { Route as StaffAppRouteImport } from './routes/staff-app'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignalementsRouteImport } from './routes/signalements'
-import { Route as SecteursRouteImport } from './routes/secteurs'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReglesScoringRouteImport } from './routes/regles-scoring'
 import { Route as ReglagesRouteImport } from './routes/reglages'
@@ -41,9 +40,9 @@ import { Route as ClotureRouteImport } from './routes/cloture'
 import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as AssistantIaRouteImport } from './routes/assistant-ia'
 import { Route as ActivationRouteImport } from './routes/activation'
-import { Route as AProposRouteImport } from './routes/a-propos'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
+import { Route as SecteursIndexRouteImport } from './routes/secteurs.index'
 import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as StaffAppPropositionsRouteImport } from './routes/staff-app_.propositions'
 import { Route as SecteursRestaurantsRouteImport } from './routes/secteurs.restaurants'
@@ -111,11 +110,6 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const SignalementsRoute = SignalementsRouteImport.update({
   id: '/signalements',
   path: '/signalements',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SecteursRoute = SecteursRouteImport.update({
-  id: '/secteurs',
-  path: '/secteurs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -238,11 +232,6 @@ const ActivationRoute = ActivationRouteImport.update({
   path: '/activation',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AProposRoute = AProposRouteImport.update({
-  id: '/a-propos',
-  path: '/a-propos',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -252,6 +241,11 @@ const StaffIndexRoute = StaffIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => StaffRoute,
+} as any)
+const SecteursIndexRoute = SecteursIndexRouteImport.update({
+  id: '/secteurs/',
+  path: '/secteurs/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const StaffIdRoute = StaffIdRouteImport.update({
   id: '/$id',
@@ -264,34 +258,34 @@ const StaffAppPropositionsRoute = StaffAppPropositionsRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const SecteursRestaurantsRoute = SecteursRestaurantsRouteImport.update({
-  id: '/restaurants',
-  path: '/restaurants',
-  getParentRoute: () => SecteursRoute,
+  id: '/secteurs/restaurants',
+  path: '/secteurs/restaurants',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SecteursHotelsRoute = SecteursHotelsRouteImport.update({
-  id: '/hotels',
-  path: '/hotels',
-  getParentRoute: () => SecteursRoute,
+  id: '/secteurs/hotels',
+  path: '/secteurs/hotels',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SecteursCommercesRoute = SecteursCommercesRouteImport.update({
-  id: '/commerces',
-  path: '/commerces',
-  getParentRoute: () => SecteursRoute,
+  id: '/secteurs/commerces',
+  path: '/secteurs/commerces',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SecteursCafesRoute = SecteursCafesRouteImport.update({
-  id: '/cafes',
-  path: '/cafes',
-  getParentRoute: () => SecteursRoute,
+  id: '/secteurs/cafes',
+  path: '/secteurs/cafes',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SecteursBoulangeriesRoute = SecteursBoulangeriesRouteImport.update({
-  id: '/boulangeries',
-  path: '/boulangeries',
-  getParentRoute: () => SecteursRoute,
+  id: '/secteurs/boulangeries',
+  path: '/secteurs/boulangeries',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SecteursBarsRoute = SecteursBarsRouteImport.update({
-  id: '/bars',
-  path: '/bars',
-  getParentRoute: () => SecteursRoute,
+  id: '/secteurs/bars',
+  path: '/secteurs/bars',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PlanningGenerateRoute = PlanningGenerateRouteImport.update({
   id: '/generate',
@@ -430,7 +424,6 @@ const ApiPublicCalendarTokenRoute = ApiPublicCalendarTokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/a-propos': typeof AProposRoute
   '/activation': typeof ActivationRoute
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
@@ -455,7 +448,6 @@ export interface FileRoutesByFullPath {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/secteurs': typeof SecteursRouteWithChildren
   '/signalements': typeof SignalementsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
@@ -483,6 +475,7 @@ export interface FileRoutesByFullPath {
   '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
+  '/secteurs/': typeof SecteursIndexRoute
   '/staff/': typeof StaffIndexRoute
   '/api/public/account-purge-tick': typeof ApiPublicAccountPurgeTickRoute
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
@@ -500,7 +493,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/a-propos': typeof AProposRoute
   '/activation': typeof ActivationRoute
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
@@ -525,7 +517,6 @@ export interface FileRoutesByTo {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/secteurs': typeof SecteursRouteWithChildren
   '/signalements': typeof SignalementsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff-app': typeof StaffAppRoute
@@ -552,6 +543,7 @@ export interface FileRoutesByTo {
   '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
+  '/secteurs': typeof SecteursIndexRoute
   '/staff': typeof StaffIndexRoute
   '/api/public/account-purge-tick': typeof ApiPublicAccountPurgeTickRoute
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
@@ -570,7 +562,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/a-propos': typeof AProposRoute
   '/activation': typeof ActivationRoute
   '/assistant-ia': typeof AssistantIaRoute
   '/checklists': typeof ChecklistsRoute
@@ -595,7 +586,6 @@ export interface FileRoutesById {
   '/reglages': typeof ReglagesRoute
   '/regles-scoring': typeof ReglesScoringRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/secteurs': typeof SecteursRouteWithChildren
   '/signalements': typeof SignalementsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRouteWithChildren
@@ -623,6 +613,7 @@ export interface FileRoutesById {
   '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app_/propositions': typeof StaffAppPropositionsRoute
   '/staff/$id': typeof StaffIdRoute
+  '/secteurs/': typeof SecteursIndexRoute
   '/staff/': typeof StaffIndexRoute
   '/api/public/account-purge-tick': typeof ApiPublicAccountPurgeTickRoute
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
@@ -642,7 +633,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/a-propos'
     | '/activation'
     | '/assistant-ia'
     | '/checklists'
@@ -667,7 +657,6 @@ export interface FileRouteTypes {
     | '/reglages'
     | '/regles-scoring'
     | '/reset-password'
-    | '/secteurs'
     | '/signalements'
     | '/sitemap.xml'
     | '/staff'
@@ -695,6 +684,7 @@ export interface FileRouteTypes {
     | '/secteurs/restaurants'
     | '/staff-app/propositions'
     | '/staff/$id'
+    | '/secteurs/'
     | '/staff/'
     | '/api/public/account-purge-tick'
     | '/api/public/avail-reminders-tick'
@@ -712,7 +702,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/a-propos'
     | '/activation'
     | '/assistant-ia'
     | '/checklists'
@@ -737,7 +726,6 @@ export interface FileRouteTypes {
     | '/reglages'
     | '/regles-scoring'
     | '/reset-password'
-    | '/secteurs'
     | '/signalements'
     | '/sitemap.xml'
     | '/staff-app'
@@ -764,6 +752,7 @@ export interface FileRouteTypes {
     | '/secteurs/restaurants'
     | '/staff-app/propositions'
     | '/staff/$id'
+    | '/secteurs'
     | '/staff'
     | '/api/public/account-purge-tick'
     | '/api/public/avail-reminders-tick'
@@ -781,7 +770,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/a-propos'
     | '/activation'
     | '/assistant-ia'
     | '/checklists'
@@ -806,7 +794,6 @@ export interface FileRouteTypes {
     | '/reglages'
     | '/regles-scoring'
     | '/reset-password'
-    | '/secteurs'
     | '/signalements'
     | '/sitemap.xml'
     | '/staff'
@@ -834,6 +821,7 @@ export interface FileRouteTypes {
     | '/secteurs/restaurants'
     | '/staff-app_/propositions'
     | '/staff/$id'
+    | '/secteurs/'
     | '/staff/'
     | '/api/public/account-purge-tick'
     | '/api/public/avail-reminders-tick'
@@ -852,7 +840,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AProposRoute: typeof AProposRoute
   ActivationRoute: typeof ActivationRoute
   AssistantIaRoute: typeof AssistantIaRoute
   ChecklistsRoute: typeof ChecklistsRoute
@@ -877,7 +864,6 @@ export interface RootRouteChildren {
   ReglagesRoute: typeof ReglagesRoute
   ReglesScoringRoute: typeof ReglesScoringRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  SecteursRoute: typeof SecteursRouteWithChildren
   SignalementsRoute: typeof SignalementsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaffRoute: typeof StaffRouteWithChildren
@@ -895,7 +881,14 @@ export interface RootRouteChildren {
   DisplayStudioIdRoute: typeof DisplayStudioIdRoute
   DispoDetailUserIdRoute: typeof DispoDetailUserIdRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  SecteursBarsRoute: typeof SecteursBarsRoute
+  SecteursBoulangeriesRoute: typeof SecteursBoulangeriesRoute
+  SecteursCafesRoute: typeof SecteursCafesRoute
+  SecteursCommercesRoute: typeof SecteursCommercesRoute
+  SecteursHotelsRoute: typeof SecteursHotelsRoute
+  SecteursRestaurantsRoute: typeof SecteursRestaurantsRoute
   StaffAppPropositionsRoute: typeof StaffAppPropositionsRoute
+  SecteursIndexRoute: typeof SecteursIndexRoute
   ApiPublicAccountPurgeTickRoute: typeof ApiPublicAccountPurgeTickRoute
   ApiPublicAvailRemindersTickRoute: typeof ApiPublicAvailRemindersTickRoute
   ApiPublicRoleTransitionsTickRoute: typeof ApiPublicRoleTransitionsTickRoute
@@ -959,13 +952,6 @@ declare module '@tanstack/react-router' {
       path: '/signalements'
       fullPath: '/signalements'
       preLoaderRoute: typeof SignalementsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/secteurs': {
-      id: '/secteurs'
-      path: '/secteurs'
-      fullPath: '/secteurs'
-      preLoaderRoute: typeof SecteursRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1136,13 +1122,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActivationRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/a-propos': {
-      id: '/a-propos'
-      path: '/a-propos'
-      fullPath: '/a-propos'
-      preLoaderRoute: typeof AProposRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -1156,6 +1135,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/staff/'
       preLoaderRoute: typeof StaffIndexRouteImport
       parentRoute: typeof StaffRoute
+    }
+    '/secteurs/': {
+      id: '/secteurs/'
+      path: '/secteurs'
+      fullPath: '/secteurs/'
+      preLoaderRoute: typeof SecteursIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/staff/$id': {
       id: '/staff/$id'
@@ -1173,45 +1159,45 @@ declare module '@tanstack/react-router' {
     }
     '/secteurs/restaurants': {
       id: '/secteurs/restaurants'
-      path: '/restaurants'
+      path: '/secteurs/restaurants'
       fullPath: '/secteurs/restaurants'
       preLoaderRoute: typeof SecteursRestaurantsRouteImport
-      parentRoute: typeof SecteursRoute
+      parentRoute: typeof rootRouteImport
     }
     '/secteurs/hotels': {
       id: '/secteurs/hotels'
-      path: '/hotels'
+      path: '/secteurs/hotels'
       fullPath: '/secteurs/hotels'
       preLoaderRoute: typeof SecteursHotelsRouteImport
-      parentRoute: typeof SecteursRoute
+      parentRoute: typeof rootRouteImport
     }
     '/secteurs/commerces': {
       id: '/secteurs/commerces'
-      path: '/commerces'
+      path: '/secteurs/commerces'
       fullPath: '/secteurs/commerces'
       preLoaderRoute: typeof SecteursCommercesRouteImport
-      parentRoute: typeof SecteursRoute
+      parentRoute: typeof rootRouteImport
     }
     '/secteurs/cafes': {
       id: '/secteurs/cafes'
-      path: '/cafes'
+      path: '/secteurs/cafes'
       fullPath: '/secteurs/cafes'
       preLoaderRoute: typeof SecteursCafesRouteImport
-      parentRoute: typeof SecteursRoute
+      parentRoute: typeof rootRouteImport
     }
     '/secteurs/boulangeries': {
       id: '/secteurs/boulangeries'
-      path: '/boulangeries'
+      path: '/secteurs/boulangeries'
       fullPath: '/secteurs/boulangeries'
       preLoaderRoute: typeof SecteursBoulangeriesRouteImport
-      parentRoute: typeof SecteursRoute
+      parentRoute: typeof rootRouteImport
     }
     '/secteurs/bars': {
       id: '/secteurs/bars'
-      path: '/bars'
+      path: '/secteurs/bars'
       fullPath: '/secteurs/bars'
       preLoaderRoute: typeof SecteursBarsRouteImport
-      parentRoute: typeof SecteursRoute
+      parentRoute: typeof rootRouteImport
     }
     '/planning/generate': {
       id: '/planning/generate'
@@ -1415,28 +1401,6 @@ const PlanningRouteWithChildren = PlanningRoute._addFileChildren(
   PlanningRouteChildren,
 )
 
-interface SecteursRouteChildren {
-  SecteursBarsRoute: typeof SecteursBarsRoute
-  SecteursBoulangeriesRoute: typeof SecteursBoulangeriesRoute
-  SecteursCafesRoute: typeof SecteursCafesRoute
-  SecteursCommercesRoute: typeof SecteursCommercesRoute
-  SecteursHotelsRoute: typeof SecteursHotelsRoute
-  SecteursRestaurantsRoute: typeof SecteursRestaurantsRoute
-}
-
-const SecteursRouteChildren: SecteursRouteChildren = {
-  SecteursBarsRoute: SecteursBarsRoute,
-  SecteursBoulangeriesRoute: SecteursBoulangeriesRoute,
-  SecteursCafesRoute: SecteursCafesRoute,
-  SecteursCommercesRoute: SecteursCommercesRoute,
-  SecteursHotelsRoute: SecteursHotelsRoute,
-  SecteursRestaurantsRoute: SecteursRestaurantsRoute,
-}
-
-const SecteursRouteWithChildren = SecteursRoute._addFileChildren(
-  SecteursRouteChildren,
-)
-
 interface StaffRouteChildren {
   StaffIdRoute: typeof StaffIdRoute
   StaffIndexRoute: typeof StaffIndexRoute
@@ -1453,7 +1417,6 @@ const StaffRouteWithChildren = StaffRoute._addFileChildren(StaffRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AProposRoute: AProposRoute,
   ActivationRoute: ActivationRoute,
   AssistantIaRoute: AssistantIaRoute,
   ChecklistsRoute: ChecklistsRoute,
@@ -1478,7 +1441,6 @@ const rootRouteChildren: RootRouteChildren = {
   ReglagesRoute: ReglagesRoute,
   ReglesScoringRoute: ReglesScoringRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  SecteursRoute: SecteursRouteWithChildren,
   SignalementsRoute: SignalementsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaffRoute: StaffRouteWithChildren,
@@ -1497,7 +1459,14 @@ const rootRouteChildren: RootRouteChildren = {
   DisplayStudioIdRoute: DisplayStudioIdRoute,
   DispoDetailUserIdRoute: DispoDetailUserIdRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  SecteursBarsRoute: SecteursBarsRoute,
+  SecteursBoulangeriesRoute: SecteursBoulangeriesRoute,
+  SecteursCafesRoute: SecteursCafesRoute,
+  SecteursCommercesRoute: SecteursCommercesRoute,
+  SecteursHotelsRoute: SecteursHotelsRoute,
+  SecteursRestaurantsRoute: SecteursRestaurantsRoute,
   StaffAppPropositionsRoute: StaffAppPropositionsRoute,
+  SecteursIndexRoute: SecteursIndexRoute,
   ApiPublicAccountPurgeTickRoute: ApiPublicAccountPurgeTickRoute,
   ApiPublicAvailRemindersTickRoute: ApiPublicAvailRemindersTickRoute,
   ApiPublicRoleTransitionsTickRoute: ApiPublicRoleTransitionsTickRoute,
