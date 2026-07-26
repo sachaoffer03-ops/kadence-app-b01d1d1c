@@ -16,6 +16,8 @@ const NAV = [
 
 export function MarketingLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [sectors, setSectors] = useState(false);
+
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
