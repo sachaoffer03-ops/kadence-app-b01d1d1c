@@ -226,6 +226,9 @@ function AppShell() {
   useEffect(() => {
     if (loading) return;
     const appMode = getAppMode();
+    // Site vitrine (kadence.be) : aucune redirection, aucune logique app
+    if (appMode === "marketing") return;
+
     const host = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
     // En preview Lovable / dev, on autorise l'admin à voir l'espace employé
     // (sinon impossible de prévisualiser /staff-app depuis le compte admin).
