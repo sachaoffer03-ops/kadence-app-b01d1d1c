@@ -454,7 +454,9 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         {step === 1 && <Step1 shift={shift} studioName={studioName} now={now} />}
         {step === 2 && <Step2 role={shift.business_role} items={items} photos={photos} itemStates={itemStates} onToggle={toggleItem} onJumpPhoto={() => setStep(3)} hasTemplate={!!template} />}
         {step === 3 && <Step3 role={shift.business_role} photos={photos} states={photoStates} onUpload={handlePhotoUpload} template={template} hasTemplate={!!template} />}
-        {step === 4 && <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />}
+        {step === 4 && (geoDenied
+          ? <div className="px-5 py-5"><GeolocationDeniedScreen onRetrySuccess={() => setGeoDenied(false)} /></div>
+          : <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />)}
         {step === 5 && <Step5
           questions={closureQuestions}
           responses={questionResponses}
