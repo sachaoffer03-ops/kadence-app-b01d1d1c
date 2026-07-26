@@ -48,6 +48,7 @@ import { Route as StaffIdRouteImport } from './routes/staff.$id'
 import { Route as StaffAppPropositionsRouteImport } from './routes/staff-app_.propositions'
 import { Route as SecteursRestaurantsRouteImport } from './routes/secteurs.restaurants'
 import { Route as SecteursCafesRouteImport } from './routes/secteurs.cafes'
+import { Route as SecteursBarsRouteImport } from './routes/secteurs.bars'
 import { Route as PlanningGenerateRouteImport } from './routes/planning.generate'
 import { Route as FormationCourseIdRouteImport } from './routes/formation.$courseId'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
@@ -269,6 +270,11 @@ const SecteursCafesRoute = SecteursCafesRouteImport.update({
   path: '/cafes',
   getParentRoute: () => SecteursRoute,
 } as any)
+const SecteursBarsRoute = SecteursBarsRouteImport.update({
+  id: '/bars',
+  path: '/bars',
+  getParentRoute: () => SecteursRoute,
+} as any)
 const PlanningGenerateRoute = PlanningGenerateRouteImport.update({
   id: '/generate',
   path: '/generate',
@@ -451,6 +457,7 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
+  '/secteurs/bars': typeof SecteursBarsRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
   '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
@@ -516,6 +523,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
+  '/secteurs/bars': typeof SecteursBarsRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
   '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app/propositions': typeof StaffAppPropositionsRoute
@@ -583,6 +591,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/formation/$courseId': typeof FormationCourseIdRoute
   '/planning/generate': typeof PlanningGenerateRoute
+  '/secteurs/bars': typeof SecteursBarsRoute
   '/secteurs/cafes': typeof SecteursCafesRoute
   '/secteurs/restaurants': typeof SecteursRestaurantsRoute
   '/staff-app_/propositions': typeof StaffAppPropositionsRoute
@@ -651,6 +660,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
+    | '/secteurs/bars'
     | '/secteurs/cafes'
     | '/secteurs/restaurants'
     | '/staff-app/propositions'
@@ -716,6 +726,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
+    | '/secteurs/bars'
     | '/secteurs/cafes'
     | '/secteurs/restaurants'
     | '/staff-app/propositions'
@@ -782,6 +793,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/formation/$courseId'
     | '/planning/generate'
+    | '/secteurs/bars'
     | '/secteurs/cafes'
     | '/secteurs/restaurants'
     | '/staff-app_/propositions'
@@ -1137,6 +1149,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SecteursCafesRouteImport
       parentRoute: typeof SecteursRoute
     }
+    '/secteurs/bars': {
+      id: '/secteurs/bars'
+      path: '/bars'
+      fullPath: '/secteurs/bars'
+      preLoaderRoute: typeof SecteursBarsRouteImport
+      parentRoute: typeof SecteursRoute
+    }
     '/planning/generate': {
       id: '/planning/generate'
       path: '/generate'
@@ -1340,11 +1359,13 @@ const PlanningRouteWithChildren = PlanningRoute._addFileChildren(
 )
 
 interface SecteursRouteChildren {
+  SecteursBarsRoute: typeof SecteursBarsRoute
   SecteursCafesRoute: typeof SecteursCafesRoute
   SecteursRestaurantsRoute: typeof SecteursRestaurantsRoute
 }
 
 const SecteursRouteChildren: SecteursRouteChildren = {
+  SecteursBarsRoute: SecteursBarsRoute,
   SecteursCafesRoute: SecteursCafesRoute,
   SecteursRestaurantsRoute: SecteursRestaurantsRoute,
 }
