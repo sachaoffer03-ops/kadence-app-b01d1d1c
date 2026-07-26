@@ -2870,6 +2870,10 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      delete_my_account: {
+        Args: { _email_confirmation: string }
+        Returns: Json
+      }
       diag_function_signature: { Args: { fname: string }; Returns: Json }
       diag_get_crons: { Args: never; Returns: Json }
       diag_realtime_tables: { Args: never; Returns: Json }
@@ -2933,6 +2937,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_pending_auth_purges: {
+        Args: never
+        Returns: {
+          user_id: string
+        }[]
+      }
+      mark_auth_purged: { Args: { _user_id: string }; Returns: undefined }
       merge_profile_data: {
         Args: { new_id: string; old_id: string }
         Returns: undefined
