@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { MarketingLayout, Section, Eyebrow, H2, Lead, CtaBand } from "@/components/marketing/MarketingLayout";
+import { PlanningMock, PhoneMock, ClotureMock, PointageMock } from "@/components/marketing/Mockups";
 
 export const Route = createFileRoute("/fonctionnalites")({
   component: FeaturesPage,
@@ -35,102 +36,241 @@ export const Route = createFileRoute("/fonctionnalites")({
   }),
 });
 
+const CHAPTERS = [
+  {
+    n: "01",
+    kicker: "Planning",
+    title: "Le mois entier généré en une fois, puis ajusté à la main",
+    text: "Vous décrivez vos besoins par jour, par poste et par établissement. Kadence propose un planning complet en respectant contrats, quotas d'heures étudiants, disponibilités et repos légaux. Vous comparez plusieurs scénarios, vous corrigez, puis vous enregistrez.",
+    points: [
+      "Génération en quelques secondes sur un mois complet",
+      "Trous signalés avant publication, jamais après",
+      "Shifts verrouillés préservés lors d'une regénération",
+    ],
+    mock: <PlanningMock />,
+    tone: "surface" as const,
+  },
+  {
+    n: "02",
+    kicker: "Pointage",
+    title: "Des heures réelles, horodatées et vérifiées",
+    text: "Clock-in et clock-out depuis le téléphone avec contrôle de la position. Retards et heures supplémentaires calculés automatiquement. Un manager peut corriger une pointeuse, chaque correction reste tracée.",
+    points: [
+      "Vérification de la position au démarrage du shift",
+      "Retards, dépassements et écarts visibles à la journée",
+      "Historique de toutes les corrections manuelles",
+    ],
+    mock: <PointageMock />,
+    tone: "default" as const,
+  },
+  {
+    n: "03",
+    kicker: "Ouvertures & clôtures",
+    title: "Le service se termine vraiment quand la checklist est faite",
+    text: "Des checklists guidées en début et fin de service, avec photos de référence. Les questions de clôture — caisse, stock, incidents — sont enregistrées et consultables le lendemain matin.",
+    points: [
+      "Photos de référence pour chaque poste",
+      "Réponses de clôture archivées et recherchables",
+      "Notation de shift selon vos propres règles",
+    ],
+    mock: <ClotureMock />,
+    tone: "surface" as const,
+  },
+  {
+    n: "04",
+    kicker: "Application employé",
+    title: "Tout ce dont l'équipe a besoin tient dans une seule app",
+    text: "iOS, Android et web. Shifts de la semaine, collègues du jour, relais de poste, disponibilités du mois prochain, échanges de shift, formation et profil. Notifications au bon moment, sans groupe WhatsApp.",
+    points: [
+      "Disponibilités mois par mois, par établissement",
+      "Demandes et échanges de shift validés en un clic",
+      "Rappels de shift et deadline de dispos",
+    ],
+    mock: <PhoneMock />,
+    tone: "default" as const,
+  },
+];
+
 const MODULES = [
-  {
-    icon: CalendarRange,
-    title: "Planning et génération automatique",
-    text: "Définissez vos besoins en staff par jour, par poste et par établissement. Kadence propose un planning complet en respectant les contrats, les quotas d'heures étudiants, les disponibilités et les repos. Vous prévisualisez, comparez plusieurs scénarios, puis enregistrez.",
-  },
-  {
-    icon: CalendarCheck,
-    title: "Disponibilités par établissement",
-    text: "Chaque employé indique ses disponibilités mois par mois, différenciées si il travaille sur plusieurs adresses. Relances automatiques avant la date limite, suivi de qui a répondu.",
-  },
-  {
-    icon: MapPin,
-    title: "Pointage géolocalisé",
-    text: "Clock-in et clock-out depuis le téléphone avec vérification de la position. Correction manuelle possible par un manager, avec traçabilité complète des modifications.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Ouvertures, clôtures et checklists",
-    text: "Des checklists guidées en début et fin de service, avec photos de référence. Les questions de clôture (caisse, stock, incidents) sont enregistrées et consultables.",
-  },
-  {
-    icon: Users,
-    title: "Demandes et échanges de shift",
-    text: "Un employé demande un changement, propose son shift à un collègue éligible, et le manager valide en un clic. Plus de fil de discussion à dérouler.",
-  },
-  {
-    icon: GraduationCap,
-    title: "Formation interne",
-    text: "Créez des cours avec modules, vidéos, PDF et quiz. Suivez la progression de chaque employé et rendez certains modules obligatoires avant un premier service.",
-  },
-  {
-    icon: BarChart3,
-    title: "Rapports, heures et notation",
-    text: "Heures travaillées par employé et par établissement, retards, heures supplémentaires, notation de shift selon vos propres règles de scoring.",
-  },
-  {
-    icon: Bell,
-    title: "Notifications et emails",
-    text: "Publication du planning, rappel de shift, deadline de disponibilités, alertes de trous critiques. Emails aux couleurs de votre enseigne.",
-  },
-  {
-    icon: Smartphone,
-    title: "Application mobile employé",
-    text: "iOS, Android et web. Shifts de la semaine, collègues du jour, relais de poste, pointage, formation et profil.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Rôles et permissions fines",
-    text: "Admin, manager, employé. Vous décidez précisément ce qu'un manager peut voir et modifier, page par page.",
-  },
+  { icon: CalendarRange, title: "Planning et génération", text: "Besoins par jour, poste et établissement. Scénarios comparés avant enregistrement." },
+  { icon: CalendarCheck, title: "Disponibilités", text: "Saisie mensuelle par établissement, relances automatiques, suivi des réponses." },
+  { icon: MapPin, title: "Pointage géolocalisé", text: "Clock-in vérifié, corrections manager tracées, écarts calculés." },
+  { icon: ClipboardCheck, title: "Checklists de service", text: "Ouverture et clôture guidées, photos de référence, réponses archivées." },
+  { icon: Users, title: "Demandes et échanges", text: "Proposition à un collègue éligible, validation manager en un clic." },
+  { icon: GraduationCap, title: "Formation interne", text: "Modules, vidéos, PDF et quiz. Progression suivie, prérequis avant un premier service." },
+  { icon: BarChart3, title: "Rapports et notation", text: "Heures par employé et par établissement, retards, scoring selon vos règles." },
+  { icon: Bell, title: "Notifications et emails", text: "Publication du planning, rappels, alertes de trous critiques, aux couleurs de l'enseigne." },
+  { icon: Smartphone, title: "App mobile employé", text: "iOS, Android et web, avec pointage, formation et profil." },
+  { icon: ShieldCheck, title: "Rôles et permissions", text: "Admin, manager, employé. Vous décidez page par page ce qu'un manager peut faire." },
 ];
 
 function FeaturesPage() {
   return (
     <MarketingLayout>
-      <Section>
-        <Eyebrow>Fonctionnalités</Eyebrow>
-        <h1 style={{ fontSize: "clamp(30px, 4.4vw, 44px)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.12 }}>
-          Un outil complet, pas une collection d'outils
-        </h1>
-        <Lead>
-          Kadence a été construit dans un vrai commerce, avec de vraies contraintes belges : contrats étudiants,
-          quotas d'heures, multi-établissements, équipes qui tournent.
-        </Lead>
-
-        <div className="mt-14 grid gap-5 md:grid-cols-2">
-          {MODULES.map((m) => (
-            <div
-              key={m.title}
-              className="rounded-2xl border p-7"
-              style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+      {/* Hero */}
+      <section className="px-5 md:px-8 pt-16 md:pt-24 pb-12">
+        <div className="mx-auto" style={{ maxWidth: 1180 }}>
+          <Eyebrow>Fonctionnalités</Eyebrow>
+          <div className="grid gap-10 md:grid-cols-[1.15fr_0.85fr] md:items-end">
+            <h1
+              style={{
+                fontSize: "clamp(34px, 5.4vw, 62px)",
+                fontWeight: 500,
+                letterSpacing: "-0.035em",
+                lineHeight: 1.06,
+              }}
             >
-              <div
-                className="rounded-xl flex items-center justify-center mb-4"
-                style={{ width: 40, height: 40, backgroundColor: "var(--coral-light)" }}
-              >
-                <m.icon size={18} style={{ color: "var(--coral-dark)" }} />
+              Un outil complet,
+              <br />
+              pas une collection d'outils
+            </h1>
+            <p style={{ fontSize: 17, color: "var(--muted-foreground)", lineHeight: 1.85 }}>
+              Kadence a été construit dans un vrai commerce, avec de vraies contraintes belges : contrats étudiants,
+              quotas d'heures, multi-établissements, équipes qui tournent chaque semaine.
+            </p>
+          </div>
+
+          <div
+            className="mt-12 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2 lg:grid-cols-4"
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--border)" }}
+          >
+            {[
+              ["1 mois", "de planning généré en une fois"],
+              ["4 modules", "planning, pointage, clôtures, formation"],
+              ["Multi-sites", "dispos et postes par établissement"],
+              ["iOS · Android", "application employé incluse"],
+            ].map(([big, small]) => (
+              <div key={big} className="px-6 py-7" style={{ backgroundColor: "var(--card)" }}>
+                <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em" }}>{big}</div>
+                <div style={{ fontSize: 13.5, color: "var(--muted-foreground)", marginTop: 6, lineHeight: 1.6 }}>
+                  {small}
+                </div>
               </div>
-              <h2 style={{ fontSize: 16, fontWeight: 500 }}>{m.title}</h2>
-              <p style={{ fontSize: 14, color: "var(--muted-foreground)", lineHeight: 1.75, marginTop: 10 }}>{m.text}</p>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Chapitres alternés avec maquettes */}
+      {CHAPTERS.map((c, i) => (
+        <section
+          key={c.n}
+          className="px-5 md:px-8 py-16 md:py-24"
+          style={c.tone === "surface" ? { backgroundColor: "#F3F1EC" } : undefined}
+        >
+          <div
+            className={`mx-auto grid gap-12 md:gap-16 md:grid-cols-2 md:items-center ${
+              i % 2 === 1 ? "md:[&>*:first-child]:order-2" : ""
+            }`}
+            style={{ maxWidth: 1180 }}
+          >
+            <div>
+              <div className="flex items-baseline gap-4">
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "var(--coral-dark)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {c.n}
+                </span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--muted-foreground)",
+                  }}
+                >
+                  {c.kicker}
+                </span>
+              </div>
+              <h2
+                style={{
+                  fontSize: "clamp(24px, 3.2vw, 36px)",
+                  fontWeight: 500,
+                  letterSpacing: "-0.03em",
+                  lineHeight: 1.15,
+                  marginTop: 16,
+                }}
+              >
+                {c.title}
+              </h2>
+              <p style={{ fontSize: 16, color: "var(--muted-foreground)", lineHeight: 1.85, marginTop: 16 }}>
+                {c.text}
+              </p>
+              <ul className="mt-8 flex flex-col gap-3">
+                {c.points.map((p) => (
+                  <li key={p} className="flex items-start gap-3" style={{ fontSize: 14.5, lineHeight: 1.7 }}>
+                    <span
+                      className="mt-2 rounded-full shrink-0"
+                      style={{ width: 5, height: 5, backgroundColor: "var(--coral)" }}
+                    />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex justify-center">{c.mock}</div>
+          </div>
+        </section>
+      ))}
+
+      {/* Grille complète */}
+      <Section tone="ink">
+        <div style={{ maxWidth: 620 }}>
+          <Eyebrow tone="light">Tout le reste</Eyebrow>
+          <h2 style={{ fontSize: "clamp(26px, 3.6vw, 40px)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.12 }}>
+            Les dix briques de Kadence
+          </h2>
+        </div>
+        <div className="mt-12 grid gap-px overflow-hidden rounded-2xl sm:grid-cols-2 lg:grid-cols-3" style={{ backgroundColor: "rgba(250,250,248,0.12)" }}>
+          {MODULES.map((m) => (
+            <div key={m.title} className="px-7 py-8" style={{ backgroundColor: "#1A1A1A" }}>
+              <m.icon size={18} style={{ color: "var(--coral)" }} />
+              <h3 style={{ fontSize: 15.5, fontWeight: 500, color: "#FAFAF8", marginTop: 14 }}>{m.title}</h3>
+              <p style={{ fontSize: 13.5, color: "rgba(250,250,248,0.6)", lineHeight: 1.75, marginTop: 8 }}>{m.text}</p>
             </div>
           ))}
         </div>
       </Section>
 
-      <Section tone="surface">
-        <H2>Pensé pour plusieurs établissements dès le départ</H2>
-        <Lead>
-          Un employé peut travailler sur deux adresses avec des disponibilités différentes, des postes différents et
-          des règles d'ouverture différentes. Kadence gère ça nativement, sans dupliquer les comptes.
-        </Lead>
-        <div className="mt-8">
-          <Link to="/contact" style={{ fontSize: 14, color: "var(--coral-dark)", fontWeight: 500 }}>
-            Parler de votre organisation →
-          </Link>
+      <Section>
+        <div className="grid gap-10 md:grid-cols-[1fr_0.9fr] md:items-center">
+          <div>
+            <H2>Pensé pour plusieurs établissements dès le départ</H2>
+            <Lead>
+              Un employé peut travailler sur deux adresses avec des disponibilités différentes, des postes différents et
+              des règles d'ouverture différentes. Kadence gère ça nativement, sans dupliquer les comptes.
+            </Lead>
+            <div className="mt-8">
+              <Link to="/contact" style={{ fontSize: 14.5, color: "var(--coral-dark)", fontWeight: 500 }}>
+                Parler de votre organisation →
+              </Link>
+            </div>
+          </div>
+          <div
+            className="rounded-2xl border p-8"
+            style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+          >
+            {[
+              ["Comptes uniques", "Un employé, un profil, plusieurs adresses"],
+              ["Dispos séparées", "Des disponibilités par établissement"],
+              ["Postes par site", "Les compétences suivent l'employé, pas le site"],
+              ["Rapports croisés", "Heures consolidées ou détaillées par adresse"],
+            ].map(([t, d], i, arr) => (
+              <div
+                key={t}
+                className="flex items-baseline justify-between gap-6 py-4"
+                style={{ borderBottom: i === arr.length - 1 ? undefined : "1px solid var(--border)" }}
+              >
+                <span style={{ fontSize: 14.5, fontWeight: 500 }}>{t}</span>
+                <span style={{ fontSize: 13.5, color: "var(--muted-foreground)", textAlign: "right" }}>{d}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </Section>
 
