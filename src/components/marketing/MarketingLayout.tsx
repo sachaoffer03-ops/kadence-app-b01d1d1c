@@ -33,6 +33,55 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
+            <div className="relative" onMouseEnter={() => setSectors(true)} onMouseLeave={() => setSectors(false)}>
+              <Link
+                to="/secteurs"
+                className="flex items-center gap-1.5 transition-colors hover:opacity-70"
+                style={{ fontSize: 14.5, color: "var(--muted-foreground)" }}
+                activeProps={{ style: { fontSize: 14.5, color: "var(--foreground)", fontWeight: 500 } }}
+              >
+                Secteurs
+                <ChevronDown size={14} />
+              </Link>
+              {sectors && (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 top-full pt-4"
+                  style={{ width: 460 }}
+                >
+                  <div
+                    className="rounded-2xl p-3 grid grid-cols-2 gap-1"
+                    style={{
+                      backgroundColor: "var(--background)",
+                      border: "1px solid var(--border)",
+                      boxShadow: "0 18px 50px -20px rgba(26,26,26,0.28)",
+                    }}
+                  >
+                    {SECTORS.map((s) => (
+                      <Link
+                        key={s.slug}
+                        to={s.slug}
+                        onClick={() => setSectors(false)}
+                        className="rounded-xl px-3.5 py-3 transition-colors"
+                        style={{ display: "block" }}
+                      >
+                        <span
+                          className="block"
+                          style={{ fontSize: 14, fontWeight: 500, color: "var(--foreground)" }}
+                        >
+                          {s.kicker}
+                        </span>
+                        <span
+                          className="block"
+                          style={{ fontSize: 12.5, color: "var(--muted-foreground)", marginTop: 2 }}
+                        >
+                          {s.teaser.split(".")[0]}.
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             {NAV.map((n) => (
               <Link
                 key={n.to}
@@ -45,6 +94,7 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
           </nav>
+
 
           <div className="hidden md:flex items-center gap-4">
             <a href={APP_URL} style={{ fontSize: 14.5, color: "var(--foreground)" }} className="hover:opacity-70">
