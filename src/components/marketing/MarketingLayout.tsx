@@ -192,13 +192,14 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1">{children}</main>
 
       <footer style={{ backgroundColor: "#1A1A1A" }}>
-        <div className="mx-auto px-5 md:px-8 py-16" style={{ maxWidth: 1180 }}>
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-12">
+        <div className="mx-auto px-5 md:px-8 py-12 md:py-16" style={{ maxWidth: 1180 }}>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-10 md:gap-12">
             <div style={{ maxWidth: 320 }}>
               <img
                 src={logo}
                 alt="Kadence"
-                style={{ height: 76, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                className="h-14 md:h-[76px]"
+                style={{ width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }}
               />
               <p style={{ fontSize: 13.5, color: "rgba(250,250,248,0.6)", marginTop: 16, lineHeight: 1.8 }}>
                 La gestion d'équipe pensée pour les cafés, restaurants et commerces à plusieurs établissements. Conçu à
@@ -206,7 +207,8 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-12 md:gap-16">
+            <div className="grid grid-cols-2 gap-10 sm:flex sm:flex-wrap sm:gap-12 md:gap-16">
+
               <FooterCol title="Produit">
                 <Link to="/fonctionnalites">Fonctionnalités</Link>
                 <Link to="/tarifs">Tarifs</Link>
