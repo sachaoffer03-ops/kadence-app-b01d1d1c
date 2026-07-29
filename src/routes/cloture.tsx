@@ -5,7 +5,7 @@ import { z } from "zod";
 import {
   DoorClosed, Clock, Camera, QrCode, MessageSquare, Plus, Trash2, GripVertical,
   Pencil, Check, X, Sparkles, Lock, RefreshCw, Upload, Settings as SettingsIcon, BarChart3,
-  Sunrise, ArrowRightLeft, LogIn, LogOut, Sunset, ChevronDown, ChevronRight, ListChecks,
+  Sunrise, LogIn, LogOut, Sunset, ChevronDown, ChevronRight, ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
