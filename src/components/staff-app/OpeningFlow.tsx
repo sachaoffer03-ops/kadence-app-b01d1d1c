@@ -47,7 +47,7 @@ export function OpeningFlow({ open, onClose, shift, userId, studios, firstName, 
     setLoading(true);
     (async () => {
       try {
-        // Detect phase (opening | transition | null) for this clock-in
+        // Detect phase (opening | transition_in | null) for this clock-in
         const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_in" });
         setPhase(detected);
         if (detected) {
@@ -122,10 +122,10 @@ export function OpeningFlow({ open, onClose, shift, userId, studios, firstName, 
   const hasChecklist = !!template && items.length > 0;
   const hasPhotos = !!template && photos.length > 0;
   const totalSteps: Step = (hasPhotos ? 3 : hasChecklist ? 2 : 1) as Step;
-  const checklistTitle = phase === "transition"
-    ? `Transition ${shift.business_role}`
+  const checklistTitle = phase === "transition_in"
+    ? `Prise de poste ${shift.business_role}`
     : `Ouverture ${shift.business_role}`;
-  const ctaStart = phase === "transition" ? "Commencer la transition →" : "Commencer ma checklist d'ouverture →";
+  const ctaStart = phase === "transition_in" ? "Commencer la prise de poste →" : "Commencer ma checklist d'ouverture →";
 
   const itemsBlocked = items.some((i) => i.is_required && !itemStates[i.id]);
   const photosBlocked = photos.some((p) => p.is_required && photoStates[p.id]?.status !== "done");
@@ -285,7 +285,7 @@ export function OpeningFlow({ open, onClose, shift, userId, studios, firstName, 
               {checklistTitle}
             </div>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 6 }}>
-              {phase === "transition" ? "Coche chaque tâche de relève avant de reprendre le poste." : "Coche chaque tâche réalisée avant d'ouvrir."}
+              {phase === "transition_in" ? "Coche chaque tâche de relève avant de reprendre le poste." : "Coche chaque tâche réalisée avant d'ouvrir."}
             </div>
 
             <div className="mt-5 flex flex-col gap-2">
