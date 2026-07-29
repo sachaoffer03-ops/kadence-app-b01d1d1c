@@ -5,7 +5,7 @@ import { z } from "zod";
 import {
   DoorClosed, Clock, Camera, QrCode, MessageSquare, Plus, Trash2, GripVertical,
   Pencil, Check, X, Sparkles, Lock, RefreshCw, Upload, Settings as SettingsIcon, BarChart3,
-  Sunrise, ArrowRightLeft, Sunset, ChevronDown, ChevronRight, ListChecks,
+  Sunrise, ArrowRightLeft, LogIn, LogOut, Sunset, ChevronDown, ChevronRight, ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -312,7 +312,8 @@ function EmptyCard({ text }: { text: string }) {
 
 const PHASE_META: Record<ChecklistPhase, { label: string; icon: any; color: string; bg: string; desc: string }> = {
   opening:    { label: "Ouverture",  icon: Sunrise,        color: "var(--coral-dark)", bg: "var(--coral-light)",                     desc: "Premier shift de la journée sur ce poste." },
-  transition: { label: "Transition", icon: ArrowRightLeft, color: "#4338CA",            bg: "color-mix(in oklab, #4338CA 12%, white)", desc: "Quand un employé prend le relais d'un autre sur le même poste." },
+  transition_in:  { label: "Prise de poste", icon: LogIn,  color: "#4338CA", bg: "color-mix(in oklab, #4338CA 12%, white)", desc: "Milieu de journée : l'employé arrive et récupère le poste laissé par le précédent." },
+  transition_out: { label: "Passage de relais", icon: LogOut, color: "#B45309", bg: "color-mix(in oklab, #B45309 12%, white)", desc: "Milieu de journée : l'employé part et transmet le poste au suivant (clôture partielle)." },
   closing:    { label: "Fermeture",  icon: Sunset,         color: "var(--success-text)", bg: "var(--success-bg)",                     desc: "Dernier shift de la journée sur ce poste." },
 };
 
@@ -330,7 +331,7 @@ function ChecklistsTab({ studioId }: { studioId: string }) {
       >
         <Sparkles size={14} style={{ color: "#1d4ed8", marginTop: 2, flexShrink: 0 }} />
         <div>
-          Configure une checklist par poste et par moment du service (ouverture, transition, fermeture). Le système détecte automatiquement à chaque pointage quelle checklist appliquer. Crée une checklist de transition si plusieurs employés s'enchaînent sur ce poste dans la journée. Les photos sont analysées par l'IA pour vérifier ce qu'on ne peut pas constater verbalement.
+          Configure une checklist par poste et par moment du service (ouverture, prise de poste, passage de relais, fermeture). Le système détecte automatiquement à chaque pointage quelle checklist appliquer. Quand plusieurs employés s'enchaînent sur un poste, celui qui part remplit « Passage de relais » et celui qui arrive remplit « Prise de poste ». Les photos sont analysées par l'IA pour vérifier ce qu'on ne peut pas constater verbalement.
         </div>
       </div>
 
@@ -361,7 +362,7 @@ function ChecklistsTab({ studioId }: { studioId: string }) {
 
       {activeRole && (
         <div className="flex flex-col gap-3">
-          {(["opening", "transition", "closing"] as ChecklistPhase[]).map((phase) => (
+          {(["opening", "transition_in", "transition_out", "closing"] as ChecklistPhase[]).map((phase) => (
             <PhaseAccordion
               key={`${activeRole.id}-${phase}`}
               studioId={studioId}
@@ -729,7 +730,7 @@ function useTemplate(studioId: string, roleId: string, phase: ChecklistPhase = "
           .insert({
             studio_id: studioId,
             business_role_id: roleId,
-            name: phase === "opening" ? "Ouverture" : phase === "transition" ? "Transition" : "Clôture",
+            name: phase === "opening" ? "Ouverture" : phase === "transition_in" ? "Prise de poste" : phase === "transition_out" ? "Passage de relais" : "Clôture",
             phase,
             is_active: true,
             is_blocking: true,
@@ -933,7 +934,7 @@ function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: 
       let tpl: any = tplRows && tplRows.length > 0 ? tplRows[0] : null;
       if (!tpl) {
         const { data: created, error: cErr } = await supabase.from("checklist_templates").insert({
-          studio_id: studioId, business_role_id: target, name: phase === "opening" ? "Ouverture" : phase === "transition" ? "Transition" : "Clôture", phase, is_active: true, is_blocking: true,
+          studio_id: studioId, business_role_id: target, name: phase === "opening" ? "Ouverture" : phase === "transition_in" ? "Prise de poste" : phase === "transition_out" ? "Passage de relais" : "Clôture", phase, is_active: true, is_blocking: true,
         } as any).select("id").single();
         if (cErr) {
           // Conflit unique → relire
