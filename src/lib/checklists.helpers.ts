@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ChecklistTemplate } from "@/types/checklists";
 
-export type ChecklistPhase = "opening" | "transition" | "closing";
+export type ChecklistPhase = "opening" | "transition_in" | "transition_out" | "closing";
 export type ChecklistMoment = ChecklistPhase | null;
 
 export interface ApplicableTemplateContext {
@@ -56,11 +56,11 @@ export async function findApplicableTemplate(ctx: {
  *
  * clock_in :
  *   - If NO other shift ends at/before my start_time → 'opening'
- *   - Otherwise → 'transition'
+ *   - Otherwise → 'transition_in' (prise de poste en milieu de journée)
  *
  * clock_out :
  *   - If NO other shift starts at/after my end_time → 'closing'
- *   - Otherwise → 'transition'
+ *   - Otherwise → 'transition_out' (passage de relais en milieu de journée)
  *
  * Returns null if no template is configured for the resolved phase (caller can skip flow).
  */
@@ -89,10 +89,10 @@ export async function detectChecklistMoment(args: {
   let phase: ChecklistPhase;
   if (args.side === "clock_in") {
     const hasEarlier = others.some((s) => s.end_time <= (shift as any).start_time);
-    phase = hasEarlier ? "transition" : "opening";
+    phase = hasEarlier ? "transition_in" : "opening";
   } else {
     const hasLater = others.some((s) => s.start_time >= (shift as any).end_time);
-    phase = hasLater ? "transition" : "closing";
+    phase = hasLater ? "transition_out" : "closing";
   }
 
   // Confirm a template actually exists for this phase — otherwise no checklist to show.

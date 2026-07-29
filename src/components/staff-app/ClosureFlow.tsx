@@ -122,10 +122,10 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
     setClockedOutAt(shift.clocked_out_at ?? null);
     (async () => {
       try {
-        // Detect closure phase (closing | transition | null)
+        // Detect closure phase (closing | transition_out | null)
         const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" });
         setPhase(detected);
-        // Initial step: closing → 1 (recap), transition → 2 (items), null → 4 (QR only)
+        // Initial step: closing → 1 (recap), transition_out → 2 (items), null → 4 (QR only)
         setStep(detected === null ? 4 : detected === "transition" ? 2 : 1);
 
         // Cache the user's first name for the transition handoff notification
@@ -412,7 +412,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
       const result = await finalizeClosure({ data: { shiftId: shift.id, submissionId, responses } });
       setRecap(result as Recap);
       // If we were doing a transition, notify the next employee picking up the shift
-      if (phase === "transition") {
+      if (phase === "transition_out") {
         notifyTransitionIncoming({ fromShiftId: shift.id, fromUserFirstName: firstNameMe }).catch(() => {});
       }
       onCompleted?.();
@@ -432,7 +432,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0" style={{ borderColor: "rgba(0,0,0,0.06)", paddingTop: "max(12px, env(safe-area-inset-top))" }}>
         {(() => {
-          const minStep: Step = phase === "closing" ? 1 : phase === "transition" ? 2 : 4;
+          const minStep: Step = phase === "closing" ? 1 : phase === "transition_out" ? 2 : 4;
           const canGoBack = step > minStep && step < 6;
           return (
             <button
@@ -973,10 +973,10 @@ function Step6({ recap, studios, phase, firstName, onClose, onRetry, finalizing 
   const checklistOk = recap.itemsTotal === 0 || recap.itemsChecked === recap.itemsTotal;
 
   // Variant titles per phase
-  const title = phase === "transition" ? "Service transmis 👋"
+  const title = phase === "transition_out" ? "Service transmis 👋"
               : phase === null ? "Sortie enregistrée"
               : "Bien joué ! Shift clôturé 🎉";
-  const subtitle = phase === "transition"
+  const subtitle = phase === "transition_out"
     ? `Bonne fin de journée${firstName ? `, ${firstName}` : ""}.`
     : phase === null ? "Ton pointage a bien été enregistré."
     : `Bonne soirée${recap.firstName ? `, ${recap.firstName}` : firstName ? `, ${firstName}` : ""}. À très vite.`;
@@ -1000,7 +1000,7 @@ function Step6({ recap, studios, phase, firstName, onClose, onRetry, finalizing 
       )}
 
       {/* Transition : version allégée — heures + gains + handoff */}
-      {phase === "transition" && (
+      {phase === "transition_out" && (
         <>
           <Card title="Récap de ton service">
             <Row label="Heures prestées" value={`${workedH}h${String(workedM).padStart(2, "0")}`} />
