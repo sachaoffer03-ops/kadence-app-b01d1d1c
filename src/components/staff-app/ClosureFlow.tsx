@@ -7,6 +7,8 @@ import { signChecklistPhoto } from "@/lib/checklist-photo-url";
 import { useServerFn } from "@tanstack/react-start";
 import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, notifyTransitionIncoming, type ChecklistPhase } from "@/lib/checklists.helpers";
 import { validateClockOutFn, finalizeClosureFn, analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
+import { getShiftClockPolicyFn } from "@/lib/shift-clock.functions";
+
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
 import { getCurrentPositionSafe } from "@/lib/geolocation";
 import { GeolocationDeniedScreen } from "@/components/employee/GeolocationDeniedScreen";
