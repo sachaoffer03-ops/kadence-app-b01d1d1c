@@ -299,6 +299,10 @@ export async function analyzeClosurePhoto(input: AnalyzeClosurePhotoInput) {
         .maybeSingle()
     : { data: null };
 
+  if ((tpl as any) && (tpl as any).analyze_with_ai === false) {
+    return { status: "skipped" as const, confidence: null, message: null, skipped: true };
+  }
+
   const threshold = Number((tpl as any)?.ai_validation_threshold ?? 75);
   const hint = (tpl as any)?.ai_detection_hint
     ?? "présence de saleté visible, ustensiles non rangés, déchets au sol, écrans non éteints";
