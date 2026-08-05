@@ -138,6 +138,29 @@ export function CourseSettingsSheet({ open, onOpenChange, course, studios = [], 
               )}
             </div>
           </Field>
+          {studios.length > 0 && (
+            <Field label="Studios concernés">
+              <div className="flex flex-col gap-1.5">
+                {studios.map(s => {
+                  const on = studioIds.includes(s.id);
+                  return (
+                    <button key={s.id} type="button" onClick={() => toggleStudio(s.id)}
+                      className="rounded-lg px-3 py-2 text-left flex items-center justify-between"
+                      style={{ fontSize: 12, border: `0.5px solid ${on ? "#F0997B" : "var(--border)"}`, backgroundColor: on ? "rgba(240,153,123,0.08)" : "transparent" }}>
+                      <span>{s.name}</span>
+                      {on && <span style={{ fontSize: 11, color: "#F0997B" }}>Sélectionné</span>}
+                    </button>
+                  );
+                })}
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                  {studioIds.length === 0
+                    ? "Aucun studio sélectionné : le parcours s'applique à tous les studios."
+                    : "Seuls les employés de ces studios verront le parcours."}
+                </div>
+              </div>
+            </Field>
+          )}
+
           <Field label="">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={requiredForPlanning} onChange={(e) => setRequiredForPlanning(e.target.checked)} />
