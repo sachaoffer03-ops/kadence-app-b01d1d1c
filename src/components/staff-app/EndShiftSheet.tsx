@@ -94,11 +94,40 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
     setFeedbackMsg(typeof draft?.feedbackMsg === "string" ? draft.feedbackMsg : "");
     setReportMsg(typeof draft?.reportMsg === "string" ? draft.reportMsg : "");
     setHandoffMsg(typeof draft?.handoffMsg === "string" ? draft.handoffMsg : "");
+    setOutReason("");
+    setPolicy(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, shift?.id]);
 
+  // Tolérances de sortie lues en direct (réglages studio)
+  useEffect(() => {
+    if (!open || !shift?.id) return;
+    let alive = true;
+    const load = async () => {
+      try {
+        const p: any = await getPolicy({ data: { shiftId: shift.id } });
+        if (alive) setPolicy({
+          outDeviationMin: p.outDeviationMin,
+          earlyOutWindowMin: p.earlyOutWindowMin,
+          graceOutMin: p.graceOutMin,
+          clockOutNeedsReason: p.clockOutNeedsReason,
+        });
+      } catch { /* ignore */ }
+    };
+    load();
+    const t = setInterval(load, 30_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [open, shift?.id, getPolicy]);
+
+  const outReasonRequired = !!policy?.clockOutNeedsReason;
+  const outReasonOk = outReason.trim().length >= 5;
+
   const handleFinish = async () => {
     if (!shift) return;
+    if (outReasonRequired && !outReasonOk) {
+      toast.error("Motif obligatoire", { description: "Explique pourquoi tu pars plus tôt ou plus tard." });
+      return;
+    }
     setSubmitting(true);
     try {
       const result = await completeClockOut({
@@ -108,8 +137,10 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
           feedbackMsg,
           reportMsg,
           handoffMsg,
+          outReason: outReasonRequired ? outReason.trim() : null,
         },
       });
+
       if (result.alreadyCompleted) {
         toast.info("Shift déjà clôturé");
       } else {
