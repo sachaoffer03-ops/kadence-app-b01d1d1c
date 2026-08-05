@@ -79,6 +79,8 @@ function EmployeeDetailPage() {
   const [editClockShiftId, setEditClockShiftId] = useState<string | null>(null);
   const [breakdown, setBreakdown] = useState<Awaited<ReturnType<typeof getScoreBreakdown>> | null>(null);
   const [tab, setTab] = useState("profil");
+  const [shiftsExpanded, setShiftsExpanded] = useState(false);
+  const [onlyUnrated, setOnlyUnrated] = useState(false);
   const [unviewedDocs, setUnviewedDocs] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const fetchBreakdown = useServerFn(getScoreBreakdown);
@@ -95,7 +97,7 @@ function EmployeeDetailPage() {
         supabase.from("studios").select("id,name"),
         supabase.from("user_studios").select("studio_id").eq("user_id", id),
         supabase.from("user_contracts").select("contract").eq("user_id", id),
-        supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status,clocked_in_at,clocked_out_at").eq("user_id", id).lte("shift_date", new Date().toISOString().slice(0, 10)).order("shift_date", { ascending: false }).limit(20),
+        supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,status,clocked_in_at,clocked_out_at").eq("user_id", id).lte("shift_date", new Date().toISOString().slice(0, 10)).order("shift_date", { ascending: false }).limit(120),
         supabase.from("signalements").select("id,category,message,created_at,resolved").eq("author_id", id).order("created_at", { ascending: false }).limit(10),
       ]);
       setEmp(p as Profile | null);
@@ -178,6 +180,14 @@ function EmployeeDetailPage() {
     fbs.forEach(f => { if (f.shift_id) (m[f.shift_id] ||= []).push(f); });
     return m;
   }, [fbs]);
+
+  const ratableShifts = useMemo(
+    () => shifts.filter(s => !!s.clocked_out_at && !(fbsByShift[s.id]?.length)),
+    [shifts, fbsByShift],
+  );
+  const unratedCount = ratableShifts.length;
+  const listShifts = onlyUnrated ? ratableShifts : shifts;
+  const visibleShifts = shiftsExpanded ? listShifts : listShifts.slice(0, 8);
 
 
   const handleExport = () => {
@@ -411,11 +421,23 @@ function EmployeeDetailPage() {
           <PunctualityCard shifts={shifts} />
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-              Shifts récents ({shifts.length})
+              Historique des shifts ({shifts.length})
             </div>
+            {shifts.length > 0 && (
+              <div className="flex items-center gap-2 mb-3">
+                <button onClick={() => setOnlyUnrated(false)} className="rounded-full px-2.5 py-1"
+                  style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: onlyUnrated ? "transparent" : "var(--coral-light)", color: onlyUnrated ? "var(--muted-foreground)" : "var(--coral-text)" }}>
+                  Tous
+                </button>
+                <button onClick={() => setOnlyUnrated(true)} className="rounded-full px-2.5 py-1"
+                  style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)", backgroundColor: onlyUnrated ? "var(--coral-light)" : "transparent", color: onlyUnrated ? "var(--coral-text)" : "var(--muted-foreground)" }}>
+                  À noter ({unratedCount})
+                </button>
+              </div>
+            )}
             {shifts.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift</div> : (
               <div className="flex flex-col gap-1.5">
-                {shifts.slice(0, 8).map(s => {
+                {visibleShifts.map(s => {
                   const sname = s.studio_id ? studios[s.studio_id] : "—";
                   const shiftFbs = fbsByShift[s.id] || [];
                   const isRating = rateShiftId === s.id;
@@ -435,9 +457,11 @@ function EmployeeDetailPage() {
                             </div>
                           )}
                         </div>
-                        {shiftFbs.length > 0 && (
+                        {shiftFbs.length > 0 ? (
                           <RatingBadge value={shiftFbs[0].rating} />
-                        )}
+                        ) : s.clocked_out_at ? (
+                          <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-text)" }}>À noter</span>
+                        ) : null}
                         <span className="rounded-full px-2 py-0.5" style={{
                           fontSize: 10, fontWeight: 500,
                           backgroundColor: s.status === "completed" ? "var(--success-bg)" : s.status === "cancelled" ? "var(--danger-bg)" : "var(--muted)",
@@ -493,6 +517,12 @@ function EmployeeDetailPage() {
                     </div>
                   );
                 })}
+                {listShifts.length > 8 && (
+                  <button onClick={() => setShiftsExpanded(v => !v)} className="rounded-md px-3 py-2 mt-1"
+                    style={{ fontSize: 12, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+                    {shiftsExpanded ? "Réduire" : `Voir tout l'historique (${listShifts.length})`}
+                  </button>
+                )}
               </div>
             )}
           </div>
