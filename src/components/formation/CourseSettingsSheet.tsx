@@ -15,10 +15,12 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   course: CourseFull["course"];
+  studios?: { id: string; name: string }[];
+  courseStudioIds?: string[];
   onSaved: () => void;
 }
 
-export function CourseSettingsSheet({ open, onOpenChange, course, onSaved }: Props) {
+export function CourseSettingsSheet({ open, onOpenChange, course, studios = [], courseStudioIds = [], onSaved }: Props) {
   const { roles } = useBusinessRoles({ onlyActive: true });
   const navigate = useNavigate();
   const [title, setTitle] = useState(course.title);
@@ -27,6 +29,7 @@ export function CourseSettingsSheet({ open, onOpenChange, course, onSaved }: Pro
   const [description, setDescription] = useState(course.description ?? "");
   const [type, setType] = useState<"all" | "role">(course.is_required_for_all ? "all" : "role");
   const [roleId, setRoleId] = useState<string | null>(course.business_role_id);
+  const [studioIds, setStudioIds] = useState<string[]>(courseStudioIds);
   const [requiredForPlanning, setRequiredForPlanning] = useState(course.required_for_planning);
   const [passingScore, setPassingScore] = useState(course.passing_quiz_score);
   const [saving, setSaving] = useState(false);
@@ -42,17 +45,22 @@ export function CourseSettingsSheet({ open, onOpenChange, course, onSaved }: Pro
       setDescription(course.description ?? "");
       setType(course.is_required_for_all ? "all" : "role");
       setRoleId(course.business_role_id);
+      setStudioIds(courseStudioIds);
       setRequiredForPlanning(course.required_for_planning);
       setPassingScore(course.passing_quiz_score);
     }
-  }, [open, course]);
+  }, [open, course, courseStudioIds]);
+
+  const toggleStudio = (id: string) => {
+    setStudioIds((prev) => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+  };
 
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Titre requis"); return; }
     if (type === "role" && !roleId) { toast.error("Sélectionne un poste"); return; }
     setSaving(true);
     try {
-      await update({ data: { courseId: course.id, patch: {
+      await update({ data: { courseId: course.id, studioIds, patch: {
         title: title.trim(),
         icon, color,
         description: description.trim() || null,
@@ -65,6 +73,7 @@ export function CourseSettingsSheet({ open, onOpenChange, course, onSaved }: Pro
     } catch (e: any) { toast.error(e.message || "Erreur"); }
     finally { setSaving(false); }
   };
+
 
   const handleDelete = async () => {
     if (!confirm("Supprimer ce parcours et tout son contenu ? Cette action est irréversible.")) return;
