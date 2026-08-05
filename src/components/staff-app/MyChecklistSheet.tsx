@@ -368,8 +368,23 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
 function PhotoRow({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; state?: PhotoState; onUpload: (f: File) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const status = state?.status ?? "idle";
+  const rejected = !!state?.rejected;
+  const [refUrl, setRefUrl] = useState<string | null>(null);
+  const [showRef, setShowRef] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    signChecklistPhoto((zone as any).reference_photo_url).then((u) => { if (alive) setRefUrl(u); });
+    return () => { alive = false; };
+  }, [(zone as any).reference_photo_url]);
+
+  const badge = status === "uploading" ? { label: "Envoi…", bg: "var(--muted)", fg: "var(--muted-foreground)" }
+    : status === "analyzing" ? { label: "Analyse…", bg: "var(--coral-light)", fg: "var(--coral-dark)" }
+    : status === "done" && rejected ? { label: "À revoir", bg: "#FEE4E2", fg: "#B42318" }
+    : status === "done" ? { label: "Envoyée", bg: "var(--success-bg)", fg: "var(--success-text)" }
+    : { label: "À photographier", bg: "var(--muted)", fg: "var(--muted-foreground)" };
+
   return (
-    <div className="rounded-xl border p-3" style={{ backgroundColor: "#fff", borderColor: status === "done" ? "var(--success-text)" : "rgba(0,0,0,0.08)" }}>
+    <div className="rounded-xl border p-3" style={{ backgroundColor: "#fff", borderColor: rejected ? "#F97066" : status === "done" ? "var(--success-text)" : "rgba(0,0,0,0.08)" }}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className="rounded-md p-1.5" style={{ backgroundColor: "var(--muted)" }}><Camera size={14} /></div>
@@ -378,28 +393,43 @@ function PhotoRow({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; sta
             {zone.description && <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{zone.description}</div>}
           </div>
         </div>
-        <span className="rounded-full px-2 py-0.5" style={{
-          fontSize: 10, fontWeight: 500,
-          backgroundColor: status === "done" ? "var(--success-bg)" : "var(--muted)",
-          color: status === "done" ? "var(--success-text)" : "var(--muted-foreground)",
-        }}>
-          {status === "uploading" ? "Envoi…" : status === "done" ? "Envoyée" : "À photographier"}
+        <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: badge.bg, color: badge.fg }}>
+          {badge.label}
         </span>
       </div>
+
+      {refUrl && (
+        <div className="mb-2">
+          <button onClick={() => setShowRef((v) => !v)} style={{ fontSize: 11, color: "var(--coral-dark)", fontWeight: 500 }}>
+            {showRef ? "Masquer le modèle attendu" : "Voir le modèle attendu"}
+          </button>
+          {showRef && (
+            <img src={refUrl} alt={`Référence ${zone.label}`} className="w-full rounded-lg mt-1.5" style={{ maxHeight: 180, objectFit: "cover" }} />
+          )}
+        </div>
+      )}
+
       {state?.photoUrl && (
         <img src={state.photoUrl} alt={zone.label} className="w-full rounded-lg mb-2" style={{ maxHeight: 180, objectFit: "cover" }} />
       )}
+
+      {rejected && state?.message && (
+        <div className="rounded-lg px-2.5 py-2 mb-2" style={{ fontSize: 11, backgroundColor: "#FEF3F2", color: "#B42318", lineHeight: 1.4 }}>
+          {state.message} — reprends la photo si tu peux, sinon ton manager la vérifiera.
+        </div>
+      )}
+
       <input
         ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }}
       />
       <button
         onClick={() => inputRef.current?.click()}
-        disabled={status === "uploading"}
+        disabled={status === "uploading" || status === "analyzing"}
         className="w-full rounded-md py-2.5 disabled:opacity-50"
-        style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--muted)" }}
+        style={{ fontSize: 12, fontWeight: 500, backgroundColor: rejected ? "var(--coral)" : "var(--muted)", color: rejected ? "#fff" : undefined }}
       >
-        {status === "uploading" ? "Envoi…" : state?.photoUrl ? "Reprendre la photo" : "Prendre la photo"}
+        {status === "uploading" ? "Envoi…" : status === "analyzing" ? "Analyse…" : state?.photoUrl ? "Reprendre la photo" : "Prendre la photo"}
       </button>
     </div>
   );
