@@ -3,7 +3,7 @@ export function toDateStr(d: Date): string {
 }
 
 /** Toutes les dates du créneau récurrent (weekday 0=dimanche) à partir de `from`. */
-function occurrences(rule: {
+export function occurrences(rule: {
   weekday: number;
   date_from: string;
   date_to: string;
