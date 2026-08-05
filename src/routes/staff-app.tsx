@@ -804,6 +804,17 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
       {/* ─── À FAIRE ─── */}
       <ZoneLabel>À faire</ZoneLabel>
 
+      {activeShift && checklistProgress && checklistProgress.total > 0 && (
+        <ChecklistAccessCard
+          done={checklistProgress.done}
+          total={checklistProgress.total}
+          phase={checklistProgress.phase}
+          onOpen={() => setChecklistOpen(true)}
+        />
+      )}
+
+
+
       <button
         onClick={() => setDisposOpen(true)}
         className="w-full rounded-xl px-4 py-4 mb-3 flex items-center gap-3 text-left"
