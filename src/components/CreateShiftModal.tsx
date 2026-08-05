@@ -271,6 +271,8 @@ export function CreateShiftModal({ open, onClose, onCreated }: Props) {
             weekly_hours: Math.max(previous.weekly_hours, emp.weekly_hours),
             max_weekly_hours: Math.min(previous.max_weekly_hours, emp.max_weekly_hours),
             pending_proposal: previous.pending_proposal || emp.pending_proposal,
+            has_role: previous.has_role && emp.has_role,
+            missing_roles: Array.from(new Set([...(previous.missing_roles ?? []), ...(emp.missing_roles ?? [])])),
             has_studio: previous.has_studio && emp.has_studio,
             has_availability: previous.has_availability && emp.has_availability,
             is_saturated: previous.is_saturated || emp.is_saturated,
