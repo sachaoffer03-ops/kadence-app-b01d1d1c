@@ -255,6 +255,15 @@ export const duplicateCourse = createServerFn({ method: "POST" })
 
     const newCourseId = (copy as any).id;
 
+    const { data: srcStudios } = await supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId);
+    if (srcStudios && srcStudios.length > 0) {
+      await supabase.from("training_course_studios").insert(
+        (srcStudios as any[]).map((s: any) => ({ course_id: newCourseId, studio_id: s.studio_id })) as any
+      );
+    }
+
+
+
     const { data: sections } = await supabase.from("training_sections").select("*").eq("course_id", data.courseId).order("position");
     for (const sec of (sections ?? []) as any[]) {
       const { data: newSec } = await supabase.from("training_sections").insert({
