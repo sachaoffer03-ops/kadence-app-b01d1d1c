@@ -124,7 +124,7 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
           supabase.from("checklist_template_items").select("*").eq("template_id", tpl.id).order("order_index"),
           supabase.from("checklist_template_photos").select("*").eq("template_id", tpl.id).order("order_index"),
           supabase.from("checklist_submission_items").select("template_item_id,is_checked").eq("submission_id", subId),
-          supabase.from("checklist_submission_photos").select("id,template_photo_id,photo_url").eq("submission_id", subId),
+          supabase.from("checklist_submission_photos").select("id,template_photo_id,photo_url,ai_validation_status,ai_validation_message").eq("submission_id", subId),
         ]);
         if (!alive) return;
         setItems((its ?? []) as any);
@@ -133,14 +133,17 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
         ((si ?? []) as any[]).forEach((r) => { im[r.template_item_id] = r.is_checked; });
         setItemStates(im);
         const pm: Record<string, PhotoState> = {};
-        ((phs ?? []) as any[]).forEach((p) => {
+        await Promise.all(((phs ?? []) as any[]).map(async (p) => {
           const found = ((sp ?? []) as any[]).find((s) => s.template_photo_id === p.id);
           pm[p.id] = {
             submissionPhotoId: found?.id ?? null,
-            photoUrl: found?.photo_url ?? null,
+            photoUrl: found?.photo_url ? await signChecklistPhoto(found.photo_url) : null,
             status: found?.photo_url ? "done" : "idle",
+            rejected: found?.ai_validation_status === "rejected",
+            message: found?.ai_validation_status === "rejected" ? found?.ai_validation_message ?? null : null,
           };
-        });
+        }));
+        if (!alive) return;
         setPhotoStates(pm);
       } catch (e: any) {
         console.error("[my-checklist] load", e);
