@@ -556,10 +556,14 @@ export async function getShiftDetail(args: { shiftId: string }) {
     }),
     photos: await Promise.all(templatePhotos.map(async (p: any) => {
       const row = photoMap.get(p.id);
-      const sign = async (path: string | null | undefined) => {
+      const sign = async (value: string | null | undefined) => {
+        if (!value) return null;
+        // Bucket privé : une URL publique héritée doit être reconvertie en chemin.
+        const path = /^https?:\/\//i.test(value)
+          ? (value.match(/checklist-photos\/(.+?)(\?|$)/)?.[1] ?? null)
+          : value;
         if (!path) return null;
-        if (path.startsWith("http")) return path;
-        const { data } = await supabaseAdmin.storage.from("checklist-photos").createSignedUrl(path, 3600);
+        const { data } = await supabaseAdmin.storage.from("checklist-photos").createSignedUrl(decodeURIComponent(path), 3600);
         return data?.signedUrl ?? null;
       };
       return {
