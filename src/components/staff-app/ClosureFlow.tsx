@@ -329,6 +329,10 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   // ─── QR / Geolocation validation (step 4) ────────────────────────────────
   const submitQrCode = async (code: string) => {
     if (!shift || clockOutLoading) return;
+    if (outReasonRequired && !outReasonOk) {
+      toast.error("Motif obligatoire", { description: "Explique pourquoi tu pars plus tôt ou plus tard." });
+      return;
+    }
     setClockOutLoading(true);
     try {
       let lat: number | null = null, lng: number | null = null;
@@ -340,7 +344,10 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         setClockOutLoading(false);
         return;
       }
-      const r = await validateClockOut({ data: { shiftId: shift.id, qrCode: code, lat, lng } });
+      const r = await validateClockOut({
+        data: { shiftId: shift.id, qrCode: code, lat, lng, outReason: outReasonRequired ? outReason.trim() : null },
+      });
+
       setClockedOutAt(r.completedAt ?? new Date().toISOString());
       toast.success("Pointage de sortie validé");
       // Phase null (rare) → finalize direct ; sinon → écran "Avant de partir" (step 5)
