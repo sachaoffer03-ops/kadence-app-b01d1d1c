@@ -54,6 +54,17 @@ interface Sig { id: string; category: string; message: string; created_at: strin
 interface AuthorMini { id: string; first_name: string; last_name: string; }
 
 const fmtTime = (t: string) => t.slice(0, 5).replace(":", "h");
+const SHIFT_STATUS_FR: Record<string, string> = {
+  scheduled: "Planifié",
+  open: "Ouvert",
+  completed: "Terminé",
+  cancelled: "Annulé",
+  in_progress: "En cours",
+  published: "Publié",
+  draft: "Brouillon",
+  no_show: "Absence",
+};
+const statusFr = (s: string) => SHIFT_STATUS_FR[s] ?? s;
 const initials = (f: string, l: string) => `${(f?.[0] || "").toUpperCase()}${(l?.[0] || "").toUpperCase()}`;
 
 function EmployeeDetailPage() {
