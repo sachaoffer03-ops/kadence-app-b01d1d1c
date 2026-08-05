@@ -1632,6 +1632,69 @@ export type Database = {
           },
         ]
       }
+      recurring_assignments: {
+        Row: {
+          business_role: string
+          created_at: string
+          created_by: string | null
+          date_from: string
+          date_to: string
+          end_time: string
+          id: string
+          is_active: boolean
+          start_time: string
+          studio_id: string
+          updated_at: string
+          user_id: string
+          weekday: number
+        }
+        Insert: {
+          business_role: string
+          created_at?: string
+          created_by?: string | null
+          date_from: string
+          date_to: string
+          end_time: string
+          id?: string
+          is_active?: boolean
+          start_time: string
+          studio_id: string
+          updated_at?: string
+          user_id: string
+          weekday: number
+        }
+        Update: {
+          business_role?: string
+          created_at?: string
+          created_by?: string | null
+          date_from?: string
+          date_to?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          start_time?: string
+          studio_id?: string
+          updated_at?: string
+          user_id?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_assignments_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_transition_notifications: {
         Row: {
           sent_at: string

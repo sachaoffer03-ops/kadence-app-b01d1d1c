@@ -25,6 +25,7 @@ import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHisto
 import { setUserAppRole, setUserAppRoles } from "@/lib/admins.functions";
 import { ManagerPermissionsModal } from "@/components/ManagerPermissionsModal";
 import { TimePicker24 } from "@/components/ui/time-picker-24";
+import { RecurringAssignmentsCard } from "@/components/staff/RecurringAssignmentsCard";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
@@ -348,6 +349,14 @@ function EmployeeDetailPage() {
           )}
           <ClockedShiftsTable userId={emp.id} />
           <EmployeeProposalsCard userId={emp.id} studios={studios} />
+          <RecurringAssignmentsCard
+            userId={emp.id}
+            firstName={emp.first_name || "L'employé"}
+            studios={studios}
+            userStudioIds={userStudioIds}
+            businessRoles={businessRoles}
+            canEdit={canEditProfile}
+          />
 
 
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
