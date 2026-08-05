@@ -167,27 +167,10 @@ export async function finalizeClosure(input: FinalizeClosureInput) {
     .update({ status: "completed" })
     .eq("id", input.shiftId);
 
-  // Notify managers of the studio (best-effort, non-blocking)
+  // Pas de notification "shift clôturé" aux admins/managers : trop bruyant
+  // (une par clôture). L'info reste visible sur /cloture et le dashboard.
   const ownerId = shift.user_id as string;
-  if (shift.studio_id && ownerId) {
-    const { data: prof } = await supabaseAdmin
-      .from("profiles").select("first_name,last_name").eq("id", ownerId).maybeSingle();
-    const name = `${(prof as any)?.first_name ?? ""} ${(prof as any)?.last_name ?? ""}`.trim() || "Un employé";
-    const { data: mgrs } = await supabaseAdmin
-      .from("user_roles").select("user_id,role").in("role", ["admin", "manager"]);
-    if (mgrs && mgrs.length) {
-      const notifs = mgrs.map((m: any) => ({
-        user_id: m.user_id,
-        type: "shift_closed",
-        title: "Shift clôturé",
-        body: `${name} a clôturé son shift (${shift.business_role})`,
-        link: `/cloture?shift=${shift.id}`,
-        priority: "info",
-        category: "shift",
-      }));
-      await supabaseAdmin.from("notifications").insert(notifs);
-    }
-  }
+
 
   // ─── Compute recap (server is source of truth) ─────────────────────────────
   const inMs = shift.clocked_in_at ? new Date(shift.clocked_in_at).getTime() : null;
