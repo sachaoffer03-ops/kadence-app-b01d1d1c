@@ -276,7 +276,7 @@ function EmployeeDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
 
         {/* LEFT */}
-        <div className="col-span-2 flex flex-col gap-4">
+        <div className="md:col-span-2 flex flex-col gap-4">
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div className="flex items-center gap-4 mb-4">
               <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 56, height: 56, backgroundColor: rc.bg, color: rc.text, fontSize: 18, fontWeight: 500 }}>
@@ -428,7 +428,7 @@ function EmployeeDetailPage() {
         </div>
 
         {/* RIGHT */}
-        <div className="col-span-3 flex flex-col gap-4">
+        <div className="md:col-span-3 flex flex-col gap-4">
           <PunctualityCard shifts={shifts} />
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
