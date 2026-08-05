@@ -297,6 +297,8 @@ function FeedbacksPage() {
           })}
         </div>
       )}
+      </>
+      )}
     </div>
   );
 }
