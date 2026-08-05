@@ -128,6 +128,18 @@ function isoWeekStart(dateStr: string): string {
   return isoDate(d);
 }
 
+function isoWeekEnd(dateStr: string): string {
+  const d = new Date(`${isoWeekStart(dateStr)}T00:00:00`);
+  d.setDate(d.getDate() + 6);
+  return isoDate(d);
+}
+
+function shiftDays(dateStr: string, n: number): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return isoDate(d);
+}
+
 function eachDate(from: string, to: string): string[] {
   const out: string[] = [];
   const s = new Date(`${from}T00:00:00`);
@@ -370,7 +382,10 @@ async function runEngine(ctx: EngineCtx) {
     // ⚠️ Volontairement PAS de .in("studio_id", studioIds) : on veut aussi voir
     // les shifts des autres studios pour éviter les doubles-bookings cross-studio
     // (chevauchement horaire, repos 11h, cumul heures hebdo).
-    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd)),
+    // Fenêtre élargie aux semaines ISO complètes qui débordent du mois (+/- 1 jour
+    // pour le repos 11h) : une semaine à cheval sur deux mois doit tenir compte
+    // des heures déjà posées de l'autre côté de la frontière.
+    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", shiftDays(isoWeekStart(monthStart), -1)).lte("shift_date", shiftDays(isoWeekEnd(monthEnd), 1))),
     fetchAll<any>(supabase.from("business_roles").select("name, is_kitchen").eq("is_kitchen", true)),
     fetchAll<any>(supabase.from("training_courses").select("id, business_role_id, is_required_for_all, required_for_planning").eq("required_for_planning", true)),
     fetchAll<any>(supabase.from("training_course_completions").select("user_id, course_id")),
@@ -397,6 +412,20 @@ async function runEngine(ctx: EngineCtx) {
     }
     logs.excluded_user_ids = Array.from(excludeUserIds);
   }
+
+  // ── Shifts hors période (jours de la même semaine ISO appartenant au mois
+  // précédent/suivant) : contraintes dures uniquement, jamais modifiés.
+  const boundaryShifts: any[] = [];
+  for (let i = existingShifts.length - 1; i >= 0; i--) {
+    const d = existingShifts[i].shift_date;
+    if (d < monthStart || d > monthEnd) {
+      boundaryShifts.push(existingShifts[i]);
+      existingShifts.splice(i, 1);
+    }
+  }
+  logs.boundary_shifts_loaded = boundaryShifts.length;
+
+
 
   // Indisponibilités : Map<userId, Array<{start,end}>>
   const unavailByUser = new Map<string, Array<{ start: string; end: string }>>();
@@ -635,6 +664,26 @@ async function runEngine(ctx: EngineCtx) {
     externalSeeded++;
   }
   logs.external_shifts_seeded = externalSeeded;
+
+  // Seed les shifts des jours hors période mais dans les mêmes semaines ISO
+  // (mois précédent/suivant) : quota hebdo, conflits et repos 11h en tiennent compte.
+  let boundarySeeded = 0;
+  for (const sh of boundaryShifts) {
+    if (!sh.user_id || !employees.has(sh.user_id)) continue;
+    const e = employees.get(sh.user_id)!;
+    const sStart = t2m(sh.start_time), sEnd = t2m(sh.end_time);
+    e.assigned.push({
+      date: sh.shift_date,
+      startMin: sStart,
+      endMin: sEnd,
+      studio_id: sh.studio_id,
+      role: sh.business_role,
+      reqId: `boundary:${sh.id}`,
+    });
+    e.weeklyMin.set(isoWeekStart(sh.shift_date), (e.weeklyMin.get(isoWeekStart(sh.shift_date)) ?? 0) + (sEnd - sStart));
+    boundarySeeded++;
+  }
+  logs.boundary_shifts_seeded = boundarySeeded;
 
   // Bloque les cellules couvertes par shifts manuels/lockés et soustrait du quota
   const preservedShifts: any[] = [];
