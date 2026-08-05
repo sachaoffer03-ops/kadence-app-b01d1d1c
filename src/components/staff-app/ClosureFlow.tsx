@@ -124,7 +124,30 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   const analyzeClosurePhoto = useServerFn(analyzeClosurePhotoFn);
 
 
+  // ─── Tolérances de sortie lues en direct (réglages studio) ───────────────
+  useEffect(() => {
+    if (!open || !shift?.id) return;
+    let alive = true;
+    setOutReason("");
+    setClockPolicy(null);
+    const load = async () => {
+      try {
+        const p: any = await getClockPolicy({ data: { shiftId: shift.id } });
+        if (alive) setClockPolicy({
+          outDeviationMin: p.outDeviationMin,
+          earlyOutWindowMin: p.earlyOutWindowMin,
+          graceOutMin: p.graceOutMin,
+          clockOutNeedsReason: p.clockOutNeedsReason,
+        });
+      } catch { /* ignore */ }
+    };
+    load();
+    const t = setInterval(load, 30_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [open, shift?.id, getClockPolicy]);
+
   // ─── Load template + closure questions when shift opens ──────────────────
+
   useEffect(() => {
     if (!open || !shift) return;
     setStep(1);
