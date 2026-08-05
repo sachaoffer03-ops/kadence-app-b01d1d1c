@@ -382,7 +382,10 @@ async function runEngine(ctx: EngineCtx) {
     // ⚠️ Volontairement PAS de .in("studio_id", studioIds) : on veut aussi voir
     // les shifts des autres studios pour éviter les doubles-bookings cross-studio
     // (chevauchement horaire, repos 11h, cumul heures hebdo).
-    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", monthStart).lte("shift_date", monthEnd)),
+    // Fenêtre élargie aux semaines ISO complètes qui débordent du mois (+/- 1 jour
+    // pour le repos 11h) : une semaine à cheval sur deux mois doit tenir compte
+    // des heures déjà posées de l'autre côté de la frontière.
+    fetchAll<any>(supabase.from("shifts").select("id, user_id, studio_id, shift_date, start_time, end_time, business_role, role_segments, is_manual, is_locked").gte("shift_date", shiftDays(isoWeekStart(monthStart), -1)).lte("shift_date", shiftDays(isoWeekEnd(monthEnd), 1))),
     fetchAll<any>(supabase.from("business_roles").select("name, is_kitchen").eq("is_kitchen", true)),
     fetchAll<any>(supabase.from("training_courses").select("id, business_role_id, is_required_for_all, required_for_planning").eq("required_for_planning", true)),
     fetchAll<any>(supabase.from("training_course_completions").select("user_id, course_id")),
