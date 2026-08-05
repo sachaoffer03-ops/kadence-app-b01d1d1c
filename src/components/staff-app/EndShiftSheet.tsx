@@ -241,9 +241,35 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
               placeholder="Ex: Attention, le moulin chauffe / Stock lait avoine bas / Client réservé à 14h..."
               rows={5} />
           </FormField>
+
+          {outReasonRequired && (
+            <div className="rounded-xl p-3 mb-1" style={{ backgroundColor: "#FDECE6", border: "0.5px solid #F0997B" }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#8A3B1E" }}>Motif obligatoire</div>
+              <div style={{ fontSize: 12, color: "#8A3B1E", marginTop: 4, lineHeight: 1.5 }}>
+                {(policy?.outDeviationMin ?? 0) < 0
+                  ? `Tu pars ${Math.abs(policy!.outDeviationMin)} min avant la fin prévue (tolérance : ${policy?.earlyOutWindowMin} min).`
+                  : `Tu pointes ta sortie ${policy?.outDeviationMin} min après la fin prévue (tolérance : ${policy?.graceOutMin} min).`}
+                {" "}Explique brièvement pourquoi.
+              </div>
+              <textarea
+                value={outReason}
+                onChange={(e) => setOutReason(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="Ex : fin de service anticipée validée par le manager…"
+                className="mt-2 w-full rounded-lg p-2.5"
+                style={{ fontSize: 16, border: "0.5px solid rgba(0,0,0,0.15)", backgroundColor: "#fff", resize: "none" }}
+              />
+              {!outReasonOk && (
+                <div style={{ fontSize: 11, color: "#8A3B1E", marginTop: 4 }}>Au moins 5 caractères.</div>
+              )}
+            </div>
+          )}
+
           <div className="mt-3 flex gap-2">
             <SecondaryButton onClick={() => goToStep("report")}>Retour</SecondaryButton>
-            <PrimaryButton onClick={handleFinish} disabled={submitting}>
+            <PrimaryButton onClick={handleFinish} disabled={submitting || (outReasonRequired && !outReasonOk)}>
+
               {submitting ? "Envoi..." : "Finaliser et pointer ma sortie"}
             </PrimaryButton>
           </div>
