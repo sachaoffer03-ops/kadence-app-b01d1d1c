@@ -16,6 +16,8 @@ import { roleColors, getQuotaStatus, type Role } from "@/lib/role-colors";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { ClosureFlow } from "@/components/staff-app/ClosureFlow";
+import { MyChecklistSheet, ChecklistAccessCard, loadChecklistProgress } from "@/components/staff-app/MyChecklistSheet";
+import type { ChecklistPhase } from "@/lib/checklists.helpers";
 import { SignalementSheet, RequestModificationSheet, MyRequestsSheet } from "@/components/staff-app/StaffActionsSheets";
 import { ShiftDetailSheet, DocumentsSheet, NotificationsSheet } from "@/components/staff-app/ProfileSheets";
 import { CalendarExportSheet } from "@/components/staff-app/CalendarExportSheet";
@@ -336,6 +338,20 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     if (!s.clocked_in_at) { toast.error("Tu dois d'abord pointer ton arrivée"); return; }
     setEndShift(s);
   }
+
+  // ─── Check-list accessible pendant tout le shift ───────────────────────────
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const [checklistProgress, setChecklistProgress] = useState<{ phase: ChecklistPhase; done: number; total: number } | null>(null);
+  const activeShift = shifts.find((s) => !!s.clocked_in_at && !s.clocked_out_at) ?? null;
+  useEffect(() => {
+    if (!activeShift) { setChecklistProgress(null); return; }
+    let alive = true;
+    loadChecklistProgress(activeShift as any, userId)
+      .then((p) => { if (alive && p) setChecklistProgress({ phase: p.phase, done: p.done, total: p.total }); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [activeShift?.id, userId, checklistOpen]);
+
 
   // Mois suivant
   const nextMonth = useMemo(() => {
@@ -743,6 +759,23 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
                 );
               })()}
 
+              {state === "in_service" && checklistProgress && checklistProgress.total > 0 && (
+                <button
+                  onClick={() => setChecklistOpen(true)}
+                  className="mt-2 ml-0 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
+                  style={{
+                    fontSize: 12, fontWeight: 500,
+                    backgroundColor: "rgba(255,255,255,0.10)",
+                    color: "#FAF8F4",
+                    border: "1px solid rgba(255,255,255,0.18)",
+                  }}
+                >
+                  <CheckSquare size={13} /> Faire ma check-list · {checklistProgress.done}/{checklistProgress.total}
+                </button>
+              )}
+
+
+
               {state === "future" && next && !isToday && (
                 <button
                   onClick={() => setShiftDetail(next)}
@@ -787,6 +820,17 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
 
       {/* ─── À FAIRE ─── */}
       <ZoneLabel>À faire</ZoneLabel>
+
+      {activeShift && checklistProgress && checklistProgress.total > 0 && (
+        <ChecklistAccessCard
+          done={checklistProgress.done}
+          total={checklistProgress.total}
+          phase={checklistProgress.phase}
+          onOpen={() => setChecklistOpen(true)}
+        />
+      )}
+
+
 
       <button
         onClick={() => setDisposOpen(true)}
@@ -905,6 +949,13 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
           const completedAt = new Date().toISOString();
           setShifts((prev) => prev.map((s) => s.id === endShift.id ? { ...s, clocked_out_at: completedAt } : s));
         }}
+      />
+      <MyChecklistSheet
+        open={checklistOpen}
+        onClose={() => setChecklistOpen(false)}
+        shift={activeShift as any}
+        userId={userId}
+        onProgress={({ done, total }) => setChecklistProgress((prev) => prev ? { ...prev, done, total } : prev)}
       />
       <SignalementSheet open={signalOpen} onClose={() => setSignalOpen(false)} userId={userId} studioId={profile?.studio_id ?? null} />
       <RequestModificationSheet open={reqOpen} onClose={() => { setReqOpen(false); setReqShiftId(null); }} userId={userId} shiftId={reqShiftId} />
