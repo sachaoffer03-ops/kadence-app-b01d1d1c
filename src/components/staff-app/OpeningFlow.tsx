@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Camera, PartyPopper, Loader2, MessageSquareQuote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { signChecklistPhoto } from "@/lib/checklist-photo-url";
 import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, type ChecklistPhase } from "@/lib/checklists.helpers";
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
 
@@ -154,17 +155,16 @@ export function OpeningFlow({ open, onClose, shift, userId, studios, firstName, 
     setPhotoStates((prev) => ({ ...prev, [zoneId]: { ...(prev[zoneId] ?? { url: null, status: "idle" }), status: "uploading" } }));
     try {
       const path = await uploadSubmissionPhoto(file, userId, submissionId, zoneId);
-      const { data: pub } = supabase.storage.from("checklist-photos").getPublicUrl(path);
-      const url = pub.publicUrl;
+      const url = await signChecklistPhoto(path);
       const { data: existing } = await supabase.from("checklist_submission_photos")
         .select("id").eq("submission_id", submissionId).eq("template_photo_id", zoneId).maybeSingle();
       if (existing) {
         await supabase.from("checklist_submission_photos")
-          .update({ photo_url: url, uploaded_at: new Date().toISOString() })
+          .update({ photo_url: path, uploaded_at: new Date().toISOString() })
           .eq("id", (existing as any).id);
       } else {
         await supabase.from("checklist_submission_photos").insert({
-          submission_id: submissionId, template_photo_id: zoneId, photo_url: url, uploaded_at: new Date().toISOString(),
+          submission_id: submissionId, template_photo_id: zoneId, photo_url: path, uploaded_at: new Date().toISOString(),
         });
       }
       setPhotoStates((prev) => ({ ...prev, [zoneId]: { url, status: "done" } }));
