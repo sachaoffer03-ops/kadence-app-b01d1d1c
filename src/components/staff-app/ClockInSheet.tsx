@@ -176,6 +176,36 @@ export function ClockInSheet({ open, onClose, shift, studios, userId, firstName,
               Le QR est affiché sur la tablette à l'accueil. Si tu ne l'as pas sous la main, tu peux entrer le code à 5 caractères manuellement.
             </div>
 
+            {reasonRequired && (
+              <div
+                className="mt-3 rounded-xl p-3"
+                style={{ backgroundColor: "#FDECE6", border: "0.5px solid #F0997B" }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 500, color: "#8A3B1E" }}>
+                  Motif de retard obligatoire
+                </div>
+                <div style={{ fontSize: 12, color: "#8A3B1E", marginTop: 4, lineHeight: 1.5 }}>
+                  Tu as {diffMin} min de retard (tolérance : {policy?.graceInMin} min). Explique brièvement pourquoi.
+                </div>
+                <textarea
+                  value={lateReason}
+                  onChange={(e) => setLateReason(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Ex : retard de tram, imprévu personnel…"
+                  className="mt-2 w-full rounded-lg p-2.5"
+                  style={{ fontSize: 16, border: "0.5px solid rgba(0,0,0,0.15)", backgroundColor: "#fff", resize: "none" }}
+                />
+                {!reasonOk && (
+                  <div style={{ fontSize: 11, color: "#8A3B1E", marginTop: 4 }}>
+                    Au moins 5 caractères.
+                  </div>
+                )}
+              </div>
+            )}
+
+
+
             {!manual ? (
               <>
                 <div
