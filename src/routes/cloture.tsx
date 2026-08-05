@@ -933,19 +933,19 @@ function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: 
         .select("id")
         .eq("studio_id", studioId)
         .eq("business_role_id", target)
-        .eq("phase", phase)
+        .eq("phase", targetPhase)
         .order("created_at", { ascending: true })
         .limit(1);
       let tpl: any = tplRows && tplRows.length > 0 ? tplRows[0] : null;
       if (!tpl) {
         const { data: created, error: cErr } = await supabase.from("checklist_templates").insert({
-          studio_id: studioId, business_role_id: target, name: phase === "opening" ? "Ouverture" : phase === "transition_in" ? "Prise de poste" : phase === "transition_out" ? "Passage de relais" : "Clôture", phase, is_active: true, is_blocking: true,
+          studio_id: studioId, business_role_id: target, name: PHASE_META[targetPhase].label, phase: targetPhase, is_active: true, is_blocking: true,
         } as any).select("id").single();
         if (cErr) {
           // Conflit unique → relire
           const { data: again } = await supabase
             .from("checklist_templates").select("id")
-            .eq("studio_id", studioId).eq("business_role_id", target).eq("phase", phase)
+            .eq("studio_id", studioId).eq("business_role_id", target).eq("phase", targetPhase)
             .order("created_at", { ascending: true }).limit(1);
           tpl = again && again.length > 0 ? again[0] : null;
         } else {
