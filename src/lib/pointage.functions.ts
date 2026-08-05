@@ -462,51 +462,64 @@ export const checkPointageAlertsFn = createServerFn({ method: "POST" })
     const adminIds = Array.from(new Set((admins ?? []).map((a: any) => a.user_id)));
     if (adminIds.length === 0) return { created: 0 };
 
+    // Managers : uniquement leurs studios. Admins : tous les studios.
+    const globalAdminIds = new Set(
+      (admins ?? []).filter((a: any) => a.role === "admin").map((a: any) => a.user_id)
+    );
+    const managerIds = adminIds.filter((id) => !globalAdminIds.has(id));
+    const { data: managerStudios } = managerIds.length
+      ? await supabase.from("user_studios").select("user_id,studio_id").in("user_id", managerIds)
+      : { data: [] as any[] };
+    const studiosByManager = new Map<string, Set<string>>();
+    for (const row of (managerStudios ?? []) as any[]) {
+      if (!studiosByManager.has(row.user_id)) studiosByManager.set(row.user_id, new Set());
+      studiosByManager.get(row.user_id)!.add(row.studio_id);
+    }
+    const recipientsFor = (studioId: string | null) =>
+      adminIds.filter((id) => {
+        if (globalAdminIds.has(id)) return true;
+        if (!studioId) return false;
+        return studiosByManager.get(id)?.has(studioId) ?? false;
+      });
+
     const profilesNeeded = Array.from(new Set((shifts ?? []).map((s: any) => s.user_id).filter(Boolean)));
     const { data: profiles } = profilesNeeded.length
       ? await supabase.from("profiles").select("id,first_name").in("id", profilesNeeded)
       : { data: [] as any[] };
     const pmap = new Map((profiles ?? []).map((p: any) => [p.id, p.first_name || "Employé"]));
 
-    const alerts: Array<{ type: string; shiftId: string; title: string; body: string }> = [];
+    const alerts: Array<{ type: string; shiftId: string; studioId: string | null; title: string; body: string }> = [];
 
     for (const sh of (shifts ?? []) as any[]) {
       if (!sh.user_id || sh.status === "cancelled") continue;
       const studio = sh.studio_id ? (smap.get(sh.studio_id) as any) : null;
       const grace = studio?.clock_in_grace_period_min ?? 15;
       const start = new Date(`${sh.shift_date}T${sh.start_time}`);
-      const end = new Date(`${sh.shift_date}T${sh.end_time}`);
       const firstName = pmap.get(sh.user_id) || "Employé";
       const studioName = (studio?.short_name || studio?.name || "—").replace(/^Skult\s+/i, "");
 
-      // A. Late arrival
-      if (!sh.clocked_in_at && now > new Date(start.getTime() + grace * 60_000)) {
-        alerts.push({
-          type: "shift_late_arrival",
-          shiftId: sh.id,
-          title: `${firstName} en retard`,
-          body: `Shift ${sh.start_time.slice(0, 5)} au ${studioName} non pointé`,
-        });
-      }
-      // B. No-show suspected (30 min)
+      // Une seule alerte d'arrivée par shift : no-show (30 min) prend le pas sur le retard.
       if (!sh.clocked_in_at && now > new Date(start.getTime() + 30 * 60_000)) {
         alerts.push({
           type: "shift_no_show_suspected",
           shiftId: sh.id,
+          studioId: sh.studio_id ?? null,
           title: `${firstName} : no-show probable`,
-          body: `Plus de 30 min après l'heure de début, toujours pas pointé`,
+          body: `Plus de 30 min après l'heure de début, toujours pas pointé (${studioName})`,
         });
-      }
-      // C. Clock-out missing (1h after end)
-      if (sh.clocked_in_at && !sh.clocked_out_at && now > new Date(end.getTime() + 60 * 60_000)) {
+      } else if (!sh.clocked_in_at && now > new Date(start.getTime() + grace * 60_000)) {
         alerts.push({
-          type: "shift_clock_out_missing",
+          type: "shift_late_arrival",
           shiftId: sh.id,
-          title: `Sortie non pointée`,
-          body: `Rappel : ${firstName} n'a pas pointé sa sortie`,
+          studioId: sh.studio_id ?? null,
+          title: `${firstName} en retard`,
+          body: `Shift ${sh.start_time.slice(0, 5)} au ${studioName} non pointé`,
         });
       }
+      // Sortie non pointée : géré par l'alerte "shift_overdue_clockout" (paramétrable par studio),
+      // on ne double pas ici.
     }
+
 
     if (alerts.length === 0) return { created: 0 };
 
