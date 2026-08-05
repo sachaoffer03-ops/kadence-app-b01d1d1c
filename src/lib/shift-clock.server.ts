@@ -153,7 +153,7 @@ export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
   const completedAt = new Date().toISOString();
   const { data: updated, error: updateError } = await supabaseAdmin
     .from("shifts")
-    .update({ status: "completed", clocked_out_at: completedAt })
+    .update({ status: "completed", clocked_out_at: completedAt, clock_out_reason: outReason, clock_out_deviation_min: outDeviation } as any)
     .eq("id", input.shiftId)
     .is("clocked_out_at", null)
     .select("id")
