@@ -894,14 +894,19 @@ function SortableItem({ item, onDeleted }: { item: any; photos?: any[]; onDelete
 }
 
 
+const PHASE_ORDER: ChecklistPhase[] = ["opening", "transition_in", "transition_out", "closing"];
+
 function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: { items: any[]; currentRoleId: string; studioId: string; phase?: ChecklistPhase }) {
   const { roles } = useBusinessRoles({ onlyActive: true });
   const [open, setOpen] = useState(false);
-  const [target, setTarget] = useState<string>("");
+  const [target, setTarget] = useState<string>(currentRoleId);
+  const [targetPhase, setTargetPhase] = useState<ChecklistPhase>(phase);
   const [busy, setBusy] = useState(false);
 
+  const isSame = target === currentRoleId && targetPhase === phase;
+
   const dup = async () => {
-    if (!target || busy) return;
+    if (!target || busy || isSame) return;
     setBusy(true);
     try {
       // 1) Forcer la persistance des champs en cours d'édition (blur l'élément actif)
