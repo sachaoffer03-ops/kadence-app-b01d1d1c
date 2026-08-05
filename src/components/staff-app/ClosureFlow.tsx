@@ -474,7 +474,33 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         {step === 3 && <Step3 role={shift.business_role} photos={photos} states={photoStates} onUpload={handlePhotoUpload} template={template} hasTemplate={!!template} />}
         {step === 4 && (geoDenied
           ? <div className="px-5 py-5"><GeolocationDeniedScreen onRetrySuccess={() => setGeoDenied(false)} /></div>
-          : <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />)}
+          : <>
+              {outReasonRequired && (
+                <div className="mx-5 mt-4 rounded-xl p-3" style={{ backgroundColor: "#FDECE6", border: "0.5px solid #F0997B" }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#8A3B1E" }}>Motif obligatoire</div>
+                  <div style={{ fontSize: 12, color: "#8A3B1E", marginTop: 4, lineHeight: 1.5 }}>
+                    {(clockPolicy?.outDeviationMin ?? 0) < 0
+                      ? `Tu pars ${Math.abs(clockPolicy!.outDeviationMin)} min avant la fin prévue (tolérance : ${clockPolicy?.earlyOutWindowMin} min).`
+                      : `Tu pointes ta sortie ${clockPolicy?.outDeviationMin} min après la fin prévue (tolérance : ${clockPolicy?.graceOutMin} min).`}
+                    {" "}Explique brièvement pourquoi avant de scanner.
+                  </div>
+                  <textarea
+                    value={outReason}
+                    onChange={(e) => setOutReason(e.target.value)}
+                    rows={3}
+                    maxLength={500}
+                    placeholder="Ex : service terminé plus tôt, validé par le manager…"
+                    className="mt-2 w-full rounded-lg p-2.5"
+                    style={{ fontSize: 16, border: "0.5px solid rgba(0,0,0,0.15)", backgroundColor: "#fff", resize: "none" }}
+                  />
+                  {!outReasonOk && (
+                    <div style={{ fontSize: 11, color: "#8A3B1E", marginTop: 4 }}>Au moins 5 caractères.</div>
+                  )}
+                </div>
+              )}
+              <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />
+            </>)}
+
         {step === 5 && <Step5
           questions={closureQuestions}
           responses={questionResponses}
