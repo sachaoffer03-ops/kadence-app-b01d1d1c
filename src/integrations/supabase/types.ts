@@ -1956,6 +1956,8 @@ export type Database = {
         Row: {
           business_role: string
           clock_admin_note: string | null
+          clock_out_deviation_min: number | null
+          clock_out_reason: string | null
           clocked_in_at: string | null
           clocked_out_at: string | null
           created_at: string
@@ -1965,6 +1967,7 @@ export type Database = {
           id: string
           is_locked: boolean
           is_manual: boolean
+          late_reason: string | null
           minutes_late: number | null
           notes: string | null
           published_at: string | null
@@ -1979,6 +1982,8 @@ export type Database = {
         Insert: {
           business_role: string
           clock_admin_note?: string | null
+          clock_out_deviation_min?: number | null
+          clock_out_reason?: string | null
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
@@ -1988,6 +1993,7 @@ export type Database = {
           id?: string
           is_locked?: boolean
           is_manual?: boolean
+          late_reason?: string | null
           minutes_late?: number | null
           notes?: string | null
           published_at?: string | null
@@ -2002,6 +2008,8 @@ export type Database = {
         Update: {
           business_role?: string
           clock_admin_note?: string | null
+          clock_out_deviation_min?: number | null
+          clock_out_reason?: string | null
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
@@ -2011,6 +2019,7 @@ export type Database = {
           id?: string
           is_locked?: boolean
           is_manual?: boolean
+          late_reason?: string | null
           minutes_late?: number | null
           notes?: string | null
           published_at?: string | null
