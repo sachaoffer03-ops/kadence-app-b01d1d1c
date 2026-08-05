@@ -54,6 +54,17 @@ interface Sig { id: string; category: string; message: string; created_at: strin
 interface AuthorMini { id: string; first_name: string; last_name: string; }
 
 const fmtTime = (t: string) => t.slice(0, 5).replace(":", "h");
+const SHIFT_STATUS_FR: Record<string, string> = {
+  scheduled: "Planifié",
+  open: "Ouvert",
+  completed: "Terminé",
+  cancelled: "Annulé",
+  in_progress: "En cours",
+  published: "Publié",
+  draft: "Brouillon",
+  no_show: "Absence",
+};
+const statusFr = (s: string) => SHIFT_STATUS_FR[s] ?? s;
 const initials = (f: string, l: string) => `${(f?.[0] || "").toUpperCase()}${(l?.[0] || "").toUpperCase()}`;
 
 function EmployeeDetailPage() {
@@ -265,7 +276,7 @@ function EmployeeDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
 
         {/* LEFT */}
-        <div className="col-span-2 flex flex-col gap-4">
+        <div className="md:col-span-2 flex flex-col gap-4">
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div className="flex items-center gap-4 mb-4">
               <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 56, height: 56, backgroundColor: rc.bg, color: rc.text, fontSize: 18, fontWeight: 500 }}>
@@ -417,7 +428,7 @@ function EmployeeDetailPage() {
         </div>
 
         {/* RIGHT */}
-        <div className="col-span-3 flex flex-col gap-4">
+        <div className="md:col-span-3 flex flex-col gap-4">
           <PunctualityCard shifts={shifts} />
           <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
@@ -445,43 +456,47 @@ function EmployeeDetailPage() {
                   const inHHMM = s.clocked_in_at ? formatBrusselsTime(s.clocked_in_at) : "";
                   const outHHMM = s.clocked_out_at ? formatBrusselsTime(s.clocked_out_at) : "";
                   return (
-                    <div key={s.id} className="rounded-lg px-3 py-2" style={{ backgroundColor: "var(--background)" }}>
-                      <div className="flex items-center gap-3">
-                        <Clock size={13} style={{ color: "var(--muted-foreground)" }} />
-                        <div className="flex-1">
-                          <div style={{ fontSize: 12, fontWeight: 500 }}>{new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</div>
-                          <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)} · {s.business_role} · {sname?.replace?.("Skult ", "")}</div>
-                          {(s.clocked_in_at || s.clocked_out_at) && (
-                            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
-                              Pointé : {inHHMM || "—"} → {outHHMM || "—"}
-                            </div>
+                    <div key={s.id} className="rounded-lg px-3 py-2.5" style={{ backgroundColor: "var(--background)" }}>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <div className="flex min-w-0 items-start gap-2 sm:flex-1">
+                          <Clock size={13} className="shrink-0 mt-0.5" style={{ color: "var(--muted-foreground)" }} />
+                          <div className="min-w-0 flex-1">
+                            <div style={{ fontSize: 12, fontWeight: 500 }}>{new Date(s.shift_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</div>
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{fmtTime(s.start_time)} — {fmtTime(s.end_time)} · {s.business_role} · {sname?.replace?.("Skult ", "")}</div>
+                            {(s.clocked_in_at || s.clocked_out_at) && (
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+                                Pointé : {inHHMM || "—"} → {outHHMM || "—"}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                          {shiftFbs.length > 0 ? (
+                            <RatingBadge value={shiftFbs[0].rating} />
+                          ) : s.clocked_out_at ? (
+                            <span className="rounded-full px-2 py-0.5 whitespace-nowrap" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-text)" }}>À noter</span>
+                          ) : null}
+                          <span className="rounded-full px-2 py-0.5 whitespace-nowrap" style={{
+                            fontSize: 10, fontWeight: 500,
+                            backgroundColor: s.status === "completed" ? "var(--success-bg)" : s.status === "cancelled" ? "var(--danger-bg)" : "var(--muted)",
+                            color: s.status === "completed" ? "var(--success-text)" : s.status === "cancelled" ? "var(--danger-text)" : "var(--muted-foreground)",
+                          }}>{statusFr(s.status)}</span>
+                          {canEditClock && !isEditingClock && (
+                            <button onClick={() => setEditClockShiftId(s.id)}
+                              className="rounded-md px-2 py-1 inline-flex items-center gap-1 whitespace-nowrap"
+                              style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}
+                              title="Modifier les heures de pointage">
+                              <Pencil size={11} /> Pointage
+                            </button>
+                          )}
+                          {canRate && !isRating && (
+                            <button onClick={() => { setRateShiftId(s.id); setRateValue(0); setRateMsg(""); }}
+                              className="rounded-md px-2 py-1 inline-flex items-center gap-1 whitespace-nowrap"
+                              style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}>
+                              <Plus size={11} /> Noter
+                            </button>
                           )}
                         </div>
-                        {shiftFbs.length > 0 ? (
-                          <RatingBadge value={shiftFbs[0].rating} />
-                        ) : s.clocked_out_at ? (
-                          <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-text)" }}>À noter</span>
-                        ) : null}
-                        <span className="rounded-full px-2 py-0.5" style={{
-                          fontSize: 10, fontWeight: 500,
-                          backgroundColor: s.status === "completed" ? "var(--success-bg)" : s.status === "cancelled" ? "var(--danger-bg)" : "var(--muted)",
-                          color: s.status === "completed" ? "var(--success-text)" : s.status === "cancelled" ? "var(--danger-text)" : "var(--muted-foreground)",
-                        }}>{s.status}</span>
-                        {canEditClock && !isEditingClock && (
-                          <button onClick={() => setEditClockShiftId(s.id)}
-                            className="rounded-md px-2 py-1 inline-flex items-center gap-1"
-                            style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}
-                            title="Modifier les heures de pointage">
-                            <Pencil size={11} /> Pointage
-                          </button>
-                        )}
-                        {canRate && !isRating && (
-                          <button onClick={() => { setRateShiftId(s.id); setRateValue(0); setRateMsg(""); }}
-                            className="rounded-md px-2 py-1 inline-flex items-center gap-1"
-                            style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}>
-                            <Plus size={11} /> Noter
-                          </button>
-                        )}
                       </div>
                       {isEditingClock && (
                         <EditClockInline
