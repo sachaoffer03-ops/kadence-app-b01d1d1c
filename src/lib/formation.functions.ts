@@ -136,16 +136,17 @@ export const getFormationIndex = createServerFn({ method: "GET" })
     const courseCards = courses.map((c: any) => {
       const courseMods = modulesPerCourse.get(c.id) ?? [];
       const totalMin = courseMods.reduce((acc, m) => acc + (m.duration_estimate_min ?? 0), 0);
-      const targetUsers = c.is_required_for_all
+      const targetUsers = (c.is_required_for_all
         ? employees
         : c.business_role_id
           ? employees.filter(e => {
               const roleName = roleNameById.get(c.business_role_id);
               return roleName && userRoles.get(e.id)?.has(roleName);
             })
-          : [];
+          : []).filter(e => matchesStudio(c.id, e.id));
       const done = (completionsByCourse.get(c.id)?.size) ?? 0;
       const pct = targetUsers.length > 0 ? Math.round((done / targetUsers.length) * 100) : 0;
+      const studioIds = Array.from(studiosByCourse.get(c.id) ?? []);
       return {
         ...c,
         moduleCount: courseMods.length,
@@ -154,7 +155,10 @@ export const getFormationIndex = createServerFn({ method: "GET" })
         completedCount: done,
         pct,
         businessRoleName: c.business_role_id ? roleNameById.get(c.business_role_id) ?? null : null,
+        studioIds,
+        studioNames: studioIds.map((id) => studioNameById.get(id) ?? "").filter(Boolean),
       };
+
     });
 
     return {
