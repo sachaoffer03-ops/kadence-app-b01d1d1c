@@ -2488,6 +2488,39 @@ export type Database = {
           },
         ]
       }
+      training_course_studios: {
+        Row: {
+          course_id: string
+          created_at: string
+          studio_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          studio_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_course_studios_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "training_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_course_studios_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_courses: {
         Row: {
           business_role_id: string | null

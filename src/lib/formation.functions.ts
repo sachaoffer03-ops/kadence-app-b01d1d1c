@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { assertAdminOrManager } from "./formation.server";
+import { assertAdminOrManager, getCourseStudiosMap, getUserStudioIds, courseMatchesStudios } from "./formation.server";
 
 // ============================================
 // INDEX (KPIs + list of courses with team stats)
@@ -13,15 +13,18 @@ export const getFormationIndex = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     await assertAdminOrManager(supabase, userId);
 
-    const [coursesRes, modulesRes, sectionsRes, employeesRes, ubrRes, progressRes, attemptsRes, completionsRes] = await Promise.all([
+    const [coursesRes, modulesRes, sectionsRes, employeesRes, ubrRes, progressRes, attemptsRes, completionsRes, courseStudiosRes, userStudiosRes, studiosRes] = await Promise.all([
       supabase.from("training_courses").select("*").order("position"),
       supabase.from("training_modules").select("id, section_id, duration_estimate_min"),
       supabase.from("training_sections").select("id, course_id"),
-      supabase.from("profiles").select("id").eq("status", "active"),
+      supabase.from("profiles").select("id, studio_id").eq("status", "active"),
       supabase.from("user_business_roles").select("user_id, role"),
       supabase.from("training_content_progress").select("user_id, last_accessed_at, status, content_id"),
       supabase.from("training_quiz_attempts").select("attempt_number, passed, completed_at"),
       supabase.from("training_course_completions").select("user_id, course_id"),
+      supabase.from("training_course_studios").select("course_id, studio_id"),
+      supabase.from("user_studios").select("user_id, studio_id"),
+      supabase.from("studios").select("id, name"),
     ]);
 
     const courses = (coursesRes.data ?? []) as any[];
@@ -33,6 +36,32 @@ export const getFormationIndex = createServerFn({ method: "GET" })
     const attempts = (attemptsRes.data ?? []) as any[];
     const completions = (completionsRes.data ?? []) as any[];
 
+    // studios ciblés par parcours (vide = tous les studios)
+    const studioNameById = new Map<string, string>(((studiosRes.data ?? []) as any[]).map((s: any) => [s.id, s.name]));
+    const studiosByCourse = new Map<string, Set<string>>();
+    for (const cs of ((courseStudiosRes.data ?? []) as any[])) {
+      if (!studiosByCourse.has(cs.course_id)) studiosByCourse.set(cs.course_id, new Set());
+      studiosByCourse.get(cs.course_id)!.add(cs.studio_id);
+    }
+    const studiosByUser = new Map<string, Set<string>>();
+    for (const us of ((userStudiosRes.data ?? []) as any[])) {
+      if (!studiosByUser.has(us.user_id)) studiosByUser.set(us.user_id, new Set());
+      studiosByUser.get(us.user_id)!.add(us.studio_id);
+    }
+    for (const e of employees) {
+      if (!e.studio_id) continue;
+      if (!studiosByUser.has(e.id)) studiosByUser.set(e.id, new Set());
+      studiosByUser.get(e.id)!.add(e.studio_id);
+    }
+    const matchesStudio = (courseId: string, uid: string) => {
+      const target = studiosByCourse.get(courseId);
+      if (!target || target.size === 0) return true;
+      const mine = studiosByUser.get(uid);
+      if (!mine) return false;
+      for (const s of mine) if (target.has(s)) return true;
+      return false;
+    };
+
     // business_roles map
     const { data: roles } = await supabase.from("business_roles").select("id, name");
     const roleNameById = new Map<string, string>((roles ?? []).map((r: any) => [r.id, r.name]));
@@ -43,6 +72,7 @@ export const getFormationIndex = createServerFn({ method: "GET" })
       if (!userRoles.has(r.user_id)) userRoles.set(r.user_id, new Set());
       userRoles.get(r.user_id)!.add(r.role);
     }
+
 
     // section -> course
     const sectionToCourse = new Map<string, string>(sections.map((s: any) => [s.id, s.course_id]));
@@ -77,18 +107,19 @@ export const getFormationIndex = createServerFn({ method: "GET" })
     // KPI 3 — average completion rate across published courses
     const ratesPerCourse: number[] = [];
     for (const c of publishedCourses) {
-      const targetUsers = c.is_required_for_all
+      const targetUsers = (c.is_required_for_all
         ? employees
         : c.business_role_id
           ? employees.filter(e => {
               const roleName = roleNameById.get(c.business_role_id);
               return roleName && userRoles.get(e.id)?.has(roleName);
             })
-          : [];
+          : []).filter(e => matchesStudio(c.id, e.id));
       if (targetUsers.length === 0) continue;
       const done = (completionsByCourse.get(c.id)?.size) ?? 0;
       ratesPerCourse.push((done / targetUsers.length) * 100);
     }
+
     const avgCompletionRate = ratesPerCourse.length > 0
       ? Math.round(ratesPerCourse.reduce((a, b) => a + b, 0) / ratesPerCourse.length)
       : 0;
@@ -105,16 +136,17 @@ export const getFormationIndex = createServerFn({ method: "GET" })
     const courseCards = courses.map((c: any) => {
       const courseMods = modulesPerCourse.get(c.id) ?? [];
       const totalMin = courseMods.reduce((acc, m) => acc + (m.duration_estimate_min ?? 0), 0);
-      const targetUsers = c.is_required_for_all
+      const targetUsers = (c.is_required_for_all
         ? employees
         : c.business_role_id
           ? employees.filter(e => {
               const roleName = roleNameById.get(c.business_role_id);
               return roleName && userRoles.get(e.id)?.has(roleName);
             })
-          : [];
+          : []).filter(e => matchesStudio(c.id, e.id));
       const done = (completionsByCourse.get(c.id)?.size) ?? 0;
       const pct = targetUsers.length > 0 ? Math.round((done / targetUsers.length) * 100) : 0;
+      const studioIds = Array.from(studiosByCourse.get(c.id) ?? []);
       return {
         ...c,
         moduleCount: courseMods.length,
@@ -123,7 +155,10 @@ export const getFormationIndex = createServerFn({ method: "GET" })
         completedCount: done,
         pct,
         businessRoleName: c.business_role_id ? roleNameById.get(c.business_role_id) ?? null : null,
+        studioIds,
+        studioNames: studioIds.map((id) => studioNameById.get(id) ?? "").filter(Boolean),
       };
+
     });
 
     return {
@@ -151,6 +186,7 @@ export const createCourse = createServerFn({ method: "POST" })
     isRequiredForAll: z.boolean().optional(),
     icon: z.string().max(8).nullable().optional(),
     color: z.string().max(16).nullable().optional(),
+    studioIds: z.array(z.string().uuid()).optional(),
   }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -172,8 +208,15 @@ export const createCourse = createServerFn({ method: "POST" })
     } as any).select("id").single();
 
     if (error || !row) throw new Error(error?.message ?? "Création échouée");
-    return { id: (row as any).id };
+    const newId = (row as any).id;
+    if (data.studioIds && data.studioIds.length > 0) {
+      await supabase.from("training_course_studios").insert(
+        data.studioIds.map((sid) => ({ course_id: newId, studio_id: sid })) as any
+      );
+    }
+    return { id: newId };
   });
+
 
 export const deleteCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -211,6 +254,15 @@ export const duplicateCourse = createServerFn({ method: "POST" })
     if (e1 || !copy) throw new Error(e1?.message ?? "Copie échouée");
 
     const newCourseId = (copy as any).id;
+
+    const { data: srcStudios } = await supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId);
+    if (srcStudios && srcStudios.length > 0) {
+      await supabase.from("training_course_studios").insert(
+        (srcStudios as any[]).map((s: any) => ({ course_id: newCourseId, studio_id: s.studio_id })) as any
+      );
+    }
+
+
 
     const { data: sections } = await supabase.from("training_sections").select("*").eq("course_id", data.courseId).order("position");
     for (const sec of (sections ?? []) as any[]) {
@@ -275,10 +327,16 @@ export const getEmployeeTrainingProgress = createServerFn({ method: "POST" })
     const userRoleNames = new Set(((ubrRes.data ?? []) as any[]).map((r: any) => r.role));
     const brById = new Map<string, string>(((brRes.data ?? []) as any[]).map((r: any) => [r.id, r.name]));
 
-    // Filter applicable courses
+    // Filter applicable courses (poste + studios ciblés)
+    const [courseStudiosMap, myStudios] = await Promise.all([
+      getCourseStudiosMap(supabase),
+      getUserStudioIds(supabase, data.userId),
+    ]);
     const applicable = courses.filter((c: any) =>
-      c.is_required_for_all || (c.business_role_id && userRoleNames.has(brById.get(c.business_role_id) ?? ""))
+      (c.is_required_for_all || (c.business_role_id && userRoleNames.has(brById.get(c.business_role_id) ?? "")))
+      && courseMatchesStudios(courseStudiosMap.get(c.id), myStudios)
     );
+
 
     const allSections = (sectionsRes.data ?? []) as any[];
     const allModules = (modulesRes.data ?? []) as any[];
@@ -422,7 +480,7 @@ export const getCourseFullStructure = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdminOrManager(supabase, userId);
 
-    const [courseRes, sectionsRes, modulesRes, contentsRes, quizzesRes, questionsRes, optionsRes, rolesRes] = await Promise.all([
+    const [courseRes, sectionsRes, modulesRes, contentsRes, quizzesRes, questionsRes, optionsRes, rolesRes, studiosRes, courseStudiosRes] = await Promise.all([
       supabase.from("training_courses").select("*").eq("id", data.courseId).maybeSingle(),
       supabase.from("training_sections").select("*").eq("course_id", data.courseId).order("position"),
       supabase.from("training_modules").select("*").order("position"),
@@ -431,6 +489,8 @@ export const getCourseFullStructure = createServerFn({ method: "POST" })
       supabase.from("training_quiz_questions").select("*").order("position"),
       supabaseAdmin.from("training_quiz_options").select("*").order("position"),
       supabase.from("business_roles").select("id, name"),
+      supabase.from("studios").select("id, name").order("name"),
+      supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId),
     ]);
     if (!courseRes.data) throw new Error("Parcours introuvable");
 
@@ -448,6 +508,9 @@ export const getCourseFullStructure = createServerFn({ method: "POST" })
     return {
       course: courseRes.data as any,
       businessRoles: (rolesRes.data ?? []) as any[],
+      studios: (studiosRes.data ?? []) as any[],
+      courseStudioIds: ((courseStudiosRes.data ?? []) as any[]).map((s: any) => s.studio_id) as string[],
+
       sections: sections.map((sec) => {
         const secModules = modules.filter((m) => m.section_id === sec.id);
         return {
@@ -479,6 +542,7 @@ export const updateCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({
     courseId: z.string().uuid(),
+    studioIds: z.array(z.string().uuid()).optional(),
     patch: z.object({
       title: z.string().trim().min(1).max(120).optional(),
       description: z.string().max(2000).nullable().optional(),
@@ -495,8 +559,20 @@ export const updateCourse = createServerFn({ method: "POST" })
     await assertAdminOrManager(supabase, userId);
     const { error } = await supabase.from("training_courses").update(data.patch as any).eq("id", data.courseId);
     if (error) throw new Error(error.message);
+
+    // Studios ciblés (liste vide = tous les studios)
+    if (data.studioIds) {
+      await supabase.from("training_course_studios").delete().eq("course_id", data.courseId);
+      if (data.studioIds.length > 0) {
+        const { error: e2 } = await supabase.from("training_course_studios").insert(
+          data.studioIds.map((sid) => ({ course_id: data.courseId, studio_id: sid })) as any
+        );
+        if (e2) throw new Error(e2.message);
+      }
+    }
     return { ok: true };
   });
+
 
 export const publishCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -531,6 +607,33 @@ export const publishCourse = createServerFn({ method: "POST" })
         targetIds = Array.from(new Set((ubr ?? []).map((u: any) => u.user_id)));
       }
     }
+
+    // Restreindre aux studios ciblés par le parcours
+    const { data: courseStudios } = await supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId);
+    const targetStudios = new Set(((courseStudios ?? []) as any[]).map((s: any) => s.studio_id));
+    if (targetStudios.size > 0 && targetIds.length > 0) {
+      const [{ data: us }, { data: profs }] = await Promise.all([
+        supabase.from("user_studios").select("user_id, studio_id").in("user_id", targetIds),
+        supabase.from("profiles").select("id, studio_id").in("id", targetIds),
+      ]);
+      const byUser = new Map<string, Set<string>>();
+      for (const r of ((us ?? []) as any[])) {
+        if (!byUser.has(r.user_id)) byUser.set(r.user_id, new Set());
+        byUser.get(r.user_id)!.add(r.studio_id);
+      }
+      for (const p of ((profs ?? []) as any[])) {
+        if (!p.studio_id) continue;
+        if (!byUser.has(p.id)) byUser.set(p.id, new Set());
+        byUser.get(p.id)!.add(p.studio_id);
+      }
+      targetIds = targetIds.filter((uid) => {
+        const mine = byUser.get(uid);
+        if (!mine) return false;
+        for (const s of mine) if (targetStudios.has(s)) return true;
+        return false;
+      });
+    }
+
     if (targetIds.length > 0) {
       await supabase.from("notifications").insert(
         targetIds.map((uid) => ({
@@ -823,17 +926,21 @@ export const deleteQuiz = createServerFn({ method: "POST" })
 
 // Helper — applicable courses for a user (in-handler use)
 async function applicableCoursesForUser(supabase: any, uid: string) {
-  const [{ data: courses }, { data: ubr }, { data: roles }] = await Promise.all([
+  const [{ data: courses }, { data: ubr }, { data: roles }, courseStudios, myStudios] = await Promise.all([
     supabase.from("training_courses").select("*").eq("is_published", true).order("position"),
     supabase.from("user_business_roles").select("role").eq("user_id", uid),
     supabase.from("business_roles").select("id, name"),
+    getCourseStudiosMap(supabase),
+    getUserStudioIds(supabase, uid),
   ]);
   const roleNameById = new Map<string, string>(((roles ?? []) as any[]).map((r: any) => [r.id, r.name]));
   const userRoleNames = new Set(((ubr ?? []) as any[]).map((r: any) => r.role));
   return ((courses ?? []) as any[]).filter((c: any) =>
-    c.is_required_for_all || (c.business_role_id && userRoleNames.has(roleNameById.get(c.business_role_id) ?? ""))
+    (c.is_required_for_all || (c.business_role_id && userRoleNames.has(roleNameById.get(c.business_role_id) ?? "")))
+    && courseMatchesStudios(courseStudios.get(c.id), myStudios)
   );
 }
+
 
 async function computeAssignedCoursesFor(supabase: any, userId: string) {
   const applicable = await applicableCoursesForUser(supabase, userId);
