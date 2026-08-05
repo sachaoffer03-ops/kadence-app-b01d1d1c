@@ -971,47 +971,53 @@ function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: 
         const { error } = await supabase.from("checklist_template_items").insert(rows as any);
         if (error) { toast.error(error.message); return; }
       }
-      // Invalider le cache pour que le poste cible relise depuis la DB
-      templateEnsureCache.delete(`${studioId}::${target}::${phase}`);
-      toast.success(`Checklist dupliquée (${rows.length} item${rows.length > 1 ? "s" : ""}). Ouvre l'onglet "${roles.find(r=>r.id===target)?.name ?? "cible"}" pour vérifier.`);
+      // Invalider le cache pour que la cible relise depuis la DB
+      templateEnsureCache.delete(`${studioId}::${target}::${targetPhase}`);
+      toast.success(`Checklist dupliquée (${rows.length} item${rows.length > 1 ? "s" : ""}) vers ${roles.find(r=>r.id===target)?.name ?? "cible"} · ${PHASE_META[targetPhase].label}.`);
       setOpen(false);
-      setTarget("");
+      setTarget(currentRoleId);
+      setTargetPhase(phase);
       flashSaved();
     } finally {
       setBusy(false);
     }
   };
 
-  const targets = roles.filter((r) => r.id !== currentRoleId);
-
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setTarget(""); }}>
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setTarget(currentRoleId); setTargetPhase(phase); } }}>
       <PopoverTrigger asChild>
         <button
           className="rounded-md px-3 py-1.5 border"
           style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--background)", borderColor: "var(--border)" }}
         >
-          Dupliquer vers un autre poste
+          Dupliquer vers…
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px]" align="start">
         <div className="flex flex-col gap-2">
           <div style={{ fontSize: 13, fontWeight: 500 }}>Dupliquer la checklist</div>
           <label style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Poste de destination</label>
-          {targets.length === 0 ? (
-            <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun autre poste actif disponible.</p>
+          <Select value={target} onValueChange={setTarget}>
+            <SelectTrigger><SelectValue placeholder="Choisir un poste" /></SelectTrigger>
+            <SelectContent>
+              {roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}{r.id === currentRoleId ? " (actuel)" : ""}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <label style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Phase de destination</label>
+          <Select value={targetPhase} onValueChange={(v) => setTargetPhase(v as ChecklistPhase)}>
+            <SelectTrigger><SelectValue placeholder="Choisir une phase" /></SelectTrigger>
+            <SelectContent>
+              {PHASE_ORDER.map((p) => <SelectItem key={p} value={p}>{PHASE_META[p].label}{p === phase ? " (actuelle)" : ""}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {isSame ? (
+            <p style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Choisis un poste ou une phase différente de la checklist actuelle.</p>
           ) : (
-            <Select value={target} onValueChange={setTarget}>
-              <SelectTrigger><SelectValue placeholder="Choisir un poste" /></SelectTrigger>
-              <SelectContent>
-                {targets.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <p style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Les items sont ajoutés à la fin de la checklist cible (même studio).</p>
           )}
-          <p style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Les items sont ajoutés à la fin de la checklist existante.</p>
           <div className="flex justify-end gap-2 mt-1">
             <button onClick={() => setOpen(false)} className="px-3 py-1.5 rounded-md border" style={{ fontSize: 12, borderColor: "var(--border)" }}>Annuler</button>
-            <button onClick={dup} disabled={!target || busy} className="px-3 py-1.5 rounded-md disabled:opacity-50" style={{ fontSize: 12, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
+            <button onClick={dup} disabled={!target || busy || isSame} className="px-3 py-1.5 rounded-md disabled:opacity-50" style={{ fontSize: 12, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
               {busy ? "…" : "Dupliquer"}
             </button>
           </div>
