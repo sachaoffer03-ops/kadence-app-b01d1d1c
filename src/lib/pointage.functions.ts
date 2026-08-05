@@ -530,18 +530,23 @@ export const checkPointageAlertsFn = createServerFn({ method: "POST" })
       .select("link,user_id")
       .gte("created_at", since)
       .like("link", "/pointage?%");
+    // Clé par shift (pas par type) : un seul rappel d'arrivée par shift et par destinataire,
+    // même si le retard se transforme ensuite en no-show.
     const existingKeys = new Set(
-      (existing ?? []).map((n: any) => `${n.user_id}::${n.link}`)
+      (existing ?? []).map((n: any) => {
+        const shiftId = String(n.link ?? "").match(/shift=([^&]+)/)?.[1] ?? "";
+        return `${n.user_id}::${shiftId}`;
+      })
     );
 
     const rowsToInsert: any[] = [];
     for (const a of alerts) {
       const link = `/pointage?shift=${a.shiftId}&alert=${a.type}`;
-      const priority =
-        a.type === "shift_late_arrival" || a.type === "shift_no_show_suspected" ? "urgent" : "normal";
-      for (const adminId of adminIds) {
-        const key = `${adminId}::${link}`;
+      const priority = "urgent";
+      for (const adminId of recipientsFor(a.studioId)) {
+        const key = `${adminId}::${a.shiftId}`;
         if (existingKeys.has(key)) continue;
+        existingKeys.add(key);
         rowsToInsert.push({
           user_id: adminId,
           type: a.type,
@@ -553,6 +558,7 @@ export const checkPointageAlertsFn = createServerFn({ method: "POST" })
         });
       }
     }
+
 
     if (rowsToInsert.length === 0) return { created: 0 };
     const { error } = await supabase.from("notifications").insert(rowsToInsert);
