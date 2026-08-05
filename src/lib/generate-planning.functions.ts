@@ -128,6 +128,18 @@ function isoWeekStart(dateStr: string): string {
   return isoDate(d);
 }
 
+function isoWeekEnd(dateStr: string): string {
+  const d = new Date(`${isoWeekStart(dateStr)}T00:00:00`);
+  d.setDate(d.getDate() + 6);
+  return isoDate(d);
+}
+
+function shiftDays(dateStr: string, n: number): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return isoDate(d);
+}
+
 function eachDate(from: string, to: string): string[] {
   const out: string[] = [];
   const s = new Date(`${from}T00:00:00`);
