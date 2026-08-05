@@ -73,10 +73,10 @@ export function OpeningFlow({ open, onClose, shift, userId, studios, firstName, 
             (subItems ?? []).forEach((r: any) => { im[r.template_item_id] = r.is_checked; });
             setItemStates(im);
             const pm: Record<string, { url: string | null; status: "idle" | "uploading" | "done" }> = {};
-            (phs ?? []).forEach((p: any) => {
+            await Promise.all((phs ?? []).map(async (p: any) => {
               const sp = (subPhotos ?? []).find((s: any) => s.template_photo_id === p.id);
-              pm[p.id] = { url: sp?.photo_url ?? null, status: sp?.photo_url ? "done" : "idle" };
-            });
+              pm[p.id] = { url: sp?.photo_url ? await signChecklistPhoto(sp.photo_url) : null, status: sp?.photo_url ? "done" : "idle" };
+            }));
             setPhotoStates(pm);
           } else {
             setTemplate(null); setItems([]); setPhotos([]); setSubmissionId(null);
