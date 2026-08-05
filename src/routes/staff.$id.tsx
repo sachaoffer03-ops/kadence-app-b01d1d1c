@@ -25,6 +25,7 @@ import { EmployeeShiftsHistoryTab } from "@/components/staff/EmployeeShiftsHisto
 import { setUserAppRole, setUserAppRoles } from "@/lib/admins.functions";
 import { ManagerPermissionsModal } from "@/components/ManagerPermissionsModal";
 import { TimePicker24 } from "@/components/ui/time-picker-24";
+import { RecurringAssignmentsCard } from "@/components/staff/RecurringAssignmentsCard";
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
