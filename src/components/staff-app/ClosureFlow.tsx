@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { ArrowLeft, X, Camera, Check, AlertCircle, QrCode, Star, MapPin, Loader2, PartyPopper, Calendar, Clock, Sparkles } from "lucide-react";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { supabase } from "@/integrations/supabase/client";
+import { signChecklistPhoto } from "@/lib/checklist-photo-url";
 import { useServerFn } from "@tanstack/react-start";
 import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, notifyTransitionIncoming, type ChecklistPhase } from "@/lib/checklists.helpers";
 import { validateClockOutFn, finalizeClosureFn, analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
@@ -156,7 +157,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
             phMap[p.id] = {
               zoneId: p.id,
               submissionPhotoId: sub?.id ?? null,
-              photoUrl: sub?.photo_url ?? null,
+              photoUrl: null,
               status: sub?.ai_validation_status === "validated" || (sub?.photo_url && !sub?.ai_validation_status) ? "validated" : sub?.photo_url ? "idle" : "idle",
               failCount: 0,
             };
@@ -259,8 +260,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const path = await uploadSubmissionPhoto(file, userId, submissionId, zoneId);
-        const { data: pub } = supabase.storage.from("checklist-photos").getPublicUrl(path);
-        const photoUrl = pub.publicUrl;
+        const photoUrl = await signChecklistPhoto(path);
         // upsert submission photo
         const { data: existing } = await supabase.from("checklist_submission_photos")
           .select("id").eq("submission_id", submissionId).eq("template_photo_id", zoneId).maybeSingle();
@@ -268,11 +268,11 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         if (existing) {
           submissionPhotoId = (existing as any).id;
           await supabase.from("checklist_submission_photos")
-            .update({ photo_url: photoUrl, uploaded_at: new Date().toISOString(), ai_validation_status: null })
+            .update({ photo_url: path, uploaded_at: new Date().toISOString(), ai_validation_status: null, ai_validation_message: null })
             .eq("id", submissionPhotoId);
         } else {
           const { data: inserted, error } = await supabase.from("checklist_submission_photos")
-            .insert({ submission_id: submissionId, template_photo_id: zoneId, photo_url: photoUrl, uploaded_at: new Date().toISOString() })
+            .insert({ submission_id: submissionId, template_photo_id: zoneId, photo_url: path, uploaded_at: new Date().toISOString() })
             .select("id").single();
           if (error) throw error;
           submissionPhotoId = (inserted as any).id;
