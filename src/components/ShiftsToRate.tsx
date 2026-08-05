@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Star, Check, Clock, Search, X } from "lucide-react";
 import { RatingInput } from "@/components/RatingInput";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ShiftRow {
   id: string; user_id: string | null; shift_date: string;
