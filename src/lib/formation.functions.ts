@@ -107,18 +107,19 @@ export const getFormationIndex = createServerFn({ method: "GET" })
     // KPI 3 — average completion rate across published courses
     const ratesPerCourse: number[] = [];
     for (const c of publishedCourses) {
-      const targetUsers = c.is_required_for_all
+      const targetUsers = (c.is_required_for_all
         ? employees
         : c.business_role_id
           ? employees.filter(e => {
               const roleName = roleNameById.get(c.business_role_id);
               return roleName && userRoles.get(e.id)?.has(roleName);
             })
-          : [];
+          : []).filter(e => matchesStudio(c.id, e.id));
       if (targetUsers.length === 0) continue;
       const done = (completionsByCourse.get(c.id)?.size) ?? 0;
       ratesPerCourse.push((done / targetUsers.length) * 100);
     }
+
     const avgCompletionRate = ratesPerCourse.length > 0
       ? Math.round(ratesPerCourse.reduce((a, b) => a + b, 0) / ratesPerCourse.length)
       : 0;
