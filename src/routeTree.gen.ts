@@ -25,6 +25,7 @@ import { Route as PlanningRouteImport } from './routes/planning'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MentionsLegalesRouteImport } from './routes/mentions-legales'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as JustificationsRouteImport } from './routes/justifications'
 import { Route as FormationRouteImport } from './routes/formation'
 import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
 import { Route as FeedbacksRouteImport } from './routes/feedbacks'
@@ -155,6 +156,11 @@ const MentionsLegalesRoute = MentionsLegalesRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JustificationsRoute = JustificationsRouteImport.update({
+  id: '/justifications',
+  path: '/justifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FormationRoute = FormationRouteImport.update({
@@ -439,6 +445,7 @@ export interface FileRoutesByFullPath {
   '/feedbacks': typeof FeedbacksRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/formation': typeof FormationRouteWithChildren
+  '/justifications': typeof JustificationsRoute
   '/login': typeof LoginRoute
   '/mentions-legales': typeof MentionsLegalesRoute
   '/notifications': typeof NotificationsRoute
@@ -508,6 +515,7 @@ export interface FileRoutesByTo {
   '/feedbacks': typeof FeedbacksRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/formation': typeof FormationRouteWithChildren
+  '/justifications': typeof JustificationsRoute
   '/login': typeof LoginRoute
   '/mentions-legales': typeof MentionsLegalesRoute
   '/notifications': typeof NotificationsRoute
@@ -577,6 +585,7 @@ export interface FileRoutesById {
   '/feedbacks': typeof FeedbacksRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/formation': typeof FormationRouteWithChildren
+  '/justifications': typeof JustificationsRoute
   '/login': typeof LoginRoute
   '/mentions-legales': typeof MentionsLegalesRoute
   '/notifications': typeof NotificationsRoute
@@ -648,6 +657,7 @@ export interface FileRouteTypes {
     | '/feedbacks'
     | '/fonctionnalites'
     | '/formation'
+    | '/justifications'
     | '/login'
     | '/mentions-legales'
     | '/notifications'
@@ -717,6 +727,7 @@ export interface FileRouteTypes {
     | '/feedbacks'
     | '/fonctionnalites'
     | '/formation'
+    | '/justifications'
     | '/login'
     | '/mentions-legales'
     | '/notifications'
@@ -785,6 +796,7 @@ export interface FileRouteTypes {
     | '/feedbacks'
     | '/fonctionnalites'
     | '/formation'
+    | '/justifications'
     | '/login'
     | '/mentions-legales'
     | '/notifications'
@@ -855,6 +867,7 @@ export interface RootRouteChildren {
   FeedbacksRoute: typeof FeedbacksRoute
   FonctionnalitesRoute: typeof FonctionnalitesRoute
   FormationRoute: typeof FormationRouteWithChildren
+  JustificationsRoute: typeof JustificationsRoute
   LoginRoute: typeof LoginRoute
   MentionsLegalesRoute: typeof MentionsLegalesRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -1015,6 +1028,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/justifications': {
+      id: '/justifications'
+      path: '/justifications'
+      fullPath: '/justifications'
+      preLoaderRoute: typeof JustificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/formation': {
@@ -1432,6 +1452,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedbacksRoute: FeedbacksRoute,
   FonctionnalitesRoute: FonctionnalitesRoute,
   FormationRoute: FormationRouteWithChildren,
+  JustificationsRoute: JustificationsRoute,
   LoginRoute: LoginRoute,
   MentionsLegalesRoute: MentionsLegalesRoute,
   NotificationsRoute: NotificationsRoute,

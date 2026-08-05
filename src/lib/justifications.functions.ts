@@ -56,8 +56,8 @@ export const listJustificationsFn = createServerFn({ method: "POST" })
         ? supabase.from("studios").select("id,name").in("id", studioIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
-    const pmap = new Map((profiles ?? []).map((p: any) => [p.id, `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim()]));
-    const smap = new Map((studios ?? []).map((s: any) => [s.id, s.name]));
+    const pmap = new Map<string, string>((profiles ?? []).map((p: any) => [p.id as string, `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim()]));
+    const smap = new Map<string, string>((studios ?? []).map((s: any) => [s.id as string, s.name as string]));
 
     const out: JustificationRow[] = [];
     for (const r of rows ?? []) {
