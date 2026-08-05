@@ -1961,6 +1961,7 @@ export type Database = {
           clock_admin_note: string | null
           clock_out_deviation_min: number | null
           clock_out_reason: string | null
+          clock_out_reason_status: string
           clocked_in_at: string | null
           clocked_out_at: string | null
           created_at: string
@@ -1971,9 +1972,13 @@ export type Database = {
           is_locked: boolean
           is_manual: boolean
           late_reason: string | null
+          late_reason_status: string
           minutes_late: number | null
           notes: string | null
           published_at: string | null
+          reason_review_note: string | null
+          reason_reviewed_at: string | null
+          reason_reviewed_by: string | null
           role_segments: Json | null
           shift_date: string
           start_time: string
@@ -1987,6 +1992,7 @@ export type Database = {
           clock_admin_note?: string | null
           clock_out_deviation_min?: number | null
           clock_out_reason?: string | null
+          clock_out_reason_status?: string
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
@@ -1997,9 +2003,13 @@ export type Database = {
           is_locked?: boolean
           is_manual?: boolean
           late_reason?: string | null
+          late_reason_status?: string
           minutes_late?: number | null
           notes?: string | null
           published_at?: string | null
+          reason_review_note?: string | null
+          reason_reviewed_at?: string | null
+          reason_reviewed_by?: string | null
           role_segments?: Json | null
           shift_date: string
           start_time: string
@@ -2013,6 +2023,7 @@ export type Database = {
           clock_admin_note?: string | null
           clock_out_deviation_min?: number | null
           clock_out_reason?: string | null
+          clock_out_reason_status?: string
           clocked_in_at?: string | null
           clocked_out_at?: string | null
           created_at?: string
@@ -2023,9 +2034,13 @@ export type Database = {
           is_locked?: boolean
           is_manual?: boolean
           late_reason?: string | null
+          late_reason_status?: string
           minutes_late?: number | null
           notes?: string | null
           published_at?: string | null
+          reason_review_note?: string | null
+          reason_reviewed_at?: string | null
+          reason_reviewed_by?: string | null
           role_segments?: Json | null
           shift_date?: string
           start_time?: string
