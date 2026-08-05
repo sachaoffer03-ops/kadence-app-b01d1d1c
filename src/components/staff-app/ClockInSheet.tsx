@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { ArrowLeft, X, QrCode, Loader2 } from "lucide-react";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { useServerFn } from "@tanstack/react-start";
-import { validateClockInFn } from "@/lib/shift-clock.functions";
+import { validateClockInFn, getShiftClockPolicyFn } from "@/lib/shift-clock.functions";
 import { OpeningFlow } from "./OpeningFlow";
 import { getCurrentPositionSafe } from "@/lib/geolocation";
 import { GeolocationDeniedScreen } from "@/components/employee/GeolocationDeniedScreen";
