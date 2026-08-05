@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { assertAdminOrManager } from "./formation.server";
+import { assertAdminOrManager, getCourseStudiosMap, getUserStudioIds, courseMatchesStudios } from "./formation.server";
 
 // ============================================
 // INDEX (KPIs + list of courses with team stats)
