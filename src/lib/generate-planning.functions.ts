@@ -665,6 +665,26 @@ async function runEngine(ctx: EngineCtx) {
   }
   logs.external_shifts_seeded = externalSeeded;
 
+  // Seed les shifts des jours hors période mais dans les mêmes semaines ISO
+  // (mois précédent/suivant) : quota hebdo, conflits et repos 11h en tiennent compte.
+  let boundarySeeded = 0;
+  for (const sh of boundaryShifts) {
+    if (!sh.user_id || !employees.has(sh.user_id)) continue;
+    const e = employees.get(sh.user_id)!;
+    const sStart = t2m(sh.start_time), sEnd = t2m(sh.end_time);
+    e.assigned.push({
+      date: sh.shift_date,
+      startMin: sStart,
+      endMin: sEnd,
+      studio_id: sh.studio_id,
+      role: sh.business_role,
+      reqId: `boundary:${sh.id}`,
+    });
+    e.weeklyMin.set(isoWeekStart(sh.shift_date), (e.weeklyMin.get(isoWeekStart(sh.shift_date)) ?? 0) + (sEnd - sStart));
+    boundarySeeded++;
+  }
+  logs.boundary_shifts_seeded = boundarySeeded;
+
   // Bloque les cellules couvertes par shifts manuels/lockés et soustrait du quota
   const preservedShifts: any[] = [];
   for (const sh of existingShifts) {
