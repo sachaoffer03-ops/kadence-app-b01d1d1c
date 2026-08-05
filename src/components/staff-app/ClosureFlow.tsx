@@ -152,16 +152,18 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
           (subItems ?? []).forEach((r: any) => { itMap[r.template_item_id] = r.is_checked; });
           setItemStates(itMap);
           const phMap: Record<string, PhotoState> = {};
-          (phs ?? []).forEach((p: any) => {
+          await Promise.all((phs ?? []).map(async (p: any) => {
             const sub = (subPhotos ?? []).find((s: any) => s.template_photo_id === p.id);
             phMap[p.id] = {
               zoneId: p.id,
               submissionPhotoId: sub?.id ?? null,
-              photoUrl: null,
-              status: sub?.ai_validation_status === "validated" || (sub?.photo_url && !sub?.ai_validation_status) ? "validated" : sub?.photo_url ? "idle" : "idle",
+              photoUrl: sub?.photo_url ? await signChecklistPhoto(sub.photo_url) : null,
+              status: sub?.ai_validation_status === "rejected" ? "refused"
+                : sub?.photo_url ? "validated" : "idle",
+              message: sub?.ai_validation_status === "rejected" ? (sub?.ai_validation_message ?? null) : null,
               failCount: 0,
             };
-          });
+          }));
           setPhotoStates(phMap);
         } else {
           setTemplate(null); setItems([]); setPhotos([]); setSubmissionId(null);
