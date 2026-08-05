@@ -115,12 +115,24 @@ function FormationIndexPage() {
                         Obligatoire pour tous
                       </span>
                     )}
+                    {(c.studioNames ?? []).length > 0 ? (
+                      (c.studioNames as string[]).map((n) => (
+                        <span key={n} className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "rgba(240,153,123,0.12)", color: "#B25E42" }}>
+                          {n}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>
+                        Tous les studios
+                      </span>
+                    )}
                     {!c.is_published && (
                       <span className="rounded-full px-1.5 py-0.5" style={{ fontSize: 9, fontWeight: 500, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
                         Brouillon
                       </span>
                     )}
                   </div>
+
 
                   <div className="mt-auto pt-3">
                     <div className="flex items-center justify-between mb-1.5" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
