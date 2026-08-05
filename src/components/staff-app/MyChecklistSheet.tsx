@@ -191,25 +191,49 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
     setPhotoStates((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], status: "uploading" } }));
     try {
       const path = await uploadSubmissionPhoto(file, userId, submissionId, zoneId);
-      const { data: pub } = supabase.storage.from("checklist-photos").getPublicUrl(path);
-      const photoUrl = pub.publicUrl;
       const { data: existing } = await supabase.from("checklist_submission_photos")
         .select("id").eq("submission_id", submissionId).eq("template_photo_id", zoneId).maybeSingle();
       let spId: string;
       if (existing) {
         spId = (existing as any).id;
         await supabase.from("checklist_submission_photos")
-          .update({ photo_url: photoUrl, uploaded_at: new Date().toISOString(), ai_validation_status: null })
+          .update({ photo_url: path, uploaded_at: new Date().toISOString(), ai_validation_status: null, ai_validation_message: null })
           .eq("id", spId);
       } else {
         const { data: ins, error } = await supabase.from("checklist_submission_photos")
-          .insert({ submission_id: submissionId, template_photo_id: zoneId, photo_url: photoUrl, uploaded_at: new Date().toISOString() })
+          .insert({ submission_id: submissionId, template_photo_id: zoneId, photo_url: path, uploaded_at: new Date().toISOString() })
           .select("id").single();
         if (error) throw error;
         spId = (ins as any).id;
       }
-      setPhotoStates((prev) => ({ ...prev, [zoneId]: { submissionPhotoId: spId, photoUrl, status: "done" } }));
+      const signed = await signChecklistPhoto(path);
+      const analyze = !!(template as any)?.analyze_with_ai;
+      setPhotoStates((prev) => ({
+        ...prev,
+        [zoneId]: { submissionPhotoId: spId, photoUrl: signed, status: analyze ? "analyzing" : "done", message: null },
+      }));
       flashSaved();
+
+      if (analyze) {
+        try {
+          const result: any = await analyzeClosurePhotoFn({ data: { submissionPhotoId: spId } });
+          setPhotoStates((prev) => ({
+            ...prev,
+            [zoneId]: {
+              ...prev[zoneId],
+              status: "done",
+              message: result?.status === "rejected" ? (result?.message ?? "Photo non conforme") : null,
+              rejected: result?.status === "rejected",
+            },
+          }));
+          if (result?.status === "rejected") {
+            toast.warning("Photo à revoir", { description: result?.message ?? "L'IA a détecté un souci sur cette zone." });
+          }
+        } catch (err) {
+          console.error("[my-checklist] AI", err);
+          setPhotoStates((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], status: "done" } }));
+        }
+      }
     } catch (e: any) {
       console.error("[my-checklist] upload", e);
       toast.error("Photo non envoyée", { description: "Vérifie ta connexion et réessaie." });
