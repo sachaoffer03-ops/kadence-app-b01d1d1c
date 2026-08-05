@@ -268,6 +268,7 @@ export type Database = {
           max_weekly_flexi_hours: number
           max_weekly_student_hours: number
           min_shift_hours: number
+          score_start_date: string
           strict_preferences: boolean
           target_weekly_cdi_hours: number
           updated_at: string
@@ -293,6 +294,7 @@ export type Database = {
           max_weekly_flexi_hours?: number
           max_weekly_student_hours?: number
           min_shift_hours?: number
+          score_start_date?: string
           strict_preferences?: boolean
           target_weekly_cdi_hours?: number
           updated_at?: string
@@ -318,6 +320,7 @@ export type Database = {
           max_weekly_flexi_hours?: number
           max_weekly_student_hours?: number
           min_shift_hours?: number
+          score_start_date?: string
           strict_preferences?: boolean
           target_weekly_cdi_hours?: number
           updated_at?: string
