@@ -258,10 +258,17 @@ export type AnalyzeClosurePhotoInput = {
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-async function toSignedUrl(path: string | null): Promise<string | null> {
+function toStoragePath(value: string | null): string | null {
+  if (!value) return null;
+  if (!/^https?:\/\//i.test(value)) return value;
+  // Le bucket est privé : une URL publique héritée doit être re-signée.
+  const m = value.match(/checklist-photos\/(.+?)(\?|$)/);
+  return m ? decodeURIComponent(m[1]!) : null;
+}
+
+async function toSignedUrl(value: string | null): Promise<string | null> {
+  const path = toStoragePath(value);
   if (!path) return null;
-  // Already an absolute URL? use as-is
-  if (/^https?:\/\//.test(path)) return path;
   const { data, error } = await supabaseAdmin.storage
     .from("checklist-photos")
     .createSignedUrl(path, 600);
