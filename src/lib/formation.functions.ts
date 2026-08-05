@@ -480,7 +480,7 @@ export const getCourseFullStructure = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdminOrManager(supabase, userId);
 
-    const [courseRes, sectionsRes, modulesRes, contentsRes, quizzesRes, questionsRes, optionsRes, rolesRes] = await Promise.all([
+    const [courseRes, sectionsRes, modulesRes, contentsRes, quizzesRes, questionsRes, optionsRes, rolesRes, studiosRes, courseStudiosRes] = await Promise.all([
       supabase.from("training_courses").select("*").eq("id", data.courseId).maybeSingle(),
       supabase.from("training_sections").select("*").eq("course_id", data.courseId).order("position"),
       supabase.from("training_modules").select("*").order("position"),
@@ -489,6 +489,8 @@ export const getCourseFullStructure = createServerFn({ method: "POST" })
       supabase.from("training_quiz_questions").select("*").order("position"),
       supabaseAdmin.from("training_quiz_options").select("*").order("position"),
       supabase.from("business_roles").select("id, name"),
+      supabase.from("studios").select("id, name").order("name"),
+      supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId),
     ]);
     if (!courseRes.data) throw new Error("Parcours introuvable");
 
@@ -506,6 +508,9 @@ export const getCourseFullStructure = createServerFn({ method: "POST" })
     return {
       course: courseRes.data as any,
       businessRoles: (rolesRes.data ?? []) as any[],
+      studios: (studiosRes.data ?? []) as any[],
+      courseStudioIds: ((courseStudiosRes.data ?? []) as any[]).map((s: any) => s.studio_id) as string[],
+
       sections: sections.map((sec) => {
         const secModules = modules.filter((m) => m.section_id === sec.id);
         return {
