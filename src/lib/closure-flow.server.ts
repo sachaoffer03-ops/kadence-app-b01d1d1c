@@ -36,6 +36,7 @@ export type ValidateClockOutInput = {
   qrCode: string;
   lat?: number | null;
   lng?: number | null;
+  outReason?: string | null;
 };
 
 export async function validateClockOut(input: ValidateClockOutInput) {
@@ -70,17 +71,30 @@ export async function validateClockOut(input: ValidateClockOutInput) {
     }
   }
 
-  // compute minutes_late lateness on exit isn't tracked — keep existing minutes_late as-is
-  const completedAt = new Date().toISOString();
+  // Fenêtre de sortie tolérée : lue en direct sur le studio (réglages /cloture)
+  const now = new Date();
+  const policy = await loadClockPolicy(shift as any);
+  const deviation = computeOutDeviation(policy, now);
+  const reason = cleanReason(input.outReason);
+  if (clockOutNeedsReason(policy, now) && !reason) {
+    throw new Error(
+      deviation < 0
+        ? `Tu pars ${Math.abs(deviation)} min avant la fin prévue (tolérance : ${policy.earlyOutWindowMin} min). Un motif est obligatoire pour pointer ta sortie.`
+        : `Tu pointes ta sortie ${deviation} min après la fin prévue (tolérance : ${policy.graceOutMin} min). Un motif est obligatoire.`
+    );
+  }
+
+  const completedAt = now.toISOString();
   const { error: upErr } = await supabaseAdmin
     .from("shifts")
-    .update({ clocked_out_at: completedAt })
+    .update({ clocked_out_at: completedAt, clock_out_reason: reason, clock_out_deviation_min: deviation } as any)
     .eq("id", input.shiftId)
     .is("clocked_out_at", null);
   if (upErr) throw new Error(upErr.message);
 
   return { ok: true, alreadyDone: false, distance_m, completedAt };
 }
+
 
 // --- 2. finalizeClosure ----------------------------------------------------
 
