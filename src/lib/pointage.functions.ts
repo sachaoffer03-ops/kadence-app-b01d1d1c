@@ -459,7 +459,7 @@ export const checkPointageAlertsFn = createServerFn({ method: "POST" })
     ]);
 
     const smap = new Map((studios ?? []).map((s: any) => [s.id, s]));
-    const adminIds = Array.from(new Set((admins ?? []).map((a: any) => a.user_id)));
+    const adminIds: string[] = Array.from(new Set((admins ?? []).map((a: any) => a.user_id as string)));
     if (adminIds.length === 0) return { created: 0 };
 
     // Managers : uniquement leurs studios. Admins : tous les studios.
