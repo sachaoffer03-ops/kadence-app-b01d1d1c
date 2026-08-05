@@ -690,13 +690,14 @@ function EmployeeRow({ emp, checked, onToggle, shiftRole, showReasons }: {
               {emp.score.toFixed(1)}/10
             </span>
           )}
-          {emp.has_availability ? (
+          {emp.has_availability && (
             <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 999, backgroundColor: "var(--coral-light, var(--coral))", color: "var(--coral-dark, #fff)" }}>
               Dispo
             </span>
-          ) : (
-            <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 999, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>
-              Fit rôle
+          )}
+          {emp.has_role === false && (
+            <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 999, backgroundColor: "#FEF3F2", color: "#B42318" }}>
+              Hors rôle{(emp.missing_roles?.length ?? 0) > 0 ? ` · ${emp.missing_roles.join(" + ")}` : ""}
             </span>
           )}
           {disabled && (
