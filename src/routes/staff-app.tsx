@@ -337,6 +337,20 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
     setEndShift(s);
   }
 
+  // ─── Check-list accessible pendant tout le shift ───────────────────────────
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const [checklistProgress, setChecklistProgress] = useState<{ phase: ChecklistPhase; done: number; total: number } | null>(null);
+  const activeShift = shifts.find((s) => !!s.clocked_in_at && !s.clocked_out_at) ?? null;
+  useEffect(() => {
+    if (!activeShift) { setChecklistProgress(null); return; }
+    let alive = true;
+    loadChecklistProgress(activeShift as any, userId)
+      .then((p) => { if (alive && p) setChecklistProgress({ phase: p.phase, done: p.done, total: p.total }); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [activeShift?.id, userId, checklistOpen]);
+
+
   // Mois suivant
   const nextMonth = useMemo(() => {
     const now = getBrusselsDateParts();
