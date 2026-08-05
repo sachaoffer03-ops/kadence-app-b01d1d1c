@@ -46,14 +46,18 @@ const STEPS: Step[] = ["feedback", "report", "handoff"];
 
 export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
   const completeClockOut = useServerFn(completeShiftClockOutFn);
+  const getPolicy = useServerFn(getShiftClockPolicyFn);
   const openedShiftRef = useRef<string | null>(null);
   const [step, setStep] = useState<Step>("feedback");
   const [rating, setRating] = useState(0);
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [reportMsg, setReportMsg] = useState("");
   const [handoffMsg, setHandoffMsg] = useState("");
+  const [outReason, setOutReason] = useState("");
+  const [policy, setPolicy] = useState<{ outDeviationMin: number; earlyOutWindowMin: number; graceOutMin: number; clockOutNeedsReason: boolean } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState<{ punctuality: number; checklist: number | null; total: number; outOf: number } | null>(null);
+
 
   const saveDraft = (patch: Draft) => {
     if (!shift || typeof window === "undefined") return;
