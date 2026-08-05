@@ -607,6 +607,33 @@ export const publishCourse = createServerFn({ method: "POST" })
         targetIds = Array.from(new Set((ubr ?? []).map((u: any) => u.user_id)));
       }
     }
+
+    // Restreindre aux studios ciblés par le parcours
+    const { data: courseStudios } = await supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId);
+    const targetStudios = new Set(((courseStudios ?? []) as any[]).map((s: any) => s.studio_id));
+    if (targetStudios.size > 0 && targetIds.length > 0) {
+      const [{ data: us }, { data: profs }] = await Promise.all([
+        supabase.from("user_studios").select("user_id, studio_id").in("user_id", targetIds),
+        supabase.from("profiles").select("id, studio_id").in("id", targetIds),
+      ]);
+      const byUser = new Map<string, Set<string>>();
+      for (const r of ((us ?? []) as any[])) {
+        if (!byUser.has(r.user_id)) byUser.set(r.user_id, new Set());
+        byUser.get(r.user_id)!.add(r.studio_id);
+      }
+      for (const p of ((profs ?? []) as any[])) {
+        if (!p.studio_id) continue;
+        if (!byUser.has(p.id)) byUser.set(p.id, new Set());
+        byUser.get(p.id)!.add(p.studio_id);
+      }
+      targetIds = targetIds.filter((uid) => {
+        const mine = byUser.get(uid);
+        if (!mine) return false;
+        for (const s of mine) if (targetStudios.has(s)) return true;
+        return false;
+      });
+    }
+
     if (targetIds.length > 0) {
       await supabase.from("notifications").insert(
         targetIds.map((uid) => ({
