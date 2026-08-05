@@ -13,15 +13,18 @@ export const getFormationIndex = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     await assertAdminOrManager(supabase, userId);
 
-    const [coursesRes, modulesRes, sectionsRes, employeesRes, ubrRes, progressRes, attemptsRes, completionsRes] = await Promise.all([
+    const [coursesRes, modulesRes, sectionsRes, employeesRes, ubrRes, progressRes, attemptsRes, completionsRes, courseStudiosRes, userStudiosRes, studiosRes] = await Promise.all([
       supabase.from("training_courses").select("*").order("position"),
       supabase.from("training_modules").select("id, section_id, duration_estimate_min"),
       supabase.from("training_sections").select("id, course_id"),
-      supabase.from("profiles").select("id").eq("status", "active"),
+      supabase.from("profiles").select("id, studio_id").eq("status", "active"),
       supabase.from("user_business_roles").select("user_id, role"),
       supabase.from("training_content_progress").select("user_id, last_accessed_at, status, content_id"),
       supabase.from("training_quiz_attempts").select("attempt_number, passed, completed_at"),
       supabase.from("training_course_completions").select("user_id, course_id"),
+      supabase.from("training_course_studios").select("course_id, studio_id"),
+      supabase.from("user_studios").select("user_id, studio_id"),
+      supabase.from("studios").select("id, name"),
     ]);
 
     const courses = (coursesRes.data ?? []) as any[];
@@ -33,6 +36,32 @@ export const getFormationIndex = createServerFn({ method: "GET" })
     const attempts = (attemptsRes.data ?? []) as any[];
     const completions = (completionsRes.data ?? []) as any[];
 
+    // studios ciblés par parcours (vide = tous les studios)
+    const studioNameById = new Map<string, string>(((studiosRes.data ?? []) as any[]).map((s: any) => [s.id, s.name]));
+    const studiosByCourse = new Map<string, Set<string>>();
+    for (const cs of ((courseStudiosRes.data ?? []) as any[])) {
+      if (!studiosByCourse.has(cs.course_id)) studiosByCourse.set(cs.course_id, new Set());
+      studiosByCourse.get(cs.course_id)!.add(cs.studio_id);
+    }
+    const studiosByUser = new Map<string, Set<string>>();
+    for (const us of ((userStudiosRes.data ?? []) as any[])) {
+      if (!studiosByUser.has(us.user_id)) studiosByUser.set(us.user_id, new Set());
+      studiosByUser.get(us.user_id)!.add(us.studio_id);
+    }
+    for (const e of employees) {
+      if (!e.studio_id) continue;
+      if (!studiosByUser.has(e.id)) studiosByUser.set(e.id, new Set());
+      studiosByUser.get(e.id)!.add(e.studio_id);
+    }
+    const matchesStudio = (courseId: string, uid: string) => {
+      const target = studiosByCourse.get(courseId);
+      if (!target || target.size === 0) return true;
+      const mine = studiosByUser.get(uid);
+      if (!mine) return false;
+      for (const s of mine) if (target.has(s)) return true;
+      return false;
+    };
+
     // business_roles map
     const { data: roles } = await supabase.from("business_roles").select("id, name");
     const roleNameById = new Map<string, string>((roles ?? []).map((r: any) => [r.id, r.name]));
@@ -43,6 +72,7 @@ export const getFormationIndex = createServerFn({ method: "GET" })
       if (!userRoles.has(r.user_id)) userRoles.set(r.user_id, new Set());
       userRoles.get(r.user_id)!.add(r.role);
     }
+
 
     // section -> course
     const sectionToCourse = new Map<string, string>(sections.map((s: any) => [s.id, s.course_id]));
