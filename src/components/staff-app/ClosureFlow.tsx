@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { ArrowLeft, X, Camera, Check, AlertCircle, QrCode, Star, MapPin, Loader2, PartyPopper, Calendar, Clock, Sparkles } from "lucide-react";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { supabase } from "@/integrations/supabase/client";
+import { signChecklistPhoto } from "@/lib/checklist-photo-url";
 import { useServerFn } from "@tanstack/react-start";
 import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, notifyTransitionIncoming, type ChecklistPhase } from "@/lib/checklists.helpers";
 import { validateClockOutFn, finalizeClosureFn, analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
@@ -143,7 +144,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
             supabase.from("checklist_template_items").select("*").eq("template_id", tpl.id).order("order_index"),
             supabase.from("checklist_template_photos").select("*").eq("template_id", tpl.id).order("order_index"),
             supabase.from("checklist_submission_items").select("template_item_id,is_checked").eq("submission_id", subId),
-            supabase.from("checklist_submission_photos").select("id,template_photo_id,photo_url,ai_validation_status").eq("submission_id", subId),
+            supabase.from("checklist_submission_photos").select("id,template_photo_id,photo_url,ai_validation_status,ai_validation_message").eq("submission_id", subId),
           ]);
           setItems((its ?? []) as any);
           setPhotos((phs ?? []) as any);
@@ -151,16 +152,18 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
           (subItems ?? []).forEach((r: any) => { itMap[r.template_item_id] = r.is_checked; });
           setItemStates(itMap);
           const phMap: Record<string, PhotoState> = {};
-          (phs ?? []).forEach((p: any) => {
+          await Promise.all((phs ?? []).map(async (p: any) => {
             const sub = (subPhotos ?? []).find((s: any) => s.template_photo_id === p.id);
             phMap[p.id] = {
               zoneId: p.id,
               submissionPhotoId: sub?.id ?? null,
-              photoUrl: sub?.photo_url ?? null,
-              status: sub?.ai_validation_status === "validated" || (sub?.photo_url && !sub?.ai_validation_status) ? "validated" : sub?.photo_url ? "idle" : "idle",
+              photoUrl: sub?.photo_url ? await signChecklistPhoto(sub.photo_url) : null,
+              status: sub?.ai_validation_status === "rejected" ? "refused"
+                : sub?.photo_url ? "validated" : "idle",
+              message: sub?.ai_validation_status === "rejected" ? (sub?.ai_validation_message ?? null) : null,
               failCount: 0,
             };
-          });
+          }));
           setPhotoStates(phMap);
         } else {
           setTemplate(null); setItems([]); setPhotos([]); setSubmissionId(null);
@@ -259,8 +262,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const path = await uploadSubmissionPhoto(file, userId, submissionId, zoneId);
-        const { data: pub } = supabase.storage.from("checklist-photos").getPublicUrl(path);
-        const photoUrl = pub.publicUrl;
+        const photoUrl = await signChecklistPhoto(path);
         // upsert submission photo
         const { data: existing } = await supabase.from("checklist_submission_photos")
           .select("id").eq("submission_id", submissionId).eq("template_photo_id", zoneId).maybeSingle();
@@ -268,11 +270,11 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         if (existing) {
           submissionPhotoId = (existing as any).id;
           await supabase.from("checklist_submission_photos")
-            .update({ photo_url: photoUrl, uploaded_at: new Date().toISOString(), ai_validation_status: null })
+            .update({ photo_url: path, uploaded_at: new Date().toISOString(), ai_validation_status: null, ai_validation_message: null })
             .eq("id", submissionPhotoId);
         } else {
           const { data: inserted, error } = await supabase.from("checklist_submission_photos")
-            .insert({ submission_id: submissionId, template_photo_id: zoneId, photo_url: photoUrl, uploaded_at: new Date().toISOString() })
+            .insert({ submission_id: submissionId, template_photo_id: zoneId, photo_url: path, uploaded_at: new Date().toISOString() })
             .select("id").single();
           if (error) throw error;
           submissionPhotoId = (inserted as any).id;

@@ -10,6 +10,8 @@ import {
   type ChecklistPhase,
 } from "@/lib/checklists.helpers";
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
+import { signChecklistPhoto } from "@/lib/checklist-photo-url";
+import { analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
 
 export interface ChecklistShiftRow {
   id: string;
@@ -25,7 +27,9 @@ export interface ChecklistShiftRow {
 interface PhotoState {
   submissionPhotoId: string | null;
   photoUrl: string | null;
-  status: "idle" | "uploading" | "done";
+  status: "idle" | "uploading" | "analyzing" | "done";
+  message?: string | null;
+  rejected?: boolean;
 }
 
 const PHASE_LABEL: Record<ChecklistPhase, string> = {
@@ -120,7 +124,7 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
           supabase.from("checklist_template_items").select("*").eq("template_id", tpl.id).order("order_index"),
           supabase.from("checklist_template_photos").select("*").eq("template_id", tpl.id).order("order_index"),
           supabase.from("checklist_submission_items").select("template_item_id,is_checked").eq("submission_id", subId),
-          supabase.from("checklist_submission_photos").select("id,template_photo_id,photo_url").eq("submission_id", subId),
+          supabase.from("checklist_submission_photos").select("id,template_photo_id,photo_url,ai_validation_status,ai_validation_message").eq("submission_id", subId),
         ]);
         if (!alive) return;
         setItems((its ?? []) as any);
@@ -129,14 +133,17 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
         ((si ?? []) as any[]).forEach((r) => { im[r.template_item_id] = r.is_checked; });
         setItemStates(im);
         const pm: Record<string, PhotoState> = {};
-        ((phs ?? []) as any[]).forEach((p) => {
+        await Promise.all(((phs ?? []) as any[]).map(async (p) => {
           const found = ((sp ?? []) as any[]).find((s) => s.template_photo_id === p.id);
           pm[p.id] = {
             submissionPhotoId: found?.id ?? null,
-            photoUrl: found?.photo_url ?? null,
+            photoUrl: found?.photo_url ? await signChecklistPhoto(found.photo_url) : null,
             status: found?.photo_url ? "done" : "idle",
+            rejected: found?.ai_validation_status === "rejected",
+            message: found?.ai_validation_status === "rejected" ? found?.ai_validation_message ?? null : null,
           };
-        });
+        }));
+        if (!alive) return;
         setPhotoStates(pm);
       } catch (e: any) {
         console.error("[my-checklist] load", e);
@@ -191,25 +198,49 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
     setPhotoStates((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], status: "uploading" } }));
     try {
       const path = await uploadSubmissionPhoto(file, userId, submissionId, zoneId);
-      const { data: pub } = supabase.storage.from("checklist-photos").getPublicUrl(path);
-      const photoUrl = pub.publicUrl;
       const { data: existing } = await supabase.from("checklist_submission_photos")
         .select("id").eq("submission_id", submissionId).eq("template_photo_id", zoneId).maybeSingle();
       let spId: string;
       if (existing) {
         spId = (existing as any).id;
         await supabase.from("checklist_submission_photos")
-          .update({ photo_url: photoUrl, uploaded_at: new Date().toISOString(), ai_validation_status: null })
+          .update({ photo_url: path, uploaded_at: new Date().toISOString(), ai_validation_status: null, ai_validation_message: null })
           .eq("id", spId);
       } else {
         const { data: ins, error } = await supabase.from("checklist_submission_photos")
-          .insert({ submission_id: submissionId, template_photo_id: zoneId, photo_url: photoUrl, uploaded_at: new Date().toISOString() })
+          .insert({ submission_id: submissionId, template_photo_id: zoneId, photo_url: path, uploaded_at: new Date().toISOString() })
           .select("id").single();
         if (error) throw error;
         spId = (ins as any).id;
       }
-      setPhotoStates((prev) => ({ ...prev, [zoneId]: { submissionPhotoId: spId, photoUrl, status: "done" } }));
+      const signed = await signChecklistPhoto(path);
+      const analyze = !!(template as any)?.analyze_with_ai;
+      setPhotoStates((prev) => ({
+        ...prev,
+        [zoneId]: { submissionPhotoId: spId, photoUrl: signed, status: analyze ? "analyzing" : "done", message: null },
+      }));
       flashSaved();
+
+      if (analyze) {
+        try {
+          const result: any = await analyzeClosurePhotoFn({ data: { submissionPhotoId: spId } });
+          setPhotoStates((prev) => ({
+            ...prev,
+            [zoneId]: {
+              ...prev[zoneId],
+              status: "done",
+              message: result?.status === "rejected" ? (result?.message ?? "Photo non conforme") : null,
+              rejected: result?.status === "rejected",
+            },
+          }));
+          if (result?.status === "rejected") {
+            toast.warning("Photo à revoir", { description: result?.message ?? "L'IA a détecté un souci sur cette zone." });
+          }
+        } catch (err) {
+          console.error("[my-checklist] AI", err);
+          setPhotoStates((prev) => ({ ...prev, [zoneId]: { ...prev[zoneId], status: "done" } }));
+        }
+      }
     } catch (e: any) {
       console.error("[my-checklist] upload", e);
       toast.error("Photo non envoyée", { description: "Vérifie ta connexion et réessaie." });
@@ -337,8 +368,23 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
 function PhotoRow({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; state?: PhotoState; onUpload: (f: File) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const status = state?.status ?? "idle";
+  const rejected = !!state?.rejected;
+  const [refUrl, setRefUrl] = useState<string | null>(null);
+  const [showRef, setShowRef] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    signChecklistPhoto((zone as any).reference_photo_url).then((u) => { if (alive) setRefUrl(u); });
+    return () => { alive = false; };
+  }, [(zone as any).reference_photo_url]);
+
+  const badge = status === "uploading" ? { label: "Envoi…", bg: "var(--muted)", fg: "var(--muted-foreground)" }
+    : status === "analyzing" ? { label: "Analyse…", bg: "var(--coral-light)", fg: "var(--coral-dark)" }
+    : status === "done" && rejected ? { label: "À revoir", bg: "#FEE4E2", fg: "#B42318" }
+    : status === "done" ? { label: "Envoyée", bg: "var(--success-bg)", fg: "var(--success-text)" }
+    : { label: "À photographier", bg: "var(--muted)", fg: "var(--muted-foreground)" };
+
   return (
-    <div className="rounded-xl border p-3" style={{ backgroundColor: "#fff", borderColor: status === "done" ? "var(--success-text)" : "rgba(0,0,0,0.08)" }}>
+    <div className="rounded-xl border p-3" style={{ backgroundColor: "#fff", borderColor: rejected ? "#F97066" : status === "done" ? "var(--success-text)" : "rgba(0,0,0,0.08)" }}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className="rounded-md p-1.5" style={{ backgroundColor: "var(--muted)" }}><Camera size={14} /></div>
@@ -347,28 +393,43 @@ function PhotoRow({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; sta
             {zone.description && <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{zone.description}</div>}
           </div>
         </div>
-        <span className="rounded-full px-2 py-0.5" style={{
-          fontSize: 10, fontWeight: 500,
-          backgroundColor: status === "done" ? "var(--success-bg)" : "var(--muted)",
-          color: status === "done" ? "var(--success-text)" : "var(--muted-foreground)",
-        }}>
-          {status === "uploading" ? "Envoi…" : status === "done" ? "Envoyée" : "À photographier"}
+        <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: badge.bg, color: badge.fg }}>
+          {badge.label}
         </span>
       </div>
+
+      {refUrl && (
+        <div className="mb-2">
+          <button onClick={() => setShowRef((v) => !v)} style={{ fontSize: 11, color: "var(--coral-dark)", fontWeight: 500 }}>
+            {showRef ? "Masquer le modèle attendu" : "Voir le modèle attendu"}
+          </button>
+          {showRef && (
+            <img src={refUrl} alt={`Référence ${zone.label}`} className="w-full rounded-lg mt-1.5" style={{ maxHeight: 180, objectFit: "cover" }} />
+          )}
+        </div>
+      )}
+
       {state?.photoUrl && (
         <img src={state.photoUrl} alt={zone.label} className="w-full rounded-lg mb-2" style={{ maxHeight: 180, objectFit: "cover" }} />
       )}
+
+      {rejected && state?.message && (
+        <div className="rounded-lg px-2.5 py-2 mb-2" style={{ fontSize: 11, backgroundColor: "#FEF3F2", color: "#B42318", lineHeight: 1.4 }}>
+          {state.message} — reprends la photo si tu peux, sinon ton manager la vérifiera.
+        </div>
+      )}
+
       <input
         ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }}
       />
       <button
         onClick={() => inputRef.current?.click()}
-        disabled={status === "uploading"}
+        disabled={status === "uploading" || status === "analyzing"}
         className="w-full rounded-md py-2.5 disabled:opacity-50"
-        style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--muted)" }}
+        style={{ fontSize: 12, fontWeight: 500, backgroundColor: rejected ? "var(--coral)" : "var(--muted)", color: rejected ? "#fff" : undefined }}
       >
-        {status === "uploading" ? "Envoi…" : state?.photoUrl ? "Reprendre la photo" : "Prendre la photo"}
+        {status === "uploading" ? "Envoi…" : status === "analyzing" ? "Analyse…" : state?.photoUrl ? "Reprendre la photo" : "Prendre la photo"}
       </button>
     </div>
   );
