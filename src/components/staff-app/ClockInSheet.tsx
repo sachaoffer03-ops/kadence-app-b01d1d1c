@@ -262,7 +262,7 @@ export function ClockInSheet({ open, onClose, shift, studios, userId, firstName,
                 </div>
                 <button
                   onClick={handleManualSubmit}
-                  disabled={loading}
+                  disabled={loading || blocked}
                   className="w-full rounded-md py-3 disabled:opacity-50"
                   style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}
                 >
