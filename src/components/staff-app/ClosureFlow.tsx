@@ -144,7 +144,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
             supabase.from("checklist_template_items").select("*").eq("template_id", tpl.id).order("order_index"),
             supabase.from("checklist_template_photos").select("*").eq("template_id", tpl.id).order("order_index"),
             supabase.from("checklist_submission_items").select("template_item_id,is_checked").eq("submission_id", subId),
-            supabase.from("checklist_submission_photos").select("id,template_photo_id,photo_url,ai_validation_status").eq("submission_id", subId),
+            supabase.from("checklist_submission_photos").select("id,template_photo_id,photo_url,ai_validation_status,ai_validation_message").eq("submission_id", subId),
           ]);
           setItems((its ?? []) as any);
           setPhotos((phs ?? []) as any);
