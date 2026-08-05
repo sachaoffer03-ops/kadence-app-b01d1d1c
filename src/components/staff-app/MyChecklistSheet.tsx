@@ -25,7 +25,9 @@ export interface ChecklistShiftRow {
 interface PhotoState {
   submissionPhotoId: string | null;
   photoUrl: string | null;
-  status: "idle" | "uploading" | "done";
+  status: "idle" | "uploading" | "analyzing" | "done";
+  message?: string | null;
+  rejected?: boolean;
 }
 
 const PHASE_LABEL: Record<ChecklistPhase, string> = {
