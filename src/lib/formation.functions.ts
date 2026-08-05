@@ -926,17 +926,21 @@ export const deleteQuiz = createServerFn({ method: "POST" })
 
 // Helper — applicable courses for a user (in-handler use)
 async function applicableCoursesForUser(supabase: any, uid: string) {
-  const [{ data: courses }, { data: ubr }, { data: roles }] = await Promise.all([
+  const [{ data: courses }, { data: ubr }, { data: roles }, courseStudios, myStudios] = await Promise.all([
     supabase.from("training_courses").select("*").eq("is_published", true).order("position"),
     supabase.from("user_business_roles").select("role").eq("user_id", uid),
     supabase.from("business_roles").select("id, name"),
+    getCourseStudiosMap(supabase),
+    getUserStudioIds(supabase, uid),
   ]);
   const roleNameById = new Map<string, string>(((roles ?? []) as any[]).map((r: any) => [r.id, r.name]));
   const userRoleNames = new Set(((ubr ?? []) as any[]).map((r: any) => r.role));
   return ((courses ?? []) as any[]).filter((c: any) =>
-    c.is_required_for_all || (c.business_role_id && userRoleNames.has(roleNameById.get(c.business_role_id) ?? ""))
+    (c.is_required_for_all || (c.business_role_id && userRoleNames.has(roleNameById.get(c.business_role_id) ?? "")))
+    && courseMatchesStudios(courseStudios.get(c.id), myStudios)
   );
 }
+
 
 async function computeAssignedCoursesFor(supabase: any, userId: string) {
   const applicable = await applicableCoursesForUser(supabase, userId);
