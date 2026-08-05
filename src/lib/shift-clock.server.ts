@@ -198,12 +198,13 @@ export type ValidateClockInInput = {
   qrCode: string;
   lat?: number | null;
   lng?: number | null;
+  lateReason?: string | null;
 };
 
 export async function validateClockIn(input: ValidateClockInInput) {
   const { data: shift, error } = await supabaseAdmin
     .from("shifts")
-    .select("id,user_id,studio_id,shift_date,start_time,clocked_in_at,clocked_out_at")
+    .select("id,user_id,studio_id,shift_date,start_time,end_time,clocked_in_at,clocked_out_at")
     .eq("id", input.shiftId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -242,14 +243,21 @@ export async function validateClockIn(input: ValidateClockInInput) {
     }
   }
 
-  const startDt = new Date(`${shift.shift_date}T${shift.start_time}`);
+  // Tolérance de retard : lue en direct sur le studio (réglages /cloture)
   const now = new Date();
-  const minutesLate = Math.max(0, Math.floor((now.getTime() - startDt.getTime()) / 60_000));
+  const policy = await loadClockPolicy(shift as any);
+  const minutesLate = computeMinutesLate(policy, now);
+  const reason = cleanReason(input.lateReason);
+  if (clockInNeedsReason(policy, now) && !reason) {
+    throw new Error(
+      `Tu as ${minutesLate} min de retard (tolérance : ${policy.graceInMin} min). Un motif est obligatoire pour pointer ton arrivée.`
+    );
+  }
   const clockedInAt = now.toISOString();
 
   const { error: upErr } = await supabaseAdmin
     .from("shifts")
-    .update({ clocked_in_at: clockedInAt, minutes_late: minutesLate, status: "scheduled" })
+    .update({ clocked_in_at: clockedInAt, minutes_late: minutesLate, status: "scheduled", late_reason: reason } as any)
     .eq("id", input.shiftId)
     .is("clocked_in_at", null);
   if (upErr) throw new Error(upErr.message);
@@ -260,8 +268,9 @@ export async function validateClockIn(input: ValidateClockInInput) {
     action: "self_clock_in",
     before_value: null,
     after_value: { clocked_in_at: clockedInAt, minutes_late: minutesLate, distance_m },
-    note: null,
+    note: reason,
   } as any);
+
 
 
   const { data: shiftFull } = await supabaseAdmin
