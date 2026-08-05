@@ -542,6 +542,7 @@ export const updateCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({
     courseId: z.string().uuid(),
+    studioIds: z.array(z.string().uuid()).optional(),
     patch: z.object({
       title: z.string().trim().min(1).max(120).optional(),
       description: z.string().max(2000).nullable().optional(),
@@ -558,8 +559,20 @@ export const updateCourse = createServerFn({ method: "POST" })
     await assertAdminOrManager(supabase, userId);
     const { error } = await supabase.from("training_courses").update(data.patch as any).eq("id", data.courseId);
     if (error) throw new Error(error.message);
+
+    // Studios ciblés (liste vide = tous les studios)
+    if (data.studioIds) {
+      await supabase.from("training_course_studios").delete().eq("course_id", data.courseId);
+      if (data.studioIds.length > 0) {
+        const { error: e2 } = await supabase.from("training_course_studios").insert(
+          data.studioIds.map((sid) => ({ course_id: data.courseId, studio_id: sid })) as any
+        );
+        if (e2) throw new Error(e2.message);
+      }
+    }
     return { ok: true };
   });
+
 
 export const publishCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
