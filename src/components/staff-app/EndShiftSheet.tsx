@@ -4,7 +4,7 @@ import { Sheet, FormField, TextArea, PrimaryButton, SecondaryButton } from "./sh
 import type { ShiftRow } from "./shared";
 import { Star, MessageSquare, ArrowRight, Check } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { completeShiftClockOutFn } from "@/lib/shift-clock.functions";
+import { completeShiftClockOutFn, getShiftClockPolicyFn } from "@/lib/shift-clock.functions";
 
 interface Props {
   open: boolean;
