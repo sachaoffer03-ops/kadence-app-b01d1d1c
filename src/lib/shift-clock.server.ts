@@ -86,6 +86,20 @@ export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
   if (!shift.clocked_in_at) throw new Error("Tu dois d'abord pointer ton arrivée");
   if (shift.clocked_out_at) return { alreadyCompleted: true, completedAt: shift.clocked_out_at as string };
 
+  // Fenêtre de sortie tolérée (réglages studio, appliqués en direct)
+  const outNow = new Date();
+  const outPolicy = await loadClockPolicy(shift as any);
+  const outDeviation = computeOutDeviation(outPolicy, outNow);
+  const outReason = cleanReason(input.outReason);
+  if (isOwner && clockOutNeedsReason(outPolicy, outNow) && !outReason) {
+    throw new Error(
+      outDeviation < 0
+        ? `Tu pars ${Math.abs(outDeviation)} min avant la fin prévue (tolérance : ${outPolicy.earlyOutWindowMin} min). Un motif est obligatoire pour pointer ta sortie.`
+        : `Tu pointes ta sortie ${outDeviation} min après la fin prévue (tolérance : ${outPolicy.graceOutMin} min). Un motif est obligatoire.`
+    );
+  }
+
+
   if (input.submissionId) {
     const { data: submission, error: subReadError } = await supabaseAdmin
       .from("checklist_submissions")
