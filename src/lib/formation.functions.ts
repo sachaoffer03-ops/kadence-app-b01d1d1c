@@ -186,6 +186,7 @@ export const createCourse = createServerFn({ method: "POST" })
     isRequiredForAll: z.boolean().optional(),
     icon: z.string().max(8).nullable().optional(),
     color: z.string().max(16).nullable().optional(),
+    studioIds: z.array(z.string().uuid()).optional(),
   }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -207,8 +208,15 @@ export const createCourse = createServerFn({ method: "POST" })
     } as any).select("id").single();
 
     if (error || !row) throw new Error(error?.message ?? "Création échouée");
-    return { id: (row as any).id };
+    const newId = (row as any).id;
+    if (data.studioIds && data.studioIds.length > 0) {
+      await supabase.from("training_course_studios").insert(
+        data.studioIds.map((sid) => ({ course_id: newId, studio_id: sid })) as any
+      );
+    }
+    return { id: newId };
   });
+
 
 export const deleteCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
