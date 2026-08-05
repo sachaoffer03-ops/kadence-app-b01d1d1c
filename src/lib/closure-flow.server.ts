@@ -167,27 +167,10 @@ export async function finalizeClosure(input: FinalizeClosureInput) {
     .update({ status: "completed" })
     .eq("id", input.shiftId);
 
-  // Notify managers of the studio (best-effort, non-blocking)
+  // Pas de notification "shift clôturé" aux admins/managers : trop bruyant
+  // (une par clôture). L'info reste visible sur /cloture et le dashboard.
   const ownerId = shift.user_id as string;
-  if (shift.studio_id && ownerId) {
-    const { data: prof } = await supabaseAdmin
-      .from("profiles").select("first_name,last_name").eq("id", ownerId).maybeSingle();
-    const name = `${(prof as any)?.first_name ?? ""} ${(prof as any)?.last_name ?? ""}`.trim() || "Un employé";
-    const { data: mgrs } = await supabaseAdmin
-      .from("user_roles").select("user_id,role").in("role", ["admin", "manager"]);
-    if (mgrs && mgrs.length) {
-      const notifs = mgrs.map((m: any) => ({
-        user_id: m.user_id,
-        type: "shift_closed",
-        title: "Shift clôturé",
-        body: `${name} a clôturé son shift (${shift.business_role})`,
-        link: `/cloture?shift=${shift.id}`,
-        priority: "info",
-        category: "shift",
-      }));
-      await supabaseAdmin.from("notifications").insert(notifs);
-    }
-  }
+
 
   // ─── Compute recap (server is source of truth) ─────────────────────────────
   const inMs = shift.clocked_in_at ? new Date(shift.clocked_in_at).getTime() : null;
@@ -457,9 +440,21 @@ export async function notifyOverdueClockOuts() {
       .from("user_roles").select("user_id,role").in("role", ["admin", "manager"]);
 
     if (!mgrs || mgrs.length === 0) continue;
+    // Managers : uniquement ceux rattachés au studio concerné. Admins : tous.
+    const mgrOnlyIds = (mgrs as any[]).filter((m) => m.role !== "admin").map((m) => m.user_id);
+    const { data: links } = mgrOnlyIds.length
+      ? await supabaseAdmin.from("user_studios").select("user_id").eq("studio_id", sh.studio_id).in("user_id", mgrOnlyIds)
+      : { data: [] as any[] };
+    const allowedManagerIds = new Set((links ?? []).map((l: any) => l.user_id));
+    const recipients = Array.from(new Set(
+      (mgrs as any[])
+        .filter((m) => m.role === "admin" || allowedManagerIds.has(m.user_id))
+        .map((m) => m.user_id as string)
+    ));
+    if (recipients.length === 0) continue;
     const overdueMin = Math.round((Date.now() - dueIso) / 60_000);
-    const rows = mgrs.map((m: any) => ({
-      user_id: m.user_id,
+    const rows = recipients.map((uid) => ({
+      user_id: uid,
       type: "shift_overdue_clockout",
       title: `Pointage de sortie en retard — ${studio.name}`,
       body: `${name} n'a pas pointé sa sortie (${sh.business_role}). En retard de ${overdueMin} min.`,
@@ -468,6 +463,7 @@ export async function notifyOverdueClockOuts() {
       category: "pointage",
     }));
     await supabaseAdmin.from("notifications").insert(rows);
+
     notified += 1;
   }
   return { processed: shifts.length, notified, at: nowIso };
