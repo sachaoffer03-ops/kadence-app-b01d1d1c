@@ -48,7 +48,9 @@ type CompleteShiftClockOutInput = {
   feedbackMsg?: string | null;
   reportMsg?: string | null;
   handoffMsg?: string | null;
+  outReason?: string | null;
 };
+
 
 const cleanText = (value?: string | null) => {
   const trimmed = value?.trim();
