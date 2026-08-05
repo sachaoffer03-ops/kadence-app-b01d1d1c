@@ -172,12 +172,24 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       completionsByUser.set(c.user_id, s);
     }
     const requiredRolesSet = new Set(requiredRoles);
+    // Studios ciblés par parcours (aucun = tous les studios)
+    const { data: courseStudioRows } = await supabaseAdmin
+      .from("training_course_studios")
+      .select("course_id, studio_id");
+    const studiosByCourse = new Map<string, Set<string>>();
+    for (const row of ((courseStudioRows ?? []) as any[])) {
+      if (!studiosByCourse.has(row.course_id)) studiosByCourse.set(row.course_id, new Set());
+      studiosByCourse.get(row.course_id)!.add(row.studio_id);
+    }
     const requiredCoursesForShift = ((trainingCourses ?? []) as any[]).filter((c: any) => {
+      const target = studiosByCourse.get(c.id);
+      if (target && target.size > 0 && (!shift.studio_id || !target.has(shift.studio_id))) return false;
       if (c.is_required_for_all) return true;
       if (!c.business_role_id) return false;
       const courseRole = roleNameById.get(c.business_role_id);
       return courseRole !== undefined && requiredRolesSet.has(courseRole);
     });
+
 
     // NB: cap par employé via getWeeklyCapForUser (respecte allow_extended_hours/weekly_hours_cap)
 
