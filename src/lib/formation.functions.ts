@@ -1253,26 +1253,9 @@ async function maybeCompleteCourse(supabase: any, userId: string, courseId: stri
     user_id: userId, course_id: courseId, completed_at: new Date().toISOString(), total_time_spent_seconds: totalTime,
   } as any);
 
-  // Notify admins+managers
-  const [{ data: admins }, { data: prof }, { data: course }] = await Promise.all([
-    supabase.from("user_roles").select("user_id, role").in("role", ["admin", "manager"]),
-    supabase.from("profiles").select("first_name, last_name").eq("id", userId).maybeSingle(),
-    supabase.from("training_courses").select("title, icon").eq("id", courseId).maybeSingle(),
-  ]);
-  const adminIds = Array.from(new Set(((admins ?? []) as any[]).map((a: any) => a.user_id)));
-  if (adminIds.length > 0) {
-    const name = prof ? `${(prof as any).first_name} ${(prof as any).last_name}`.trim() : "Un employé";
-    const c = course as any;
-    await supabase.from("notifications").insert(adminIds.map((aid) => ({
-      user_id: aid,
-      type: "training_completed",
-      title: "Formation terminée",
-      body: `${name} a terminé "${c?.title ?? "un parcours"}".`,
-      link: `/staff/${userId}?tab=formation`,
-      priority: "info",
-      category: "training",
-    })) as any);
-  }
+  // Pas de notification "formation terminée" aux admins/managers : purement
+  // informatif. Le suivi reste visible sur la fiche staff, onglet Formation.
+
   return true;
 }
 
