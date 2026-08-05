@@ -950,6 +950,13 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
           setShifts((prev) => prev.map((s) => s.id === endShift.id ? { ...s, clocked_out_at: completedAt } : s));
         }}
       />
+      <MyChecklistSheet
+        open={checklistOpen}
+        onClose={() => setChecklistOpen(false)}
+        shift={activeShift as any}
+        userId={userId}
+        onProgress={({ done, total }) => setChecklistProgress((prev) => prev ? { ...prev, done, total } : prev)}
+      />
       <SignalementSheet open={signalOpen} onClose={() => setSignalOpen(false)} userId={userId} studioId={profile?.studio_id ?? null} />
       <RequestModificationSheet open={reqOpen} onClose={() => { setReqOpen(false); setReqShiftId(null); }} userId={userId} shiftId={reqShiftId} />
       <MyRequestsSheet open={myReqOpen} onClose={() => setMyReqOpen(false)} userId={userId} />
