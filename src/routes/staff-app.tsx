@@ -759,6 +759,23 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
                 );
               })()}
 
+              {state === "in_service" && checklistProgress && checklistProgress.total > 0 && (
+                <button
+                  onClick={() => setChecklistOpen(true)}
+                  className="mt-2 ml-0 inline-flex items-center gap-1.5 rounded-md px-3 py-2"
+                  style={{
+                    fontSize: 12, fontWeight: 500,
+                    backgroundColor: "rgba(255,255,255,0.10)",
+                    color: "#FAF8F4",
+                    border: "1px solid rgba(255,255,255,0.18)",
+                  }}
+                >
+                  <CheckSquare size={13} /> Faire ma check-list · {checklistProgress.done}/{checklistProgress.total}
+                </button>
+              )}
+
+
+
               {state === "future" && next && !isToday && (
                 <button
                   onClick={() => setShiftDetail(next)}
