@@ -4,7 +4,7 @@ import { Sheet, FormField, TextArea, PrimaryButton, SecondaryButton } from "./sh
 import type { ShiftRow } from "./shared";
 import { Star, MessageSquare, ArrowRight, Check } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { completeShiftClockOutFn } from "@/lib/shift-clock.functions";
+import { completeShiftClockOutFn, getShiftClockPolicyFn } from "@/lib/shift-clock.functions";
 
 interface Props {
   open: boolean;
@@ -46,14 +46,18 @@ const STEPS: Step[] = ["feedback", "report", "handoff"];
 
 export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
   const completeClockOut = useServerFn(completeShiftClockOutFn);
+  const getPolicy = useServerFn(getShiftClockPolicyFn);
   const openedShiftRef = useRef<string | null>(null);
   const [step, setStep] = useState<Step>("feedback");
   const [rating, setRating] = useState(0);
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [reportMsg, setReportMsg] = useState("");
   const [handoffMsg, setHandoffMsg] = useState("");
+  const [outReason, setOutReason] = useState("");
+  const [policy, setPolicy] = useState<{ outDeviationMin: number; earlyOutWindowMin: number; graceOutMin: number; clockOutNeedsReason: boolean } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState<{ punctuality: number; checklist: number | null; total: number; outOf: number } | null>(null);
+
 
   const saveDraft = (patch: Draft) => {
     if (!shift || typeof window === "undefined") return;
@@ -90,11 +94,40 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
     setFeedbackMsg(typeof draft?.feedbackMsg === "string" ? draft.feedbackMsg : "");
     setReportMsg(typeof draft?.reportMsg === "string" ? draft.reportMsg : "");
     setHandoffMsg(typeof draft?.handoffMsg === "string" ? draft.handoffMsg : "");
+    setOutReason("");
+    setPolicy(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, shift?.id]);
 
+  // Tolérances de sortie lues en direct (réglages studio)
+  useEffect(() => {
+    if (!open || !shift?.id) return;
+    let alive = true;
+    const load = async () => {
+      try {
+        const p: any = await getPolicy({ data: { shiftId: shift.id } });
+        if (alive) setPolicy({
+          outDeviationMin: p.outDeviationMin,
+          earlyOutWindowMin: p.earlyOutWindowMin,
+          graceOutMin: p.graceOutMin,
+          clockOutNeedsReason: p.clockOutNeedsReason,
+        });
+      } catch { /* ignore */ }
+    };
+    load();
+    const t = setInterval(load, 30_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [open, shift?.id, getPolicy]);
+
+  const outReasonRequired = !!policy?.clockOutNeedsReason;
+  const outReasonOk = outReason.trim().length >= 5;
+
   const handleFinish = async () => {
     if (!shift) return;
+    if (outReasonRequired && !outReasonOk) {
+      toast.error("Motif obligatoire", { description: "Explique pourquoi tu pars plus tôt ou plus tard." });
+      return;
+    }
     setSubmitting(true);
     try {
       const result = await completeClockOut({
@@ -104,8 +137,10 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
           feedbackMsg,
           reportMsg,
           handoffMsg,
+          outReason: outReasonRequired ? outReason.trim() : null,
         },
       });
+
       if (result.alreadyCompleted) {
         toast.info("Shift déjà clôturé");
       } else {
@@ -206,9 +241,35 @@ export function EndShiftSheet({ open, onClose, shift, onCompleted }: Props) {
               placeholder="Ex: Attention, le moulin chauffe / Stock lait avoine bas / Client réservé à 14h..."
               rows={5} />
           </FormField>
+
+          {outReasonRequired && (
+            <div className="rounded-xl p-3 mb-1" style={{ backgroundColor: "#FDECE6", border: "0.5px solid #F0997B" }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#8A3B1E" }}>Motif obligatoire</div>
+              <div style={{ fontSize: 12, color: "#8A3B1E", marginTop: 4, lineHeight: 1.5 }}>
+                {(policy?.outDeviationMin ?? 0) < 0
+                  ? `Tu pars ${Math.abs(policy!.outDeviationMin)} min avant la fin prévue (tolérance : ${policy?.earlyOutWindowMin} min).`
+                  : `Tu pointes ta sortie ${policy?.outDeviationMin} min après la fin prévue (tolérance : ${policy?.graceOutMin} min).`}
+                {" "}Explique brièvement pourquoi.
+              </div>
+              <textarea
+                value={outReason}
+                onChange={(e) => setOutReason(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="Ex : fin de service anticipée validée par le manager…"
+                className="mt-2 w-full rounded-lg p-2.5"
+                style={{ fontSize: 16, border: "0.5px solid rgba(0,0,0,0.15)", backgroundColor: "#fff", resize: "none" }}
+              />
+              {!outReasonOk && (
+                <div style={{ fontSize: 11, color: "#8A3B1E", marginTop: 4 }}>Au moins 5 caractères.</div>
+              )}
+            </div>
+          )}
+
           <div className="mt-3 flex gap-2">
             <SecondaryButton onClick={() => goToStep("report")}>Retour</SecondaryButton>
-            <PrimaryButton onClick={handleFinish} disabled={submitting}>
+            <PrimaryButton onClick={handleFinish} disabled={submitting || (outReasonRequired && !outReasonOk)}>
+
               {submitting ? "Envoi..." : "Finaliser et pointer ma sortie"}
             </PrimaryButton>
           </div>

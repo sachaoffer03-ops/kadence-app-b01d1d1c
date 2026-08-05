@@ -8,7 +8,9 @@ const validateSchema = z.object({
   qrCode: z.string().min(1).max(200),
   lat: z.number().min(-90).max(90).nullable().optional(),
   lng: z.number().min(-180).max(180).nullable().optional(),
+  outReason: z.string().max(500).nullable().optional(),
 });
+
 
 export const validateClockOutFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

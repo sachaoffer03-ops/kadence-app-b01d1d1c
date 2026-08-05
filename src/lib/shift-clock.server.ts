@@ -1,6 +1,8 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { loadScoringSettings } from "./scoring-rules.server";
 import { scorePunctuality, scoreChecklist } from "./scoring-shared";
+import { loadClockPolicy, computeMinutesLate, computeOutDeviation, clockInNeedsReason, clockOutNeedsReason, cleanReason } from "./clock-policy.server";
+
 
 async function computeShiftPoints(shiftId: string, submissionId?: string | null): Promise<{
   punctuality: number; checklist: number | null; total: number; outOf: number;
@@ -46,7 +48,9 @@ type CompleteShiftClockOutInput = {
   feedbackMsg?: string | null;
   reportMsg?: string | null;
   handoffMsg?: string | null;
+  outReason?: string | null;
 };
+
 
 const cleanText = (value?: string | null) => {
   const trimmed = value?.trim();
@@ -65,7 +69,7 @@ function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number)
 export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
   const { data: shift, error: shiftError } = await supabaseAdmin
     .from("shifts")
-    .select("id,user_id,studio_id,shift_date,end_time,business_role,clocked_in_at,clocked_out_at")
+    .select("id,user_id,studio_id,shift_date,start_time,end_time,business_role,clocked_in_at,clocked_out_at")
     .eq("id", input.shiftId)
     .maybeSingle();
 
@@ -83,6 +87,20 @@ export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
   if (!isOwner && !isAdminLike) throw new Error("Tu ne peux pas clôturer ce shift");
   if (!shift.clocked_in_at) throw new Error("Tu dois d'abord pointer ton arrivée");
   if (shift.clocked_out_at) return { alreadyCompleted: true, completedAt: shift.clocked_out_at as string };
+
+  // Fenêtre de sortie tolérée (réglages studio, appliqués en direct)
+  const outNow = new Date();
+  const outPolicy = await loadClockPolicy(shift as any);
+  const outDeviation = computeOutDeviation(outPolicy, outNow);
+  const outReason = cleanReason(input.outReason);
+  if (isOwner && clockOutNeedsReason(outPolicy, outNow) && !outReason) {
+    throw new Error(
+      outDeviation < 0
+        ? `Tu pars ${Math.abs(outDeviation)} min avant la fin prévue (tolérance : ${outPolicy.earlyOutWindowMin} min). Un motif est obligatoire pour pointer ta sortie.`
+        : `Tu pointes ta sortie ${outDeviation} min après la fin prévue (tolérance : ${outPolicy.graceOutMin} min). Un motif est obligatoire.`
+    );
+  }
+
 
   if (input.submissionId) {
     const { data: submission, error: subReadError } = await supabaseAdmin
@@ -135,7 +153,7 @@ export async function completeShiftClockOut(input: CompleteShiftClockOutInput) {
   const completedAt = new Date().toISOString();
   const { data: updated, error: updateError } = await supabaseAdmin
     .from("shifts")
-    .update({ status: "completed", clocked_out_at: completedAt })
+    .update({ status: "completed", clocked_out_at: completedAt, clock_out_reason: outReason, clock_out_deviation_min: outDeviation } as any)
     .eq("id", input.shiftId)
     .is("clocked_out_at", null)
     .select("id")
@@ -198,12 +216,13 @@ export type ValidateClockInInput = {
   qrCode: string;
   lat?: number | null;
   lng?: number | null;
+  lateReason?: string | null;
 };
 
 export async function validateClockIn(input: ValidateClockInInput) {
   const { data: shift, error } = await supabaseAdmin
     .from("shifts")
-    .select("id,user_id,studio_id,shift_date,start_time,clocked_in_at,clocked_out_at")
+    .select("id,user_id,studio_id,shift_date,start_time,end_time,clocked_in_at,clocked_out_at")
     .eq("id", input.shiftId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -242,14 +261,21 @@ export async function validateClockIn(input: ValidateClockInInput) {
     }
   }
 
-  const startDt = new Date(`${shift.shift_date}T${shift.start_time}`);
+  // Tolérance de retard : lue en direct sur le studio (réglages /cloture)
   const now = new Date();
-  const minutesLate = Math.max(0, Math.floor((now.getTime() - startDt.getTime()) / 60_000));
+  const policy = await loadClockPolicy(shift as any);
+  const minutesLate = computeMinutesLate(policy, now);
+  const reason = cleanReason(input.lateReason);
+  if (clockInNeedsReason(policy, now) && !reason) {
+    throw new Error(
+      `Tu as ${minutesLate} min de retard (tolérance : ${policy.graceInMin} min). Un motif est obligatoire pour pointer ton arrivée.`
+    );
+  }
   const clockedInAt = now.toISOString();
 
   const { error: upErr } = await supabaseAdmin
     .from("shifts")
-    .update({ clocked_in_at: clockedInAt, minutes_late: minutesLate, status: "scheduled" })
+    .update({ clocked_in_at: clockedInAt, minutes_late: minutesLate, status: "scheduled", late_reason: reason } as any)
     .eq("id", input.shiftId)
     .is("clocked_in_at", null);
   if (upErr) throw new Error(upErr.message);
@@ -260,8 +286,9 @@ export async function validateClockIn(input: ValidateClockInInput) {
     action: "self_clock_in",
     before_value: null,
     after_value: { clocked_in_at: clockedInAt, minutes_late: minutesLate, distance_m },
-    note: null,
+    note: reason,
   } as any);
+
 
 
   const { data: shiftFull } = await supabaseAdmin

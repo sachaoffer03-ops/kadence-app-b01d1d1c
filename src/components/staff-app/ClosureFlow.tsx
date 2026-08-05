@@ -7,6 +7,8 @@ import { signChecklistPhoto } from "@/lib/checklist-photo-url";
 import { useServerFn } from "@tanstack/react-start";
 import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, notifyTransitionIncoming, type ChecklistPhase } from "@/lib/checklists.helpers";
 import { validateClockOutFn, finalizeClosureFn, analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
+import { getShiftClockPolicyFn } from "@/lib/shift-clock.functions";
+
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
 import { getCurrentPositionSafe } from "@/lib/geolocation";
 import { GeolocationDeniedScreen } from "@/components/employee/GeolocationDeniedScreen";
@@ -109,13 +111,43 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   const [clockOutLoading, setClockOutLoading] = useState(false);
   const [geoDenied, setGeoDenied] = useState(false);
   const [clockedOutAt, setClockedOutAt] = useState<string | null>(null);
+  const [outReason, setOutReason] = useState("");
+  const [clockPolicy, setClockPolicy] = useState<{ outDeviationMin: number; earlyOutWindowMin: number; graceOutMin: number; clockOutNeedsReason: boolean } | null>(null);
 
   const validateClockOut = useServerFn(validateClockOutFn);
+  const getClockPolicy = useServerFn(getShiftClockPolicyFn);
+
+  const outReasonRequired = !!clockPolicy?.clockOutNeedsReason;
+  const outReasonOk = outReason.trim().length >= 5;
+
   const finalizeClosure = useServerFn(finalizeClosureFn);
   const analyzeClosurePhoto = useServerFn(analyzeClosurePhotoFn);
 
 
+  // ─── Tolérances de sortie lues en direct (réglages studio) ───────────────
+  useEffect(() => {
+    if (!open || !shift?.id) return;
+    let alive = true;
+    setOutReason("");
+    setClockPolicy(null);
+    const load = async () => {
+      try {
+        const p: any = await getClockPolicy({ data: { shiftId: shift.id } });
+        if (alive) setClockPolicy({
+          outDeviationMin: p.outDeviationMin,
+          earlyOutWindowMin: p.earlyOutWindowMin,
+          graceOutMin: p.graceOutMin,
+          clockOutNeedsReason: p.clockOutNeedsReason,
+        });
+      } catch { /* ignore */ }
+    };
+    load();
+    const t = setInterval(load, 30_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [open, shift?.id, getClockPolicy]);
+
   // ─── Load template + closure questions when shift opens ──────────────────
+
   useEffect(() => {
     if (!open || !shift) return;
     setStep(1);
@@ -329,6 +361,10 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   // ─── QR / Geolocation validation (step 4) ────────────────────────────────
   const submitQrCode = async (code: string) => {
     if (!shift || clockOutLoading) return;
+    if (outReasonRequired && !outReasonOk) {
+      toast.error("Motif obligatoire", { description: "Explique pourquoi tu pars plus tôt ou plus tard." });
+      return;
+    }
     setClockOutLoading(true);
     try {
       let lat: number | null = null, lng: number | null = null;
@@ -340,7 +376,10 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         setClockOutLoading(false);
         return;
       }
-      const r = await validateClockOut({ data: { shiftId: shift.id, qrCode: code, lat, lng } });
+      const r = await validateClockOut({
+        data: { shiftId: shift.id, qrCode: code, lat, lng, outReason: outReasonRequired ? outReason.trim() : null },
+      });
+
       setClockedOutAt(r.completedAt ?? new Date().toISOString());
       toast.success("Pointage de sortie validé");
       // Phase null (rare) → finalize direct ; sinon → écran "Avant de partir" (step 5)
@@ -458,7 +497,33 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
         {step === 3 && <Step3 role={shift.business_role} photos={photos} states={photoStates} onUpload={handlePhotoUpload} template={template} hasTemplate={!!template} />}
         {step === 4 && (geoDenied
           ? <div className="px-5 py-5"><GeolocationDeniedScreen onRetrySuccess={() => setGeoDenied(false)} /></div>
-          : <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />)}
+          : <>
+              {outReasonRequired && (
+                <div className="mx-5 mt-4 rounded-xl p-3" style={{ backgroundColor: "#FDECE6", border: "0.5px solid #F0997B" }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#8A3B1E" }}>Motif obligatoire</div>
+                  <div style={{ fontSize: 12, color: "#8A3B1E", marginTop: 4, lineHeight: 1.5 }}>
+                    {(clockPolicy?.outDeviationMin ?? 0) < 0
+                      ? `Tu pars ${Math.abs(clockPolicy!.outDeviationMin)} min avant la fin prévue (tolérance : ${clockPolicy?.earlyOutWindowMin} min).`
+                      : `Tu pointes ta sortie ${clockPolicy?.outDeviationMin} min après la fin prévue (tolérance : ${clockPolicy?.graceOutMin} min).`}
+                    {" "}Explique brièvement pourquoi avant de scanner.
+                  </div>
+                  <textarea
+                    value={outReason}
+                    onChange={(e) => setOutReason(e.target.value)}
+                    rows={3}
+                    maxLength={500}
+                    placeholder="Ex : service terminé plus tôt, validé par le manager…"
+                    className="mt-2 w-full rounded-lg p-2.5"
+                    style={{ fontSize: 16, border: "0.5px solid rgba(0,0,0,0.15)", backgroundColor: "#fff", resize: "none" }}
+                  />
+                  {!outReasonOk && (
+                    <div style={{ fontSize: 11, color: "#8A3B1E", marginTop: 4 }}>Au moins 5 caractères.</div>
+                  )}
+                </div>
+              )}
+              <Step4 onSubmitCode={submitQrCode} loading={clockOutLoading} />
+            </>)}
+
         {step === 5 && <Step5
           questions={closureQuestions}
           responses={questionResponses}
