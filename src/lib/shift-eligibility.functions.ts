@@ -37,6 +37,7 @@ export interface EligibleEmployee {
   contracts: string[];
   business_roles: string[];
   has_role: boolean;
+  missing_roles: string[];
   has_studio: boolean;
   has_availability: boolean;
   is_saturated: boolean;
@@ -187,7 +188,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       const roles = rolesByUser.get(p.id) || [];
       // Hybride : doit avoir TOUS les rôles requis ; mono : juste le business_role.
       const has_role = requiredRoles.every((r) => roles.includes(r));
-      if (!has_role) continue;
+      const missing_roles = requiredRoles.filter((r) => !roles.includes(r));
 
 
       const studios = studiosByUser.get(p.id) || [];
@@ -212,6 +213,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       const not_trained = untrained_courses.length > 0;
 
       const reasons: string[] = [];
+      if (!has_role) reasons.push(`n'a pas le rôle ${missing_roles.join(" + ")}`);
       if (!has_studio) reasons.push("pas rattaché au studio");
       if (!has_availability) reasons.push("aucune dispo déclarée sur le créneau");
       if (is_saturated) reasons.push(`saturé ${weekly.toFixed(1)}h/${cap}h cette semaine`);
@@ -226,6 +228,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
         contracts: contractsByUser.get(p.id) || (p.contract ? [p.contract] : []),
         business_roles: roles,
         has_role,
+        missing_roles,
         has_studio,
         has_availability,
         is_saturated,
@@ -240,7 +243,7 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       // Éligibles = rattachés au studio + rôle ok + pas saturés + formés.
       // La dispo déclarée n'est PLUS un critère bloquant : elle devient un
       // badge de priorité (« Dispo ») et un critère de tri.
-      if (has_studio && !is_saturated && !not_trained) eligible.push(row);
+      if (has_role && has_studio && !is_saturated && !not_trained) eligible.push(row);
       else partial.push(row);
     }
 
@@ -249,7 +252,11 @@ export const getEligibleEmployeesForShift = createServerFn({ method: "POST" })
       return (b.score ?? -1) - (a.score ?? -1);
     };
     eligible.sort(byPriority);
-    partial.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+    // Ceux qui n'ont pas le rôle passent tout en bas de la liste des partiels.
+    partial.sort((a, b) => {
+      if (a.has_role !== b.has_role) return a.has_role ? -1 : 1;
+      return (b.score ?? -1) - (a.score ?? -1);
+    });
 
 
     return {
