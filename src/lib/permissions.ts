@@ -96,6 +96,12 @@ export const PERMISSION_SECTIONS: PermissionSection[] = [
         actions: [{ key: "edit", label: "Corriger un pointage erroné" }],
       },
       {
+        key: "/justifications",
+        label: "Justifications",
+        description: "Motifs de retard et de sortie hors horaire",
+        actions: [{ key: "review", label: "Accepter / refuser une justification" }],
+      },
+      {
         key: "/cloture",
         label: "Clôture",
         description: "Checklists & questions de fin de shift",
@@ -211,7 +217,7 @@ export const PRESET_MANAGER_SKULT: string[] = [
   // Pages
   "/planning", "/dispos-monitoring", "/staff", "/trous",
   "/notifications", "/demandes", "/signalements",
-  "/pointage", "/cloture", "/feedbacks", "/formation", "/assistant-ia",
+  "/pointage", "/justifications", "/cloture", "/feedbacks", "/formation", "/assistant-ia",
   // Sous-actions
   "/planning:write", "/planning:generate", "/planning:publish",
   "/dispos-monitoring:send_reminders",
@@ -220,7 +226,7 @@ export const PRESET_MANAGER_SKULT: string[] = [
   "/notifications:manage",
   "/demandes:accept_refuse",
   "/signalements:resolve",
-  "/pointage:edit",
+  "/pointage:edit", "/justifications:review",
   "/cloture:read_responses", "/cloture:review_photos",
   "/cloture:edit_questions", "/cloture:edit_checklists", "/cloture:edit_scoring",
   "/feedbacks:reply",
