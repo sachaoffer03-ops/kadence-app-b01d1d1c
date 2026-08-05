@@ -440,9 +440,21 @@ export async function notifyOverdueClockOuts() {
       .from("user_roles").select("user_id,role").in("role", ["admin", "manager"]);
 
     if (!mgrs || mgrs.length === 0) continue;
+    // Managers : uniquement ceux rattachés au studio concerné. Admins : tous.
+    const mgrOnlyIds = (mgrs as any[]).filter((m) => m.role !== "admin").map((m) => m.user_id);
+    const { data: links } = mgrOnlyIds.length
+      ? await supabaseAdmin.from("user_studios").select("user_id").eq("studio_id", sh.studio_id).in("user_id", mgrOnlyIds)
+      : { data: [] as any[] };
+    const allowedManagerIds = new Set((links ?? []).map((l: any) => l.user_id));
+    const recipients = Array.from(new Set(
+      (mgrs as any[])
+        .filter((m) => m.role === "admin" || allowedManagerIds.has(m.user_id))
+        .map((m) => m.user_id as string)
+    ));
+    if (recipients.length === 0) continue;
     const overdueMin = Math.round((Date.now() - dueIso) / 60_000);
-    const rows = mgrs.map((m: any) => ({
-      user_id: m.user_id,
+    const rows = recipients.map((uid) => ({
+      user_id: uid,
       type: "shift_overdue_clockout",
       title: `Pointage de sortie en retard — ${studio.name}`,
       body: `${name} n'a pas pointé sa sortie (${sh.business_role}). En retard de ${overdueMin} min.`,
@@ -451,6 +463,7 @@ export async function notifyOverdueClockOuts() {
       category: "pointage",
     }));
     await supabaseAdmin.from("notifications").insert(rows);
+
     notified += 1;
   }
   return { processed: shifts.length, notified, at: nowIso };
