@@ -413,6 +413,20 @@ async function runEngine(ctx: EngineCtx) {
     logs.excluded_user_ids = Array.from(excludeUserIds);
   }
 
+  // ── Shifts hors période (jours de la même semaine ISO appartenant au mois
+  // précédent/suivant) : contraintes dures uniquement, jamais modifiés.
+  const boundaryShifts: any[] = [];
+  for (let i = existingShifts.length - 1; i >= 0; i--) {
+    const d = existingShifts[i].shift_date;
+    if (d < monthStart || d > monthEnd) {
+      boundaryShifts.push(existingShifts[i]);
+      existingShifts.splice(i, 1);
+    }
+  }
+  logs.boundary_shifts_loaded = boundaryShifts.length;
+
+
+
   // Indisponibilités : Map<userId, Array<{start,end}>>
   const unavailByUser = new Map<string, Array<{ start: string; end: string }>>();
   for (const u of unavailRows ?? []) {
