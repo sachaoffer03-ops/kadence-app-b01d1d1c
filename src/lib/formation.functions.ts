@@ -327,10 +327,16 @@ export const getEmployeeTrainingProgress = createServerFn({ method: "POST" })
     const userRoleNames = new Set(((ubrRes.data ?? []) as any[]).map((r: any) => r.role));
     const brById = new Map<string, string>(((brRes.data ?? []) as any[]).map((r: any) => [r.id, r.name]));
 
-    // Filter applicable courses
+    // Filter applicable courses (poste + studios ciblés)
+    const [courseStudiosMap, myStudios] = await Promise.all([
+      getCourseStudiosMap(supabase),
+      getUserStudioIds(supabase, data.userId),
+    ]);
     const applicable = courses.filter((c: any) =>
-      c.is_required_for_all || (c.business_role_id && userRoleNames.has(brById.get(c.business_role_id) ?? ""))
+      (c.is_required_for_all || (c.business_role_id && userRoleNames.has(brById.get(c.business_role_id) ?? "")))
+      && courseMatchesStudios(courseStudiosMap.get(c.id), myStudios)
     );
+
 
     const allSections = (sectionsRes.data ?? []) as any[];
     const allModules = (modulesRes.data ?? []) as any[];
