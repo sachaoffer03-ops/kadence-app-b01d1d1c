@@ -495,7 +495,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
               className="w-full rounded-md py-3 transition-opacity disabled:opacity-50"
               style={{ fontSize: 14, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}
             >
-              {checklistBlocked ? `Encore ${items.filter((i) => i.is_required && !itemStates[i.id]).length} à cocher` : "Suivant"}
+              {checklistBlocked ? `Encore ${items.filter((i) => !itemStates[i.id]).length} à cocher` : "Suivant"}
             </button>
           )}
           {step === 3 && (
