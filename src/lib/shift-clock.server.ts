@@ -1,6 +1,8 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { loadScoringSettings } from "./scoring-rules.server";
 import { scorePunctuality, scoreChecklist } from "./scoring-shared";
+import { loadClockPolicy, computeMinutesLate, clockInNeedsReason, cleanReason } from "./clock-policy.server";
+
 
 async function computeShiftPoints(shiftId: string, submissionId?: string | null): Promise<{
   punctuality: number; checklist: number | null; total: number; outOf: number;
