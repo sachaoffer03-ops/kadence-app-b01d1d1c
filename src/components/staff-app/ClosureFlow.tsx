@@ -215,8 +215,8 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   // ─── Step gating ─────────────────────────────────────────────────────────
   const itemsChecked = Object.values(itemStates).filter(Boolean).length;
   const itemsTotal = items.length;
-  // Checklists ne sont plus bloquantes : un item non coché fait baisser le score via les règles de notation.
-  const checklistBlocked = false;
+  // La check-list doit être remplie à 100 % pour pouvoir clôturer le shift.
+  const checklistBlocked = items.some((i) => !itemStates[i.id]);
   const photosValidatedCount = Object.values(photoStates).filter((p) => p.status === "validated").length;
   const photosBlocked = (() => {
     if (!template) return false;
