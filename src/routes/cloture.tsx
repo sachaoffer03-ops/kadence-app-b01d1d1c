@@ -894,14 +894,19 @@ function SortableItem({ item, onDeleted }: { item: any; photos?: any[]; onDelete
 }
 
 
+const PHASE_ORDER: ChecklistPhase[] = ["opening", "transition_in", "transition_out", "closing"];
+
 function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: { items: any[]; currentRoleId: string; studioId: string; phase?: ChecklistPhase }) {
   const { roles } = useBusinessRoles({ onlyActive: true });
   const [open, setOpen] = useState(false);
-  const [target, setTarget] = useState<string>("");
+  const [target, setTarget] = useState<string>(currentRoleId);
+  const [targetPhase, setTargetPhase] = useState<ChecklistPhase>(phase);
   const [busy, setBusy] = useState(false);
 
+  const isSame = target === currentRoleId && targetPhase === phase;
+
   const dup = async () => {
-    if (!target || busy) return;
+    if (!target || busy || isSame) return;
     setBusy(true);
     try {
       // 1) Forcer la persistance des champs en cours d'édition (blur l'élément actif)
@@ -928,19 +933,19 @@ function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: 
         .select("id")
         .eq("studio_id", studioId)
         .eq("business_role_id", target)
-        .eq("phase", phase)
+        .eq("phase", targetPhase)
         .order("created_at", { ascending: true })
         .limit(1);
       let tpl: any = tplRows && tplRows.length > 0 ? tplRows[0] : null;
       if (!tpl) {
         const { data: created, error: cErr } = await supabase.from("checklist_templates").insert({
-          studio_id: studioId, business_role_id: target, name: phase === "opening" ? "Ouverture" : phase === "transition_in" ? "Prise de poste" : phase === "transition_out" ? "Passage de relais" : "Clôture", phase, is_active: true, is_blocking: true,
+          studio_id: studioId, business_role_id: target, name: PHASE_META[targetPhase].label, phase: targetPhase, is_active: true, is_blocking: true,
         } as any).select("id").single();
         if (cErr) {
           // Conflit unique → relire
           const { data: again } = await supabase
             .from("checklist_templates").select("id")
-            .eq("studio_id", studioId).eq("business_role_id", target).eq("phase", phase)
+            .eq("studio_id", studioId).eq("business_role_id", target).eq("phase", targetPhase)
             .order("created_at", { ascending: true }).limit(1);
           tpl = again && again.length > 0 ? again[0] : null;
         } else {
@@ -966,47 +971,53 @@ function DuplicateButton({ items, currentRoleId, studioId, phase = "closing" }: 
         const { error } = await supabase.from("checklist_template_items").insert(rows as any);
         if (error) { toast.error(error.message); return; }
       }
-      // Invalider le cache pour que le poste cible relise depuis la DB
-      templateEnsureCache.delete(`${studioId}::${target}::${phase}`);
-      toast.success(`Checklist dupliquée (${rows.length} item${rows.length > 1 ? "s" : ""}). Ouvre l'onglet "${roles.find(r=>r.id===target)?.name ?? "cible"}" pour vérifier.`);
+      // Invalider le cache pour que la cible relise depuis la DB
+      templateEnsureCache.delete(`${studioId}::${target}::${targetPhase}`);
+      toast.success(`Checklist dupliquée (${rows.length} item${rows.length > 1 ? "s" : ""}) vers ${roles.find(r=>r.id===target)?.name ?? "cible"} · ${PHASE_META[targetPhase].label}.`);
       setOpen(false);
-      setTarget("");
+      setTarget(currentRoleId);
+      setTargetPhase(phase);
       flashSaved();
     } finally {
       setBusy(false);
     }
   };
 
-  const targets = roles.filter((r) => r.id !== currentRoleId);
-
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setTarget(""); }}>
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setTarget(currentRoleId); setTargetPhase(phase); } }}>
       <PopoverTrigger asChild>
         <button
           className="rounded-md px-3 py-1.5 border"
           style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--background)", borderColor: "var(--border)" }}
         >
-          Dupliquer vers un autre poste
+          Dupliquer vers…
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px]" align="start">
         <div className="flex flex-col gap-2">
           <div style={{ fontSize: 13, fontWeight: 500 }}>Dupliquer la checklist</div>
           <label style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Poste de destination</label>
-          {targets.length === 0 ? (
-            <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun autre poste actif disponible.</p>
+          <Select value={target} onValueChange={setTarget}>
+            <SelectTrigger><SelectValue placeholder="Choisir un poste" /></SelectTrigger>
+            <SelectContent>
+              {roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}{r.id === currentRoleId ? " (actuel)" : ""}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <label style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Phase de destination</label>
+          <Select value={targetPhase} onValueChange={(v) => setTargetPhase(v as ChecklistPhase)}>
+            <SelectTrigger><SelectValue placeholder="Choisir une phase" /></SelectTrigger>
+            <SelectContent>
+              {PHASE_ORDER.map((p) => <SelectItem key={p} value={p}>{PHASE_META[p].label}{p === phase ? " (actuelle)" : ""}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {isSame ? (
+            <p style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Choisis un poste ou une phase différente de la checklist actuelle.</p>
           ) : (
-            <Select value={target} onValueChange={setTarget}>
-              <SelectTrigger><SelectValue placeholder="Choisir un poste" /></SelectTrigger>
-              <SelectContent>
-                {targets.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <p style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Les items sont ajoutés à la fin de la checklist cible (même studio).</p>
           )}
-          <p style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Les items sont ajoutés à la fin de la checklist existante.</p>
           <div className="flex justify-end gap-2 mt-1">
             <button onClick={() => setOpen(false)} className="px-3 py-1.5 rounded-md border" style={{ fontSize: 12, borderColor: "var(--border)" }}>Annuler</button>
-            <button onClick={dup} disabled={!target || busy} className="px-3 py-1.5 rounded-md disabled:opacity-50" style={{ fontSize: 12, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
+            <button onClick={dup} disabled={!target || busy || isSame} className="px-3 py-1.5 rounded-md disabled:opacity-50" style={{ fontSize: 12, backgroundColor: "var(--coral)", color: "var(--coral-text)" }}>
               {busy ? "…" : "Dupliquer"}
             </button>
           </div>
