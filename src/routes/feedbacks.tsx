@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MessageSquare, Check, Search, Star, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ShiftsToRate } from "@/components/ShiftsToRate";
 
 export const Route = createFileRoute("/feedbacks")({
   component: FeedbacksPage,
@@ -27,7 +28,7 @@ const fmtRel = (iso: string) => {
   return `il y a ${Math.floor(h / 24)}j`;
 };
 
-type Tab = "tous" | "non_lus" | "basses";
+type Tab = "a_noter" | "tous" | "non_lus" | "basses";
 
 function FeedbacksPage() {
   const [items, setItems] = useState<FB[]>([]);
@@ -35,7 +36,7 @@ function FeedbacksPage() {
   const [shifts, setShifts] = useState<Record<string, ShiftLite>>({});
   const [studios, setStudios] = useState<Record<string, StudioLite>>({});
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<Tab>("tous");
+  const [tab, setTab] = useState<Tab>("a_noter");
   const [replyingId, setReplyingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
@@ -150,6 +151,9 @@ function FeedbacksPage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 mb-4 border-b" style={{ borderColor: "var(--border)" }}>
+        <TabBtn active={tab === "a_noter"} onClick={() => setTab("a_noter")}>
+          À noter
+        </TabBtn>
         <TabBtn active={tab === "tous"} onClick={() => setTab("tous")}>
           Tous <Count>{items.length}</Count>
         </TabBtn>
@@ -161,6 +165,10 @@ function FeedbacksPage() {
         </TabBtn>
       </div>
 
+      {tab === "a_noter" ? (
+        <ShiftsToRate />
+      ) : (
+      <>
       {/* Search */}
       <div className="flex items-center gap-2 rounded-lg border px-3 py-2 mb-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         <Search size={13} style={{ color: "var(--muted-foreground)" }} className="shrink-0" />
@@ -288,6 +296,8 @@ function FeedbacksPage() {
             );
           })}
         </div>
+      )}
+      </>
       )}
     </div>
   );
