@@ -151,7 +151,7 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onConfirm, onUnl
   const { user, appRole } = useAuth();
   const canRate = (appRole === "admin" || appRole === "manager") && !shift.hole && !!shift.clockOut;
   const [rateOpen, setRateOpen] = useState(false);
-  const [rateValue, setRateValue] = useState(7);
+  const [rateValue, setRateValue] = useState(0);
   const [rateMsg, setRateMsg] = useState("");
   const [rateSaving, setRateSaving] = useState(false);
   const [alreadyRated, setAlreadyRated] = useState(false);
@@ -186,7 +186,7 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onConfirm, onUnl
         user_id: shift.employeeId,
         type: "feedback_received",
         title: "Nouveau feedback reçu",
-        body: `Tu as reçu une note ${rateValue}/10 sur ton shift du ${new Date(shift.shiftDate).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}.`,
+        body: `Tu as reçu une note ${rateValue / 2}/5 sur ton shift du ${new Date(shift.shiftDate).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}.`,
         link: `/staff-app?tab=planning&shift=${shift.id}`,
         priority: "normal",
         category: "general",
@@ -353,7 +353,7 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onConfirm, onUnl
                   />
                   <div className="flex gap-2 justify-end">
                     <button
-                      onClick={() => { setRateOpen(false); setRateMsg(""); setRateValue(7); }}
+                      onClick={() => { setRateOpen(false); setRateMsg(""); setRateValue(0); }}
                       className="rounded-md px-2.5 py-1"
                       style={{ fontSize: 11, border: "0.5px solid var(--border)" }}
                     >
@@ -361,9 +361,9 @@ function ShiftDetailModal({ shift, employee, onClose, onDelete, onConfirm, onUnl
                     </button>
                     <button
                       onClick={submitRate}
-                      disabled={rateSaving}
+                      disabled={rateSaving || rateValue === 0}
                       className="rounded-md px-2.5 py-1"
-                      style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}
+                      style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff", opacity: rateSaving || rateValue === 0 ? 0.5 : 1 }}
                     >
                       {rateSaving ? "..." : "Enregistrer"}
                     </button>

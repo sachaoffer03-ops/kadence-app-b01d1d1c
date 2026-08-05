@@ -73,7 +73,7 @@ function EmployeeDetailPage() {
   const [sigs, setSigs] = useState<Sig[]>([]);
   const [loading, setLoading] = useState(true);
   const [rateShiftId, setRateShiftId] = useState<string | null>(null);
-  const [rateValue, setRateValue] = useState(7);
+  const [rateValue, setRateValue] = useState(0);
   const [rateMsg, setRateMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [editClockShiftId, setEditClockShiftId] = useState<string | null>(null);
@@ -162,14 +162,14 @@ function EmployeeDetailPage() {
         user_id: id,
         type: "feedback_received",
         title: "Nouveau feedback reçu",
-        body: `Tu as reçu une note ${rateValue}/10 sur un de tes shifts.`,
+        body: `Tu as reçu une note ${rateValue / 2}/5 sur un de tes shifts.`,
         link: `/staff-app?tab=planning&shift=${shiftId}`,
         priority: "normal",
         category: "general",
       });
     }
     toast.success("Note enregistrée");
-    setRateShiftId(null); setRateMsg(""); setRateValue(7);
+    setRateShiftId(null); setRateMsg(""); setRateValue(0);
     load();
   };
 
@@ -452,7 +452,7 @@ function EmployeeDetailPage() {
                           </button>
                         )}
                         {canRate && !isRating && (
-                          <button onClick={() => { setRateShiftId(s.id); setRateValue(7); setRateMsg(""); }}
+                          <button onClick={() => { setRateShiftId(s.id); setRateValue(0); setRateMsg(""); }}
                             className="rounded-md px-2 py-1 inline-flex items-center gap-1"
                             style={{ fontSize: 11, fontWeight: 500, border: "0.5px solid var(--border)" }}>
                             <Plus size={11} /> Noter
@@ -484,7 +484,7 @@ function EmployeeDetailPage() {
                             style={{ fontSize: 12, borderColor: "var(--border)", backgroundColor: "var(--card)" }} />
                           <div className="flex gap-2 justify-end">
                             <button onClick={() => setRateShiftId(null)} className="rounded-md px-2.5 py-1" style={{ fontSize: 11, border: "0.5px solid var(--border)" }}>Annuler</button>
-                            <button onClick={() => submitRating(s.id)} disabled={saving} className="rounded-md px-2.5 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--foreground)", color: "var(--card)" }}>
+                            <button onClick={() => submitRating(s.id)} disabled={saving || rateValue === 0} className="rounded-md px-2.5 py-1" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--coral)", color: "#fff", opacity: saving || rateValue === 0 ? 0.5 : 1 }}>
                               {saving ? "..." : "Enregistrer"}
                             </button>
                           </div>

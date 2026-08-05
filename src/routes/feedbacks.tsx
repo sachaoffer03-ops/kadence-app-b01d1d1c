@@ -1,3 +1,4 @@
+import { starsFromRating } from "@/components/RatingInput";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { MessageSquare, Check, Search, Star, X } from "lucide-react";
@@ -59,15 +60,15 @@ function FeedbacksPage() {
   }, []);
 
   const unreadCount = items.filter(f => !f.read_at).length;
-  const lowCount = items.filter(f => f.rating < 3).length;
-  const avg = items.length ? items.reduce((s, f) => s + f.rating, 0) / items.length : 0;
+  const lowCount = items.filter(f => starsFromRating(f.rating) < 3).length;
+  const avg = items.length ? items.reduce((s, f) => s + starsFromRating(f.rating), 0) / items.length : 0;
   const replyRate = items.length ? Math.round((items.filter(f => f.admin_reply).length / items.length) * 100) : 0;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter(f => {
       if (tab === "non_lus" && f.read_at) return false;
-      if (tab === "basses" && f.rating >= 3) return false;
+      if (tab === "basses" && starsFromRating(f.rating) >= 3) return false;
       if (q) {
         const emp = profiles[f.author_id];
         const name = emp ? `${emp.first_name} ${emp.last_name}`.toLowerCase() : "";
@@ -190,7 +191,8 @@ function FeedbacksPage() {
             const studioName = sh?.studio_id ? studios[sh.studio_id]?.name : "";
             const initials = emp ? `${emp.first_name?.[0] || ""}${emp.last_name?.[0] || ""}`.toUpperCase() : "—";
             const isUnread = !f.read_at;
-            const isLow = f.rating < 3;
+            const stars = starsFromRating(f.rating);
+            const isLow = stars < 3;
 
             return (
               <div key={f.id} onClick={() => isUnread && markRead(f.id)}
@@ -225,11 +227,11 @@ function FeedbacksPage() {
                     <div className="flex items-center gap-1 mt-2">
                       {[1,2,3,4,5].map(n => (
                         <Star key={n} size={13}
-                          fill={n <= f.rating ? "var(--coral)" : "transparent"}
-                          color={n <= f.rating ? "var(--coral)" : "var(--border)"} strokeWidth={1.5} />
+                          fill={n <= stars ? "var(--coral)" : "transparent"}
+                          color={n <= stars ? "var(--coral)" : "var(--border)"} strokeWidth={1.5} />
                       ))}
                       <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginLeft: 6 }}>
-                        {f.rating}/5
+                        {stars}/5
                       </span>
                     </div>
 
