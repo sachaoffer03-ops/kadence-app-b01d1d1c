@@ -109,8 +109,15 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   const [clockOutLoading, setClockOutLoading] = useState(false);
   const [geoDenied, setGeoDenied] = useState(false);
   const [clockedOutAt, setClockedOutAt] = useState<string | null>(null);
+  const [outReason, setOutReason] = useState("");
+  const [clockPolicy, setClockPolicy] = useState<{ outDeviationMin: number; earlyOutWindowMin: number; graceOutMin: number; clockOutNeedsReason: boolean } | null>(null);
 
   const validateClockOut = useServerFn(validateClockOutFn);
+  const getClockPolicy = useServerFn(getShiftClockPolicyFn);
+
+  const outReasonRequired = !!clockPolicy?.clockOutNeedsReason;
+  const outReasonOk = outReason.trim().length >= 5;
+
   const finalizeClosure = useServerFn(finalizeClosureFn);
   const analyzeClosurePhoto = useServerFn(analyzeClosurePhotoFn);
 
