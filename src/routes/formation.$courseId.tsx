@@ -129,8 +129,10 @@ function CourseBuilderPage() {
 
               <CourseSettingsSheet
                 open={showSettings} onOpenChange={setShowSettings}
-                course={data.course} onSaved={refreshAll}
+                course={data.course} studios={data.studios} courseStudioIds={data.courseStudioIds}
+                onSaved={refreshAll}
               />
+
               <StudentPreviewSheet open={showPreview} onOpenChange={setShowPreview} data={data} />
             </>
           )}
