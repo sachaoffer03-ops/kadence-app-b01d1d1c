@@ -30,11 +30,14 @@ interface Props {
 
 export function ClockInSheet({ open, onClose, shift, studios, userId, firstName, onCompleted }: Props) {
   const validateClockIn = useServerFn(validateClockInFn);
+  const getPolicy = useServerFn(getShiftClockPolicyFn);
   const [manual, setManual] = useState(false);
   const [code, setCode] = useState<string[]>(["", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<{ minutesLate: number; clockedInAt: string } | null>(null);
   const [geoDenied, setGeoDenied] = useState(false);
+  const [policy, setPolicy] = useState<{ graceInMin: number; minutesLate: number; clockInNeedsReason: boolean } | null>(null);
+  const [lateReason, setLateReason] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -42,19 +45,43 @@ export function ClockInSheet({ open, onClose, shift, studios, userId, firstName,
       setCode(["", "", "", "", ""]);
       setDone(null);
       setGeoDenied(false);
+      setLateReason("");
+      setPolicy(null);
     }
   }, [open, shift?.id]);
+
+  // Tolérances lues en direct (elles suivent les réglages admin sans rechargement)
+  useEffect(() => {
+    if (!open || !shift?.id) return;
+    let alive = true;
+    const load = async () => {
+      try {
+        const p: any = await getPolicy({ data: { shiftId: shift.id } });
+        if (alive) setPolicy({ graceInMin: p.graceInMin, minutesLate: p.minutesLate, clockInNeedsReason: p.clockInNeedsReason });
+      } catch { /* ignore */ }
+    };
+    load();
+    const t = setInterval(load, 30_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [open, shift?.id, getPolicy]);
 
   if (!open || !shift) return null;
 
   const studioName = (shift.studio_id && studios[shift.studio_id]) || "—";
   const startDt = new Date(`${shift.shift_date}T${shift.start_time}`);
   const now = new Date();
-  const diffMin = Math.round((now.getTime() - startDt.getTime()) / 60_000);
+  const diffMin = policy?.minutesLate ?? Math.round((now.getTime() - startDt.getTime()) / 60_000);
   const isLate = diffMin > 0;
+  const reasonRequired = !!policy?.clockInNeedsReason;
+  const reasonOk = lateReason.trim().length >= 5;
+  const blocked = reasonRequired && !reasonOk;
 
   async function submitCode(raw: string) {
     if (loading || !shift) return;
+    if (reasonRequired && !reasonOk) {
+      toast.error("Motif obligatoire", { description: "Explique brièvement ton retard avant de pointer." });
+      return;
+    }
     const clean = (raw ?? "").trim();
     if (!clean) return;
     setLoading(true);
@@ -68,7 +95,9 @@ export function ClockInSheet({ open, onClose, shift, studios, userId, firstName,
         setLoading(false);
         return;
       }
-      const r = await validateClockIn({ data: { shiftId: shift.id, qrCode: clean, lat, lng } });
+      const r = await validateClockIn({
+        data: { shiftId: shift.id, qrCode: clean, lat, lng, lateReason: reasonRequired ? lateReason.trim() : null },
+      });
       const minutesLate = (r as any).minutesLate ?? 0;
       const clockedInAt = (r as any).clockedInAt ?? new Date().toISOString();
       setDone({ minutesLate, clockedInAt });
@@ -89,6 +118,7 @@ export function ClockInSheet({ open, onClose, shift, studios, userId, firstName,
     }
     submitCode(full);
   };
+
 
   if (done) {
     return (
