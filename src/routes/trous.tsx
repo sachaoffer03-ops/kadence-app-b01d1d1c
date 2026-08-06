@@ -8,6 +8,7 @@ import { getRoleStyle, hhmm, fullName } from "@/lib/staff-helpers";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
 import { sendProposals, cancelProposals } from "@/lib/proposals.functions";
 import { assignShiftDirect, deleteShift } from "@/lib/shifts.functions";
+import { openShiftsToAll, closeOpenShifts } from "@/lib/open-shifts.functions";
 
 interface TrousSearch {
   studios?: string;
@@ -57,6 +58,11 @@ function elapsedTone(sentAt: string): { bg: string; text: string } {
 
 function TrousPage() {
   const sendFn = useServerFn(sendProposals);
+  const openAllFn = useServerFn(openShiftsToAll);
+  const closeAllFn = useServerFn(closeOpenShifts);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [broadcasting, setBroadcasting] = useState(false);
   const cancelFn = useServerFn(cancelProposals);
   const assignFn = useServerFn(assignShiftDirect);
   const deleteFn = useServerFn(deleteShift);
@@ -321,6 +327,80 @@ function TrousPage() {
           </Link>
         </div>
       )}
+
+      {/* Bourse aux shifts : ouvrir les trous à tous */}
+      <div className="rounded-xl border mb-4 p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Ouvrir les trous à tous</div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+              Notification + email à tous les employés des studios concernés. Le premier qui prend le shift l'obtient.
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setBroadcastOpen((v) => !v)}
+              className="rounded-lg px-3 py-2"
+              style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
+            >
+              Ouvrir à tous ({filtered.length})
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await closeAllFn({ data: {} });
+                  toast.success("Bourse refermée");
+                  load();
+                } catch (e: any) { toast.error(e.message || "Erreur"); }
+              }}
+              className="rounded-lg px-3 py-2"
+              style={{ fontSize: 12, fontWeight: 400, backgroundColor: "transparent", color: "var(--muted-foreground)", border: "0.5px solid var(--border)" }}
+            >
+              Refermer
+            </button>
+          </div>
+        </div>
+        {broadcastOpen && (
+          <div className="mt-3 flex flex-col gap-2">
+            <textarea
+              value={broadcastMsg}
+              onChange={(e) => setBroadcastMsg(e.target.value)}
+              rows={2}
+              placeholder="Message pour l'équipe (optionnel)"
+              className="w-full rounded-lg px-3 py-2"
+              style={{ fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)", resize: "vertical" }}
+            />
+            <div className="flex items-center gap-2">
+              <button
+                disabled={broadcasting || filtered.length === 0}
+                onClick={async () => {
+                  setBroadcasting(true);
+                  try {
+                    const r = await openAllFn({ data: { shiftIds: filtered.map((h) => h.id), message: broadcastMsg.trim() || undefined } });
+                    if (r.ok) {
+                      toast.success(`${r.opened} shift(s) ouverts · ${r.recipients} employés notifiés · ${r.emailsSent} emails`);
+                      setBroadcastOpen(false);
+                      setBroadcastMsg("");
+                      load();
+                    } else {
+                      toast.error("Aucun shift à ouvrir");
+                    }
+                  } catch (e: any) { toast.error(e.message || "Erreur"); }
+                  finally { setBroadcasting(false); }
+                }}
+                className="rounded-lg px-3 py-2"
+                style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
+              >
+                {broadcasting ? "Envoi…" : `Envoyer à tous (${filtered.length} trous)`}
+              </button>
+              <button onClick={() => setBroadcastOpen(false)} className="rounded-lg px-3 py-2"
+                style={{ fontSize: 12, backgroundColor: "transparent", color: "var(--muted-foreground)", border: "0.5px solid var(--border)" }}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Filtres rôle : scroll horizontal mobile */}
       <div
