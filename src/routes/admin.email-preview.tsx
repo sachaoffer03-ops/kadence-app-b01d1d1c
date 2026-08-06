@@ -151,7 +151,7 @@ function EmailPreviewPage() {
                 marginBottom: 16,
               }}
             >
-              {selected.subject}
+              {resolvedSubject}
             </div>
 
             <Label>Variables mock</Label>
