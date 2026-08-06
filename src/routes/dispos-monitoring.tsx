@@ -246,8 +246,52 @@ function DisposMonitoringPage() {
         </button>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+      {/* Liste mobile */}
+      <div className="flex flex-col gap-2 md:hidden">
+        {isLoading && (
+          <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Chargement…</div>
+        )}
+        {!isLoading && filteredRows.length === 0 && (
+          <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Aucun employé</div>
+        )}
+        {filteredRows.map((r) => (
+          <div
+            key={r.userId}
+            className="rounded-xl border p-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3"
+            style={{ borderColor: "var(--border)", backgroundColor: "#fff" }}
+            onClick={() =>
+              navigate({ to: "/dispo-detail/$userId", params: { userId: r.userId }, search: { year, month } })
+            }
+          >
+            <input
+              type="checkbox"
+              className="mt-1 shrink-0"
+              checked={selected.has(r.userId)}
+              onChange={() => toggle(r.userId)}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="min-w-0">
+              <div className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>
+                {r.firstName} {r.lastName}
+              </div>
+              <div className="truncate" style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+                {(r.contracts && r.contracts.length > 0 ? r.contracts : (r.contract ? [r.contract] : [])).join(", ") || "—"}
+                {" · "}
+                {r.studioIds.length === 0 ? "—" : r.studioIds.map(studioName).join(", ")}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                {formatDateTime(r.lastSubmittedAt)}
+              </div>
+            </div>
+            <div className="shrink-0">
+              <StatusBadge status={r.status} count={r.availsCount} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table (desktop) */}
+      <div className="rounded-lg border overflow-hidden hidden md:block" style={{ borderColor: "var(--border)" }}>
         <table className="w-full" style={{ fontSize: 13 }}>
           <thead style={{ backgroundColor: "var(--muted)" }}>
             <tr>
