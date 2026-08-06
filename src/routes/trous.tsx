@@ -741,6 +741,11 @@ function TrousPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                       <span style={{ fontSize: 14, fontWeight: 500 }}>{hole.business_role}</span>
+                      {hole.open_to_all && (
+                        <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
+                          Ouvert à tous
+                        </span>
+                      )}
                       <span className="hidden sm:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
                       <span style={{ fontSize: 13 }}>{new Date(hole.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}</span>
                       <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
