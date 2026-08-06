@@ -61,7 +61,7 @@ import MagicLinkEmail from "./auth/MagicLinkEmail";
 import ChangeEmailEmail from "./auth/ChangeEmailEmail";
 import ReauthEmail from "./auth/ReauthEmail";
 
-export const SUBJECT_RESOLVERS: Record<string, (data: Record<string, any>) => string> = {
+export const SUBJECT_RESOLVERS: Record<string, (data: any) => string> = {
   "invitation-employe": invitationEmployeSubject,
   "bienvenue-employe": bienvenueSubject,
   "reset-password": resetPasswordSubject,
