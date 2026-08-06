@@ -16,6 +16,10 @@ function EmailPreviewPage() {
     () => EMAIL_REGISTRY.find((t) => t.id === selectedId)!,
     [selectedId],
   );
+  const resolvedSubject = useMemo(() => {
+    const resolver = SUBJECT_RESOLVERS[selected.id];
+    return resolver ? resolver(selected.mockData) : selected.subject;
+  }, [selected]);
   const previewFn = useServerFn(getEmailPreview);
   const [html, setHtml] = useState<string>("");
   const [loading, setLoading] = useState(true);
