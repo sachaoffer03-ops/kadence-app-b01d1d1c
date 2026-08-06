@@ -576,6 +576,69 @@ function TrousPage() {
 
         {broadcastOpen && (
           <div className="mt-3 flex flex-col gap-2">
+            {/* Choix des studios concernés par l'envoi */}
+            {broadcastStudioOptions.length > 0 && (
+              <div className="rounded-lg p-3" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+                <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>Studios à envoyer</div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={bcStudios.size === 0}
+                      onChange={async () => {
+                        setBcStudios(new Set());
+                        const ids = filtered.map((h) => h.id);
+                        setBroadcastPreview(null);
+                        if (ids.length > 0) {
+                          try { setBroadcastPreview(await previewBroadcastFn({ data: { shiftIds: ids } })); }
+                          catch (e: any) { toast.error(e.message || "Erreur"); }
+                        }
+                      }}
+                      style={{ width: 18, height: 18, accentColor: "var(--coral)" }}
+                    />
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>Tous les studios ({filtered.length})</span>
+                  </label>
+                  {broadcastStudioOptions.map((opt) => (
+                    <label key={opt.id} className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bcStudios.size === 0 || bcStudios.has(opt.id)}
+                        onChange={async () => {
+                          const next = new Set(
+                            bcStudios.size === 0 ? broadcastStudioOptions.map((o) => o.id) : bcStudios,
+                          );
+                          next.has(opt.id) ? next.delete(opt.id) : next.add(opt.id);
+                          // tout coché = équivalent à "tous"
+                          const all = next.size === broadcastStudioOptions.length;
+                          const finalSet = all ? new Set<string>() : next;
+                          setBcStudios(finalSet);
+                          const ids = filtered
+                            .filter((h) => finalSet.size === 0 || finalSet.has(h.studio_id ?? "__none__"))
+                            .map((h) => h.id);
+                          setBroadcastPreview(null);
+                          if (ids.length > 0) {
+                            try { setBroadcastPreview(await previewBroadcastFn({ data: { shiftIds: ids } })); }
+                            catch (e: any) { toast.error(e.message || "Erreur"); }
+                          }
+                        }}
+                        style={{ width: 18, height: 18, accentColor: "var(--coral)" }}
+                      />
+                      <span style={{ fontSize: 13 }}>{opt.name}</span>
+                      <span className="rounded-full inline-flex items-center justify-center"
+                        style={{ minWidth: 18, height: 18, padding: "0 6px", fontSize: 10, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>
+                        {opt.count}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {broadcastTargets.length === 0 && (
+                  <div style={{ fontSize: 12, color: "var(--danger-text)", marginTop: 6 }}>
+                    Sélectionnez au moins un studio.
+                  </div>
+                )}
+              </div>
+            )}
+
             {broadcastPreview && (() => {
               const recips = broadcastPreview.recipients as any[];
               const ko = recips.filter((r) => !r.deliverable);
