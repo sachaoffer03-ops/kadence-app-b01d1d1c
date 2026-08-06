@@ -473,7 +473,7 @@ function TrousPage() {
 
               style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
             >
-              Ouvrir à tous ({filtered.length})
+              {(openState.free + openState.taken) > 0 ? "Renvoyer à tous" : "Ouvrir à tous"} ({filtered.length})
             </button>
             <button
               onClick={async () => {
