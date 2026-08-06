@@ -387,8 +387,8 @@ function TrousPage() {
                 onClick={async () => {
                   setAbsorbing(true);
                   try {
-                    const r = await absorbFn({ data: { dryRun: false } });
-                    toast.success(`${r.closed} trou(s) absorbé(s)`);
+                    const r: any = await absorbFn({ data: { dryRun: false } });
+                    toast.success(`${r?.closed ?? 0} trou(s) absorbé(s)`);
                     setAbsorbPreview(null);
                     load();
                   } catch (e: any) { toast.error(e.message || "Erreur"); }
