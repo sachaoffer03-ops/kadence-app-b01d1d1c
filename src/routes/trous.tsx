@@ -68,6 +68,8 @@ function TrousPage() {
   const [broadcasting, setBroadcasting] = useState(false);
   const [broadcastPreview, setBroadcastPreview] = useState<any | null>(null);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
+  const [bcStudios, setBcStudios] = useState<Set<string>>(new Set());
+
   const [board, setBoard] = useState<any | null>(null);
   const [boardOpen, setBoardOpen] = useState(false);
   const absorbFn = useServerFn(absorbShortGaps);
