@@ -340,7 +340,8 @@ function TrousPage() {
 
       {/* Marge de débordement : absorber les trous très courts */}
       <div className="rounded-xl border mb-4 p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
-        <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+
           <div className="min-w-0">
             <div style={{ fontSize: 13, fontWeight: 500 }}>Absorber les trous courts</div>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
@@ -358,7 +359,8 @@ function TrousPage() {
               } catch (e: any) { toast.error(e.message || "Erreur"); }
               finally { setAbsorbing(false); }
             }}
-            className="rounded-lg px-3 py-2"
+            className="rounded-lg px-3 py-2 w-full sm:w-auto shrink-0"
+
             style={{ fontSize: 12, fontWeight: 500, backgroundColor: "transparent", color: "var(--coral-dark)", border: "0.5px solid var(--coral)" }}
           >
             {absorbing ? "Analyse…" : "Analyser"}
@@ -407,14 +409,15 @@ function TrousPage() {
 
       {/* Bourse aux shifts : ouvrir les trous à tous */}
       <div className="rounded-xl border mb-4 p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
-        <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="min-w-0">
             <div style={{ fontSize: 13, fontWeight: 500 }}>Ouvrir les trous à tous</div>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
               Notification + email à tous les employés des studios concernés. Le premier qui prend le shift l'obtient.
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
+
             <button
               onClick={async () => {
                 const next = !broadcastOpen;
@@ -430,7 +433,8 @@ function TrousPage() {
                   }
                 }
               }}
-              className="rounded-lg px-3 py-2"
+              className="rounded-lg px-3 py-2 col-span-2 sm:col-span-1"
+
               style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
             >
               Ouvrir à tous ({filtered.length})
