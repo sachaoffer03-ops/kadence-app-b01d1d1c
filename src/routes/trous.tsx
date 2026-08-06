@@ -61,9 +61,15 @@ function TrousPage() {
   const sendFn = useServerFn(sendProposals);
   const openAllFn = useServerFn(openShiftsToAll);
   const closeAllFn = useServerFn(closeOpenShifts);
+  const previewBroadcastFn = useServerFn(previewOpenShiftsBroadcast);
+  const boardFn = useServerFn(getOpenShiftsBoard);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastPreview, setBroadcastPreview] = useState<any | null>(null);
+  const [showAllRecipients, setShowAllRecipients] = useState(false);
+  const [board, setBoard] = useState<any | null>(null);
+  const [boardOpen, setBoardOpen] = useState(false);
   const absorbFn = useServerFn(absorbShortGaps);
   const [absorbPreview, setAbsorbPreview] = useState<any[] | null>(null);
   const [absorbing, setAbsorbing] = useState(false);
