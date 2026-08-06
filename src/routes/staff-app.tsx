@@ -56,6 +56,7 @@ import {
 
 import { ClockInSheet } from "@/components/staff-app/ClockInSheet";
 import { ProposalsInline } from "@/components/staff-app/ProposalsInline";
+import { OpenShiftsInline } from "@/components/staff-app/OpenShiftsInline";
 import { TodayColleaguesCard } from "@/components/staff-app/TodayColleaguesCard";
 
 
@@ -548,6 +549,8 @@ function AccueilTab({ profile, studios, studioClockOut, userId, onOpenNotifs, on
       )}
 
       <ProposalsInline userId={userId} studios={studios} />
+
+      <OpenShiftsInline />
 
       {showDispoBanner && (
         <button

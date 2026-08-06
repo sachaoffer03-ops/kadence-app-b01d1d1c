@@ -1975,6 +1975,9 @@ export type Database = {
           late_reason_status: string
           minutes_late: number | null
           notes: string | null
+          open_message: string | null
+          open_to_all: boolean
+          opened_at: string | null
           published_at: string | null
           reason_review_note: string | null
           reason_reviewed_at: string | null
@@ -2006,6 +2009,9 @@ export type Database = {
           late_reason_status?: string
           minutes_late?: number | null
           notes?: string | null
+          open_message?: string | null
+          open_to_all?: boolean
+          opened_at?: string | null
           published_at?: string | null
           reason_review_note?: string | null
           reason_reviewed_at?: string | null
@@ -2037,6 +2043,9 @@ export type Database = {
           late_reason_status?: string
           minutes_late?: number | null
           notes?: string | null
+          open_message?: string | null
+          open_to_all?: boolean
+          opened_at?: string | null
           published_at?: string | null
           reason_review_note?: string | null
           reason_reviewed_at?: string | null
