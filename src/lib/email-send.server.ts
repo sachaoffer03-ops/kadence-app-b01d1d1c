@@ -93,7 +93,11 @@ export async function enqueueTemplateEmail(
   const html = await render(element);
   const text = await render(element, { plainText: true });
 
-  const subject = input.subject ?? template.subject;
+  const baseSubject =
+    typeof template.subject === "function"
+      ? template.subject(input.data)
+      : template.subject;
+  const subject = input.subject ?? baseSubject;
   const messageId = crypto.randomUUID();
   const idempotencyKey = input.idempotencyKey ?? messageId;
 
