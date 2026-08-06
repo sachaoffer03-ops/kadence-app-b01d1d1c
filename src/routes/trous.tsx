@@ -27,7 +27,7 @@ export const Route = createFileRoute("/trous")({
 
 interface Hole {
   id: string; shift_date: string; start_time: string; end_time: string;
-  business_role: string; studio_id: string | null;
+  business_role: string; studio_id: string | null; open_to_all?: boolean | null; opened_at?: string | null;
 }
 interface ProfileRow { id: string; first_name: string; last_name: string; score: number | null }
 interface Proposal {
