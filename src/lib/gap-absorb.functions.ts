@@ -51,7 +51,9 @@ export const absorbShortGaps = createServerFn({ method: "POST" })
     const { data: settings } = await supabaseAdmin
       .from("ai_planning_settings")
       .select("overflow_margin_min, max_shift_hours, max_shift_hours_cdi, max_shift_hours_student, max_shift_hours_flexi")
+      .order("updated_at", { ascending: false })
       .limit(1)
+
       .maybeSingle();
     const margin = Math.max(0, Math.min(60, (settings as any)?.overflow_margin_min ?? 30));
     if (margin === 0) {
