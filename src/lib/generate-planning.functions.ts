@@ -1367,59 +1367,111 @@ async function runEngine(ctx: EngineCtx) {
     role_segments: RoleSegment[] | null;
   }> = [];
   for (const req of requirements) {
+    // 1) Découpage brut en segments contigus (trou = userId null)
+    type Seg = { userId: string | null; startMin: number; endMin: number };
+    const segs: Seg[] = [];
     let i = 0;
     while (i < req.cells.length) {
       const c = req.cells[i];
       if (c.blocked) { i++; continue; }
-
-      if (c.userId === null) {
-        // Trou matérialisé : shift vide (user_id = null) pour /trous
-        let j = i;
-        while (j < req.cells.length - 1 &&
-               req.cells[j + 1].userId === null &&
-               !req.cells[j + 1].blocked &&
-               req.cells[j + 1].startMin === req.cells[j].endMin) j++;
-        // Préserver role_segments uniquement si le trou couvre l'intégralité du besoin
-        const holeFull = req.cells[i].startMin === req.startMin && req.cells[j].endMin === req.endMin;
-        finalShifts.push({
-          req_id: req.id,
-          user_id: null,
-          studio_id: req.studio_id,
-          business_role: req.role,
-          shift_date: req.date,
-          start_time: `${m2t(req.cells[i].startMin)}:00`,
-          end_time: `${m2t(req.cells[j].endMin)}:00`,
-          status: "open",
-          is_locked: false,
-          is_manual: false,
-          created_by_run_id: ctx.runId,
-          role_segments: req.is_hybrid && holeFull ? req.role_segments : null,
-        });
-        i = j + 1;
-        continue;
-      }
-
       const uid = c.userId;
       let j = i;
       while (j < req.cells.length - 1 &&
              req.cells[j + 1].userId === uid &&
              !req.cells[j + 1].blocked &&
              req.cells[j + 1].startMin === req.cells[j].endMin) j++;
-      const assignedEmployee = uid ? employees.get(uid) : null;
+      segs.push({ userId: uid, startMin: req.cells[i].startMin, endMin: req.cells[j].endMin });
+      i = j + 1;
+    }
+
+    // 2) Absorption des micro-trous : un trou plus court que min_shift_hours
+    //    n'est proposable à personne. Plutôt que de fragmenter le besoin
+    //    (ex : Barista 15h30-19h15 découpé en 15h30-16h00 vide + 16h00-19h15),
+    //    on l'agrège au shift assigné voisin quand la dispo de l'employé
+    //    couvre l'extension et qu'aucun conflit n'apparaît.
+    let merged = true;
+    while (merged) {
+      merged = false;
+      for (let k = 0; k < segs.length; k++) {
+        const hole = segs[k];
+        if (hole.userId !== null) continue;
+        if (hole.endMin - hole.startMin >= minShiftMin) continue;
+        const prev = k > 0 ? segs[k - 1] : null;
+        const next = k < segs.length - 1 ? segs[k + 1] : null;
+        const canTake = (seg: Seg | null, newStart: number, newEnd: number) => {
+          if (!seg || !seg.userId) return false;
+          if (seg.endMin !== hole.startMin && seg.startMin !== hole.endMin) return false;
+          const emp = employees.get(seg.userId);
+          if (!emp) return false;
+          if (!availCovers(emp, req.date, newStart, newEnd, req.studio_id)) return false;
+          const maxMin = maxShiftHFor(emp, req.studio_id) * 60;
+          if (newEnd - newStart > maxMin) return false;
+          return true;
+        };
+        const prevOk = prev ? canTake(prev, prev.startMin, hole.endMin) : false;
+        const nextOk = next ? canTake(next, hole.startMin, next.endMin) : false;
+        // Préférer le voisin le plus long (shift principal)
+        const prevLen = prev ? prev.endMin - prev.startMin : 0;
+        const nextLen = next ? next.endMin - next.startMin : 0;
+        if (prevOk && (!nextOk || prevLen >= nextLen)) {
+          prev!.endMin = hole.endMin;
+          segs.splice(k, 1);
+          merged = true;
+          break;
+        }
+        if (nextOk) {
+          next!.startMin = hole.startMin;
+          segs.splice(k, 1);
+          merged = true;
+          break;
+        }
+      }
+      // fusionner deux segments adjacents du même employé
+      for (let k = 0; k < segs.length - 1; k++) {
+        if (segs[k].userId && segs[k].userId === segs[k + 1].userId && segs[k].endMin === segs[k + 1].startMin) {
+          segs[k].endMin = segs[k + 1].endMin;
+          segs.splice(k + 1, 1);
+          merged = true;
+          break;
+        }
+      }
+    }
+
+    // 3) Matérialisation
+    for (const seg of segs) {
+      if (seg.userId === null) {
+        const holeFull = seg.startMin === req.startMin && seg.endMin === req.endMin;
+        finalShifts.push({
+          req_id: req.id,
+          user_id: null,
+          studio_id: req.studio_id,
+          business_role: req.role,
+          shift_date: req.date,
+          start_time: `${m2t(seg.startMin)}:00`,
+          end_time: `${m2t(seg.endMin)}:00`,
+          status: "open",
+          is_locked: false,
+          is_manual: false,
+          created_by_run_id: ctx.runId,
+          role_segments: req.is_hybrid && holeFull ? req.role_segments : null,
+        });
+        continue;
+      }
+
+      const assignedEmployee = employees.get(seg.userId);
       const assignedWindow = assignedEmployee?.assigned.find((a) =>
         a.reqId === req.id &&
-        a.startMin <= req.cells[i].startMin &&
-        a.endMin >= req.cells[j].endMin,
+        a.startMin <= seg.startMin &&
+        a.endMin >= seg.endMin,
       );
-      const finalStart = assignedWindow?.startMin ?? req.cells[i].startMin;
-      const finalEnd = assignedWindow?.endMin ?? req.cells[j].endMin;
-      // Préserver role_segments uniquement si le shift final couvre exactement le besoin hybride
+      const finalStart = Math.min(assignedWindow?.startMin ?? seg.startMin, seg.startMin);
+      const finalEnd = Math.max(assignedWindow?.endMin ?? seg.endMin, seg.endMin);
       const segmentsForShift = req.is_hybrid && finalStart === req.startMin && finalEnd === req.endMin
         ? req.role_segments
         : null;
       finalShifts.push({
         req_id: req.id,
-        user_id: uid,
+        user_id: seg.userId,
         studio_id: req.studio_id,
         business_role: req.role,
         shift_date: req.date,
@@ -1431,9 +1483,9 @@ async function runEngine(ctx: EngineCtx) {
         created_by_run_id: ctx.runId,
         role_segments: segmentsForShift,
       });
-      i = j + 1;
     }
   }
+
 
   // Les trous, même courts (15/30/45 min), doivent rester visibles. Avant,
   // une passe de "nettoyage" supprimait les petits trous impossibles à proposer,
