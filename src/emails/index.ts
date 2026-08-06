@@ -10,6 +10,7 @@ import DemandeRefuseeEmail from "./employee/DemandeRefuseeEmail";
 import PlanningPublieEmail from "./employee/PlanningPublieEmail";
 import RappelShiftEmail from "./employee/RappelShiftEmail";
 import DebriefingShiftEmail from "./employee/DebriefingShiftEmail";
+import ShiftsDisponiblesEmail from "./employee/ShiftsDisponiblesEmail";
 import DispoReminderEmail from "./employee/DispoReminderEmail";
 import DispoDeadlineReminderEmail from "./employee/DispoDeadlineReminderEmail";
 
@@ -194,6 +195,27 @@ export const EMAIL_REGISTRY: EmailTemplate[] = [
       managerComment:
         "Super énergie ce soir, les clients étaient ravis !",
       statsUrl: "https://app.kadence.io/staff-app/stats",
+    },
+  },
+  {
+    id: "shifts-disponibles",
+    name: "Shifts disponibles (bourse)",
+    category: "employee",
+    description:
+      "Envoyé quand un admin/manager ouvre des trous à tous les employés d'un studio. Premier arrivé, premier servi.",
+    subject: "3 shifts à prendre — premier arrivé, premier servi",
+    component: ShiftsDisponiblesEmail,
+    mockData: {
+      firstName: "Léa",
+      totalCount: 3,
+      slots: [
+        { dateLabel: "jeudi 3 septembre", timeLabel: "07:30 – 15:30", role: "Barista", studioName: "Châtelain" },
+        { dateLabel: "samedi 5 septembre", timeLabel: "14:30 – 22:00", role: "Accueil", studioName: "Châtelain" },
+        { dateLabel: "dimanche 6 septembre", timeLabel: "09:00 – 17:00", role: "Barista", studioName: "Rhode" },
+      ],
+      message: "On a besoin de renfort ce week-end, merci !",
+      studioName: "Skult Châtelain",
+      appUrl: "https://app.kadence.be/staff-app",
     },
   },
   {
