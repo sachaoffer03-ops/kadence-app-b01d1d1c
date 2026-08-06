@@ -1,29 +1,86 @@
 import type { ComponentType } from "react";
 
-import InvitationEmployeEmail from "./employee/InvitationEmployeEmail";
-import BienvenueEmail from "./employee/BienvenueEmail";
-import ResetPasswordEmail from "./employee/ResetPasswordEmail";
-import ShiftAssigneEmail from "./employee/ShiftAssigneEmail";
-import PropositionShiftEmail from "./employee/PropositionShiftEmail";
-import DemandeAccepteeEmail from "./employee/DemandeAccepteeEmail";
-import DemandeRefuseeEmail from "./employee/DemandeRefuseeEmail";
-import PlanningPublieEmail from "./employee/PlanningPublieEmail";
-import RappelShiftEmail from "./employee/RappelShiftEmail";
-import DebriefingShiftEmail from "./employee/DebriefingShiftEmail";
-import ShiftsDisponiblesEmail from "./employee/ShiftsDisponiblesEmail";
-import DispoReminderEmail from "./employee/DispoReminderEmail";
-import DispoDeadlineReminderEmail from "./employee/DispoDeadlineReminderEmail";
+import InvitationEmployeEmail, {
+  subject as invitationEmployeSubject,
+} from "./employee/InvitationEmployeEmail";
+import BienvenueEmail, {
+  subject as bienvenueSubject,
+} from "./employee/BienvenueEmail";
+import ResetPasswordEmail, {
+  subject as resetPasswordSubject,
+} from "./employee/ResetPasswordEmail";
+import ShiftAssigneEmail, {
+  subject as shiftAssigneSubject,
+} from "./employee/ShiftAssigneEmail";
+import PropositionShiftEmail, {
+  subject as propositionShiftSubject,
+} from "./employee/PropositionShiftEmail";
+import DemandeAccepteeEmail, {
+  subject as demandeAccepteeSubject,
+} from "./employee/DemandeAccepteeEmail";
+import DemandeRefuseeEmail, {
+  subject as demandeRefuseeSubject,
+} from "./employee/DemandeRefuseeEmail";
+import PlanningPublieEmail, {
+  subject as planningPublieSubject,
+} from "./employee/PlanningPublieEmail";
+import RappelShiftEmail, {
+  subject as rappelShiftSubject,
+} from "./employee/RappelShiftEmail";
+import DebriefingShiftEmail, {
+  subject as debriefingShiftSubject,
+} from "./employee/DebriefingShiftEmail";
+import ShiftsDisponiblesEmail, {
+  subject as shiftsDisponiblesSubject,
+} from "./employee/ShiftsDisponiblesEmail";
+import DispoReminderEmail, {
+  subject as dispoReminderSubject,
+} from "./employee/DispoReminderEmail";
+import DispoDeadlineReminderEmail, {
+  subject as dispoDeadlineReminderSubject,
+} from "./employee/DispoDeadlineReminderEmail";
 
-import NouvelleDemandeEmail from "./admin/NouvelleDemandeEmail";
-import TrouCritiqueEmail from "./admin/TrouCritiqueEmail";
-import EmployeRetardEmail from "./admin/EmployeRetardEmail";
-import QuotaEtudiantDepasseEmail from "./admin/QuotaEtudiantDepasseEmail";
-import NouvelleInscriptionEmail from "./admin/NouvelleInscriptionEmail";
+import NouvelleDemandeEmail, {
+  subject as nouvelleDemandeSubject,
+} from "./admin/NouvelleDemandeEmail";
+import TrouCritiqueEmail, {
+  subject as trouCritiqueSubject,
+} from "./admin/TrouCritiqueEmail";
+import EmployeRetardEmail, {
+  subject as employeRetardSubject,
+} from "./admin/EmployeRetardEmail";
+import QuotaEtudiantDepasseEmail, {
+  subject as quotaEtudiantDepasseSubject,
+} from "./admin/QuotaEtudiantDepasseEmail";
+import NouvelleInscriptionEmail, {
+  subject as nouvelleInscriptionSubject,
+} from "./admin/NouvelleInscriptionEmail";
 
 import SignupConfirmEmail from "./auth/SignupConfirmEmail";
 import MagicLinkEmail from "./auth/MagicLinkEmail";
 import ChangeEmailEmail from "./auth/ChangeEmailEmail";
 import ReauthEmail from "./auth/ReauthEmail";
+
+export const SUBJECT_RESOLVERS: Record<string, (data: any) => string> = {
+  "invitation-employe": invitationEmployeSubject,
+  "bienvenue-employe": bienvenueSubject,
+  "reset-password": resetPasswordSubject,
+  "shift-assigne": shiftAssigneSubject,
+  "proposition-shift": propositionShiftSubject,
+  "demande-acceptee": demandeAccepteeSubject,
+  "demande-refusee": demandeRefuseeSubject,
+  "planning-publie": planningPublieSubject,
+  "rappel-shift": rappelShiftSubject,
+  "debriefing-shift": debriefingShiftSubject,
+  "shifts-disponibles": shiftsDisponiblesSubject,
+  "dispo-reminder": dispoReminderSubject,
+  "dispo-deadline-reminder": dispoDeadlineReminderSubject,
+  "nouvelle-demande": nouvelleDemandeSubject,
+  "trou-critique": trouCritiqueSubject,
+  "employe-retard": employeRetardSubject,
+  "quota-etudiant-depasse": quotaEtudiantDepasseSubject,
+  "nouvelle-inscription": nouvelleInscriptionSubject,
+};
 
 export interface EmailTemplate {
   id: string;

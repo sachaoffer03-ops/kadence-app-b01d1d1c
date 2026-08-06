@@ -6,7 +6,7 @@
 import * as React from "react";
 import { render } from "@react-email/components";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { EMAIL_REGISTRY } from "@/emails";
+import { EMAIL_REGISTRY, SUBJECT_RESOLVERS } from "@/emails";
 import { EmailTenantProvider } from "@/emails/tenant-context";
 import { getEmailTenantConfig } from "@/lib/email-tenant.server";
 
@@ -93,7 +93,9 @@ export async function enqueueTemplateEmail(
   const html = await render(element);
   const text = await render(element, { plainText: true });
 
-  const subject = input.subject ?? template.subject;
+  const resolveSubject = SUBJECT_RESOLVERS[input.templateId];
+  const baseSubject = resolveSubject ? resolveSubject(input.data) : template.subject;
+  const subject = input.subject ?? baseSubject;
   const messageId = crypto.randomUUID();
   const idempotencyKey = input.idempotencyKey ?? messageId;
 
