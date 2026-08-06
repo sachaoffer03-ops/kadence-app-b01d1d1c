@@ -524,7 +524,7 @@ function ThresholdButtons({ value, onChange }: { value: number; onChange: (n: nu
   const active = THRESHOLD_OPTIONS.reduce((best, o) =>
     Math.abs(o.v - value) < Math.abs(best.v - value) ? o : best, THRESHOLD_OPTIONS[1]);
   return (
-    <div className="flex gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
       {THRESHOLD_OPTIONS.map((o) => {
         const isActive = o.v === active.v;
         return (
