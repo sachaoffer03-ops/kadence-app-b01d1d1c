@@ -524,7 +524,7 @@ function ThresholdButtons({ value, onChange }: { value: number; onChange: (n: nu
   const active = THRESHOLD_OPTIONS.reduce((best, o) =>
     Math.abs(o.v - value) < Math.abs(best.v - value) ? o : best, THRESHOLD_OPTIONS[1]);
   return (
-    <div className="flex gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
       {THRESHOLD_OPTIONS.map((o) => {
         const isActive = o.v === active.v;
         return (
@@ -1109,14 +1109,14 @@ function PhotosEditor({ studioId, roleId, roleName, phase = "closing" }: { studi
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <Field label="Exigence de l'analyse IA">
           <ThresholdButtons
             value={template.ai_validation_threshold ?? 75}
             onChange={(n) => update({ ai_validation_threshold: n })}
           />
         </Field>
-        <label className="flex items-center gap-2">
+        <label className="flex items-center gap-2 shrink-0">
           <Switch checked={!!template.analyze_with_ai} onCheckedChange={(v) => update({ analyze_with_ai: v })} />
           <span style={{ fontSize: 12, fontWeight: 500 }}>Analyse IA activée</span>
         </label>
