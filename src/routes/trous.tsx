@@ -422,10 +422,35 @@ function TrousPage() {
       <div className="rounded-xl border mb-4 p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="min-w-0">
-            <div style={{ fontSize: 13, fontWeight: 500 }}>Ouvrir les trous à tous</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div style={{ fontSize: 13, fontWeight: 500 }}>Ouvrir les trous à tous</div>
+              {(openState.free + openState.taken) > 0 && (
+                <span className="rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
+                  Bourse ouverte
+                </span>
+              )}
+            </div>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
               Notification + email à tous les employés des studios concernés. Le premier qui prend le shift l'obtient.
             </div>
+            {(openState.free + openState.taken) > 0 && (
+              <div className="mt-2 rounded-lg p-2.5" style={{ border: "0.5px solid var(--coral)", backgroundColor: "var(--coral-light)" }}>
+                <div style={{ fontSize: 12, fontWeight: 500 }}>
+                  {openState.free + openState.taken} shift(s) envoyés · {openState.taken} pris · {openState.free} encore libres
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+                  {openState.openedAt
+                    ? `Dernier envoi le ${new Date(openState.openedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à ${new Date(openState.openedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}. `
+                    : ""}
+                  Un nouvel envoi renotifie tout le monde et ne concerne que les shifts encore libres (aucun doublon, rien n'est repris à ceux qui ont déjà pris).
+                </div>
+                {openState.message && (
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, fontStyle: "italic" }}>
+                    Message envoyé : « {openState.message} »
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
 
