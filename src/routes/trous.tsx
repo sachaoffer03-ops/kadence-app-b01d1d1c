@@ -68,6 +68,8 @@ function TrousPage() {
   const [broadcasting, setBroadcasting] = useState(false);
   const [broadcastPreview, setBroadcastPreview] = useState<any | null>(null);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
+  const [bcStudios, setBcStudios] = useState<Set<string>>(new Set());
+
   const [board, setBoard] = useState<any | null>(null);
   const [boardOpen, setBoardOpen] = useState(false);
   const absorbFn = useServerFn(absorbShortGaps);
@@ -217,6 +219,30 @@ function TrousPage() {
     }),
     [scoped, filterRole, filterStudio],
   );
+
+  // Studios présents dans les trous filtrés (pour la sélection d'envoi)
+  const broadcastStudioOptions = useMemo(() => {
+    const m = new Map<string, number>();
+    filtered.forEach((h) => {
+      const key = h.studio_id ?? "__none__";
+      m.set(key, (m.get(key) ?? 0) + 1);
+    });
+    return Array.from(m.entries()).map(([id, count]) => ({
+      id,
+      name: id === "__none__" ? "Sans studio" : (studios.get(id) || "—"),
+      count,
+    }));
+  }, [filtered, studios]);
+
+  // Cibles réelles de l'envoi = trous filtrés limités aux studios cochés
+  const broadcastTargets = useMemo(
+    () =>
+      bcStudios.size === 0
+        ? filtered
+        : filtered.filter((h) => bcStudios.has(h.studio_id ?? "__none__")),
+    [filtered, bcStudios],
+  );
+
 
   const proposalsByShift = useMemo(() => {
     const m = new Map<string, Proposal[]>();
@@ -461,6 +487,7 @@ function TrousPage() {
                 if (next) {
                   setBroadcastPreview(null);
                   setShowAllRecipients(false);
+                  setBcStudios(new Set());
                   if (filtered.length > 0) {
                     try {
                       const p = await previewBroadcastFn({ data: { shiftIds: filtered.map((h) => h.id) } });
@@ -469,6 +496,7 @@ function TrousPage() {
                   }
                 }
               }}
+
               className="rounded-lg px-3 py-2 col-span-2 sm:col-span-1"
 
               style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
@@ -548,6 +576,69 @@ function TrousPage() {
 
         {broadcastOpen && (
           <div className="mt-3 flex flex-col gap-2">
+            {/* Choix des studios concernés par l'envoi */}
+            {broadcastStudioOptions.length > 0 && (
+              <div className="rounded-lg p-3" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+                <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>Studios à envoyer</div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={bcStudios.size === 0}
+                      onChange={async () => {
+                        setBcStudios(new Set());
+                        const ids = filtered.map((h) => h.id);
+                        setBroadcastPreview(null);
+                        if (ids.length > 0) {
+                          try { setBroadcastPreview(await previewBroadcastFn({ data: { shiftIds: ids } })); }
+                          catch (e: any) { toast.error(e.message || "Erreur"); }
+                        }
+                      }}
+                      style={{ width: 18, height: 18, accentColor: "var(--coral)" }}
+                    />
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>Tous les studios ({filtered.length})</span>
+                  </label>
+                  {broadcastStudioOptions.map((opt) => (
+                    <label key={opt.id} className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bcStudios.size === 0 || bcStudios.has(opt.id)}
+                        onChange={async () => {
+                          const next = new Set(
+                            bcStudios.size === 0 ? broadcastStudioOptions.map((o) => o.id) : bcStudios,
+                          );
+                          next.has(opt.id) ? next.delete(opt.id) : next.add(opt.id);
+                          // tout coché = équivalent à "tous"
+                          const all = next.size === broadcastStudioOptions.length;
+                          const finalSet = all ? new Set<string>() : next;
+                          setBcStudios(finalSet);
+                          const ids = filtered
+                            .filter((h) => finalSet.size === 0 || finalSet.has(h.studio_id ?? "__none__"))
+                            .map((h) => h.id);
+                          setBroadcastPreview(null);
+                          if (ids.length > 0) {
+                            try { setBroadcastPreview(await previewBroadcastFn({ data: { shiftIds: ids } })); }
+                            catch (e: any) { toast.error(e.message || "Erreur"); }
+                          }
+                        }}
+                        style={{ width: 18, height: 18, accentColor: "var(--coral)" }}
+                      />
+                      <span style={{ fontSize: 13 }}>{opt.name}</span>
+                      <span className="rounded-full inline-flex items-center justify-center"
+                        style={{ minWidth: 18, height: 18, padding: "0 6px", fontSize: 10, fontWeight: 500, backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}>
+                        {opt.count}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {broadcastTargets.length === 0 && (
+                  <div style={{ fontSize: 12, color: "var(--danger-text)", marginTop: 6 }}>
+                    Sélectionnez au moins un studio.
+                  </div>
+                )}
+              </div>
+            )}
+
             {broadcastPreview && (() => {
               const recips = broadcastPreview.recipients as any[];
               const ko = recips.filter((r) => !r.deliverable);
@@ -590,16 +681,17 @@ function TrousPage() {
             />
             <div className="flex items-center gap-2">
               <button
-                disabled={broadcasting || filtered.length === 0}
+                disabled={broadcasting || broadcastTargets.length === 0}
                 onClick={async () => {
                   setBroadcasting(true);
                   try {
-                    const r = await openAllFn({ data: { shiftIds: filtered.map((h) => h.id), message: broadcastMsg.trim() || undefined } });
+                    const r = await openAllFn({ data: { shiftIds: broadcastTargets.map((h) => h.id), message: broadcastMsg.trim() || undefined } });
                     if (r.ok) {
                       toast.success(`${r.opened} shift(s) ouverts · ${r.recipients} employés notifiés · ${r.emailsSent} emails`);
                       setBroadcastOpen(false);
                       setBroadcastMsg("");
                       setBroadcastPreview(null);
+                      setBcStudios(new Set());
                       load();
                     } else {
                       toast.error("Aucun shift à ouvrir");
@@ -610,8 +702,9 @@ function TrousPage() {
                 className="rounded-lg px-3 py-2"
                 style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
               >
-                {broadcasting ? "Envoi…" : `Confirmer l'envoi (${filtered.length} trous)`}
+                {broadcasting ? "Envoi…" : `Confirmer l'envoi (${broadcastTargets.length} trous)`}
               </button>
+
               <button onClick={() => { setBroadcastOpen(false); setBroadcastPreview(null); }} className="rounded-lg px-3 py-2"
                 style={{ fontSize: 12, backgroundColor: "transparent", color: "var(--muted-foreground)", border: "0.5px solid var(--border)" }}>
                 Annuler
