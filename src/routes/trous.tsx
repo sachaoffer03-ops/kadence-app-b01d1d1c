@@ -9,6 +9,7 @@ import { useBusinessRoles } from "@/hooks/use-business-roles";
 import { sendProposals, cancelProposals } from "@/lib/proposals.functions";
 import { assignShiftDirect, deleteShift } from "@/lib/shifts.functions";
 import { openShiftsToAll, closeOpenShifts } from "@/lib/open-shifts.functions";
+import { absorbShortGaps } from "@/lib/gap-absorb.functions";
 
 interface TrousSearch {
   studios?: string;
@@ -63,6 +64,9 @@ function TrousPage() {
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [broadcasting, setBroadcasting] = useState(false);
+  const absorbFn = useServerFn(absorbShortGaps);
+  const [absorbPreview, setAbsorbPreview] = useState<any[] | null>(null);
+  const [absorbing, setAbsorbing] = useState(false);
   const cancelFn = useServerFn(cancelProposals);
   const assignFn = useServerFn(assignShiftDirect);
   const deleteFn = useServerFn(deleteShift);
@@ -327,6 +331,73 @@ function TrousPage() {
           </Link>
         </div>
       )}
+
+      {/* Marge de débordement : absorber les trous très courts */}
+      <div className="rounded-xl border mb-4 p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Absorber les trous courts</div>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+              Les trous de 15/30 min sont rattachés à la personne déjà présente juste avant (ou juste après). Aperçu avant validation.
+            </div>
+          </div>
+          <button
+            disabled={absorbing}
+            onClick={async () => {
+              setAbsorbing(true);
+              try {
+                const r = await absorbFn({ data: { dryRun: true } });
+                setAbsorbPreview(r.changes);
+                if (r.changes.length === 0) toast("Aucun trou court absorbable");
+              } catch (e: any) { toast.error(e.message || "Erreur"); }
+              finally { setAbsorbing(false); }
+            }}
+            className="rounded-lg px-3 py-2"
+            style={{ fontSize: 12, fontWeight: 500, backgroundColor: "transparent", color: "var(--coral-dark)", border: "0.5px solid var(--coral)" }}
+          >
+            {absorbing ? "Analyse…" : "Analyser"}
+          </button>
+        </div>
+        {absorbPreview && absorbPreview.length > 0 && (
+          <div className="mt-3">
+            <div className="flex flex-col gap-1 mb-3">
+              {absorbPreview.slice(0, 12).map((c: any) => (
+                <div key={c.holeId} style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                  <span style={{ color: "var(--foreground)", fontWeight: 500 }}>{c.userName}</span>{" "}
+                  · {new Date(c.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} · {c.role} ·{" "}
+                  {c.oldStart}–{c.oldEnd} → {c.newStart}–{c.newEnd} (+{c.minutes} min)
+                </div>
+              ))}
+              {absorbPreview.length > 12 && (
+                <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>+ {absorbPreview.length - 12} autre(s)</div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={absorbing}
+                onClick={async () => {
+                  setAbsorbing(true);
+                  try {
+                    const r = await absorbFn({ data: { dryRun: false } });
+                    toast.success(`${r.closed} trou(s) absorbé(s)`);
+                    setAbsorbPreview(null);
+                    load();
+                  } catch (e: any) { toast.error(e.message || "Erreur"); }
+                  finally { setAbsorbing(false); }
+                }}
+                className="rounded-lg px-3 py-2"
+                style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
+              >
+                Appliquer ({absorbPreview.length})
+              </button>
+              <button onClick={() => setAbsorbPreview(null)} className="rounded-lg px-3 py-2"
+                style={{ fontSize: 12, backgroundColor: "transparent", color: "var(--muted-foreground)", border: "0.5px solid var(--border)" }}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Bourse aux shifts : ouvrir les trous à tous */}
       <div className="rounded-xl border mb-4 p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
