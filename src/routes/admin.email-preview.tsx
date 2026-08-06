@@ -2,7 +2,7 @@ import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { EMAIL_REGISTRY } from "@/emails";
+import { EMAIL_REGISTRY, SUBJECT_RESOLVERS } from "@/emails";
 import { getEmailPreview } from "@/lib/email-preview.functions";
 
 export const Route = createFileRoute("/admin/email-preview")({
