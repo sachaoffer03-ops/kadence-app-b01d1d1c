@@ -8,7 +8,7 @@ import { getRoleStyle, hhmm, fullName } from "@/lib/staff-helpers";
 import { useBusinessRoles } from "@/hooks/use-business-roles";
 import { sendProposals, cancelProposals } from "@/lib/proposals.functions";
 import { assignShiftDirect, deleteShift } from "@/lib/shifts.functions";
-import { openShiftsToAll, closeOpenShifts } from "@/lib/open-shifts.functions";
+import { openShiftsToAll, closeOpenShifts, previewOpenShiftsBroadcast, getOpenShiftsBoard } from "@/lib/open-shifts.functions";
 import { absorbShortGaps } from "@/lib/gap-absorb.functions";
 
 interface TrousSearch {
