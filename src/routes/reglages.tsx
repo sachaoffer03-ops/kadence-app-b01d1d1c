@@ -86,6 +86,7 @@ function AISettings() {
     strict_preferences: false,
   });
   const [bounds, setBounds] = useState({ min: 3, max: 6 });
+  const [overflowMargin, setOverflowMargin] = useState<number>(30);
   const [weekly, setWeekly] = useState({ student: 15, flexi: 20, cdi: 48 });
   const [deadlineDay, setDeadlineDay] = useState<number>(25);
   const [loading, setLoading] = useState(true);
@@ -104,6 +105,7 @@ function AISettings() {
             strict_preferences: r.strict_preferences,
           });
           setBounds({ min: r.min_shift_hours ?? 3, max: r.max_shift_hours ?? 6 });
+          setOverflowMargin((r as any).overflow_margin_min ?? 30);
           setWeekly({
             student: r.max_weekly_student_hours ?? 15,
             flexi: r.max_weekly_flexi_hours ?? 20,
@@ -121,6 +123,7 @@ function AISettings() {
     const payload = {
       min_shift_hours: bounds.min,
       max_shift_hours: bounds.max,
+      overflow_margin_min: overflowMargin,
       max_weekly_student_hours: weekly.student,
       max_weekly_flexi_hours: weekly.flexi,
       max_weekly_cdi_hours: weekly.cdi,
@@ -172,6 +175,25 @@ function AISettings() {
               className="rounded-md px-2 py-1 outline-none" style={{ width: 70, fontSize: 13, border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }} />
             h
           </label>
+        </div>
+      </div>
+
+      <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Marge de débordement</div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16 }}>
+          Un trou plus court que cette marge est rattaché d'office à la personne déjà présente juste avant (ou juste après),
+          même si sa disponibilité déclarée s'arrête un peu plus tôt. Les bornes des besoins de staff restent respectées.
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {[0, 15, 30, 45].map((v) => {
+            const a = overflowMargin === v;
+            return (
+              <button key={v} onClick={() => setOverflowMargin(v)} className="rounded-full px-3 py-1.5"
+                style={{ fontSize: 12, fontWeight: a ? 500 : 400, backgroundColor: a ? "var(--coral)" : "transparent", color: a ? "var(--coral-text)" : "var(--muted-foreground)", border: a ? "none" : "0.5px solid var(--border)" }}>
+                {v === 0 ? "Désactivée" : `${v} min`}
+              </button>
+            );
+          })}
         </div>
       </div>
 

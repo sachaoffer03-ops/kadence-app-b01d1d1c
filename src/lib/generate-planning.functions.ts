@@ -56,6 +56,9 @@ interface Settings {
   target_weekly_cdi_hours: number;
   cdi_hours_tolerance: number;
   default_score_when_null: number;
+  /** Marge de débordement (minutes) : un trou <= cette durée est rattaché
+   *  à la personne déjà présente, même hors de sa dispo déclarée. */
+  overflow_margin_min: number;
 }
 
 interface Employee {
@@ -769,6 +772,9 @@ async function runEngine(ctx: EngineCtx) {
 
   // Helpers de contrainte (inclut les pré-existants déjà comptés via weeklyMin)
   const minShiftMin = (s.min_shift_hours ?? 3) * 60;
+  // Marge de débordement : jusqu'à N minutes en dehors de la dispo déclarée,
+  // uniquement pour coller aux bornes du besoin (jamais au-delà du template).
+  const overflowMin = Math.max(0, Math.min(60, s.overflow_margin_min ?? 30));
   // Règle stricte : un shift ne peut jamais durer moins que min_shift_hours (par défaut 3h).
   const minAssignableMinFor = (_req: Requirement) => minShiftMin;
   const weeklyHours = (e: Employee, date: string) => (e.weeklyMin.get(isoWeekStart(date)) ?? 0) / 60;
@@ -826,6 +832,17 @@ async function runEngine(ctx: EngineCtx) {
     return false;
   };
 
+  // Idem, mais tolère un débordement de `margin` minutes de chaque côté.
+  const availCoversWithMargin = (
+    e: Employee, date: string, sMin: number, eMin: number, studioId: string, margin: number,
+  ): boolean => {
+    if (margin <= 0) return availCovers(e, date, sMin, eMin, studioId);
+    for (const r of availOnFor(e.id, date, studioId)) {
+      if (r.startMin - margin <= sMin && r.endMin + margin >= eMin) return true;
+    }
+    return false;
+  };
+
   // Construit un vrai shift d'au moins min_shift_hours qui couvre le besoin.
   // Exemple : besoin Accueil 17h30-20h15 (2h45) → shift 17h15-20h15 si la dispo le permet.
   // IMPORTANT : la fenêtre finale doit rester dans [reqStartMin, reqEndMin] (bornes du staffing template)
@@ -844,8 +861,8 @@ async function runEngine(ctx: EngineCtx) {
     if (targetLen > maxMin) return null;
 
     // Bornes dures : dispo employé ET fenêtre du template (jamais en dehors du besoin)
-    const lowerBound = Math.max(availability.startMin, reqStartMin);
-    const upperBound = Math.min(availability.endMin, reqEndMin);
+    const lowerBound = Math.max(availability.startMin - overflowMin, reqStartMin);
+    const upperBound = Math.min(availability.endMin + overflowMin, reqEndMin);
     if (upperBound - lowerBound < targetLen) return null;
 
     const latestStart = Math.min(coverStart, upperBound - targetLen);
@@ -1403,7 +1420,17 @@ async function runEngine(ctx: EngineCtx) {
           if (seg.endMin !== hole.startMin && seg.startMin !== hole.endMin) return false;
           const emp = employees.get(seg.userId);
           if (!emp) return false;
-          if (!availCovers(emp, req.date, newStart, newEnd, req.studio_id)) return false;
+          const holeLen = hole.endMin - hole.startMin;
+          // Marge de débordement : un trou court est rattaché à la personne déjà
+          // présente même si sa dispo déclarée s'arrête un peu avant.
+          const margin = holeLen <= overflowMin ? overflowMin : 0;
+          if (!availCoversWithMargin(emp, req.date, newStart, newEnd, req.studio_id, margin)) return false;
+          // Aucun chevauchement avec un autre besoin sur l'extension
+          for (const a of emp.assigned) {
+            if (a.reqId === req.id) continue;
+            if (a.date !== req.date) continue;
+            if (a.startMin < newEnd && a.endMin > newStart) return false;
+          }
           const maxMin = maxShiftHFor(emp, req.studio_id) * 60;
           if (newEnd - newStart > maxMin) return false;
           const addedH = ((newEnd - newStart) - (seg.endMin - seg.startMin)) / 60;
@@ -1785,5 +1812,6 @@ function parseSettings(row: any): Settings {
     target_weekly_cdi_hours: row?.target_weekly_cdi_hours ?? 35,
     cdi_hours_tolerance: row?.cdi_hours_tolerance ?? 2,
     default_score_when_null: row?.default_score_when_null ?? 7.0,
+    overflow_margin_min: row?.overflow_margin_min ?? 30,
   };
 }
