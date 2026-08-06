@@ -353,9 +353,10 @@ function TrousPage() {
             onClick={async () => {
               setAbsorbing(true);
               try {
-                const r = await absorbFn({ data: { dryRun: true } });
-                setAbsorbPreview(r.changes);
-                if (r.changes.length === 0) toast("Aucun trou court absorbable");
+                const r: any = await absorbFn({ data: { dryRun: true } });
+                const ch = Array.isArray(r?.changes) ? r.changes : [];
+                setAbsorbPreview(ch);
+                if (ch.length === 0) toast("Aucun trou court absorbable");
               } catch (e: any) { toast.error(e.message || "Erreur"); }
               finally { setAbsorbing(false); }
             }}
