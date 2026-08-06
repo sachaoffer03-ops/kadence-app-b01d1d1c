@@ -427,7 +427,56 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
     return { totalHours, roles, byDay, totalStaffDays };
   }, [filtered]);
 
+  // Contrôle de cohérence : les besoins sont la référence du système, on signale
+  // tout de suite les écarts suspects (rôle oublié sur un jour, micro-trou).
+  const anomalies = useMemo(() => {
+    const out: string[] = [];
+    const fmt = (m: number) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
+    const toMin = (t: string) => {
+      const [h, m] = t.slice(0, 5).split(":").map(Number);
+      return h * 60 + m;
+    };
+    // rôle -> jours où il est requis
+    const daysWithRole = new Map<string, Set<number>>();
+    const openDays = new Set<number>();
+    // (jour, rôle) -> intervalles
+    const spans = new Map<string, { s: number; e: number }[]>();
+    for (const t of filtered) {
+      openDays.add(t.day_of_week);
+      const segs = t.role_segments && t.role_segments.length > 0
+        ? t.role_segments.map((s) => ({ role: s.role, s: toMin(s.start_time), e: toMin(s.end_time) }))
+        : [{ role: t.business_role, s: toMin(t.start_time), e: toMin(t.end_time) }];
+      for (const seg of segs) {
+        if (!daysWithRole.has(seg.role)) daysWithRole.set(seg.role, new Set());
+        daysWithRole.get(seg.role)!.add(t.day_of_week);
+        const k = `${t.day_of_week}|${seg.role}`;
+        if (!spans.has(k)) spans.set(k, []);
+        spans.get(k)!.push({ s: seg.s, e: seg.e });
+      }
+    }
+    // 1) rôle présent presque tous les jours mais absent d'un jour ouvert
+    for (const [role, days] of daysWithRole) {
+      if (days.size < Math.max(3, openDays.size - 2)) continue;
+      for (const d of openDays) {
+        if (!days.has(d)) out.push(`${DAYS[d]} : aucun besoin « ${role} » alors qu'il est requis les autres jours.`);
+      }
+    }
+    // 2) micro-trou (< 2h) entre deux créneaux d'un même rôle le même jour
+    for (const [k, list] of spans) {
+      const [d, role] = k.split("|");
+      const sorted = [...list].sort((a, b) => a.s - b.s);
+      for (let i = 1; i < sorted.length; i++) {
+        const gap = sorted[i]!.s - Math.max(...sorted.slice(0, i).map((x) => x.e));
+        if (gap > 0 && gap < 120) {
+          out.push(`${DAYS[Number(d)]} : trou de ${gap} min en « ${role} » (${fmt(sorted[i]!.s - gap)} → ${fmt(sorted[i]!.s)}).`);
+        }
+      }
+    }
+    return out;
+  }, [filtered]);
+
   const [historyOpen, setHistoryOpen] = useState(false);
+
 
   if (loading) return <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>;
   if (studios.length === 0) {
