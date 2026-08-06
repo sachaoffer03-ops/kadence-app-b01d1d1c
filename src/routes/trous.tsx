@@ -487,6 +487,7 @@ function TrousPage() {
                 if (next) {
                   setBroadcastPreview(null);
                   setShowAllRecipients(false);
+                  setBcStudios(new Set());
                   if (filtered.length > 0) {
                     try {
                       const p = await previewBroadcastFn({ data: { shiftIds: filtered.map((h) => h.id) } });
@@ -495,6 +496,7 @@ function TrousPage() {
                   }
                 }
               }}
+
               className="rounded-lg px-3 py-2 col-span-2 sm:col-span-1"
 
               style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
