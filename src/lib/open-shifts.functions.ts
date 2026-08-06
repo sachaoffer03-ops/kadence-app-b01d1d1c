@@ -365,3 +365,148 @@ export const claimOpenShifts = createServerFn({ method: "POST" })
 
     return { ok: true, claimed: claimed.length, taken: taken.length, takenIds: taken };
   });
+
+// =============================================================================
+// ADMIN — Aperçu avant envoi : destinataires + emails manquants
+// =============================================================================
+export const previewOpenShiftsBroadcast = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ shiftIds: z.array(z.string().uuid()).min(1).max(300) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+
+    const { data: shifts } = await supabaseAdmin
+      .from("shifts")
+      .select("id, shift_date, start_time, end_time, business_role, studio_id, open_to_all")
+      .in("id", data.shiftIds)
+      .is("user_id", null);
+    const openable = shifts ?? [];
+
+    const studioIds = Array.from(
+      new Set(openable.map((s: any) => s.studio_id).filter(Boolean)),
+    ) as string[];
+
+    const [{ data: links }, { data: profiles }, { data: studios }] = await Promise.all([
+      studioIds.length
+        ? supabaseAdmin.from("user_studios").select("user_id, studio_id").in("studio_id", studioIds)
+        : Promise.resolve({ data: [] as any[] }),
+      supabaseAdmin
+        .from("profiles")
+        .select("id, first_name, last_name, email, studio_id, status")
+        .in("status", ["active", "invited"]),
+      studioIds.length
+        ? supabaseAdmin.from("studios").select("id, name, short_name").in("id", studioIds)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    const studioName = (id: string | null) => {
+      const s = (studios ?? []).find((x: any) => x.id === id);
+      return s?.short_name ?? s?.name ?? "—";
+    };
+
+    const linked = new Set((links ?? []).map((l: any) => l.user_id));
+    const recipients = (profiles ?? [])
+      .filter(
+        (p: any) =>
+          p.id !== userId &&
+          (linked.has(p.id) || (p.studio_id && studioIds.includes(p.studio_id))),
+      )
+      .map((p: any) => ({
+        id: p.id,
+        name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "—",
+        email: p.email ?? null,
+        status: p.status,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Adresses déjà bloquées (bounce / plainte) → l'email n'arrivera pas
+    const emails = recipients.map((r) => r.email).filter(Boolean) as string[];
+    let suppressed = new Set<string>();
+    if (emails.length > 0) {
+      const { data: sup } = await supabaseAdmin
+        .from("suppressed_emails")
+        .select("email")
+        .in("email", emails);
+      suppressed = new Set((sup ?? []).map((s: any) => String(s.email).toLowerCase()));
+    }
+
+    return {
+      shifts: openable.map((s: any) => ({
+        id: s.id,
+        dateLabel: dateLabelFr(s.shift_date),
+        timeLabel: `${hhmm(s.start_time)} – ${hhmm(s.end_time)}`,
+        role: s.business_role,
+        studioName: studioName(s.studio_id),
+        alreadyOpen: !!s.open_to_all,
+      })),
+      studioNames: studioIds.map((id) => studioName(id)),
+      recipients: recipients.map((r) => ({
+        ...r,
+        deliverable: !!r.email && !suppressed.has(String(r.email).toLowerCase()),
+        reason: !r.email
+          ? "pas d'adresse email"
+          : suppressed.has(String(r.email).toLowerCase())
+            ? "adresse bloquée (bounce/plainte)"
+            : null,
+      })),
+    };
+  });
+
+// =============================================================================
+// ADMIN — Suivi : qui a pris quoi
+// =============================================================================
+export const getOpenShiftsBoard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await assertAdminOrManager(supabase, userId);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: rows } = await supabaseAdmin
+      .from("shifts")
+      .select(
+        "id, user_id, shift_date, start_time, end_time, business_role, studio_id, opened_at, updated_at",
+      )
+      .eq("open_to_all", true)
+      .gte("shift_date", today)
+      .order("shift_date")
+      .order("start_time");
+
+    const list = rows ?? [];
+    const userIds = Array.from(new Set(list.map((s: any) => s.user_id).filter(Boolean)));
+    const [{ data: profiles }, { data: studios }] = await Promise.all([
+      userIds.length
+        ? supabaseAdmin.from("profiles").select("id, first_name, last_name").in("id", userIds)
+        : Promise.resolve({ data: [] as any[] }),
+      supabaseAdmin.from("studios").select("id, name, short_name"),
+    ]);
+    const pName = new Map(
+      (profiles ?? []).map((p: any) => [
+        p.id,
+        `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
+      ]),
+    );
+    const sName = new Map((studios ?? []).map((s: any) => [s.id, s.short_name ?? s.name]));
+
+    const mapped = list.map((s: any) => ({
+      id: s.id,
+      shiftDate: s.shift_date,
+      dateLabel: dateLabelFr(s.shift_date),
+      timeLabel: `${hhmm(s.start_time)} – ${hhmm(s.end_time)}`,
+      role: s.business_role,
+      studioName: s.studio_id ? (sName.get(s.studio_id) ?? "—") : "—",
+      openedAt: s.opened_at,
+      claimedBy: s.user_id ? (pName.get(s.user_id) || "—") : null,
+      claimedAt: s.user_id ? s.updated_at : null,
+    }));
+
+    return {
+      free: mapped.filter((s) => !s.claimedBy),
+      claimed: mapped
+        .filter((s) => s.claimedBy)
+        .sort((a, b) => String(b.claimedAt).localeCompare(String(a.claimedAt))),
+    };
+  });
