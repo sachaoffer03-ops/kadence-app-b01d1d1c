@@ -433,7 +433,8 @@ function TrousPage() {
                   }
                 }
               }}
-              className="rounded-lg px-3 py-2"
+              className="rounded-lg px-3 py-2 col-span-2 sm:col-span-1"
+
               style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
             >
               Ouvrir à tous ({filtered.length})
