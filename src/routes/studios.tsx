@@ -337,43 +337,9 @@ function StudiosPage() {
 
   return (
     <div className="p-4 md:p-6">
-      <div
-        className="flex items-center gap-1 mb-5"
-        style={{ borderBottom: "0.5px solid var(--border)" }}
-      >
-        {studioTabs.map((tab, i) => {
-          const isActive = activeStudio === i;
-          return (
-            <button
-              key={studios[i].id}
-              onClick={() => setActiveStudio(i)}
-              className="px-4 py-2 transition-colors"
-              style={{
-                fontSize: 13,
-                fontWeight: isActive ? 500 : 400,
-                color: isActive ? "var(--foreground)" : "var(--muted-foreground)",
-                borderBottom: isActive ? "2px solid var(--foreground)" : "2px solid transparent",
-                marginBottom: -0.5,
-              }}
-            >
-              {tab}
-            </button>
-          );
-        })}
-        <button
-          onClick={() => setShowNewModal(true)}
-          className="px-4 py-2 transition-colors"
-          style={{
-            fontSize: 13,
-            fontWeight: 400,
-            color: "var(--coral)",
-            marginBottom: -0.5,
-          }}
-        >
-          + Nouveau studio
-        </button>
-        <div className="ml-auto flex items-center gap-2">
-          {currentRow && (
+      <div className="mb-5">
+        {currentRow && (
+          <div className="flex md:hidden justify-end mb-2">
             <button
               onClick={() => window.open(`https://admin.kadence.be/display/${currentRow.id}`, "_blank")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors"
@@ -382,14 +348,67 @@ function StudiosPage() {
                 fontWeight: 500,
                 color: "var(--coral-text)",
                 backgroundColor: "var(--coral)",
-                marginBottom: 6,
               }}
-              title={`Ouvre l'écran QR pour ${currentRow.name}`}
             >
               <QrCode size={14} />
               Afficher le QR
             </button>
-          )}
+          </div>
+        )}
+        <div
+          className="flex items-center gap-1 overflow-x-auto"
+          style={{ borderBottom: "0.5px solid var(--border)", scrollbarWidth: "none" }}
+        >
+          {studioTabs.map((tab, i) => {
+            const isActive = activeStudio === i;
+            return (
+              <button
+                key={studios[i].id}
+                onClick={() => setActiveStudio(i)}
+                className="px-4 py-2 transition-colors shrink-0 whitespace-nowrap"
+                style={{
+                  fontSize: 13,
+                  fontWeight: isActive ? 500 : 400,
+                  color: isActive ? "var(--foreground)" : "var(--muted-foreground)",
+                  borderBottom: isActive ? "2px solid var(--foreground)" : "2px solid transparent",
+                  marginBottom: -0.5,
+                }}
+              >
+                {tab}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="px-4 py-2 transition-colors shrink-0 whitespace-nowrap"
+            style={{
+              fontSize: 13,
+              fontWeight: 400,
+              color: "var(--coral)",
+              marginBottom: -0.5,
+            }}
+          >
+            + Nouveau studio
+          </button>
+          <div className="ml-auto hidden md:flex items-center gap-2">
+            {currentRow && (
+              <button
+                onClick={() => window.open(`https://admin.kadence.be/display/${currentRow.id}`, "_blank")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors shrink-0 whitespace-nowrap"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "var(--coral-text)",
+                  backgroundColor: "var(--coral)",
+                  marginBottom: 6,
+                }}
+                title={`Ouvre l'écran QR pour ${currentRow.name}`}
+              >
+                <QrCode size={14} />
+                Afficher le QR
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
