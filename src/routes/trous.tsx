@@ -101,10 +101,12 @@ function TrousPage() {
 
   const [userStudios, setUserStudios] = useState<Map<string, Set<string>>>(new Map());
 
+  const [openState, setOpenState] = useState<{ free: number; taken: number; openedAt: string | null; message: string | null }>({ free: 0, taken: 0, openedAt: null, message: null });
+
   const load = async () => {
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }, { data: sh }, { data: settings }] = await Promise.all([
-      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id").is("user_id", null).gte("shift_date", today).order("shift_date").order("start_time"),
+    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }, { data: sh }, { data: settings }, { data: openRows }] = await Promise.all([
+      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,open_to_all,opened_at").is("user_id", null).gte("shift_date", today).order("shift_date").order("start_time"),
       supabase.from("studios").select("id,name"),
       supabase.from("profiles").select("id,first_name,last_name,score,studio_id").in("status", ["active", "invited"]),
       supabase.from("user_business_roles").select("user_id,role"),
@@ -114,7 +116,15 @@ function TrousPage() {
       supabase.from("user_studios").select("user_id,studio_id"),
       supabase.from("shifts").select("user_id,shift_date,start_time,end_time").not("user_id", "is", null).neq("status", "cancelled").gte("shift_date", today.slice(0, 8) + "01"),
       supabase.from("ai_planning_settings").select("weight_performance,weight_equity,weight_preference").order("updated_at", { ascending: false }).limit(1),
+      supabase.from("shifts").select("user_id,opened_at,open_message").eq("open_to_all", true).gte("shift_date", today),
     ]);
+    const openList = (openRows || []) as any[];
+    setOpenState({
+      free: openList.filter((s) => !s.user_id).length,
+      taken: openList.filter((s) => s.user_id).length,
+      openedAt: openList.map((s) => s.opened_at).filter(Boolean).sort().slice(-1)[0] ?? null,
+      message: openList.find((s) => s.open_message)?.open_message ?? null,
+    });
     setHoles((h || []) as Hole[]);
     setStudios(new Map((st || []).map((s) => [s.id, s.name])));
     setProfiles((p || []) as ProfileRow[]);
