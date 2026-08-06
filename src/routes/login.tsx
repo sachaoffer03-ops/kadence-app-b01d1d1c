@@ -11,7 +11,7 @@ import { isMedianApp } from "@/lib/is-median-app";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { mode?: "employee" | "app" | "admin"; email?: string } => ({
     mode: s.mode === "employee" || s.mode === "app" || s.mode === "admin" ? s.mode : undefined,
     email: typeof s.email === "string" ? s.email : undefined,
   }),
