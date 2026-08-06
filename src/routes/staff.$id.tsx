@@ -29,7 +29,7 @@ import { RecurringAssignmentsCard } from "@/components/staff/RecurringAssignment
 
 export const Route = createFileRoute("/staff/$id")({
   component: EmployeeDetailPage,
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { edit?: 1 } => ({
     edit: search.edit === 1 || search.edit === "1" ? 1 : undefined,
   }),
   head: () => ({ meta: [{ title: "Profil employé — Kadence" }] }),
