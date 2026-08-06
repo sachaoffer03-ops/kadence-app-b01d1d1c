@@ -1,79 +1,40 @@
-## Objectif
+# Bourse aux shifts — les employés se servent eux-mêmes dans les trous
 
-Refaire entièrement le site vitrine `kadence.be` : aujourd'hui il est trop plat, trop textuel, trop répétitif, et le logo est illisible. On vise un site de présentation qui impressionne dès la première seconde, porté par le visuel plutôt que par les paragraphes.
+Objectif : au lieu de courir après tout le monde pour les dispos, tu envoies **un seul message** (email + notification in-app) avec la liste des trous. Chaque employé ouvre l'app, coche les shifts qu'il veut, valide — **le premier qui prend a le shift**. Il disparaît immédiatement de la liste des autres, apparaît dans son planning et dans le planning admin, sans aucune action de ta part.
 
-Aucun impact sur `app.kadence.be` ni `admin.kadence.be` — le site vitrine reste isolé sur son domaine.
+## 1. Côté toi (admin / manager) — page « Trous à combler »
 
-## Direction visuelle retenue
+- Nouveau bouton **« Ouvrir à tous »** en haut de la page, avec le filtre studio déjà en place (ex. Châtelain) et un choix de période (semaine / mois).
+- Un écran de confirmation récapitule : X trous, Y employés destinataires (ceux du studio concerné, actifs et invités), et un champ **message libre** optionnel.
+- À l'envoi :
+  - une **notification in-app** à chaque employé,
+  - un **email** avec la liste des shifts ouverts (date, horaire, rôle, studio) et un bouton « Voir les shifts disponibles »,
+  - les trous passent en statut « ouverts à tous » et restent visibles dans ta page trous avec un compteur « X pris / Y restants ».
+- Tu gardes la possibilité de refermer l'ouverture à tout moment (bouton « Fermer la bourse »).
 
-Coral éditorial poussé à fond : fond off-white `#FAFAF8`, surfaces crème `#F3F1EC`, accent coral `#F0997B`, noir profond `#1A1A1A` pour les blocs de rupture.
+## 2. Côté employé — écran « Shifts disponibles »
 
-Ce qui change concrètement par rapport à l'existant :
-- Typographie hero beaucoup plus grande (jusqu'à ~88px sur desktop), respiration doublée entre les sections.
-- Alternance de fonds : crème → blanc → noir → coral, pour casser la monotonie actuelle.
-- Fin des grilles de 6 cartes identiques : chaque fonctionnalité a son propre traitement (pleine largeur, split, superposition, bande sombre).
-- Micro-animations à l'apparition (fade + translation douce au scroll), effets de survol sur les visuels.
+- Nouvel onglet/carte dans l'app employé : **« Shifts disponibles »** avec pastille du nombre de shifts libres.
+- Liste des trous ouverts sur ses studios, groupés par jour : date, horaire, rôle (couleur du rôle), studio.
+- Cases à cocher : il peut en sélectionner plusieurs, puis **« Je prends ces shifts »**.
+- Filtrage automatique : on masque les shifts qui chevauchent un shift qu'il a déjà, ou une indisponibilité déclarée.
+- Un shift déjà pris par quelqu'un d'autre disparaît en direct de sa liste (temps réel).
+- Après validation : confirmation, les shifts apparaissent immédiatement dans son planning, et une notification t'informe « Trou comblé ».
 
-## Logo
+## 3. Attribution : premier arrivé, premier servi
 
-- Header : hauteur 34px → 46px, plus de padding vertical, version compacte sur mobile.
-- Footer : hauteur 30px → 44px.
-- Si le PNG actuel manque de netteté à cette taille, je régénère une version haute résolution du même logo (mêmes formes, mêmes couleurs).
+La prise de shift est **atomique** : le shift n'est attribué que s'il est encore libre au moment exact du clic. Si deux personnes cliquent en même temps, la seconde reçoit « Trop tard, ce shift vient d'être pris » et le reste de sa sélection est quand même attribué. Aucun double-booking possible.
 
-## Visuels : mockups produit reconstitués
+## 4. Dispos : n'afficher que les trous
 
-Plutôt que des captures d'écran, je recrée des interfaces Kadence en HTML/CSS directement dans le site — nettes à tous les écrans, animables, et sans aucune donnée réelle.
-
-Mockups prévus :
-1. **Planning semaine** — grille de shifts colorés par rôle, animation de remplissage automatique.
-2. **Génération de planning** — barre de progression + compteur de couverture qui monte à 100%.
-3. **Pointage géolocalisé** — écran mobile avec carte, rayon de validation, bouton de pointage.
-4. **Clôture avec photos** — checklist qui se coche, vignettes photo.
-5. **Rapports** — cartes de KPI et mini-graphiques.
-6. **Disponibilités** — calendrier mensuel avec sélection de créneaux.
-
-Données 100% fictives : établissements « Le Comptoir Nord » / « Atelier Sablon », prénoms inventés. Zéro donnée Skult, et aucune modification des données réelles de l'app.
-
-En complément, 3–4 images d'ambiance générées (comptoir de café, équipe en service, salle en fin de journée) pour les respirations émotionnelles entre les sections produit.
-
-## Vidéo de démonstration
-
-Vidéo motion de ~25 secondes, produite en code (Remotion), livrée en même temps :
-- Ouverture logo Kadence sur fond crème.
-- Séquence 1 : besoins en staff qui se remplissent.
-- Séquence 2 : génération du planning, couverture qui atteint 100%.
-- Séquence 3 : côté employé — shift du jour, pointage.
-- Séquence 4 : clôture photo + rapport.
-- Fermeture : logo + « kadence.be ».
-
-Même palette, mêmes données fictives. Intégrée en autoplay muet et en boucle dans le hero de la page d'accueil, avec fallback image si la lecture échoue.
-
-## Pages
-
-- `/` — refonte totale : hero avec vidéo, preuve de valeur, parcours produit en 5 blocs alternés, section mobile, bande CTA sombre.
-- `/fonctionnalites` — une section illustrée par fonctionnalité, plus de liste de cartes.
-- `/tarifs` — mise en page repensée, toujours sur devis.
-- `/a-propos` — histoire du projet, ancrage bruxellois. **Skult n'est pas mentionné.**
-- `/contact` — formulaire de démo conservé, habillage refait.
-- `/confidentialite` — conservée, harmonisée au nouveau design.
-- `/mentions-legales` — **nouvelle page** avec le texte fourni :
-
-  KOL INVEST, SRL dont le siège est établi Avenue d'Orbaix 23/A Boîte 4, 1180 Uccle, enregistrée à la Banque Carrefour des Entreprises sous le numéro 0776.362.165, responsable du traitement des données. Contact : privacy@skult-studios.com
-
-  Ce texte légal est reproduit tel quel (obligation légale), mais aucune page éditoriale ne parle de Skult.
-
-  Ajout au footer et au sitemap.
+Dans l'écran « Mes dispos », pour un mois **déjà planifié** (septembre), on remplace la saisie d'heures par la **liste des trous à cocher** : l'employé ne renseigne plus des plages horaires, il choisit directement parmi ce qui est réellement à pourvoir. La saisie d'heures classique reste pour les mois **pas encore planifiés** (octobre et suivants), puisque le générateur en a besoin.
 
 ## Détails techniques
 
-- Refonte de `MarketingLayout.tsx` (header, footer, primitives de section) et de `MarketingHome.tsx`.
-- Nouveaux composants sous `src/components/marketing/mockups/` (un fichier par mockup produit) et `src/components/marketing/motion.tsx` (révélation au scroll via IntersectionObserver, sans dépendance ajoutée).
-- Nouvelle route `src/routes/mentions-legales.tsx`, ajoutée aux routes publiques/standalone de `__root.tsx` et à `sitemap.xml`.
-- Vidéo produite dans un projet `remotion/` versionné, rendue en MP4 puis hébergée via le CDN d'assets.
-- `head()` propre par route : titre, description, og:title, og:description, canonical.
-- Vérification responsive mobile/desktop après implémentation.
-
-## Hors périmètre
-
-- Aucune modification de l'app employé ni de la console admin.
-- Aucune modification des données Skult existantes.
+- Réutilise le mécanisme existant `shift_proposals` + `acceptProposal` (déjà atomique : `update shifts ... where user_id is null`). Ajout d'un mode « ouvert à tous » : une proposition par employé éligible, ou un flag `open_to_all` sur le shift avec une fonction serveur `claimOpenShifts` faisant la même prise atomique en lot.
+- Nouvelle server function `openShiftsToAll` (admin/manager) dans `src/lib/proposals.functions.ts` : crée les propositions, insère les notifications, et envoie l'email via `enqueueTemplateEmail`.
+- Nouveau template React Email `shifts-disponibles` dans `src/emails/employee/`, enregistré dans `src/emails/index.ts` (liste des créneaux + CTA).
+- UI admin : bloc d'ouverture dans `src/routes/trous.tsx`.
+- UI employé : nouveau composant `src/components/staff-app/OpenShiftsSheet.tsx`, monté depuis `src/routes/staff-app.tsx`, avec abonnement temps réel sur `shifts` pour retirer les shifts pris.
+- `src/components/staff-app/DisposSheet.tsx` : détection « mois déjà planifié » (présence de shifts publiés sur le mois) → bascule en mode « cocher les trous ».
+- Aucune modification du générateur de planning ni des besoins de staff.
