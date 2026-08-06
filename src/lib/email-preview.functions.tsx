@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { render } from "@react-email/render";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { EMAIL_REGISTRY } from "@/emails";
+import { EMAIL_REGISTRY, SUBJECT_RESOLVERS } from "@/emails";
 import { EmailTenantProvider } from "@/emails/tenant-context";
 import { getEmailTenantConfig } from "@/lib/email-tenant.server";
 import { assertManagerPermission } from "@/lib/permission-guard.server";
