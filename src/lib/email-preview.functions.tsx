@@ -27,7 +27,11 @@ export const getEmailPreview = createServerFn({ method: "GET" })
         React.createElement(Component, template.mockData),
       ),
     );
-    return { html, subject: template.subject };
+    const resolveSubject = SUBJECT_RESOLVERS[data.templateId];
+    const previewSubject = resolveSubject
+      ? resolveSubject(template.mockData)
+      : template.subject;
+    return { html, subject: previewSubject };
   });
 
 // Preview live avec overrides non persistés (utilisé par /reglages Emails).
