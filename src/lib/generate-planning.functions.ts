@@ -1406,6 +1406,8 @@ async function runEngine(ctx: EngineCtx) {
           if (!availCovers(emp, req.date, newStart, newEnd, req.studio_id)) return false;
           const maxMin = maxShiftHFor(emp, req.studio_id) * 60;
           if (newEnd - newStart > maxMin) return false;
+          const addedH = ((newEnd - newStart) - (seg.endMin - seg.startMin)) / 60;
+          if (weeklyHours(emp, req.date) + addedH > maxWeeklyHFor(emp, req.studio_id)) return false;
           return true;
         };
         const prevOk = prev ? canTake(prev, prev.startMin, hole.endMin) : false;
