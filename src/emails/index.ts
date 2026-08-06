@@ -30,7 +30,7 @@ export interface EmailTemplate {
   name: string;
   category: "employee" | "admin" | "auth";
   description: string;
-  subject: string;
+  subject: string | ((data: Record<string, any>) => string);
   component: ComponentType<any>;
   mockData: Record<string, any>;
 }
