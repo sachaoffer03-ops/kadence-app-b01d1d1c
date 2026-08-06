@@ -500,7 +500,21 @@ export function StaffingTemplatesEditor({ lockedStudioName, hideHint }: Props) {
         </div>
       )}
 
+
+      {studioId && anomalies.length > 0 && (
+        <div className="rounded-lg p-3 flex items-start gap-2" style={{ backgroundColor: "var(--warning-bg, #FEF3E6)" }}>
+          <Info size={14} style={{ color: "var(--warning-text, #A9601F)", marginTop: 2, flexShrink: 0 }} />
+          <div style={{ fontSize: 11, color: "var(--warning-text, #A9601F)", lineHeight: 1.6 }}>
+            <div style={{ fontWeight: 500, marginBottom: 4 }}>À vérifier dans les besoins</div>
+            {anomalies.slice(0, 8).map((a, i) => (
+              <div key={i}>• {a}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {studioId && filtered.length > 0 && (
+
         <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
           <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
             <div className="flex items-center gap-2">
