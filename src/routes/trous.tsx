@@ -416,7 +416,20 @@ function TrousPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setBroadcastOpen((v) => !v)}
+              onClick={async () => {
+                const next = !broadcastOpen;
+                setBroadcastOpen(next);
+                if (next) {
+                  setBroadcastPreview(null);
+                  setShowAllRecipients(false);
+                  if (filtered.length > 0) {
+                    try {
+                      const p = await previewBroadcastFn({ data: { shiftIds: filtered.map((h) => h.id) } });
+                      setBroadcastPreview(p);
+                    } catch (e: any) { toast.error(e.message || "Erreur"); }
+                  }
+                }
+              }}
               className="rounded-lg px-3 py-2"
               style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
             >
@@ -424,9 +437,24 @@ function TrousPage() {
             </button>
             <button
               onClick={async () => {
+                const next = !boardOpen;
+                setBoardOpen(next);
+                if (next) {
+                  try { setBoard(await boardFn({})); }
+                  catch (e: any) { toast.error(e.message || "Erreur"); }
+                }
+              }}
+              className="rounded-lg px-3 py-2"
+              style={{ fontSize: 12, fontWeight: 400, backgroundColor: "transparent", color: "var(--foreground)", border: "0.5px solid var(--border)" }}
+            >
+              Qui a pris quoi
+            </button>
+            <button
+              onClick={async () => {
                 try {
                   await closeAllFn({ data: {} });
                   toast.success("Bourse refermée");
+                  setBoard(null); setBoardOpen(false);
                   load();
                 } catch (e: any) { toast.error(e.message || "Erreur"); }
               }}
@@ -437,8 +465,81 @@ function TrousPage() {
             </button>
           </div>
         </div>
+
+        {boardOpen && (
+          <div className="mt-3 rounded-lg p-3" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+            {!board ? (
+              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Chargement…</div>
+            ) : board.free.length === 0 && board.claimed.length === 0 ? (
+              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Aucun shift ouvert en ce moment.</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>
+                    Pris ({board.claimed.length})
+                  </div>
+                  {board.claimed.length === 0 ? (
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Personne n'a encore pris de shift.</div>
+                  ) : board.claimed.map((s: any) => (
+                    <div key={s.id} style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 3 }}>
+                      <span style={{ color: "var(--foreground)", fontWeight: 500 }}>{s.claimedBy}</span>
+                      {" · "}{s.dateLabel} · {s.timeLabel} · {s.role} · {s.studioName}
+                      {s.claimedAt ? ` · pris le ${new Date(s.claimedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à ${new Date(s.claimedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>
+                    Encore libres ({board.free.length})
+                  </div>
+                  {board.free.slice(0, 20).map((s: any) => (
+                    <div key={s.id} style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 3 }}>
+                      {s.dateLabel} · {s.timeLabel} · {s.role} · {s.studioName}
+                    </div>
+                  ))}
+                  {board.free.length > 20 && (
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>+ {board.free.length - 20} autre(s)</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {broadcastOpen && (
           <div className="mt-3 flex flex-col gap-2">
+            {broadcastPreview && (() => {
+              const recips = broadcastPreview.recipients as any[];
+              const ko = recips.filter((r) => !r.deliverable);
+              const ok = recips.filter((r) => r.deliverable);
+              const shown = showAllRecipients ? recips : recips.slice(0, 8);
+              return (
+                <div className="rounded-lg p-3" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--background)" }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>
+                    Aperçu : {broadcastPreview.shifts.length} shift(s) · {recips.length} destinataire(s) · {ok.length} email(s) délivrable(s)
+                  </div>
+                  {ko.length > 0 && (
+                    <div className="rounded-lg px-2 py-1.5 mb-2" style={{ fontSize: 12, backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" }}>
+                      {ko.length} employé(s) ne recevront pas l'email (ils auront quand même la notification dans l'app) :{" "}
+                      {ko.map((r) => `${r.name} — ${r.reason}`).join(" · ")}
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-0.5 mb-1">
+                    {shown.map((r) => (
+                      <div key={r.id} style={{ fontSize: 12, color: r.deliverable ? "var(--muted-foreground)" : "var(--danger-text)" }}>
+                        {r.name}{r.email ? ` · ${r.email}` : ""}{r.status === "invited" ? " · invité" : ""}
+                      </div>
+                    ))}
+                  </div>
+                  {recips.length > 8 && (
+                    <button onClick={() => setShowAllRecipients((v) => !v)}
+                      style={{ fontSize: 12, color: "var(--coral-dark)", background: "none", border: "none", padding: 0 }}>
+                      {showAllRecipients ? "Réduire" : `Voir les ${recips.length} destinataires`}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             <textarea
               value={broadcastMsg}
               onChange={(e) => setBroadcastMsg(e.target.value)}
@@ -458,6 +559,7 @@ function TrousPage() {
                       toast.success(`${r.opened} shift(s) ouverts · ${r.recipients} employés notifiés · ${r.emailsSent} emails`);
                       setBroadcastOpen(false);
                       setBroadcastMsg("");
+                      setBroadcastPreview(null);
                       load();
                     } else {
                       toast.error("Aucun shift à ouvrir");
@@ -468,9 +570,9 @@ function TrousPage() {
                 className="rounded-lg px-3 py-2"
                 style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
               >
-                {broadcasting ? "Envoi…" : `Envoyer à tous (${filtered.length} trous)`}
+                {broadcasting ? "Envoi…" : `Confirmer l'envoi (${filtered.length} trous)`}
               </button>
-              <button onClick={() => setBroadcastOpen(false)} className="rounded-lg px-3 py-2"
+              <button onClick={() => { setBroadcastOpen(false); setBroadcastPreview(null); }} className="rounded-lg px-3 py-2"
                 style={{ fontSize: 12, backgroundColor: "transparent", color: "var(--muted-foreground)", border: "0.5px solid var(--border)" }}>
                 Annuler
               </button>
