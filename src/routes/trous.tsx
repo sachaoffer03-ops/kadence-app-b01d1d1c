@@ -220,6 +220,30 @@ function TrousPage() {
     [scoped, filterRole, filterStudio],
   );
 
+  // Studios présents dans les trous filtrés (pour la sélection d'envoi)
+  const broadcastStudioOptions = useMemo(() => {
+    const m = new Map<string, number>();
+    filtered.forEach((h) => {
+      const key = h.studio_id ?? "__none__";
+      m.set(key, (m.get(key) ?? 0) + 1);
+    });
+    return Array.from(m.entries()).map(([id, count]) => ({
+      id,
+      name: id === "__none__" ? "Sans studio" : (studios.get(id) || "—"),
+      count,
+    }));
+  }, [filtered, studios]);
+
+  // Cibles réelles de l'envoi = trous filtrés limités aux studios cochés
+  const broadcastTargets = useMemo(
+    () =>
+      bcStudios.size === 0
+        ? filtered
+        : filtered.filter((h) => bcStudios.has(h.studio_id ?? "__none__")),
+    [filtered, bcStudios],
+  );
+
+
   const proposalsByShift = useMemo(() => {
     const m = new Map<string, Proposal[]>();
     proposals.forEach((p) => { const a = m.get(p.shift_id) || []; a.push(p); m.set(p.shift_id, a); });
