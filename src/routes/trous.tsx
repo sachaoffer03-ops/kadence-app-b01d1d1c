@@ -681,16 +681,17 @@ function TrousPage() {
             />
             <div className="flex items-center gap-2">
               <button
-                disabled={broadcasting || filtered.length === 0}
+                disabled={broadcasting || broadcastTargets.length === 0}
                 onClick={async () => {
                   setBroadcasting(true);
                   try {
-                    const r = await openAllFn({ data: { shiftIds: filtered.map((h) => h.id), message: broadcastMsg.trim() || undefined } });
+                    const r = await openAllFn({ data: { shiftIds: broadcastTargets.map((h) => h.id), message: broadcastMsg.trim() || undefined } });
                     if (r.ok) {
                       toast.success(`${r.opened} shift(s) ouverts · ${r.recipients} employés notifiés · ${r.emailsSent} emails`);
                       setBroadcastOpen(false);
                       setBroadcastMsg("");
                       setBroadcastPreview(null);
+                      setBcStudios(new Set());
                       load();
                     } else {
                       toast.error("Aucun shift à ouvrir");
@@ -701,8 +702,9 @@ function TrousPage() {
                 className="rounded-lg px-3 py-2"
                 style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
               >
-                {broadcasting ? "Envoi…" : `Confirmer l'envoi (${filtered.length} trous)`}
+                {broadcasting ? "Envoi…" : `Confirmer l'envoi (${broadcastTargets.length} trous)`}
               </button>
+
               <button onClick={() => { setBroadcastOpen(false); setBroadcastPreview(null); }} className="rounded-lg px-3 py-2"
                 style={{ fontSize: 12, backgroundColor: "transparent", color: "var(--muted-foreground)", border: "0.5px solid var(--border)" }}>
                 Annuler
