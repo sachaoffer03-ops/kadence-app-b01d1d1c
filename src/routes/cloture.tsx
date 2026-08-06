@@ -1171,9 +1171,25 @@ function useSignedRef(path: string | null | undefined) {
   return url;
 }
 
+function RefLightbox({ url, label, onClose }: { url: string; label: string; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-[900px] w-[95vw] p-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-4 pb-3">
+          <DialogTitle style={{ fontSize: 14, fontWeight: 500 }}>Photo de référence · {label}</DialogTitle>
+        </DialogHeader>
+        <div style={{ backgroundColor: "var(--muted)" }} className="flex items-center justify-center">
+          <img src={url} alt={label} style={{ maxHeight: "75vh", width: "100%", objectFit: "contain" }} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function PhotoReferencePreview({ path, pendingFile }: { path: string | null | undefined; pendingFile: File | null }) {
   const signed = useSignedRef(pendingFile ? null : path);
   const [localUrl, setLocalUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(false);
   useEffect(() => {
     if (!pendingFile) { setLocalUrl(null); return; }
     const u = URL.createObjectURL(pendingFile);
@@ -1189,57 +1205,75 @@ function PhotoReferencePreview({ path, pendingFile }: { path: string | null | un
     );
   }
   return (
-    <div className="mt-1 rounded border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
-      <img src={url} alt="référence" className="w-full object-contain" style={{ maxHeight: 220 }} />
-    </div>
+    <>
+      <button
+        type="button"
+        onClick={() => setZoom(true)}
+        className="mt-1 w-full rounded border overflow-hidden block"
+        style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}
+        title="Agrandir"
+      >
+        <img src={url} alt="référence" className="w-full object-contain" style={{ maxHeight: 320 }} />
+      </button>
+      {zoom && <RefLightbox url={url} label="aperçu" onClose={() => setZoom(false)} />}
+    </>
   );
 }
 
 function PhotoCard({ photo, onEdit }: { photo: any; onEdit: () => void }) {
   const refUrl = useSignedRef(photo.reference_photo_url);
+  const [zoom, setZoom] = useState(false);
   const toggle = async () => {
     const { error } = await supabase.from("checklist_template_photos").update({ is_required: !photo.is_required } as any).eq("id", photo.id);
     if (error) toast.error(error.message); else flashSaved();
   };
   return (
-    <div className="rounded-lg border p-3" style={{ backgroundColor: "var(--background)", borderColor: "var(--border)" }}>
-      <div className="flex gap-3 mb-1.5">
+    <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--background)", borderColor: "var(--border)" }}>
+      {refUrl ? (
         <button
-          onClick={onEdit}
-          className="flex-shrink-0 w-16 h-16 rounded border overflow-hidden flex items-center justify-center"
-          style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}
-          title="Modifier la photo de référence"
+          type="button"
+          onClick={() => setZoom(true)}
+          className="block w-full"
+          style={{ backgroundColor: "var(--muted)" }}
+          title="Agrandir la photo de référence"
         >
-          {refUrl ? (
-            <img src={refUrl} alt={photo.label} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-[9px] text-center leading-tight px-1" style={{ color: "var(--muted-foreground)" }}>Pas de réf.</span>
-          )}
+          <img src={refUrl} alt={photo.label} className="w-full object-cover" style={{ height: 150 }} />
         </button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div style={{ fontSize: 13, fontWeight: 500 }} className="truncate">{photo.label}</div>
-            <button onClick={onEdit} style={{ color: "var(--muted-foreground)" }}><Pencil size={13} /></button>
-          </div>
-          {photo.description && (
-            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, lineHeight: 1.4 }} className="line-clamp-2">{photo.description}</div>
-          )}
-          <button
-            onClick={toggle}
-            className="mt-1.5 rounded-full px-2 py-0.5"
-            style={{
-              fontSize: 10, fontWeight: 500,
-              backgroundColor: photo.is_required ? "var(--coral-light)" : "var(--muted)",
-              color: photo.is_required ? "var(--coral-text)" : "var(--muted-foreground)",
-            }}
-          >
-            {photo.is_required ? "Obligatoire" : "Optionnelle"}
-          </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="w-full flex items-center justify-center"
+          style={{ height: 150, backgroundColor: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)" }}
+        >
+          Pas de photo de référence — cliquer pour en ajouter
+        </button>
+      )}
+      <div className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div style={{ fontSize: 13, fontWeight: 500 }} className="truncate">{photo.label}</div>
+          <button onClick={onEdit} style={{ color: "var(--muted-foreground)" }} title="Modifier"><Pencil size={13} /></button>
         </div>
+        {photo.description && (
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, lineHeight: 1.4 }} className="line-clamp-2">{photo.description}</div>
+        )}
+        <button
+          onClick={toggle}
+          className="mt-1.5 rounded-full px-2 py-0.5"
+          style={{
+            fontSize: 10, fontWeight: 500,
+            backgroundColor: photo.is_required ? "var(--coral-light)" : "var(--muted)",
+            color: photo.is_required ? "var(--coral-text)" : "var(--muted-foreground)",
+          }}
+        >
+          {photo.is_required ? "Obligatoire" : "Optionnelle"}
+        </button>
       </div>
+      {zoom && refUrl && <RefLightbox url={refUrl} label={photo.label} onClose={() => setZoom(false)} />}
     </div>
   );
 }
+
 
 
 function PhotoEditModal({ photo, isNew, onClose, onSaved, onDeleted }: {
