@@ -27,7 +27,7 @@ export const Route = createFileRoute("/trous")({
 
 interface Hole {
   id: string; shift_date: string; start_time: string; end_time: string;
-  business_role: string; studio_id: string | null;
+  business_role: string; studio_id: string | null; open_to_all?: boolean | null; opened_at?: string | null;
 }
 interface ProfileRow { id: string; first_name: string; last_name: string; score: number | null }
 interface Proposal {
@@ -101,10 +101,12 @@ function TrousPage() {
 
   const [userStudios, setUserStudios] = useState<Map<string, Set<string>>>(new Map());
 
+  const [openState, setOpenState] = useState<{ free: number; taken: number; openedAt: string | null; message: string | null }>({ free: 0, taken: 0, openedAt: null, message: null });
+
   const load = async () => {
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }, { data: sh }, { data: settings }] = await Promise.all([
-      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id").is("user_id", null).gte("shift_date", today).order("shift_date").order("start_time"),
+    const [{ data: h }, { data: st }, { data: p }, { data: ubr }, { data: pr }, { data: av }, { data: un }, { data: us }, { data: sh }, { data: settings }, { data: openRows }] = await Promise.all([
+      supabase.from("shifts").select("id,shift_date,start_time,end_time,business_role,studio_id,open_to_all,opened_at").is("user_id", null).gte("shift_date", today).order("shift_date").order("start_time"),
       supabase.from("studios").select("id,name"),
       supabase.from("profiles").select("id,first_name,last_name,score,studio_id").in("status", ["active", "invited"]),
       supabase.from("user_business_roles").select("user_id,role"),
@@ -114,7 +116,15 @@ function TrousPage() {
       supabase.from("user_studios").select("user_id,studio_id"),
       supabase.from("shifts").select("user_id,shift_date,start_time,end_time").not("user_id", "is", null).neq("status", "cancelled").gte("shift_date", today.slice(0, 8) + "01"),
       supabase.from("ai_planning_settings").select("weight_performance,weight_equity,weight_preference").order("updated_at", { ascending: false }).limit(1),
+      supabase.from("shifts").select("user_id,opened_at,open_message").eq("open_to_all", true).gte("shift_date", today),
     ]);
+    const openList = (openRows || []) as any[];
+    setOpenState({
+      free: openList.filter((s) => !s.user_id).length,
+      taken: openList.filter((s) => s.user_id).length,
+      openedAt: openList.map((s) => s.opened_at).filter(Boolean).sort().slice(-1)[0] ?? null,
+      message: openList.find((s) => s.open_message)?.open_message ?? null,
+    });
     setHoles((h || []) as Hole[]);
     setStudios(new Map((st || []).map((s) => [s.id, s.name])));
     setProfiles((p || []) as ProfileRow[]);
@@ -412,10 +422,35 @@ function TrousPage() {
       <div className="rounded-xl border mb-4 p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="min-w-0">
-            <div style={{ fontSize: 13, fontWeight: 500 }}>Ouvrir les trous à tous</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div style={{ fontSize: 13, fontWeight: 500 }}>Ouvrir les trous à tous</div>
+              {(openState.free + openState.taken) > 0 && (
+                <span className="rounded-full px-2 py-0.5" style={{ fontSize: 11, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
+                  Bourse ouverte
+                </span>
+              )}
+            </div>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
               Notification + email à tous les employés des studios concernés. Le premier qui prend le shift l'obtient.
             </div>
+            {(openState.free + openState.taken) > 0 && (
+              <div className="mt-2 rounded-lg p-2.5" style={{ border: "0.5px solid var(--coral)", backgroundColor: "var(--coral-light)" }}>
+                <div style={{ fontSize: 12, fontWeight: 500 }}>
+                  {openState.free + openState.taken} shift(s) envoyés · {openState.taken} pris · {openState.free} encore libres
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+                  {openState.openedAt
+                    ? `Dernier envoi le ${new Date(openState.openedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à ${new Date(openState.openedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}. `
+                    : ""}
+                  Un nouvel envoi renotifie tout le monde et ne concerne que les shifts encore libres (aucun doublon, rien n'est repris à ceux qui ont déjà pris).
+                </div>
+                {openState.message && (
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, fontStyle: "italic" }}>
+                    Message envoyé : « {openState.message} »
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
 
@@ -438,7 +473,7 @@ function TrousPage() {
 
               style={{ fontSize: 12, fontWeight: 500, backgroundColor: "var(--coral)", color: "var(--coral-text)", border: "none" }}
             >
-              Ouvrir à tous ({filtered.length})
+              {(openState.free + openState.taken) > 0 ? "Renvoyer à tous" : "Ouvrir à tous"} ({filtered.length})
             </button>
             <button
               onClick={async () => {
@@ -706,6 +741,11 @@ function TrousPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                       <span style={{ fontSize: 14, fontWeight: 500 }}>{hole.business_role}</span>
+                      {hole.open_to_all && (
+                        <span className="rounded-full px-2 py-0.5" style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--coral-light)", color: "var(--coral-dark)" }}>
+                          Ouvert à tous
+                        </span>
+                      )}
                       <span className="hidden sm:inline" style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
                       <span style={{ fontSize: 13 }}>{new Date(hole.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}</span>
                       <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>·</span>
