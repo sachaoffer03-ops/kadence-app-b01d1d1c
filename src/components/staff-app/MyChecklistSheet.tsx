@@ -374,13 +374,7 @@ function PhotoRow({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; sta
   const inputRef = useRef<HTMLInputElement>(null);
   const status = state?.status ?? "idle";
   const rejected = !!state?.rejected;
-  const [refUrl, setRefUrl] = useState<string | null>(null);
-  const [showRef, setShowRef] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    signChecklistPhoto((zone as any).reference_photo_url).then((u) => { if (alive) setRefUrl(u); });
-    return () => { alive = false; };
-  }, [(zone as any).reference_photo_url]);
+  const refUrl = useReferencePhoto((zone as any).reference_photo_url);
 
   const badge = status === "uploading" ? { label: "Envoi…", bg: "var(--muted)", fg: "var(--muted-foreground)" }
     : status === "analyzing" ? { label: "Analyse…", bg: "var(--coral-light)", fg: "var(--coral-dark)" }
@@ -403,19 +397,29 @@ function PhotoRow({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; sta
         </span>
       </div>
 
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={status === "uploading" || status === "analyzing"}
+        className="w-full rounded-lg flex items-center justify-center overflow-hidden relative disabled:opacity-60 mb-2"
+        style={{ aspectRatio: "4/3", backgroundColor: state?.photoUrl ? "transparent" : "var(--muted)" }}
+      >
+        {state?.photoUrl ? (
+          <img src={state.photoUrl} alt={zone.label} className="w-full h-full object-cover" />
+        ) : (
+          <>
+            {refUrl && <ReferenceBackdrop url={refUrl} />}
+            <div className="flex flex-col items-center gap-1 relative" style={{ color: "var(--muted-foreground)" }}>
+              <Camera size={26} />
+              <span style={{ fontSize: 12 }}>Prendre la photo</span>
+            </div>
+          </>
+        )}
+      </button>
+
       {refUrl && (
         <div className="mb-2">
-          <button onClick={() => setShowRef((v) => !v)} style={{ fontSize: 11, color: "var(--coral-dark)", fontWeight: 500 }}>
-            {showRef ? "Masquer le modèle attendu" : "Voir le modèle attendu"}
-          </button>
-          {showRef && (
-            <img src={refUrl} alt={`Référence ${zone.label}`} className="w-full rounded-lg mt-1.5" style={{ maxHeight: 180, objectFit: "cover" }} />
-          )}
+          <ReferenceThumb url={refUrl} label={zone.label} takenUrl={state?.photoUrl ?? null} />
         </div>
-      )}
-
-      {state?.photoUrl && (
-        <img src={state.photoUrl} alt={zone.label} className="w-full rounded-lg mb-2" style={{ maxHeight: 180, objectFit: "cover" }} />
       )}
 
       {rejected && state?.message && (
@@ -428,17 +432,20 @@ function PhotoRow({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; sta
         ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }}
       />
-      <button
-        onClick={() => inputRef.current?.click()}
-        disabled={status === "uploading" || status === "analyzing"}
-        className="w-full rounded-md py-2.5 disabled:opacity-50"
-        style={{ fontSize: 12, fontWeight: 500, backgroundColor: rejected ? "var(--coral)" : "var(--muted)", color: rejected ? "#fff" : undefined }}
-      >
-        {status === "uploading" ? "Envoi…" : status === "analyzing" ? "Analyse…" : state?.photoUrl ? "Reprendre la photo" : "Prendre la photo"}
-      </button>
+      {state?.photoUrl && (
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={status === "uploading" || status === "analyzing"}
+          className="w-full rounded-md py-2.5 disabled:opacity-50"
+          style={{ fontSize: 12, fontWeight: 500, backgroundColor: rejected ? "var(--coral)" : "var(--muted)", color: rejected ? "#fff" : undefined }}
+        >
+          {status === "uploading" ? "Envoi…" : status === "analyzing" ? "Analyse…" : "Reprendre la photo"}
+        </button>
+      )}
     </div>
   );
 }
+
 
 /** Carte d'accès rapide affichée sur l'accueil employé pendant tout le shift. */
 export function ChecklistAccessCard({ done, total, phase, onOpen }: {
