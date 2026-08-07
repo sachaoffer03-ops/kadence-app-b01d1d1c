@@ -105,14 +105,17 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
     setLoading(true);
     (async () => {
       try {
-        const detected = (await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" })) ?? "closing";
-        const tpl = await findApplicableTemplate({
-          studioId: shift.studio_id ?? null,
-          businessRole: shift.business_role,
-          phase: detected,
-        });
+        const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" });
+        const tpl = detected
+          ? await findApplicableTemplate({
+              studioId: shift.studio_id ?? null,
+              businessRole: shift.business_role,
+              phase: detected,
+            })
+          : null;
         if (!alive) return;
-        setPhase(detected);
+        if (detected) setPhase(detected);
+
         if (!tpl) {
           setTemplate(null); setItems([]); setPhotos([]); setSubmissionId(null);
           setLoading(false);
