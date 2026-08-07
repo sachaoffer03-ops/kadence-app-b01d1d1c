@@ -8,10 +8,9 @@ import { requestPushPermission } from "@/lib/push-notifications";
 import {
   PUSH_CATEGORIES,
   PUSH_CATEGORY_LABELS,
-  getMyPushSettings,
-  updateMyPushPrefs,
   type PushCategory,
-} from "@/lib/push.functions";
+} from "@/lib/push-categories";
+import { getMyPushSettings, updateMyPushPrefs } from "@/lib/push.functions";
 
 export function PushPrefsCard() {
   const load = useServerFn(getMyPushSettings);
