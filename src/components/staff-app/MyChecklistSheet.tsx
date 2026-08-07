@@ -122,7 +122,7 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
           return;
         }
         setTemplate(tpl);
-        const subId = await getOrCreateSubmission(userId, shift.id, tpl.id, detected);
+        const subId = await getOrCreateSubmission(userId, shift.id, tpl.id, detected!);
         if (!alive) return;
         setSubmissionId(subId);
         const [{ data: its }, { data: phs }, { data: si }, { data: sp }] = await Promise.all([
