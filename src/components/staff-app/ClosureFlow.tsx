@@ -752,6 +752,7 @@ function Step3({ photos, states, onUpload, template, hasTemplate }: {
 function PhotoCard({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; state?: PhotoState; onUpload: (f: File) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const status = state?.status ?? "idle";
+  const refUrl = useReferencePhoto((zone as any).reference_photo_url);
   const badge = status === "validated" ? { label: "Validée", bg: "var(--success-bg)", fg: "var(--success-text)" }
               : status === "refused" ? { label: "Refusée — reprendre", bg: "#FEE4E2", fg: "#B42318" }
               : status === "analyzing" ? { label: "Analyse IA…", bg: "var(--coral-light)", fg: "var(--coral-dark)" }
@@ -779,10 +780,13 @@ function PhotoCard({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; st
         {state?.photoUrl ? (
           <img src={state.photoUrl} alt={zone.label} className="w-full h-full object-cover" />
         ) : (
-          <div className="flex flex-col items-center gap-1" style={{ color: "var(--muted-foreground)" }}>
-            <Camera size={28} />
-            <span style={{ fontSize: 12 }}>Prendre la photo</span>
-          </div>
+          <>
+            {refUrl && <ReferenceBackdrop url={refUrl} />}
+            <div className="flex flex-col items-center gap-1 relative" style={{ color: "var(--muted-foreground)" }}>
+              <Camera size={28} />
+              <span style={{ fontSize: 12 }}>Prendre la photo</span>
+            </div>
+          </>
         )}
         {(status === "uploading" || status === "analyzing") && (
           <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.35)", color: "#fff" }}>
@@ -790,6 +794,11 @@ function PhotoCard({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; st
           </div>
         )}
       </button>
+      {refUrl && (
+        <div className="mt-2">
+          <ReferenceThumb url={refUrl} label={zone.label} takenUrl={state?.photoUrl ?? null} />
+        </div>
+      )}
       {state?.message && status === "refused" && (
         <div className="mt-2" style={{ fontSize: 11, color: "#B42318" }}>{state.message}</div>
       )}
@@ -798,6 +807,7 @@ function PhotoCard({ zone, state, onUpload }: { zone: ChecklistTemplatePhoto; st
     </div>
   );
 }
+
 
 // ────────────────────────────────────────────────────────────────────────────
 // Step 4 — QR scanner
