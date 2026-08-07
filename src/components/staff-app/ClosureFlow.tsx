@@ -4,6 +4,7 @@ import { ArrowLeft, X, Camera, Check, AlertCircle, QrCode, Star, MapPin, Loader2
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { supabase } from "@/integrations/supabase/client";
 import { signChecklistPhoto } from "@/lib/checklist-photo-url";
+import { useReferencePhoto, ReferenceThumb, ReferenceBackdrop } from "@/components/staff-app/ReferencePhoto";
 import { useServerFn } from "@tanstack/react-start";
 import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, notifyTransitionIncoming, type ChecklistPhase } from "@/lib/checklists.helpers";
 import { validateClockOutFn, finalizeClosureFn, analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
