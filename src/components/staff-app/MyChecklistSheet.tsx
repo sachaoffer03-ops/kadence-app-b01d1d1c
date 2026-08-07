@@ -48,13 +48,15 @@ export async function loadChecklistProgress(shift: ChecklistShiftRow, userId: st
   total: number;
   done: number;
 } | null> {
-  const detected = (await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" })) ?? "closing";
+  const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" });
+  if (!detected) return null;
   const tpl = await findApplicableTemplate({
     studioId: shift.studio_id ?? null,
     businessRole: shift.business_role,
     phase: detected,
   });
   if (!tpl) return null;
+
   const [{ data: its }, { data: phs }] = await Promise.all([
     supabase.from("checklist_template_items").select("id").eq("template_id", tpl.id),
     supabase.from("checklist_template_photos").select("id").eq("template_id", tpl.id),
