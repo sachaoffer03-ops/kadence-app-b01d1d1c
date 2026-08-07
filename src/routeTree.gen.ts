@@ -67,6 +67,7 @@ import { Route as DotwellKnownAppleAppSiteAssociationRouteImport } from './route
 import { Route as StaffChecklistShiftIdRouteImport } from './routes/staff.checklist.$shiftId'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicRoleTransitionsTickRouteImport } from './routes/api/public/role-transitions-tick'
+import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
 import { Route as ApiPublicAvailRemindersTickRouteImport } from './routes/api/public/avail-reminders-tick'
 import { Route as ApiPublicAccountPurgeTickRouteImport } from './routes/api/public/account-purge-tick'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -371,6 +372,11 @@ const ApiPublicRoleTransitionsTickRoute =
     path: '/api/public/role-transitions-tick',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPushDispatchRoute = ApiPublicPushDispatchRouteImport.update({
+  id: '/api/public/push-dispatch',
+  path: '/api/public/push-dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAvailRemindersTickRoute =
   ApiPublicAvailRemindersTickRouteImport.update({
     id: '/api/public/avail-reminders-tick',
@@ -486,6 +492,7 @@ export interface FileRoutesByFullPath {
   '/staff/': typeof StaffIndexRoute
   '/api/public/account-purge-tick': typeof ApiPublicAccountPurgeTickRoute
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/api/public/role-transitions-tick': typeof ApiPublicRoleTransitionsTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
@@ -555,6 +562,7 @@ export interface FileRoutesByTo {
   '/staff': typeof StaffIndexRoute
   '/api/public/account-purge-tick': typeof ApiPublicAccountPurgeTickRoute
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/api/public/role-transitions-tick': typeof ApiPublicRoleTransitionsTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
@@ -626,6 +634,7 @@ export interface FileRoutesById {
   '/staff/': typeof StaffIndexRoute
   '/api/public/account-purge-tick': typeof ApiPublicAccountPurgeTickRoute
   '/api/public/avail-reminders-tick': typeof ApiPublicAvailRemindersTickRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/api/public/role-transitions-tick': typeof ApiPublicRoleTransitionsTickRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/staff/checklist/$shiftId': typeof StaffChecklistShiftIdRoute
@@ -698,6 +707,7 @@ export interface FileRouteTypes {
     | '/staff/'
     | '/api/public/account-purge-tick'
     | '/api/public/avail-reminders-tick'
+    | '/api/public/push-dispatch'
     | '/api/public/role-transitions-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
@@ -767,6 +777,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/api/public/account-purge-tick'
     | '/api/public/avail-reminders-tick'
+    | '/api/public/push-dispatch'
     | '/api/public/role-transitions-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
@@ -837,6 +848,7 @@ export interface FileRouteTypes {
     | '/staff/'
     | '/api/public/account-purge-tick'
     | '/api/public/avail-reminders-tick'
+    | '/api/public/push-dispatch'
     | '/api/public/role-transitions-tick'
     | '/lovable/email/suppression'
     | '/staff/checklist/$shiftId'
@@ -904,6 +916,7 @@ export interface RootRouteChildren {
   SecteursIndexRoute: typeof SecteursIndexRoute
   ApiPublicAccountPurgeTickRoute: typeof ApiPublicAccountPurgeTickRoute
   ApiPublicAvailRemindersTickRoute: typeof ApiPublicAvailRemindersTickRoute
+  ApiPublicPushDispatchRoute: typeof ApiPublicPushDispatchRoute
   ApiPublicRoleTransitionsTickRoute: typeof ApiPublicRoleTransitionsTickRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicCalendarTokenRoute: typeof ApiPublicCalendarTokenRoute
@@ -1324,6 +1337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRoleTransitionsTickRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/push-dispatch': {
+      id: '/api/public/push-dispatch'
+      path: '/api/public/push-dispatch'
+      fullPath: '/api/public/push-dispatch'
+      preLoaderRoute: typeof ApiPublicPushDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/avail-reminders-tick': {
       id: '/api/public/avail-reminders-tick'
       path: '/api/public/avail-reminders-tick'
@@ -1490,6 +1510,7 @@ const rootRouteChildren: RootRouteChildren = {
   SecteursIndexRoute: SecteursIndexRoute,
   ApiPublicAccountPurgeTickRoute: ApiPublicAccountPurgeTickRoute,
   ApiPublicAvailRemindersTickRoute: ApiPublicAvailRemindersTickRoute,
+  ApiPublicPushDispatchRoute: ApiPublicPushDispatchRoute,
   ApiPublicRoleTransitionsTickRoute: ApiPublicRoleTransitionsTickRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicCalendarTokenRoute: ApiPublicCalendarTokenRoute,
@@ -1504,13 +1525,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
