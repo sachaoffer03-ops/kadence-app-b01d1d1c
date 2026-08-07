@@ -155,23 +155,27 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
     setClockedOutAt(shift.clocked_out_at ?? null);
     (async () => {
       try {
-        // Detect closure phase (closing | transition_out | null)
+        // Detect closure phase (closing | transition_out) — reflète toujours le terrain
         const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" });
         setPhase(detected);
-        // Initial step: closing → 1 (recap), transition_out → 2 (items), null → 4 (QR only)
-        setStep(detected === null ? 4 : detected === "transition_out" ? 2 : 1);
 
         // Cache the user's first name for the transition handoff notification
         const { data: me } = await supabase.from("profiles").select("first_name").eq("id", userId).maybeSingle();
         setFirstNameMe((me as any)?.first_name ?? null);
 
+        // Template strictement de la phase détectée : pas de repli sur la clôture
         const tpl = detected
           ? await findApplicableTemplate({ studioId: shift.studio_id ?? null, businessRole: shift.business_role, phase: detected })
           : null;
+
+        // Étape initiale : clôture → 1 (récap) ; relais avec checklist → 2 ; sinon QR seul
+        setStep(detected === "closing" ? 1 : tpl ? 2 : 4);
+
         if (tpl) {
           setTemplate(tpl);
           const subId = await getOrCreateSubmission(userId, shift.id, tpl.id, detected!);
           setSubmissionId(subId);
+
           const [{ data: its }, { data: phs }, { data: subItems }, { data: subPhotos }] = await Promise.all([
             supabase.from("checklist_template_items").select("*").eq("template_id", tpl.id).order("order_index"),
             supabase.from("checklist_template_photos").select("*").eq("template_id", tpl.id).order("order_index"),

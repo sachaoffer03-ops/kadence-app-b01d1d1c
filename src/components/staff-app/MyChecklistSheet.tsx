@@ -48,13 +48,15 @@ export async function loadChecklistProgress(shift: ChecklistShiftRow, userId: st
   total: number;
   done: number;
 } | null> {
-  const detected = (await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" })) ?? "closing";
+  const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" });
+  if (!detected) return null;
   const tpl = await findApplicableTemplate({
     studioId: shift.studio_id ?? null,
     businessRole: shift.business_role,
     phase: detected,
   });
   if (!tpl) return null;
+
   const [{ data: its }, { data: phs }] = await Promise.all([
     supabase.from("checklist_template_items").select("id").eq("template_id", tpl.id),
     supabase.from("checklist_template_photos").select("id").eq("template_id", tpl.id),
@@ -103,21 +105,24 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
     setLoading(true);
     (async () => {
       try {
-        const detected = (await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" })) ?? "closing";
-        const tpl = await findApplicableTemplate({
-          studioId: shift.studio_id ?? null,
-          businessRole: shift.business_role,
-          phase: detected,
-        });
+        const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" });
+        const tpl = detected
+          ? await findApplicableTemplate({
+              studioId: shift.studio_id ?? null,
+              businessRole: shift.business_role,
+              phase: detected,
+            })
+          : null;
         if (!alive) return;
-        setPhase(detected);
+        if (detected) setPhase(detected);
+
         if (!tpl) {
           setTemplate(null); setItems([]); setPhotos([]); setSubmissionId(null);
           setLoading(false);
           return;
         }
         setTemplate(tpl);
-        const subId = await getOrCreateSubmission(userId, shift.id, tpl.id, detected);
+        const subId = await getOrCreateSubmission(userId, shift.id, tpl.id, detected!);
         if (!alive) return;
         setSubmissionId(subId);
         const [{ data: its }, { data: phs }, { data: si }, { data: sp }] = await Promise.all([

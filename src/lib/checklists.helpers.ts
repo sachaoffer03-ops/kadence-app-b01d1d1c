@@ -62,7 +62,9 @@ export async function findApplicableTemplate(ctx: {
  *   - If NO other shift starts at/after my end_time → 'closing'
  *   - Otherwise → 'transition_out' (passage de relais en milieu de journée)
  *
- * Returns null if no template is configured for the resolved phase (caller can skip flow).
+ * La phase retournée reflète TOUJOURS la réalité du terrain, même si aucune
+ * checklist n'est configurée pour cette phase (dans ce cas l'appelant n'affiche
+ * simplement aucune checklist — il ne doit JAMAIS retomber sur la clôture).
  */
 export async function detectChecklistMoment(args: {
   shiftId: string;
@@ -86,23 +88,14 @@ export async function detectChecklistMoment(args: {
     .neq("status", "cancelled");
 
   const others = ((peers as any[]) ?? []);
-  let phase: ChecklistPhase;
   if (args.side === "clock_in") {
     const hasEarlier = others.some((s) => s.end_time <= (shift as any).start_time);
-    phase = hasEarlier ? "transition_in" : "opening";
-  } else {
-    const hasLater = others.some((s) => s.start_time >= (shift as any).end_time);
-    phase = hasLater ? "transition_out" : "closing";
+    return hasEarlier ? "transition_in" : "opening";
   }
-
-  // Confirm a template actually exists for this phase — otherwise no checklist to show.
-  const tpl = await findApplicableTemplate({
-    studioId: (shift as any).studio_id,
-    businessRole: (shift as any).business_role,
-    phase,
-  });
-  return tpl ? phase : null;
+  const hasLater = others.some((s) => s.start_time >= (shift as any).end_time);
+  return hasLater ? "transition_out" : "closing";
 }
+
 
 /**
  * Get-or-create a submission row for (user, shift, template, phase).
