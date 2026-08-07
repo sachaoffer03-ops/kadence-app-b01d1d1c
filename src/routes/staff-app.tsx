@@ -30,6 +30,8 @@ import { FormationNotifBanner } from "@/components/staff-app/formation/Formation
 import { expandShiftToCards, type RoleSegment } from "@/lib/role-segments";
 import { registerMedianBackButton } from "@/lib/median-bridge";
 import { initPushNotifications } from "@/lib/push-notifications";
+import { usePushRegistration } from "@/hooks/use-push-registration";
+import { PushPrefsCard } from "@/components/staff-app/PushPrefsCard";
 
 
 import { AssistantFab } from "@/components/staff-app/AssistantFab";
@@ -203,6 +205,7 @@ function StaffAppPage() {
   // Bouton retour physique Android dans l'app Median (no-op sur navigateur web)
   useEffect(() => registerMedianBackButton((delta) => window.history.go(delta)), []);
   useEffect(() => initPushNotifications(), []);
+  usePushRegistration(user?.id);
 
 
 
@@ -1460,6 +1463,8 @@ function ProfilTab({ profile, businessRoles, studios, userId, onProfileChange, o
           </button>
         ))}
       </div>
+
+      <PushPrefsCard />
 
       {/* À propos */}
       <SectionTitle>À propos</SectionTitle>

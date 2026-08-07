@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { getAppMode } from "@/lib/app-mode";
+import { getStoredPlayerId } from "@/hooks/use-push-registration";
+import { unregisterPushDevice } from "@/lib/push.functions";
+import { clearPushExternalUserId } from "@/lib/push-notifications";
 
 type AppRole = "admin" | "manager" | "employee";
 
@@ -136,6 +139,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.user?.id]);
 
   const signOut = async () => {
+    // Coupe les notifications push sur cet appareil avant de fermer la session
+    try {
+      const playerId = getStoredPlayerId();
+      if (playerId) {
+        clearPushExternalUserId();
+        await unregisterPushDevice({ data: { playerId } });
+      }
+    } catch {
+      // ignore
+    }
     await supabase.auth.signOut();
     setSession(null);
     setAppRole(null);

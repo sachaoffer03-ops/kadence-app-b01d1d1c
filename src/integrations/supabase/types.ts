@@ -1547,6 +1547,7 @@ export type Database = {
           nationality: string | null
           niss: string | null
           phone: string | null
+          push_prefs: Json
           quota_max: number | null
           quota_used: number | null
           score: number | null
@@ -1583,6 +1584,7 @@ export type Database = {
           nationality?: string | null
           niss?: string | null
           phone?: string | null
+          push_prefs?: Json
           quota_max?: number | null
           quota_used?: number | null
           score?: number | null
@@ -1619,6 +1621,7 @@ export type Database = {
           nationality?: string | null
           niss?: string | null
           phone?: string | null
+          push_prefs?: Json
           quota_max?: number | null
           quota_used?: number | null
           score?: number | null
@@ -1637,6 +1640,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          platform: string
+          player_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          platform?: string
+          player_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          platform?: string
+          player_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       recurring_assignments: {
         Row: {
