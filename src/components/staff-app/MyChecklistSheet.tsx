@@ -11,6 +11,7 @@ import {
 } from "@/lib/checklists.helpers";
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
 import { signChecklistPhoto } from "@/lib/checklist-photo-url";
+import { useReferencePhoto, ReferenceThumb, ReferenceBackdrop } from "@/components/staff-app/ReferencePhoto";
 import { analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
 
 export interface ChecklistShiftRow {
