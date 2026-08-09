@@ -383,8 +383,11 @@ function TrousPage() {
           <div className="min-w-0">
             <div style={{ fontSize: 13, fontWeight: 500 }}>Absorber les trous courts</div>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
-              Les trous de 15/30 min sont rattachés à la personne déjà présente juste avant (ou juste après). Aperçu avant validation.
+              {overflowMargin > 0
+                ? `Les trous de ${overflowMargin} min ou moins sont rattachés à la personne déjà présente juste avant (ou juste après). Aperçu avant validation.`
+                : "Marge de débordement désactivée dans les réglages planning : aucun trou n'est rattaché automatiquement."}
             </div>
+
           </div>
           <button
             disabled={absorbing}
