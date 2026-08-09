@@ -104,6 +104,7 @@ function TrousPage() {
   const [userStudios, setUserStudios] = useState<Map<string, Set<string>>>(new Map());
 
   const [openState, setOpenState] = useState<{ free: number; taken: number; openedAt: string | null; message: string | null }>({ free: 0, taken: 0, openedAt: null, message: null });
+  const [overflowMargin, setOverflowMargin] = useState<number>(30);
 
   const load = async () => {
     const today = new Date().toISOString().split("T")[0];
