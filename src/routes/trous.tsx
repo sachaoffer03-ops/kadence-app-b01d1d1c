@@ -138,6 +138,7 @@ function TrousPage() {
     setUnavail((un || []) as UnavailPeriod[]);
     setAssignedShifts((sh || []) as any);
     const row: any = (settings as any[] | null)?.[0];
+    setOverflowMargin(row?.overflow_margin_min == null ? 30 : Number(row.overflow_margin_min));
     const wp = Number(row?.weight_performance ?? 0);
     const we = Number(row?.weight_equity ?? 0);
     const wg = Number(row?.weight_preference ?? 0);
