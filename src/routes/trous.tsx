@@ -104,6 +104,7 @@ function TrousPage() {
   const [userStudios, setUserStudios] = useState<Map<string, Set<string>>>(new Map());
 
   const [openState, setOpenState] = useState<{ free: number; taken: number; openedAt: string | null; message: string | null }>({ free: 0, taken: 0, openedAt: null, message: null });
+  const [overflowMargin, setOverflowMargin] = useState<number>(30);
 
   const load = async () => {
     const today = new Date().toISOString().split("T")[0];
@@ -117,7 +118,7 @@ function TrousPage() {
       supabase.from("unavailability_periods").select("user_id,start_date,end_date").gte("end_date", today),
       supabase.from("user_studios").select("user_id,studio_id"),
       supabase.from("shifts").select("user_id,shift_date,start_time,end_time").not("user_id", "is", null).neq("status", "cancelled").gte("shift_date", today.slice(0, 8) + "01"),
-      supabase.from("ai_planning_settings").select("weight_performance,weight_equity,weight_preference").order("updated_at", { ascending: false }).limit(1),
+      supabase.from("ai_planning_settings").select("weight_performance,weight_equity,weight_preference,overflow_margin_min").order("updated_at", { ascending: false }).limit(1),
       supabase.from("shifts").select("user_id,opened_at,open_message").eq("open_to_all", true).gte("shift_date", today),
     ]);
     const openList = (openRows || []) as any[];
@@ -138,6 +139,7 @@ function TrousPage() {
     setUnavail((un || []) as UnavailPeriod[]);
     setAssignedShifts((sh || []) as any);
     const row: any = (settings as any[] | null)?.[0];
+    setOverflowMargin(row?.overflow_margin_min == null ? 30 : Number(row.overflow_margin_min));
     const wp = Number(row?.weight_performance ?? 0);
     const we = Number(row?.weight_equity ?? 0);
     const wg = Number(row?.weight_preference ?? 0);
@@ -381,8 +383,11 @@ function TrousPage() {
           <div className="min-w-0">
             <div style={{ fontSize: 13, fontWeight: 500 }}>Absorber les trous courts</div>
             <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
-              Les trous de 15/30 min sont rattachés à la personne déjà présente juste avant (ou juste après). Aperçu avant validation.
+              {overflowMargin > 0
+                ? `Les trous de ${overflowMargin} min ou moins sont rattachés à la personne déjà présente juste avant (ou juste après). Aperçu avant validation.`
+                : "Marge de débordement désactivée dans les réglages planning : aucun trou n'est rattaché automatiquement."}
             </div>
+
           </div>
           <button
             disabled={absorbing}
