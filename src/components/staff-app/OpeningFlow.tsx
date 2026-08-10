@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Camera, PartyPopper, Loader2, MessageSquareQuote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signChecklistPhoto } from "@/lib/checklist-photo-url";
-import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, type ChecklistPhase } from "@/lib/checklists.helpers";
+import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, type ChecklistPhase } from "@/lib/checklists.helpers";
+import { detectChecklistMomentFn } from "@/lib/closure-flow.functions";
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
 
 export interface OpeningShiftRow {
@@ -30,6 +32,7 @@ interface Props {
 type Step = 1 | 2 | 3 | 4;
 
 export function OpeningFlow({ open, onClose, shift, userId, studios, firstName, clockedInAt, minutesLate = 0 }: Props) {
+  const detectChecklistMoment = useServerFn(detectChecklistMomentFn);
   const [loading, setLoading] = useState(true);
   const [phase, setPhase] = useState<ChecklistPhase | null>(null);
   const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
@@ -49,7 +52,7 @@ export function OpeningFlow({ open, onClose, shift, userId, studios, firstName, 
     (async () => {
       try {
         // Detect phase (opening | transition_in | null) for this clock-in
-        const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_in" });
+        const detected = await detectChecklistMoment({ data: { shiftId: shift.id, side: "clock_in" } });
         setPhase(detected);
         if (detected) {
           const tpl = await findApplicableTemplate({

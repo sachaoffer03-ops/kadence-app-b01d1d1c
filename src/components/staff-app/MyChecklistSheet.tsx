@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { X, Camera, Check, Loader2, CloudUpload, ListChecks } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,13 +7,13 @@ import {
   findApplicableTemplate,
   getOrCreateSubmission,
   uploadSubmissionPhoto,
-  detectChecklistMoment,
   type ChecklistPhase,
 } from "@/lib/checklists.helpers";
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
 import { signChecklistPhoto } from "@/lib/checklist-photo-url";
 import { useReferencePhoto, ReferenceThumb, ReferenceBackdrop } from "@/components/staff-app/ReferencePhoto";
 import { analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
+import { detectChecklistMomentFn } from "@/lib/closure-flow.functions";
 
 export interface ChecklistShiftRow {
   id: string;
@@ -89,6 +90,7 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
   userId: string;
   onProgress?: (p: { done: number; total: number }) => void;
 }) {
+  const detectChecklistMoment = useServerFn(detectChecklistMomentFn);
   const [loading, setLoading] = useState(true);
   const [phase, setPhase] = useState<ChecklistPhase>("closing");
   const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
@@ -106,7 +108,7 @@ export function MyChecklistSheet({ open, onClose, shift, userId, onProgress }: {
     setLoading(true);
     (async () => {
       try {
-        const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" });
+        const detected = await detectChecklistMoment({ data: { shiftId: shift.id, side: "clock_out" } });
         const tpl = detected
           ? await findApplicableTemplate({
               studioId: shift.studio_id ?? null,

@@ -6,8 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { signChecklistPhoto } from "@/lib/checklist-photo-url";
 import { useReferencePhoto, ReferenceThumb, ReferenceBackdrop } from "@/components/staff-app/ReferencePhoto";
 import { useServerFn } from "@tanstack/react-start";
-import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, detectChecklistMoment, notifyTransitionIncoming, type ChecklistPhase } from "@/lib/checklists.helpers";
-import { validateClockOutFn, finalizeClosureFn, analyzeClosurePhotoFn } from "@/lib/closure-flow.functions";
+import { findApplicableTemplate, getOrCreateSubmission, uploadSubmissionPhoto, notifyTransitionIncoming, type ChecklistPhase } from "@/lib/checklists.helpers";
+import { validateClockOutFn, finalizeClosureFn, analyzeClosurePhotoFn, detectChecklistMomentFn } from "@/lib/closure-flow.functions";
 import { getShiftClockPolicyFn } from "@/lib/shift-clock.functions";
 
 import type { ChecklistTemplate, ChecklistTemplateItem, ChecklistTemplatePhoto } from "@/types/checklists";
@@ -116,6 +116,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
   const [clockPolicy, setClockPolicy] = useState<{ outDeviationMin: number; earlyOutWindowMin: number; graceOutMin: number; clockOutNeedsReason: boolean } | null>(null);
 
   const validateClockOut = useServerFn(validateClockOutFn);
+  const detectChecklistMoment = useServerFn(detectChecklistMomentFn);
   const getClockPolicy = useServerFn(getShiftClockPolicyFn);
 
   const outReasonRequired = !!clockPolicy?.clockOutNeedsReason;
@@ -157,7 +158,7 @@ export function ClosureFlow({ open, onClose, shift, userId, studios, onCompleted
     (async () => {
       try {
         // Detect closure phase (closing | transition_out) — reflète toujours le terrain
-        const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" });
+        const detected = await detectChecklistMoment({ data: { shiftId: shift.id, side: "clock_out" } });
         setPhase(detected);
 
         // Cache the user's first name for the transition handoff notification
