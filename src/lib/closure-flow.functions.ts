@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { validateClockOut, finalizeClosure, analyzeClosurePhoto, notifyOverdueClockOuts, overrideRejectedPhoto } from "./closure-flow.server";
+import { validateClockOut, finalizeClosure, analyzeClosurePhoto, notifyOverdueClockOuts, overrideRejectedPhoto, detectChecklistMomentForUser } from "./closure-flow.server";
 
 const validateSchema = z.object({
   shiftId: z.string().uuid(),
@@ -17,6 +17,16 @@ export const validateClockOutFn = createServerFn({ method: "POST" })
   .inputValidator((input) => validateSchema.parse(input))
   .handler(async ({ data, context }) => {
     return validateClockOut({ ...data, actorId: context.userId });
+  });
+
+export const detectChecklistMomentFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    shiftId: z.string().uuid(),
+    side: z.enum(["clock_in", "clock_out"]),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    return detectChecklistMomentForUser(data.shiftId, context.userId, data.side);
   });
 
 const finalizeSchema = z.object({

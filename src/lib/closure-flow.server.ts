@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { loadClockPolicy, computeOutDeviation, clockOutNeedsReason, cleanReason } from "./clock-policy.server";
+import type { ChecklistMoment } from "./checklists.helpers";
 
 
 // --- helpers ---------------------------------------------------------------
@@ -28,6 +29,36 @@ async function assertOwnerShift(shiftId: string, userId: string) {
     if (!elevated) throw new Error("Action non autorisée sur ce shift");
   }
   return shift;
+}
+
+export async function detectChecklistMomentForUser(
+  shiftId: string,
+  userId: string,
+  side: "clock_in" | "clock_out",
+): Promise<ChecklistMoment> {
+  const shift = await assertOwnerShift(shiftId, userId);
+  if (!shift.studio_id) return null;
+
+  const { data: peers, error } = await supabaseAdmin
+    .from("shifts")
+    .select("id,start_time,end_time")
+    .eq("shift_date", shift.shift_date)
+    .eq("business_role", shift.business_role)
+    .eq("studio_id", shift.studio_id)
+    .neq("id", shift.id)
+    .not("user_id", "is", null)
+    .neq("status", "cancelled");
+  if (error) throw new Error(error.message);
+
+  const others = peers ?? [];
+  if (side === "clock_in") {
+    return others.some((peer) => peer.end_time <= shift.start_time)
+      ? "transition_in"
+      : "opening";
+  }
+  return others.some((peer) => peer.start_time >= shift.end_time)
+    ? "transition_out"
+    : "closing";
 }
 
 // --- 1. validateClockOut ---------------------------------------------------
