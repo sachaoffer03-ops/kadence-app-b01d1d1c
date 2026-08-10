@@ -50,7 +50,7 @@ export async function loadChecklistProgress(shift: ChecklistShiftRow, userId: st
   total: number;
   done: number;
 } | null> {
-  const detected = await detectChecklistMoment({ shiftId: shift.id, side: "clock_out" });
+  const detected = await detectChecklistMomentFn({ data: { shiftId: shift.id, side: "clock_out" } });
   if (!detected) return null;
   const tpl = await findApplicableTemplate({
     studioId: shift.studio_id ?? null,
