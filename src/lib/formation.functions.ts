@@ -231,7 +231,11 @@ export const deleteCourse = createServerFn({ method: "POST" })
 
 export const duplicateCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ courseId: z.string().uuid() }).parse(i))
+  .inputValidator((i) => z.object({
+    courseId: z.string().uuid(),
+    title: z.string().trim().min(1).max(120).optional(),
+    studioIds: z.array(z.string().uuid()).optional(),
+  }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdminOrManager(supabase, userId);
@@ -240,7 +244,7 @@ export const duplicateCourse = createServerFn({ method: "POST" })
     if (!src) throw new Error("Parcours introuvable");
     const s = src as any;
     const { data: copy, error: e1 } = await supabase.from("training_courses").insert({
-      title: `${s.title} (copie)`,
+      title: data.title?.trim() ?? `${s.title} (copie)`,
       description: s.description,
       icon: s.icon,
       color: s.color,
@@ -255,14 +259,19 @@ export const duplicateCourse = createServerFn({ method: "POST" })
 
     const newCourseId = (copy as any).id;
 
-    const { data: srcStudios } = await supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId);
-    if (srcStudios && srcStudios.length > 0) {
+    const targetStudioIds = data.studioIds;
+    if (targetStudioIds && targetStudioIds.length > 0) {
       await supabase.from("training_course_studios").insert(
-        (srcStudios as any[]).map((s: any) => ({ course_id: newCourseId, studio_id: s.studio_id })) as any
+        targetStudioIds.map((sid) => ({ course_id: newCourseId, studio_id: sid })) as any
       );
+    } else {
+      const { data: srcStudios } = await supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId);
+      if (srcStudios && srcStudios.length > 0) {
+        await supabase.from("training_course_studios").insert(
+          (srcStudios as any[]).map((s: any) => ({ course_id: newCourseId, studio_id: s.studio_id })) as any
+        );
+      }
     }
-
-
 
     const { data: sections } = await supabase.from("training_sections").select("*").eq("course_id", data.courseId).order("position");
     for (const sec of (sections ?? []) as any[]) {
@@ -290,6 +299,36 @@ export const duplicateCourse = createServerFn({ method: "POST" })
               duration_seconds: c.duration_seconds, position: c.position,
             }))
           );
+        }
+
+        if (mod.has_final_quiz) {
+          const { data: quiz } = await supabase.from("training_quizzes").select("*").eq("module_id", mod.id).maybeSingle();
+          if (quiz) {
+            const { data: newQuiz } = await supabase.from("training_quizzes").insert({
+              module_id: newModId, title: (quiz as any).title, description: (quiz as any).description,
+              passing_score: (quiz as any).passing_score, max_attempts: (quiz as any).max_attempts,
+            } as any).select("id").single();
+            if (newQuiz) {
+              const newQuizId = (newQuiz as any).id;
+              const { data: questions } = await supabase.from("training_quiz_questions").select("*").eq("quiz_id", (quiz as any).id).order("position");
+              for (const q of (questions ?? []) as any[]) {
+                const { data: newQ } = await supabase.from("training_quiz_questions").insert({
+                  quiz_id: newQuizId, question_text: q.question_text, question_type: q.question_type,
+                  explanation: q.explanation, position: q.position,
+                } as any).select("id").single();
+                if (!newQ) continue;
+                const newQId = (newQ as any).id;
+                const { data: options } = await supabase.from("training_quiz_options").select("*").eq("question_id", q.id).order("position");
+                if (options && options.length > 0) {
+                  await supabase.from("training_quiz_options").insert(
+                    (options as any[]).map((o) => ({
+                      question_id: newQId, option_text: o.option_text, is_correct: o.is_correct, position: o.position,
+                    }))
+                  );
+                }
+              }
+            }
+          }
         }
       }
     }
