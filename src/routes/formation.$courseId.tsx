@@ -117,6 +117,7 @@ function CourseBuilderPage() {
                   </div>
                 </div>
                 <div className="flex gap-1.5 flex-wrap justify-end">
+                  <ActionBtn icon={Copy} label="Dupliquer" onClick={() => setShowDuplicate(true)} />
                   <ActionBtn icon={Settings} label="Réglages" onClick={() => setShowSettings(true)} />
                   <ActionBtn icon={Eye} label="Aperçu" onClick={() => setShowPreview(true)} />
                   <ActionBtn
@@ -137,6 +138,32 @@ function CourseBuilderPage() {
               />
 
               <StudentPreviewSheet open={showPreview} onOpenChange={setShowPreview} data={data} />
+
+              {data && (
+                <DuplicateCourseDialog
+                  open={showDuplicate}
+                  onOpenChange={setShowDuplicate}
+                  course={data.course}
+                  studios={data.studios}
+                  courseStudioIds={data.courseStudioIds}
+                  onDuplicate={async (payload) => {
+                    setBusy(true);
+                    try {
+                      const res = await dup({ data: { courseId, ...payload } });
+                      toast.success("Parcours dupliqué");
+                      setShowDuplicate(false);
+                      refreshAll();
+                      // navigate to the copy after a short delay so the sidebar refreshes
+                      setTimeout(() => {
+                        window.location.href = `/formation/${res.id}`;
+                      }, 150);
+                    } catch (e: any) {
+                      toast.error(e.message || "Erreur");
+                    } finally { setBusy(false); }
+                  }}
+                  busy={busy}
+                />
+              )}
             </>
           )}
         </div>
