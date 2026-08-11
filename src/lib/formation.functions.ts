@@ -300,6 +300,36 @@ export const duplicateCourse = createServerFn({ method: "POST" })
             }))
           );
         }
+
+        if (mod.has_final_quiz) {
+          const { data: quiz } = await supabase.from("training_quizzes").select("*").eq("module_id", mod.id).maybeSingle();
+          if (quiz) {
+            const { data: newQuiz } = await supabase.from("training_quizzes").insert({
+              module_id: newModId, title: (quiz as any).title, description: (quiz as any).description,
+              passing_score: (quiz as any).passing_score, max_attempts: (quiz as any).max_attempts,
+            } as any).select("id").single();
+            if (newQuiz) {
+              const newQuizId = (newQuiz as any).id;
+              const { data: questions } = await supabase.from("training_quiz_questions").select("*").eq("quiz_id", (quiz as any).id).order("position");
+              for (const q of (questions ?? []) as any[]) {
+                const { data: newQ } = await supabase.from("training_quiz_questions").insert({
+                  quiz_id: newQuizId, question_text: q.question_text, question_type: q.question_type,
+                  explanation: q.explanation, position: q.position,
+                } as any).select("id").single();
+                if (!newQ) continue;
+                const newQId = (newQ as any).id;
+                const { data: options } = await supabase.from("training_quiz_options").select("*").eq("question_id", q.id).order("position");
+                if (options && options.length > 0) {
+                  await supabase.from("training_quiz_options").insert(
+                    (options as any[]).map((o) => ({
+                      question_id: newQId, option_text: o.option_text, is_correct: o.is_correct, position: o.position,
+                    }))
+                  );
+                }
+              }
+            }
+          }
+        }
       }
     }
 
