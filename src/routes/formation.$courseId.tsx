@@ -24,12 +24,14 @@ function CourseBuilderPage() {
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showDuplicate, setShowDuplicate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sidebarKey, setSidebarKey] = useState(0);
 
   const fetchStructure = useServerFn(getCourseFullStructure);
   const pub = useServerFn(publishCourse);
   const unpub = useServerFn(unpublishCourse);
+  const dup = useServerFn(duplicateCourse);
 
   const load = useCallback(async () => {
     try {
