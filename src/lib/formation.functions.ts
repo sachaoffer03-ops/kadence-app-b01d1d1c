@@ -231,7 +231,11 @@ export const deleteCourse = createServerFn({ method: "POST" })
 
 export const duplicateCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ courseId: z.string().uuid() }).parse(i))
+  .inputValidator((i) => z.object({
+    courseId: z.string().uuid(),
+    title: z.string().trim().min(1).max(120).optional(),
+    studioIds: z.array(z.string().uuid()).optional(),
+  }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdminOrManager(supabase, userId);
@@ -240,7 +244,7 @@ export const duplicateCourse = createServerFn({ method: "POST" })
     if (!src) throw new Error("Parcours introuvable");
     const s = src as any;
     const { data: copy, error: e1 } = await supabase.from("training_courses").insert({
-      title: `${s.title} (copie)`,
+      title: data.title?.trim() ?? `${s.title} (copie)`,
       description: s.description,
       icon: s.icon,
       color: s.color,
@@ -255,14 +259,19 @@ export const duplicateCourse = createServerFn({ method: "POST" })
 
     const newCourseId = (copy as any).id;
 
-    const { data: srcStudios } = await supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId);
-    if (srcStudios && srcStudios.length > 0) {
+    const targetStudioIds = data.studioIds;
+    if (targetStudioIds && targetStudioIds.length > 0) {
       await supabase.from("training_course_studios").insert(
-        (srcStudios as any[]).map((s: any) => ({ course_id: newCourseId, studio_id: s.studio_id })) as any
+        targetStudioIds.map((sid) => ({ course_id: newCourseId, studio_id: sid })) as any
       );
+    } else {
+      const { data: srcStudios } = await supabase.from("training_course_studios").select("studio_id").eq("course_id", data.courseId);
+      if (srcStudios && srcStudios.length > 0) {
+        await supabase.from("training_course_studios").insert(
+          (srcStudios as any[]).map((s: any) => ({ course_id: newCourseId, studio_id: s.studio_id })) as any
+        );
+      }
     }
-
-
 
     const { data: sections } = await supabase.from("training_sections").select("*").eq("course_id", data.courseId).order("position");
     for (const sec of (sections ?? []) as any[]) {
