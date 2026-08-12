@@ -58,8 +58,11 @@ export function ModulePlayer({ module, firstName, initials, reviewMode, onBack, 
     switch (currentContent.type) {
       case "video":
         if (!currentContent.url && !currentContent.external_url) return <Empty label="Vidéo manquante" />;
+        const videoUrl = currentContent.url ?? currentContent.external_url;
+        if (!videoUrl) return <Empty label="Vidéo manquante" />;
         return <VideoPlayer
-          url={currentContent.url || currentContent.external_url!}
+          key={currentContent.id}
+          url={videoUrl}
           durationHint={currentContent.duration_seconds}
           initials={initials}
           initialProgressPct={currentContent.progress_pct}

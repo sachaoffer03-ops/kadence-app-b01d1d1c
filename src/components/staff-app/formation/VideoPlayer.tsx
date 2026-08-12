@@ -23,6 +23,31 @@ export function VideoPlayer({ url, initials, initialProgressPct = 0, alreadyComp
   const [wmPos, setWmPos] = useState<{ top: string; right: string }>({ top: "12px", right: "12px" });
   const [now, setNow] = useState<string>("00:00");
 
+  const syncProgress = (forceComplete = false) => {
+    const video = videoRef.current;
+    if (!video || reviewMode) return;
+
+    const duration = Number.isFinite(video.duration) && video.duration > 0
+      ? video.duration
+      : undefined;
+    const currentPct = duration
+      ? Math.min(100, Math.floor((video.currentTime / duration) * 100))
+      : watchedRef.current;
+
+    if (currentPct > watchedRef.current) {
+      watchedRef.current = currentPct;
+      setPct(currentPct);
+    }
+
+    if (forceComplete || watchedRef.current >= 90) {
+      if (!completedRef.current) {
+        completedRef.current = true;
+        setPct(100);
+        onComplete();
+      }
+    }
+  };
+
   // Move watermark every 30s
   useEffect(() => {
     const tick = () => {
@@ -37,6 +62,29 @@ export function VideoPlayer({ url, initials, initialProgressPct = 0, alreadyComp
     const t = setInterval(tick, 30000);
     return () => clearInterval(t);
   }, []);
+
+  // iOS/Android can stop dispatching timeupdate while the native fullscreen
+  // player is open. Re-read currentTime whenever fullscreen closes or the app
+  // becomes visible again.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const handleFullscreenExit = () => syncProgress(video.ended);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") syncProgress(video.ended);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenExit);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenExit);
+    document.addEventListener("visibilitychange", handleVisibility);
+    video.addEventListener("webkitendfullscreen", handleFullscreenExit);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenExit);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenExit);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      video.removeEventListener("webkitendfullscreen", handleFullscreenExit);
+    };
+  });
 
   // Live timestamp for watermark (every 2s)
   useEffect(() => {
@@ -53,11 +101,7 @@ export function VideoPlayer({ url, initials, initialProgressPct = 0, alreadyComp
   const handleTimeUpdate = () => {
     const v = videoRef.current;
     if (!v || !v.duration || reviewMode) return;
-    const newPct = Math.floor((v.currentTime / v.duration) * 100);
-    if (newPct > watchedRef.current) {
-      watchedRef.current = newPct;
-      setPct(newPct);
-    }
+    syncProgress();
     const dt = (Date.now() - lastTickRef.current) / 1000;
     lastTickRef.current = Date.now();
     if (!v.paused && dt < 3) accumRef.current += dt;
@@ -67,10 +111,6 @@ export function VideoPlayer({ url, initials, initialProgressPct = 0, alreadyComp
       const inc = Math.round(accumRef.current);
       accumRef.current = 0;
       onProgress(watchedRef.current, inc);
-    }
-    if (!completedRef.current && watchedRef.current >= 90) {
-      completedRef.current = true;
-      onComplete();
     }
   };
 
@@ -86,6 +126,9 @@ export function VideoPlayer({ url, initials, initialProgressPct = 0, alreadyComp
           onContextMenu={(e) => e.preventDefault()}
           onTimeUpdate={handleTimeUpdate}
           onPlay={() => { lastTickRef.current = Date.now(); }}
+          onPause={() => syncProgress()}
+          onEnded={() => syncProgress(true)}
+          onLoadedMetadata={() => syncProgress()}
           className="w-full h-full"
         />
         <div className="absolute pointer-events-none select-none" style={{ ...wmPos, padding: "4px 8px", borderRadius: 6, backgroundColor: "rgba(0,0,0,0.35)", color: "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: 500, letterSpacing: "0.05em", backdropFilter: "blur(2px)" }}>
