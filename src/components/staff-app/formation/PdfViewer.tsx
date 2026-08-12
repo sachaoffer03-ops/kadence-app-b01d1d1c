@@ -29,8 +29,8 @@ export function PdfViewer({ url, onComplete, alreadyCompleted }: Props) {
 
     (async () => {
       try {
-        const pdfjs: any = await import("pdfjs-dist");
-        const PdfWorker: any = (await import("pdfjs-dist/build/pdf.worker.mjs?worker")).default;
+        const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+        const PdfWorker: any = (await import("pdfjs-dist/legacy/build/pdf.worker.mjs?worker")).default;
         pdfjs.GlobalWorkerOptions.workerPort = new PdfWorker();
 
         const doc = await pdfjs.getDocument({ url }).promise;
