@@ -60,7 +60,7 @@ export function PdfViewer({ url, onComplete, alreadyCompleted }: Props) {
 
           const ctx = canvas.getContext("2d");
           if (!ctx) continue;
-          await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+          await page.render({ canvasContext: ctx, viewport }).promise;
           if (i === 1) setLoading(false);
         }
         setLoading(false);
