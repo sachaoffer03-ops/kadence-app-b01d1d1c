@@ -35,6 +35,7 @@ import { PushPrefsCard } from "@/components/staff-app/PushPrefsCard";
 
 
 import { AssistantFab } from "@/components/staff-app/AssistantFab";
+import { InstallAppBanner } from "@/components/staff-app/InstallAppBanner";
 
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { ProposalsSheet, useProposals } from "@/components/staff-app/ProposalsSheet";
@@ -229,6 +230,8 @@ function StaffAppPage() {
       <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} userId={user.id} studios={studios} onNavigate={(t) => setTab(t)} />
 
       <AssistantFab />
+
+      <InstallAppBanner />
 
 
 
